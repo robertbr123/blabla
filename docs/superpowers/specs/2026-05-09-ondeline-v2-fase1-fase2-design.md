@@ -102,7 +102,7 @@ A v2 é uma **reescrita paralela** que nasce com arquitetura limpa, segura e pro
 4. **PostgreSQL 16** — source of truth, criptografia em repouso por campo (Fernet) para PII.
 5. **Redis 7** — cache (clientes SGP), sessões/JWT-blacklist, broker Celery, lockout de login.
 6. **Next.js 15** — 3 apps (admin, atendente, técnico-PWA). Server Components + shadcn/ui + TanStack Query.
-7. **Caddy** — reverse proxy com TLS automático, roteamento por subdomínio.
+7. **Reverse proxy** — em dev: Caddy embutido no docker-compose com TLS automático. Em prod: o **Nginx Proxy Manager** já existente nas portas 81/443 do host (decisão pragmática para reaproveitar TLS já configurado).
 
 ## 4. Estrutura do monorepo
 
@@ -403,7 +403,7 @@ Funções `encrypt_pii()` / `decrypt_pii()` em `packages/db/crypto.py`. Suporte 
 
 - Containers como `non-root user`.
 - Postgres + Redis em rede Docker interna (não expostos no host).
-- Caddy/Nginx com TLS automático (Let's Encrypt) + HSTS + CSP strict.
+- Em produção: Nginx Proxy Manager existente fornece TLS (Let's Encrypt) + HSTS; aplicação adiciona CSP strict.
 - Healthchecks: `/healthz` (DB+Redis ping), `/livez` (ping simples).
 - CI: `pip-audit`, `bandit`, `ruff`, `mypy --strict`.
 
@@ -430,7 +430,7 @@ pnpm --filter tecnico-pwa dev
 
 ### Produção
 - `docker-compose.prod.yml`, restart `unless-stopped`.
-- Caddy/Nginx Proxy Manager (já roda nas portas 81/443) faz TLS + roteamento por subdomínio.
+- Reverse proxy: Nginx Proxy Manager existente (já nas portas 81/443) faz TLS + roteamento por subdomínio. Apenas adicionamos os hosts proxy apontando para os containers do v2.
 - Backup diário do Postgres via `pg_dump` + upload (S3/MinIO configurável).
 - Logs dos containers com `--log-opt max-size=10m --log-opt max-file=5`.
 
