@@ -61,4 +61,4 @@ def get_settings() -> Settings:
 
     Wrapped with lru_cache in deps.py for singleton behavior at runtime.
     """
-    return Settings()  # type: ignore[call-arg]
+    return Settings()
