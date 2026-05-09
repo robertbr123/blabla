@@ -1,13 +1,18 @@
 """Tests for the Settings configuration class."""
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
 from ondeline_api.config import Settings
 
 
-def test_settings_loads_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_settings_loads_from_env(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("ENV", "development")
     monkeypatch.setenv("LOG_LEVEL", "DEBUG")
     monkeypatch.setenv(
@@ -25,8 +30,9 @@ def test_settings_loads_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_settings_defaults_when_optional_missing(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    monkeypatch.chdir(tmp_path)
     # Required vars set; optional ones absent
     monkeypatch.setenv(
         "DATABASE_URL", "postgresql+asyncpg://u:p@localhost:5432/db"
@@ -41,8 +47,9 @@ def test_settings_defaults_when_optional_missing(
 
 
 def test_settings_fails_when_required_missing(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.delenv("REDIS_URL", raising=False)
 

@@ -57,5 +57,8 @@ class Settings(BaseSettings):
 
 
 def get_settings() -> Settings:
-    """Lazy singleton — chamado uma vez via Depends."""
+    """Construct a Settings instance from current environment.
+
+    Wrapped with lru_cache in deps.py for singleton behavior at runtime.
+    """
     return Settings()  # type: ignore[call-arg]
