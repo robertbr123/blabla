@@ -32,6 +32,6 @@ dev = [
 packages = ["src/ondeline_api"]
 
 [tool.pytest.ini_options]
-asyncio_mode = "auto"
+asyncio_mode = "strict"
 pythonpath = ["src"]
 testpaths = ["tests"]
