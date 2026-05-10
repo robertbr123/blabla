@@ -58,14 +58,33 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
+      - name: Generate test secrets
+        id: secrets
+        run: |
+          PII_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
+          echo "pii_key=$PII_KEY" >> $GITHUB_OUTPUT
+
       - name: Ruff
         run: ruff check src tests
 
       - name: Mypy
         run: mypy src tests
 
-      - name: Pytest
+      - name: Alembic upgrade
         env:
           DATABASE_URL: postgresql+asyncpg://ondeline:ondeline@localhost:5432/ondeline
           REDIS_URL: redis://localhost:6379/0
+          PII_ENCRYPTION_KEY: ${{ steps.secrets.outputs.pii_key }}
+          PII_HASH_PEPPER: ci-pepper-not-for-prod-32-bytes-min
+          JWT_SECRET: ci-jwt-secret-not-for-prod-32-bytes
+        run: alembic upgrade head
+
+      - name: Pytest
+        env:
+          DATABASE_URL: postgresql+asyncpg://ondeline:ondeline@localhost:5432/ondeline
+          TEST_DATABASE_URL: postgresql+asyncpg://ondeline:ondeline@localhost:5432/ondeline
+          REDIS_URL: redis://localhost:6379/0
+          PII_ENCRYPTION_KEY: ${{ steps.secrets.outputs.pii_key }}
+          PII_HASH_PEPPER: ci-pepper-not-for-prod-32-bytes-min
+          JWT_SECRET: ci-jwt-secret-not-for-prod-32-bytes
         run: pytest -v
