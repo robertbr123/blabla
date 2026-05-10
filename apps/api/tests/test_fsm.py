@@ -1,4 +1,4 @@
-"""Maquina de estados de Conversa (M3 — minima)."""
+"""Maquina de estados de Conversa (M4 — comportamento atualizado)."""
 from __future__ import annotations
 
 import pytest
@@ -8,25 +8,22 @@ from ondeline_api.domain.fsm import (
     Event,
     EventKind,
     Fsm,
-    FsmDecision,
     InvalidTransition,
 )
 
 
-def test_inicio_recebe_msg_cliente_vai_para_humano_e_envia_ack() -> None:
+def test_inicio_recebe_msg_cliente_vai_para_aguarda_opcao_com_llm_turn() -> None:
     decision = Fsm.transition(
         estado=ConversaEstado.INICIO,
         status=ConversaStatus.BOT,
         event=Event(kind=EventKind.MSG_CLIENTE_TEXT, text="Oi"),
     )
-    assert isinstance(decision, FsmDecision)
-    assert decision.new_estado is ConversaEstado.HUMANO
-    assert decision.new_status is ConversaStatus.AGUARDANDO
-    assert any(a.kind is ActionKind.SEND_ACK for a in decision.actions)
+    assert decision.new_estado is ConversaEstado.AGUARDA_OPCAO
+    assert decision.new_status is ConversaStatus.BOT
+    assert any(a.kind is ActionKind.LLM_TURN for a in decision.actions)
 
 
 def test_humano_recebe_msg_cliente_apenas_persiste_sem_responder() -> None:
-    """Conversa ja aguardando atendente — nao reenvia ack a cada msg."""
     decision = Fsm.transition(
         estado=ConversaEstado.HUMANO,
         status=ConversaStatus.AGUARDANDO,
@@ -37,25 +34,25 @@ def test_humano_recebe_msg_cliente_apenas_persiste_sem_responder() -> None:
     assert decision.actions == []
 
 
-def test_inicio_recebe_imagem_ack_e_humano() -> None:
+def test_inicio_recebe_imagem_dispara_llm_turn() -> None:
     decision = Fsm.transition(
         estado=ConversaEstado.INICIO,
         status=ConversaStatus.BOT,
         event=Event(kind=EventKind.MSG_CLIENTE_MEDIA, text=None),
     )
-    assert decision.new_estado is ConversaEstado.HUMANO
-    assert any(a.kind is ActionKind.SEND_ACK for a in decision.actions)
+    assert decision.new_estado is ConversaEstado.AGUARDA_OPCAO
+    assert any(a.kind is ActionKind.LLM_TURN for a in decision.actions)
 
 
-def test_encerrada_recebe_msg_reabre_e_envia_ack() -> None:
+def test_encerrada_recebe_msg_reabre_e_dispara_llm_turn() -> None:
     decision = Fsm.transition(
         estado=ConversaEstado.ENCERRADA,
         status=ConversaStatus.ENCERRADA,
         event=Event(kind=EventKind.MSG_CLIENTE_TEXT, text="oi de novo"),
     )
-    assert decision.new_estado is ConversaEstado.HUMANO
-    assert decision.new_status is ConversaStatus.AGUARDANDO
-    assert any(a.kind is ActionKind.SEND_ACK for a in decision.actions)
+    assert decision.new_estado is ConversaEstado.AGUARDA_OPCAO
+    assert decision.new_status is ConversaStatus.BOT
+    assert any(a.kind is ActionKind.LLM_TURN for a in decision.actions)
 
 
 def test_evento_invalido_levanta() -> None:
@@ -65,14 +62,3 @@ def test_evento_invalido_levanta() -> None:
             status=ConversaStatus.BOT,
             event=Event(kind=EventKind.MSG_FROM_ME, text=None),
         )
-
-
-def test_action_send_ack_carrega_texto_default() -> None:
-    decision = Fsm.transition(
-        estado=ConversaEstado.INICIO,
-        status=ConversaStatus.BOT,
-        event=Event(kind=EventKind.MSG_CLIENTE_TEXT, text="oi"),
-    )
-    ack = next(a for a in decision.actions if a.kind is ActionKind.SEND_ACK)
-    # texto vazio -> service usa BOT_ACK_TEXT do settings; FSM apenas sinaliza intent
-    assert ack.payload == {}

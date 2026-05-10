@@ -46,6 +46,20 @@ class MensagemRepo:
                 return None
         return msg
 
+    async def list_history(
+        self, conversa_id: UUID, *, limit: int = 12
+    ) -> list[Mensagem]:
+        from sqlalchemy import select
+
+        stmt = (
+            select(Mensagem)
+            .where(Mensagem.conversa_id == conversa_id)
+            .order_by(Mensagem.created_at.desc())
+            .limit(limit)
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        return list(reversed(rows))
+
     async def insert_bot_reply(
         self,
         *,
