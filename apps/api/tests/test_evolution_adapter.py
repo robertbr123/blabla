@@ -4,12 +4,10 @@ from __future__ import annotations
 import httpx
 import pytest
 import respx
-
 from ondeline_api.adapters.evolution import (
     EvolutionAdapter,
     EvolutionError,
 )
-
 
 pytestmark = pytest.mark.asyncio
 

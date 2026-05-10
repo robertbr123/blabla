@@ -26,7 +26,6 @@ from ondeline_api.observability.metrics import (
 from ondeline_api.webhook.hmac import verify_signature
 from ondeline_api.workers.inbound import process_inbound_message_task
 
-
 log = structlog.get_logger(__name__)
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address, headers_enabled=True)
@@ -76,8 +75,8 @@ async def evolution_webhook(
 
     try:
         payload = json.loads(body.decode("utf-8"))
-    except (ValueError, UnicodeDecodeError):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid json")
+    except (ValueError, UnicodeDecodeError) as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid json") from e
 
     if not isinstance(payload, dict):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="payload must be object")

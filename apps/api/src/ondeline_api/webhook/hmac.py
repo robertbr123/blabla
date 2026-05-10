@@ -8,7 +8,6 @@ from __future__ import annotations
 import hashlib
 import hmac
 
-
 PREFIX = "sha256="
 
 

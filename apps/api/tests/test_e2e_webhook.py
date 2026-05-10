@@ -18,8 +18,6 @@ import uuid
 import pytest
 import respx
 from fastapi.testclient import TestClient
-from sqlalchemy import select
-
 from ondeline_api.db.models.business import (
     Conversa,
     ConversaEstado,
@@ -28,7 +26,7 @@ from ondeline_api.db.models.business import (
     MensagemRole,
 )
 from ondeline_api.workers.celery_app import celery_app
-
+from sqlalchemy import select
 
 SECRET = "e2e-secret-42"
 

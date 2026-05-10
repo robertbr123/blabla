@@ -7,7 +7,8 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from ondeline_api import __version__
-from ondeline_api.api import auth, health, webhook as webhook_router
+from ondeline_api.api import auth, health
+from ondeline_api.api import webhook as webhook_router
 from ondeline_api.api.webhook import limiter as webhook_limiter
 from ondeline_api.auth.csrf import CSRFMiddleware
 

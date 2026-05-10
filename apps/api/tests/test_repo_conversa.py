@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import pytest
-
 from ondeline_api.db.crypto import encrypt_pii, hash_pii
 from ondeline_api.db.models.business import (
     Cliente,
@@ -10,7 +9,6 @@ from ondeline_api.db.models.business import (
     ConversaStatus,
 )
 from ondeline_api.repositories.conversa import ConversaRepo
-
 
 pytestmark = pytest.mark.asyncio
 
