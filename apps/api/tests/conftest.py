@@ -1,7 +1,7 @@
 """Pytest fixtures for the API."""
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from typing import Any
 
 import pytest
@@ -41,10 +41,12 @@ class FakeDB:
 
 
 @pytest.fixture
-def app() -> FastAPI:
+def app() -> Iterator[FastAPI]:
     from ondeline_api.main import create_app
 
-    return create_app()
+    instance = create_app()
+    yield instance
+    instance.dependency_overrides.clear()
 
 
 @pytest_asyncio.fixture
