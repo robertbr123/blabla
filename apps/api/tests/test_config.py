@@ -4,9 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
-
 from ondeline_api.config import Settings
+from pydantic import ValidationError
 
 
 def test_settings_loads_from_env(

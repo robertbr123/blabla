@@ -23,6 +23,31 @@ class RedisLike(Protocol):
     async def ping(self) -> bool: ...
 
 
+class _BrokenDB:
+    """DBLike sentinel returned when the real pool cannot be obtained.
+
+    Allows /healthz to handle infrastructure failures gracefully via the
+    route handler's try/except, instead of propagating an exception out
+    of the dependency and causing a 500.
+    """
+
+    def __init__(self, exc: BaseException) -> None:
+        self._exc = exc
+
+    async def fetchval(self, query: str) -> Any:
+        raise self._exc
+
+
+class _BrokenRedis:
+    """RedisLike sentinel; symmetric to _BrokenDB."""
+
+    def __init__(self, exc: BaseException) -> None:
+        self._exc = exc
+
+    async def ping(self) -> bool:
+        raise self._exc
+
+
 @lru_cache(maxsize=1)
 def _settings() -> Settings:
     return get_settings()
@@ -45,13 +70,24 @@ _db_pool: asyncpg.Pool | None = None
 
 
 async def get_db() -> AsyncIterator[DBLike]:
-    """Yield a connection from the pool."""
+    """Yield a connection from the pool; sentinel if pool unavailable."""
     global _db_pool
     if _db_pool is None:
-        _db_pool = await _make_db_pool()
-    async with _db_pool.acquire() as conn:
-        yield conn
+        try:
+            _db_pool = await _make_db_pool()
+        except Exception as exc:
+            yield _BrokenDB(exc)
+            return
+    try:
+        async with _db_pool.acquire() as conn:
+            yield conn
+    except Exception as exc:
+        yield _BrokenDB(exc)
 
 
 async def get_redis() -> RedisLike:
-    return _redis_client()
+    """Return Redis client; sentinel if URL invalid or client cannot be built."""
+    try:
+        return _redis_client()
+    except Exception as exc:
+        return _BrokenRedis(exc)
