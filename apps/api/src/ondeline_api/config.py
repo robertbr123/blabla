@@ -31,10 +31,26 @@ class Settings(BaseSettings):
     # Redis (str preserves the value exactly as provided)
     redis_url: str = Field(..., description="redis://host:port/db")
 
-    # Evolution API (preenchido em milestones futuros)
+    # Evolution API
     evolution_url: str = "http://localhost:8080"
     evolution_key: str = ""
     evolution_hmac_secret: str = ""
+    evolution_instance: str = "hermes-wa"
+    evolution_ip_allowlist: str = ""  # CSV; vazio = sem allowlist
+
+    # Webhook
+    webhook_max_body_bytes: int = 1_048_576  # 1 MB
+    webhook_rate_limit: str = "100/minute"
+
+    # Bot
+    bot_ack_text: str = (
+        "Olá! 😊 Recebi sua mensagem. "
+        "Em instantes um de nossos atendentes vai falar com você."
+    )
+
+    # Celery
+    celery_broker_url: str = ""  # default: usa redis_url
+    celery_result_backend: str = ""  # default: usa redis_url
 
     # SGP
     sgp_ondeline_base: str = "https://ondeline.sgp.tsmx.com.br"
@@ -65,6 +81,15 @@ class Settings(BaseSettings):
 
     # Observabilidade
     sentry_dsn: str = ""
+
+    def effective_celery_broker(self) -> str:
+        return self.celery_broker_url or self.redis_url
+
+    def effective_celery_result_backend(self) -> str:
+        return self.celery_result_backend or self.redis_url
+
+    def evolution_ip_allowlist_set(self) -> set[str]:
+        return {ip.strip() for ip in self.evolution_ip_allowlist.split(",") if ip.strip()}
 
 
 @lru_cache(maxsize=1)
