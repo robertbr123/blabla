@@ -9,20 +9,22 @@ ENV PYTHONUNBUFFERED=1 \
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
+        build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Non-root user
 RUN groupadd --system app && useradd --system --gid app --create-home app
 WORKDIR /app
 
-# Dependencies first for layer caching
+# Copy project metadata + source for editable install
 COPY --chown=app:app pyproject.toml /app/
-RUN pip install --upgrade pip && \
-    pip install fastapi uvicorn[standard] pydantic pydantic-settings asyncpg \
-                "psycopg[binary]" redis structlog
-
 COPY --chown=app:app src /app/src
-ENV PYTHONPATH=/app/src
+
+RUN pip install --upgrade pip && \
+    pip install .
+
+# Drop build-essential after install to keep image small
+RUN apt-get purge -y --auto-remove build-essential
 
 USER app
 

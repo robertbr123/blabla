@@ -45,6 +45,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://ondeline:ondeline@postgres:5432/ondeline
       DATABASE_URL_SYNC: postgresql+psycopg://ondeline:ondeline@postgres:5432/ondeline
       REDIS_URL: redis://redis:6379/0
+    env_file:
+      - ../.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -52,6 +54,27 @@ services:
         condition: service_healthy
     ports:
       - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ../apps/api
+      dockerfile: Dockerfile
+    container_name: ondeline-worker
+    command: ["celery", "-A", "ondeline_api.workers.celery_app:celery_app", "worker", "-Q", "default,llm,sgp,notifications", "--concurrency=4", "--loglevel=info"]
+    environment:
+      ENV: development
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql+asyncpg://ondeline:ondeline@postgres:5432/ondeline
+      DATABASE_URL_SYNC: postgresql+psycopg://ondeline:ondeline@postgres:5432/ondeline
+      REDIS_URL: redis://redis:6379/0
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

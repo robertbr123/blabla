@@ -1,4 +1,4 @@
-.PHONY: dev down test lint logs install format
+.PHONY: dev down test lint logs worker-logs install format
 
 dev:
 	docker compose -f infra/docker-compose.dev.yml --env-file .env up -d --build
@@ -8,6 +8,9 @@ down:
 
 logs:
 	docker compose -f infra/docker-compose.dev.yml logs -f
+
+worker-logs:
+	docker compose -f infra/docker-compose.dev.yml logs -f worker
 
 install:
 	cd apps/api && [ -d .venv ] || python3 -m venv .venv
