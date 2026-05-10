@@ -12,7 +12,10 @@ from ondeline_api.adapters.sgp.ondeline import SgpOndelineProvider
 from ondeline_api.adapters.sgp.router import SgpRouter
 from ondeline_api.config import get_settings
 from ondeline_api.services.notify_planner import (
+    broadcast_manutencao,
+    lgpd_purge,
     schedule_atrasos,
+    schedule_followup_os,
     schedule_pagamentos,
     schedule_vencimentos,
 )
@@ -51,7 +54,7 @@ async def _run_planner() -> dict[str, int]:
         await sgp_router.aclose()
 
 
-def _run_in_thread_or_loop(coro_factory: Any) -> dict[str, int]:
+def _run_in_thread_or_loop(coro_factory: Any) -> Any:
     """Same pattern as inbound/outbound — handle eager mode."""
     try:
         loop = asyncio.get_running_loop()
@@ -63,15 +66,13 @@ def _run_in_thread_or_loop(coro_factory: Any) -> dict[str, int]:
 
         reset_engine_cache()
 
-        def _run_in_thread() -> dict[str, int]:
+        def _run_in_thread() -> Any:
             reset_engine_cache()
-            result: dict[str, int] = asyncio.run(coro_factory())
-            return result
+            return asyncio.run(coro_factory())
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
             return pool.submit(_run_in_thread).result()
-    result: dict[str, int] = asyncio.run(coro_factory())
-    return result
+    return asyncio.run(coro_factory())
 
 
 @celery_app.task(
@@ -81,9 +82,66 @@ def _run_in_thread_or_loop(coro_factory: Any) -> dict[str, int]:
 def run_planner_jobs(self: Any) -> dict[str, int]:
     """Beat-triggered: vencimentos + atrasos + pagamentos."""
     try:
-        result = _run_in_thread_or_loop(_run_planner)
+        result: dict[str, int] = _run_in_thread_or_loop(_run_planner)
         log.info("planner_jobs.completed", **result)
         return result
     except Exception as e:
         log.error("planner_jobs.failed", error=str(e), exc_info=True)
+        raise
+
+
+async def _run_followup_os() -> int:
+    async with task_session() as session:
+        return await schedule_followup_os(session)
+
+
+async def _run_manutencao() -> int:
+    async with task_session() as session:
+        return await broadcast_manutencao(session)
+
+
+async def _run_lgpd() -> dict[str, int]:
+    async with task_session() as session:
+        return await lgpd_purge(session)
+
+
+@celery_app.task(
+    name="ondeline_api.workers.notify_jobs.followup_os_job",
+    bind=True,
+)
+def followup_os_job(self: Any) -> int:
+    try:
+        result: int = _run_in_thread_or_loop(_run_followup_os)
+        log.info("followup_os_job.completed", count=result)
+        return result
+    except Exception as e:
+        log.error("followup_os_job.failed", error=str(e), exc_info=True)
+        raise
+
+
+@celery_app.task(
+    name="ondeline_api.workers.notify_jobs.manutencao_job",
+    bind=True,
+)
+def manutencao_job(self: Any) -> int:
+    try:
+        result: int = _run_in_thread_or_loop(_run_manutencao)
+        log.info("manutencao_job.completed", count=result)
+        return result
+    except Exception as e:
+        log.error("manutencao_job.failed", error=str(e), exc_info=True)
+        raise
+
+
+@celery_app.task(
+    name="ondeline_api.workers.notify_jobs.lgpd_purge_job",
+    bind=True,
+)
+def lgpd_purge_job(self: Any) -> dict[str, int]:
+    try:
+        result: dict[str, int] = _run_in_thread_or_loop(_run_lgpd)
+        log.info("lgpd_purge_job.completed", **result)
+        return result
+    except Exception as e:
+        log.error("lgpd_purge_job.failed", error=str(e), exc_info=True)
         raise

@@ -212,3 +212,166 @@ async def schedule_pagamentos(
             count += 1
     log.info("planner.pagamentos.scheduled", count=count)
     return count
+
+
+async def schedule_followup_os(session: AsyncSession) -> int:
+    """Schedule OS_CONCLUIDA notification for OSes finished >24h ago.
+
+    The Notificacao dedup ensures we only send once per OS even if this
+    runs multiple times.
+    """
+    from ondeline_api.db.models.business import OrdemServico, OsStatus
+
+    now = datetime.now(tz=UTC)
+    cutoff = now - timedelta(hours=24)
+    repo = NotificacaoRepo(session)
+    stmt = select(OrdemServico).where(
+        and_(
+            OrdemServico.status == OsStatus.CONCLUIDA,
+            OrdemServico.concluida_em <= cutoff,
+        )
+    )
+    rows = list((await session.execute(stmt)).scalars().all())
+    when = now + timedelta(minutes=1)
+    count = 0
+    for os_ in rows:
+        n = await repo.schedule(
+            cliente_id=os_.cliente_id,
+            tipo=NotificacaoTipo.OS_CONCLUIDA,
+            agendada_para=when,
+            payload={
+                "codigo": os_.codigo,
+                "problema": os_.problema,
+                "csat_request": True,
+            },
+        )
+        if n is not None:
+            count += 1
+    log.info("planner.followup_os.scheduled", count=count)
+    return count
+
+
+async def broadcast_manutencao(session: AsyncSession) -> int:
+    """For each Manutencao starting in next hour, schedule MANUTENCAO
+    notification for each cliente in affected cidades.
+    """
+    from ondeline_api.db.models.business import Manutencao
+
+    now = datetime.now(tz=UTC)
+    cutoff = now + timedelta(hours=1)
+    stmt = select(Manutencao).where(
+        and_(
+            Manutencao.notificar.is_(True),
+            Manutencao.inicio_at >= now,
+            Manutencao.inicio_at <= cutoff,
+        )
+    )
+    manutencoes = list((await session.execute(stmt)).scalars().all())
+    repo = NotificacaoRepo(session)
+    count = 0
+    for m in manutencoes:
+        cidades = m.cidades or []
+        if not cidades:
+            continue
+        for cidade in cidades:
+            cli_stmt = select(Cliente).where(
+                and_(
+                    Cliente.cidade == cidade,
+                    Cliente.deleted_at.is_(None),
+                )
+            )
+            clientes = list((await session.execute(cli_stmt)).scalars().all())
+            when = m.inicio_at - timedelta(minutes=30)
+            for cliente in clientes:
+                n = await repo.schedule(
+                    cliente_id=cliente.id,
+                    tipo=NotificacaoTipo.MANUTENCAO,
+                    agendada_para=when,
+                    payload={
+                        "titulo": m.titulo,
+                        "inicio_at": m.inicio_at.isoformat(),
+                        "fim_at": m.fim_at.isoformat(),
+                    },
+                )
+                if n is not None:
+                    count += 1
+    log.info("planner.manutencoes.scheduled", count=count)
+    return count
+
+
+async def lgpd_purge(session: AsyncSession) -> dict[str, int]:
+    """Soft-delete Cliente and Conversa rows whose retention_until is past.
+
+    Hard-delete rows that were soft-deleted >30 days ago (LGPD compliance:
+    keep for 30d after the request, then erase).
+    """
+    from sqlalchemy import delete, update
+    from sqlalchemy.engine import CursorResult
+
+    from ondeline_api.db.models.business import Conversa as _Conversa
+
+    now = datetime.now(tz=UTC)
+
+    # Soft-delete Cliente rows
+    cli_stmt = (
+        update(Cliente)
+        .where(
+            and_(
+                Cliente.retention_until.isnot(None),
+                Cliente.retention_until < now,
+                Cliente.deleted_at.is_(None),
+            )
+        )
+        .values(deleted_at=now)
+    )
+    cli_result: CursorResult[tuple[()]] = await session.execute(cli_stmt)  # type: ignore[assignment]
+    soft_clientes = cli_result.rowcount or 0
+
+    # Soft-delete Conversa rows
+    conv_stmt = (
+        update(_Conversa)
+        .where(
+            and_(
+                _Conversa.retention_until.isnot(None),
+                _Conversa.retention_until < now,
+                _Conversa.deleted_at.is_(None),
+            )
+        )
+        .values(deleted_at=now)
+    )
+    conv_result: CursorResult[tuple[()]] = await session.execute(conv_stmt)  # type: ignore[assignment]
+    soft_conversas = conv_result.rowcount or 0
+
+    # Hard-delete (purge) rows soft-deleted > 30 days ago
+    hard_cutoff = now - timedelta(days=30)
+    hard_cli_stmt = delete(Cliente).where(
+        and_(
+            Cliente.deleted_at.isnot(None),
+            Cliente.deleted_at < hard_cutoff,
+        )
+    )
+    hard_cli: CursorResult[tuple[()]] = await session.execute(hard_cli_stmt)  # type: ignore[assignment]
+    hard_cli_count = hard_cli.rowcount or 0
+
+    hard_conv_stmt = delete(_Conversa).where(
+        and_(
+            _Conversa.deleted_at.isnot(None),
+            _Conversa.deleted_at < hard_cutoff,
+        )
+    )
+    hard_conv: CursorResult[tuple[()]] = await session.execute(hard_conv_stmt)  # type: ignore[assignment]
+    hard_conv_count = hard_conv.rowcount or 0
+
+    log.info(
+        "lgpd.purge.completed",
+        soft_clientes=soft_clientes,
+        soft_conversas=soft_conversas,
+        hard_clientes=hard_cli_count,
+        hard_conversas=hard_conv_count,
+    )
+    return {
+        "soft_clientes": soft_clientes,
+        "soft_conversas": soft_conversas,
+        "hard_clientes": hard_cli_count,
+        "hard_conversas": hard_conv_count,
+    }
