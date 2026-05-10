@@ -1,6 +1,8 @@
 """Application settings loaded from environment variables."""
 from __future__ import annotations
 
+from functools import lru_cache
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -56,9 +58,10 @@ class Settings(BaseSettings):
     sentry_dsn: str = ""
 
 
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """Construct a Settings instance from current environment.
+    """Construct and cache a Settings instance from current environment.
 
-    Wrapped with lru_cache in deps.py for singleton behavior at runtime.
+    Use get_settings.cache_clear() in tests to force re-reading env vars.
     """
     return Settings()
