@@ -148,3 +148,68 @@ async def login(
         user_id=str(user.id),
         role=user.role.value,
     )
+
+
+class RefreshResponse(BaseModel):
+    access_token: str
+    token_type: str = "Bearer"
+
+
+@router.post("/refresh", response_model=RefreshResponse)
+async def refresh(
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> RefreshResponse:
+    raw = request.cookies.get(REFRESH_COOKIE)
+    if not raw:
+        raise HTTPException(status_code=401, detail="missing refresh token")
+    try:
+        jwt_mod.decode_refresh_token(raw)
+    except jwt_mod.InvalidToken as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+
+    token_hash = jwt_mod.hash_refresh_token(raw)
+    res = await session.execute(
+        select(DBSession).where(DBSession.token_hash == token_hash)
+    )
+    db_session_row = res.scalar_one_or_none()
+    if db_session_row is None or db_session_row.revoked_at is not None:
+        raise HTTPException(status_code=401, detail="session revoked or unknown")
+
+    user = await session.get(User, db_session_row.user_id)
+    if user is None or not user.is_active:
+        raise HTTPException(status_code=401, detail="user inactive")
+
+    access = jwt_mod.encode_access_token(user.id, role=user.role.value)
+    return RefreshResponse(access_token=access)
+
+
+@router.post("/logout", status_code=204)
+async def logout(
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> Response:
+    raw = request.cookies.get(REFRESH_COOKIE)
+    if raw:
+        token_hash = jwt_mod.hash_refresh_token(raw)
+        res = await session.execute(
+            select(DBSession).where(DBSession.token_hash == token_hash)
+        )
+        db_session_row = res.scalar_one_or_none()
+        if db_session_row and db_session_row.revoked_at is None:
+            db_session_row.revoked_at = datetime.now(UTC)
+            await write_audit(
+                session,
+                user_id=db_session_row.user_id,
+                action="logout",
+                resource_type="session",
+                resource_id=str(db_session_row.id),
+                ip=_client_ip(request),
+            )
+            await session.flush()
+
+    response.delete_cookie(REFRESH_COOKIE, path="/auth")
+    response.delete_cookie(CSRF_COOKIE, path="/")
+    return Response(status_code=204)
