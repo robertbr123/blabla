@@ -98,6 +98,8 @@ def _set_secrets() -> None:
     os.environ.setdefault("JWT_SECRET", "test-jwt-secret-32-bytes-minimum-okk")
     os.environ.setdefault("PII_ENCRYPTION_KEY", Fernet.generate_key().decode())
     os.environ.setdefault("PII_HASH_PEPPER", "test-pepper-not-for-prod-32-bytes-x")
+    os.environ.setdefault("DATABASE_URL", INTEGRATION_DB_URL)
+    os.environ.setdefault("REDIS_URL", "redis://localhost:6380/0")
 
 
 @pytest.fixture(scope="session", autouse=True)
