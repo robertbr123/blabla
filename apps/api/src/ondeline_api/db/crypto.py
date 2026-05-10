@@ -16,7 +16,7 @@ from ondeline_api.config import get_settings
 
 @lru_cache(maxsize=1)
 def _fernet() -> Fernet:
-    key = get_settings().pii_encryption_key
+    key = get_settings().pii_encryption_key.get_secret_value()
     if not key:
         raise RuntimeError(
             "PII_ENCRYPTION_KEY not set. Generate with: "
@@ -28,7 +28,7 @@ def _fernet() -> Fernet:
 
 @lru_cache(maxsize=1)
 def _pepper() -> bytes:
-    pepper = get_settings().pii_hash_pepper
+    pepper = get_settings().pii_hash_pepper.get_secret_value()
     if not pepper:
         raise RuntimeError("PII_HASH_PEPPER not set")
     return pepper.encode()

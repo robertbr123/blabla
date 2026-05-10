@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -50,9 +50,9 @@ class Settings(BaseSettings):
     hermes_model: str = "anthropic/claude-opus-4.6"
 
     # Auth
-    jwt_secret: str = ""
-    pii_encryption_key: str = ""
-    pii_hash_pepper: str = ""
+    jwt_secret: SecretStr = SecretStr("")
+    pii_encryption_key: SecretStr = SecretStr("")
+    pii_hash_pepper: SecretStr = SecretStr("")
 
     # Observabilidade
     sentry_dsn: str = ""
