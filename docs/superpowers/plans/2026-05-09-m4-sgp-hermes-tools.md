@@ -24,7 +24,7 @@
 apps/api/
 ├── pyproject.toml                                # NO-OP — deps do M3 cobrem tudo
 ├── alembic/versions/
-│   └── 0002_os_sequence.py                       # NEW — tabela os_sequence(date PK, n) para OS-YYYYMMDD-NNN
+│   └── 0003_os_sequence.py                       # NEW — tabela os_sequence(date PK, n) para OS-YYYYMMDD-NNN
 ├── src/ondeline_api/
 │   ├── config.py                                 # MODIFY — fix hermes_model default + LLM_MAX_ITER + LLM_TIMEOUT + LLM_MAX_TOKENS_PER_CONVERSA_DIA + SGP_CACHE_TTL_CLIENTE/FATURAS/NEGATIVO + LLM_HISTORY_TURNS
 │   ├── adapters/
@@ -108,7 +108,7 @@ apps/api/
 **Files:**
 - Modify: `apps/api/src/ondeline_api/config.py`
 - Modify: `.env.example`
-- Create: `apps/api/alembic/versions/0002_os_sequence.py`
+- Create: `apps/api/alembic/versions/0003_os_sequence.py`
 
 - [ ] **Step 1.1: Atualizar `Settings` com campos M4**
 
@@ -154,15 +154,15 @@ SGP_CACHE_TTL_FATURAS=300
 SGP_CACHE_TTL_NEGATIVO=300
 ```
 
-- [ ] **Step 1.3: Criar migration `0002_os_sequence`**
+- [ ] **Step 1.3: Criar migration `0003_os_sequence`**
 
-Criar `apps/api/alembic/versions/0002_os_sequence.py`:
+Criar `apps/api/alembic/versions/0003_os_sequence.py`:
 
 ```python
 """os_sequence table for OS-YYYYMMDD-NNN daily counter.
 
-Revision ID: 0002_os_sequence
-Revises: 0001_initial_schema
+Revision ID: 0003_os_sequence
+Revises: 0002_widen_whatsapp_columns
 Create Date: 2026-05-09
 """
 from __future__ import annotations
@@ -173,8 +173,8 @@ import sqlalchemy as sa
 from alembic import op
 
 
-revision: str = "0002_os_sequence"
-down_revision: str | None = "0001_initial_schema"
+revision: str = "0003_os_sequence"
+down_revision: str | None = "0002_widen_whatsapp_columns"
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 
@@ -199,13 +199,13 @@ cd /root/BLABLA/ondeline-v2/apps/api
 alembic upgrade head
 ```
 
-Expected: `Running upgrade 0001_initial_schema -> 0002_os_sequence`.
+Expected: `Running upgrade 0002_widen_whatsapp_columns -> 0003_os_sequence`.
 
 - [ ] **Step 1.5: Commit**
 
 ```bash
 cd /root/BLABLA/ondeline-v2
-git add apps/api/src/ondeline_api/config.py .env.example apps/api/alembic/versions/0002_os_sequence.py
+git add apps/api/src/ondeline_api/config.py .env.example apps/api/alembic/versions/0003_os_sequence.py
 git commit -m "feat(m4): add LLM/SGP cache settings and os_sequence migration"
 ```
 
@@ -4866,7 +4866,7 @@ make down
 - [ ] Tool `buscar_cliente_sgp`: cache hit/miss + upsert Cliente + vincula Conversa.cliente_id
 - [ ] Tool `enviar_boleto`: envia ate N PDFs + PIX via EvolutionAdapter; invalida cache pos-envio
 - [ ] Tool `abrir_ordem_servico`: gera código `OS-YYYYMMDD-NNN` atomico + roteia técnico por (cidade, rua) + notifica via WhatsApp
-- [ ] Migration `0002_os_sequence` aplicada; `next_codigo` retorna sequencial diario testado em concorrencia
+- [ ] Migration `0003_os_sequence` aplicada; `next_codigo` retorna sequencial diario testado em concorrencia
 - [ ] PII mask (CPF/CNPJ/telefone/email) aplicado em logs do loop
 - [ ] TokensBudget (Redis counter por conversa/dia) escala humano quando excede `LLM_MAX_TOKENS_PER_CONVERSA_DIA`
 - [ ] LLM loop: 1) chama provider; 2) se text-only -> envia + persiste + sai; 3) se tool_calls -> executa tools, anexa resultados, repete; max_iter=5; transferir_para_humano sai imediato
