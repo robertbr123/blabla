@@ -4,14 +4,21 @@ Cada task abre seu proprio event loop com `asyncio.run()` e seu proprio
 `AsyncSession`. Conexoes nao sao compartilhadas entre invocacoes — simples
 e correto, custa um connect/close por task (~1ms para Postgres local).
 
-`celery_outbound_enqueuer()` e o adapter que satisfaz `_OutboundQueueProto`
+`CeleryOutboundEnqueuer` e o adapter que satisfaz `_OutboundQueueProto`
 do service: chama `.delay()` na task de saida ao inves de virar lambda
 in-process.
+
+`BufferedOutboundEnqueuer` coleta as chamadas durante a sessao e dispara
+APOS o commit. Isso e necessario em modo eager (task_always_eager=True)
+pois o `.delay()` executaria a task outbound sincronamente ANTES do commit
+da sessao inbound — causando FK violation ao tentar inserir mensagens com
+uma conversa ainda nao commitada.
 """
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,3 +50,26 @@ class CeleryOutboundEnqueuer(_OutboundQueueProto):
         from ondeline_api.workers.outbound import send_outbound_task
 
         send_outbound_task.delay(jid=jid, text=text, conversa_id=str(conversa_id))
+
+
+@dataclass
+class BufferedOutboundEnqueuer(_OutboundQueueProto):
+    """Coleta chamadas enqueue_send_outbound durante a sessao DB e armazena
+    em buffer. Apos o commit da sessao, chame `.flush()` para disparar as
+    tasks Celery. Isso garante que as tasks outbound so rodam apos os dados
+    inbound estarem commitados — critico em modo eager onde `.delay()` executa
+    sincronamente.
+    """
+
+    _pending: list[dict] = field(default_factory=list)
+
+    def enqueue_send_outbound(self, jid: str, text: str, conversa_id: UUID) -> None:
+        self._pending.append({"jid": jid, "text": text, "conversa_id": str(conversa_id)})
+
+    def flush(self) -> None:
+        """Dispara todas as tasks Celery pendentes. Chame APOS o commit da sessao."""
+        from ondeline_api.workers.outbound import send_outbound_task
+
+        for item in self._pending:
+            send_outbound_task.delay(**item)
+        self._pending.clear()

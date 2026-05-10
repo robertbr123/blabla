@@ -7,6 +7,7 @@ Retorna dict com o resultado para fins de telemetria/debug.
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 from typing import Any
 
 import structlog
@@ -25,7 +26,7 @@ from ondeline_api.services.inbound import (
 )
 from ondeline_api.webhook.parser import ParseError, parse_messages_upsert
 from ondeline_api.workers.celery_app import celery_app
-from ondeline_api.workers.runtime import CeleryOutboundEnqueuer, task_session
+from ondeline_api.workers.runtime import BufferedOutboundEnqueuer, task_session
 
 
 log = structlog.get_logger(__name__)
@@ -39,14 +40,21 @@ async def _run(payload: dict[str, Any]) -> dict[str, Any]:
         return {"skipped": "parse_error", "error": str(e)}
 
     settings = get_settings()
+    # BufferedOutboundEnqueuer coleta os sends durante a sessao; faz flush APOS
+    # o commit para que as tasks outbound vejam os dados ja commitados.
+    # Em modo eager (task_always_eager), o flush executaria send_outbound_task
+    # sincronamente antes do commit se usassemos CeleryOutboundEnqueuer direto.
+    outbound_buf = BufferedOutboundEnqueuer()
     async with task_session() as session:
         deps = InboundDeps(
             conversas=ConversaRepo(session),
             mensagens=MensagemRepo(session),
-            outbound=CeleryOutboundEnqueuer(),
+            outbound=outbound_buf,
             ack_text=settings.bot_ack_text,
         )
         result: InboundResult = await process_inbound_message(evt, deps)
+    # Session committed — safe to dispatch outbound tasks now.
+    outbound_buf.flush()
 
     if result.duplicate:
         msgs_dedup_total.inc()
@@ -80,6 +88,28 @@ async def _run(payload: dict[str, Any]) -> dict[str, Any]:
 )
 def process_inbound_message_task(self, payload: dict[str, Any]) -> dict[str, Any]:
     try:
+        # asyncio.run() cannot be called from a running event loop (e.g. when the
+        # task fires eagerly inside Starlette's TestClient, which uses anyio).
+        # Detect this and run in a fresh thread instead so each path gets its own loop.
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop is not None and loop.is_running():
+            # Reset the engine cache before entering the new thread so the thread
+            # gets a fresh asyncpg pool bound to its own event loop — not to the
+            # caller's loop (asyncpg pools are per-loop and cannot be shared).
+            from ondeline_api.db.engine import reset_engine_cache
+
+            reset_engine_cache()
+
+            def _run_in_thread(p: dict) -> dict:
+                reset_engine_cache()  # also reset inside thread for safety
+                return asyncio.run(_run(p))
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(_run_in_thread, payload).result()
         return asyncio.run(_run(payload))
     except Exception as e:  # pragma: no cover — caminho de retry
         log.error("inbound.task_failed", error=str(e), exc_info=True)

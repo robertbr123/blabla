@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 from uuid import UUID
 
 import structlog
@@ -59,6 +60,25 @@ def send_outbound_task(
     self, *, jid: str, text: str, conversa_id: str
 ) -> dict[str, str]:
     try:
+        # asyncio.run() cannot be called from a running event loop (e.g. when the
+        # task fires eagerly inside Starlette's TestClient or from another task
+        # thread).  Detect and run in a dedicated thread to get a fresh loop.
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop is not None and loop.is_running():
+            # Reset engine cache before spawning thread so the thread creates its
+            # own asyncpg pool bound to its event loop (pools are per-loop).
+            from ondeline_api.db.engine import reset_engine_cache
+
+            def _run_in_thread(j: str, t: str, c: UUID) -> dict:
+                reset_engine_cache()
+                return asyncio.run(_run(j, t, c))
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(_run_in_thread, jid, text, UUID(conversa_id)).result()
         return asyncio.run(_run(jid, text, UUID(conversa_id)))
     except Exception as e:
         raise self.retry(exc=e)
