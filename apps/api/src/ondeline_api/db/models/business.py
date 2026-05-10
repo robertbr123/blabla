@@ -99,7 +99,7 @@ class Cliente(Base):
     cpf_cnpj_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
     cpf_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     nome_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
-    whatsapp: Mapped[str] = mapped_column(String(20), nullable=False)
+    whatsapp: Mapped[str] = mapped_column(String(64), nullable=False)
     plano: Mapped[str | None] = mapped_column(String(80), nullable=True)
     status: Mapped[str | None] = mapped_column(String(40), nullable=True)
     endereco_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -145,7 +145,7 @@ class Conversa(Base):
     cliente_id: Mapped[UUID | None] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("clientes.id", ondelete="SET NULL"), nullable=True
     )
-    whatsapp: Mapped[str] = mapped_column(String(20), nullable=False)
+    whatsapp: Mapped[str] = mapped_column(String(64), nullable=False)
     estado: Mapped[ConversaEstado] = mapped_column(
         Enum(ConversaEstado, name="conversa_estado", native_enum=False),
         nullable=False,
@@ -226,7 +226,7 @@ class Lead(Base):
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
     nome: Mapped[str] = mapped_column(String(120), nullable=False)
-    whatsapp: Mapped[str] = mapped_column(String(20), nullable=False)
+    whatsapp: Mapped[str] = mapped_column(String(64), nullable=False)
     interesse: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[LeadStatus] = mapped_column(
         Enum(LeadStatus, name="lead_status", native_enum=False),
@@ -262,7 +262,7 @@ class Tecnico(Base):
         nullable=True,
     )
     nome: Mapped[str] = mapped_column(String(120), nullable=False)
-    whatsapp: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    whatsapp: Mapped[str | None] = mapped_column(String(64), nullable=True)
     ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     gps_lat: Mapped[float | None] = mapped_column(Float, nullable=True)
     gps_lng: Mapped[float | None] = mapped_column(Float, nullable=True)

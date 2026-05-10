@@ -15,7 +15,7 @@ pytestmark = pytest.mark.asyncio
 
 
 async def test_insert_inbound_persists(db_session) -> None:
-    conv = await ConversaRepo(db_session).get_or_create_by_whatsapp("5511aaa@s")
+    conv = await ConversaRepo(db_session).get_or_create_by_whatsapp("5511aaa@s.whatsapp.net")
     repo = MensagemRepo(db_session)
     inserted = await repo.insert_inbound_or_skip(
         conversa_id=conv.id,
@@ -30,7 +30,7 @@ async def test_insert_inbound_persists(db_session) -> None:
 
 
 async def test_insert_inbound_dedup_returns_none(db_session) -> None:
-    conv = await ConversaRepo(db_session).get_or_create_by_whatsapp("5511bbb@s")
+    conv = await ConversaRepo(db_session).get_or_create_by_whatsapp("5511bbb@s.whatsapp.net")
     repo = MensagemRepo(db_session)
     a = await repo.insert_inbound_or_skip(
         conversa_id=conv.id, external_id="WAEVT_2", text="oi", media_type=None, media_url=None
@@ -43,7 +43,7 @@ async def test_insert_inbound_dedup_returns_none(db_session) -> None:
 
 
 async def test_insert_inbound_media_only(db_session) -> None:
-    conv = await ConversaRepo(db_session).get_or_create_by_whatsapp("5511ccc@s")
+    conv = await ConversaRepo(db_session).get_or_create_by_whatsapp("5511ccc@s.whatsapp.net")
     repo = MensagemRepo(db_session)
     m = await repo.insert_inbound_or_skip(
         conversa_id=conv.id,
@@ -58,7 +58,7 @@ async def test_insert_inbound_media_only(db_session) -> None:
 
 
 async def test_insert_bot_reply_is_role_bot(db_session) -> None:
-    conv = await ConversaRepo(db_session).get_or_create_by_whatsapp("5511ddd@s")
+    conv = await ConversaRepo(db_session).get_or_create_by_whatsapp("5511ddd@s.whatsapp.net")
     repo = MensagemRepo(db_session)
     msg = await repo.insert_bot_reply(conversa_id=conv.id, text="Recebido!")
     assert msg.role is MensagemRole.BOT
