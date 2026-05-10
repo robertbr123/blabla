@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     database_url: str = Field(..., description="postgresql+asyncpg://...")
     database_url_sync: str = Field(
         default="",
-        description="psycopg sync URL (Alembic + tools)",
+        description="psycopg sync URL (reserved for future tooling, not used by Alembic)",
     )
 
     # Redis (str preserves the value exactly as provided)
