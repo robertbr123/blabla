@@ -1,0 +1,59 @@
+name: ondeline-v2
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ondeline-postgres
+    environment:
+      POSTGRES_USER: ondeline
+      POSTGRES_PASSWORD: ondeline
+      POSTGRES_DB: ondeline
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "ondeline", "-d", "ondeline"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: ondeline-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "127.0.0.1:6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ../apps/api
+      dockerfile: Dockerfile
+    container_name: ondeline-api
+    environment:
+      ENV: development
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql+asyncpg://ondeline:ondeline@postgres:5432/ondeline
+      DATABASE_URL_SYNC: postgresql+psycopg://ondeline:ondeline@postgres:5432/ondeline
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
