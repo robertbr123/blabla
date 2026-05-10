@@ -39,10 +39,15 @@ def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
 
 
 async def get_db_session() -> AsyncIterator[AsyncSession]:
-    """FastAPI dependency: yields a session, closes on request end."""
+    """FastAPI dependency: yields a session, commits on success, rolls back on error, closes always."""
     sm = get_sessionmaker()
     async with sm() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
 def reset_engine_cache() -> None:
