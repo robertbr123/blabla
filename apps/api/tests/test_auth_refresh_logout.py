@@ -1,6 +1,8 @@
 """Tests for POST /auth/refresh and POST /auth/logout."""
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
@@ -16,20 +18,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest_asyncio.fixture
-async def redis_client():  # type: ignore[no-untyped-def]
-    client: Redis = Redis.from_url(str(get_settings().redis_url), decode_responses=True)
+async def redis_client() -> Any:
+    client: Redis = Redis.from_url(str(get_settings().redis_url), decode_responses=True)  # type: ignore[type-arg]
     yield client
-    await client.aclose()
+    await client.aclose()  # type: ignore[attr-defined]
 
 
 @pytest.fixture
-def app(db_session: AsyncSession, redis_client: Redis) -> FastAPI:
+def app(db_session: AsyncSession, redis_client: Redis) -> FastAPI:  # type: ignore[type-arg]
     app = create_app()
 
-    async def _override_db():  # type: ignore[no-untyped-def]
+    async def _override_db() -> Any:
         yield db_session
 
-    async def _override_redis() -> Redis:
+    async def _override_redis() -> Any:
         return redis_client
 
     app.dependency_overrides[get_db] = _override_db

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import collections.abc
 import os
+from typing import Any
 
 import pytest
 import pytest_asyncio
@@ -23,7 +24,7 @@ async def redis_client() -> collections.abc.AsyncIterator[Redis]:  # type: ignor
     try:
         yield client
     finally:
-        await client.aclose()
+        await client.aclose()  # type: ignore[attr-defined]
 
 
 @pytest.fixture
@@ -33,7 +34,7 @@ def app(db_session: AsyncSession, redis_client: Redis) -> FastAPI:  # type: igno
     async def _override_db() -> collections.abc.AsyncIterator[AsyncSession]:
         yield db_session
 
-    async def _override_redis() -> Redis:  # type: ignore[type-arg]
+    async def _override_redis() -> Any:
         return redis_client
 
     app.dependency_overrides[get_db] = _override_db
@@ -92,7 +93,7 @@ async def test_inactive_user_cannot_login(
     db_session: AsyncSession,
 ) -> None:
     user = created_user["user"]
-    user.is_active = False  # type: ignore[union-attr]
+    user.is_active = False  # type: ignore[attr-defined]
     await db_session.flush()
 
     resp = await client.post(
