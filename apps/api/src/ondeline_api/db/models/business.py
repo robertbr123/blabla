@@ -76,6 +76,7 @@ class NotificacaoTipo(StrEnum):
     ATRASO = "atraso"
     PAGAMENTO = "pagamento"
     OS_CONCLUIDA = "os_concluida"
+    MANUTENCAO = "manutencao"
 
 
 class NotificacaoStatus(StrEnum):

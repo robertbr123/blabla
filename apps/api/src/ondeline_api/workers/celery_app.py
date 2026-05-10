@@ -26,6 +26,8 @@ def create_celery_app() -> Celery:
             "ondeline_api.workers.inbound",
             "ondeline_api.workers.outbound",
             "ondeline_api.workers.llm_turn",
+            "ondeline_api.workers.notify_jobs",
+            "ondeline_api.workers.notify_sender",
         ],
     )
     app.conf.update(
@@ -48,6 +50,11 @@ def create_celery_app() -> Celery:
             },
             "ondeline_api.workers.outbound.send_outbound_task": {"queue": "default"},
             "ondeline_api.workers.llm_turn.llm_turn_task": {"queue": "llm"},
+            "ondeline_api.workers.notify_jobs.run_planner_jobs": {"queue": "notifications"},
+            "ondeline_api.workers.notify_jobs.followup_os_job": {"queue": "notifications"},
+            "ondeline_api.workers.notify_jobs.manutencao_job": {"queue": "notifications"},
+            "ondeline_api.workers.notify_jobs.lgpd_purge_job": {"queue": "notifications"},
+            "ondeline_api.workers.notify_sender.flush_pending": {"queue": "notifications"},
         },
         task_serializer="json",
         result_serializer="json",
@@ -56,6 +63,8 @@ def create_celery_app() -> Celery:
         enable_utc=True,
         broker_connection_retry_on_startup=True,
     )
+    from ondeline_api.workers.beat_schedule import BEAT_SCHEDULE
+    app.conf.beat_schedule = BEAT_SCHEDULE
     return app
 
 
