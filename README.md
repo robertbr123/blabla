@@ -1,5 +1,7 @@
 # Ondeline v2
 
+[![CI](https://github.com/robertbr123/blabla/actions/workflows/ci.yml/badge.svg)](https://github.com/robertbr123/blabla/actions/workflows/ci.yml)
+
 Reescrita paralela do bot de WhatsApp + dashboard da Ondeline Telecom.
 
 **Status:** em desenvolvimento (M1 — Fundação).
