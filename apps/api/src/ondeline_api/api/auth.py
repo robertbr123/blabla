@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ondeline_api.auth import jwt as jwt_mod
 from ondeline_api.auth import lockout
 from ondeline_api.auth.audit import write_audit
+from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.passwords import verify_password
 from ondeline_api.config import get_settings
 from ondeline_api.db.models.identity import Session as DBSession
@@ -213,3 +214,22 @@ async def logout(
     response.delete_cookie(REFRESH_COOKIE, path="/auth")
     response.delete_cookie(CSRF_COOKIE, path="/")
     return Response(status_code=204)
+
+
+class MeResponse(BaseModel):
+    user_id: str
+    email: str
+    name: str
+    role: str
+    is_active: bool
+
+
+@router.get("/me", response_model=MeResponse)
+async def me(user: User = Depends(get_current_user)) -> MeResponse:  # noqa: B008
+    return MeResponse(
+        user_id=str(user.id),
+        email=user.email,
+        name=user.name,
+        role=user.role.value,
+        is_active=user.is_active,
+    )
