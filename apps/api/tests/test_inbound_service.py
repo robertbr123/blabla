@@ -87,9 +87,13 @@ class FakeMensagemRepo:
 @dataclass
 class FakeOutboundQueue:
     sent: list[tuple[str, str, UUID]] = field(default_factory=list)
+    llm_turns: list[UUID] = field(default_factory=list)
 
     def enqueue_send_outbound(self, jid: str, text: str, conversa_id: UUID) -> None:
         self.sent.append((jid, text, conversa_id))
+
+    def enqueue_llm_turn(self, conversa_id: UUID) -> None:
+        self.llm_turns.append(conversa_id)
 
 
 def _evt(kind=InboundKind.TEXT, text="Oi", from_me=False, eid="E1") -> InboundEvent:
@@ -106,7 +110,7 @@ def _evt(kind=InboundKind.TEXT, text="Oi", from_me=False, eid="E1") -> InboundEv
 # ── Tests ────────────────────────────────────────────────────
 
 
-async def test_text_msg_inicio_envia_ack_e_marca_humano() -> None:
+async def test_text_msg_inicio_enfileira_llm_turn() -> None:
     fake_msgs = FakeMensagemRepo()
     fake_out = FakeOutboundQueue()
     repos = InboundDeps(
@@ -120,7 +124,9 @@ async def test_text_msg_inicio_envia_ack_e_marca_humano() -> None:
     assert out.duplicate is False
     assert out.escalated is True
     assert len(fake_msgs.inserted) == 1
-    assert fake_out.sent == [("5511999@s", "ACK!", out.conversa_id)]
+    assert fake_out.sent == []  # sem ack direto em M4
+    assert len(fake_out.llm_turns) == 1
+    assert fake_out.llm_turns[0] == out.conversa_id
 
 
 async def test_duplicate_short_circuits_no_ack() -> None:
@@ -165,7 +171,7 @@ async def test_sticker_skipped_silently() -> None:
     assert fake_out.sent == []
 
 
-async def test_image_event_persists_e_envia_ack() -> None:
+async def test_image_event_persists_e_enfileira_llm_turn() -> None:
     fake_msgs = FakeMensagemRepo()
     fake_out = FakeOutboundQueue()
     repos = InboundDeps(
@@ -180,22 +186,31 @@ async def test_image_event_persists_e_envia_ack() -> None:
     assert out.persisted is True
     assert len(fake_msgs.inserted) == 1
     assert fake_msgs.inserted[0].media_type == "image"
-    assert len(fake_out.sent) == 1
+    assert fake_out.sent == []  # sem ack direto em M4
+    assert len(fake_out.llm_turns) == 1
+    assert fake_out.llm_turns[0] == out.conversa_id
 
 
-async def test_humano_nao_envia_ack_repetido() -> None:
+async def test_humano_nao_dispara_llm() -> None:
+    """Em estado HUMANO, FSM nao emite LLM_TURN — mensagem e registrada, sem acao do bot."""
+    fake_conv_repo = FakeConversaRepo()
     fake_out = FakeOutboundQueue()
     repos = InboundDeps(
-        conversas=FakeConversaRepo(),
+        conversas=fake_conv_repo,
         mensagens=FakeMensagemRepo(),
         outbound=fake_out,
         ack_text="ACK!",
     )
-    # 1a msg -> escala
+    # 1a msg a partir de INICIO -> LLM_TURN enfileirado
     out1 = await process_inbound_message(_evt(eid="A"), repos)
     assert out1.escalated is True
-    assert len(fake_out.sent) == 1
-    # 2a msg do mesmo JID -> conversa ja em HUMANO, sem novo ack
+    assert len(fake_out.llm_turns) == 1
+    # Simula LLM tendo transferido para humano (tool transferir_para_humano)
+    conversa = fake_conv_repo.by_jid["5511999@s"]
+    conversa.estado = ConversaEstado.HUMANO
+    conversa.status = ConversaStatus.AGUARDANDO
+    # 2a msg do mesmo JID -> conversa em HUMANO, sem LLM_TURN, sem ack
     out2 = await process_inbound_message(_evt(eid="B"), repos)
     assert out2.escalated is False
-    assert len(fake_out.sent) == 1
+    assert len(fake_out.llm_turns) == 1  # nenhum adicional
+    assert fake_out.sent == []

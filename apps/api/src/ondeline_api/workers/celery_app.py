@@ -25,6 +25,7 @@ def create_celery_app() -> Celery:
         include=[
             "ondeline_api.workers.inbound",
             "ondeline_api.workers.outbound",
+            "ondeline_api.workers.llm_turn",
         ],
     )
     app.conf.update(
@@ -46,6 +47,7 @@ def create_celery_app() -> Celery:
                 "queue": "default"
             },
             "ondeline_api.workers.outbound.send_outbound_task": {"queue": "default"},
+            "ondeline_api.workers.llm_turn.llm_turn_task": {"queue": "llm"},
         },
         task_serializer="json",
         result_serializer="json",

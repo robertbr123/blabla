@@ -22,10 +22,22 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
+import redis.asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.db.engine import get_sessionmaker
 from ondeline_api.services.inbound import _OutboundQueueProto
+
+_redis_singleton: aioredis.Redis[bytes] | None = None
+
+
+async def get_redis() -> aioredis.Redis[bytes]:
+    global _redis_singleton
+    if _redis_singleton is None:
+        from ondeline_api.config import get_settings
+
+        _redis_singleton = aioredis.from_url(get_settings().redis_url, decode_responses=False)
+    return _redis_singleton
 
 
 @asynccontextmanager
@@ -52,25 +64,37 @@ class CeleryOutboundEnqueuer(_OutboundQueueProto):
 
         send_outbound_task.delay(jid=jid, text=text, conversa_id=str(conversa_id))
 
+    def enqueue_llm_turn(self, conversa_id: UUID) -> None:
+        from ondeline_api.workers.llm_turn import llm_turn_task
+
+        llm_turn_task.delay(conversa_id=str(conversa_id))
+
 
 @dataclass
 class BufferedOutboundEnqueuer(_OutboundQueueProto):
-    """Coleta chamadas enqueue_send_outbound durante a sessao DB e armazena
-    em buffer. Apos o commit da sessao, chame `.flush()` para disparar as
-    tasks Celery. Isso garante que as tasks outbound so rodam apos os dados
-    inbound estarem commitados — critico em modo eager onde `.delay()` executa
-    sincronamente.
+    """Coleta chamadas enqueue_send_outbound e enqueue_llm_turn durante a sessao DB
+    e armazena em buffer. Apos o commit da sessao, chame `.flush()` para disparar as
+    tasks Celery. Isso garante que as tasks so rodam apos os dados inbound estarem
+    commitados — critico em modo eager onde `.delay()` executa sincronamente.
     """
 
-    _pending: list[dict[str, Any]] = field(default_factory=list)
+    _pending_outbound: list[dict[str, Any]] = field(default_factory=list)
+    _pending_llm_turns: list[UUID] = field(default_factory=list)
 
     def enqueue_send_outbound(self, jid: str, text: str, conversa_id: UUID) -> None:
-        self._pending.append({"jid": jid, "text": text, "conversa_id": str(conversa_id)})
+        self._pending_outbound.append({"jid": jid, "text": text, "conversa_id": str(conversa_id)})
+
+    def enqueue_llm_turn(self, conversa_id: UUID) -> None:
+        self._pending_llm_turns.append(conversa_id)
 
     def flush(self) -> None:
         """Dispara todas as tasks Celery pendentes. Chame APOS o commit da sessao."""
+        from ondeline_api.workers.llm_turn import llm_turn_task
         from ondeline_api.workers.outbound import send_outbound_task
 
-        for item in self._pending:
+        for item in self._pending_outbound:
             send_outbound_task.delay(**item)
-        self._pending.clear()
+        for cid in self._pending_llm_turns:
+            llm_turn_task.delay(conversa_id=str(cid))
+        self._pending_outbound.clear()
+        self._pending_llm_turns.clear()

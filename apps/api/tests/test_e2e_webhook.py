@@ -1,4 +1,4 @@
-"""E2E: POST /webhook -> task eager -> DB tem cliente_msg + ack do bot.
+"""E2E: POST /webhook -> task eager -> DB tem cliente_msg + resposta do bot.
 
 Note: The test is *synchronous* intentionally.  The Celery task uses
 ``asyncio.run()`` internally; if the test itself were async (under
@@ -6,6 +6,11 @@ pytest-asyncio) there would already be a running event loop and
 ``asyncio.run()`` would raise RuntimeError.  Running the test sync avoids
 that conflict while still allowing us to call ``asyncio.run()`` for the
 DB-assertion coroutine after the webhook POST returns.
+
+M4 flow: webhook -> process_inbound_message_task (eager) -> enfileira
+llm_turn_task (eager) -> chama Hermes (nao mockado -> falha) ->
+_force_escalate -> manda fallback via Evolution (mockado) + persiste BOT msg.
+Por isso o estado final e AGUARDA_ATENDENTE (nao HUMANO como em M3).
 """
 from __future__ import annotations
 
@@ -99,7 +104,8 @@ def test_webhook_to_db_full_flow() -> None:
                     select(Conversa).where(Conversa.whatsapp == jid)
                 )
             ).scalar_one()
-            assert conv_row.estado is ConversaEstado.HUMANO
+            # M4: LLM falha (Hermes nao mockado) -> _force_escalate -> AGUARDA_ATENDENTE
+            assert conv_row.estado is ConversaEstado.AGUARDA_ATENDENTE
             assert conv_row.status is ConversaStatus.AGUARDANDO
 
             msgs = (

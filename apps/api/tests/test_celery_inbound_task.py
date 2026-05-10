@@ -49,7 +49,7 @@ def _reset_engine() -> Generator[None, None, None]:
 
 @pytest.fixture
 def _outbound_no_op(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
-    """Substitui send_outbound_task.delay por no-op para isolar o inbound."""
+    """Substitui send_outbound_task.delay e llm_turn_task.delay por no-op para isolar o inbound."""
     captured: list[dict[str, Any]] = []
 
     def fake_delay(**kwargs: Any) -> None:
@@ -57,6 +57,9 @@ def _outbound_no_op(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
 
     monkeypatch.setattr(
         "ondeline_api.workers.outbound.send_outbound_task.delay", fake_delay
+    )
+    monkeypatch.setattr(
+        "ondeline_api.workers.llm_turn.llm_turn_task.delay", fake_delay
     )
     return captured
 
@@ -68,8 +71,9 @@ async def test_task_processes_first_message(_outbound_no_op) -> None:
     assert result["persisted"] is True
     assert result["duplicate"] is False
     assert result["escalated"] is True
+    # M4: llm_turn_task.delay e chamado (nao send_outbound_task.delay)
     assert len(_outbound_no_op) == 1
-    assert _outbound_no_op[0]["jid"] == jid
+    assert "conversa_id" in _outbound_no_op[0]
 
 
 async def test_task_returns_parse_error_on_bad_payload(_outbound_no_op) -> None:
