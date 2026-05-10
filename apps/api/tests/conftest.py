@@ -37,6 +37,16 @@ class FakeDB:
         return None
 
 
+class BrokenDB:
+    """DBSessionLike sentinel: raises the stored exception on execute."""
+
+    def __init__(self, exc: BaseException) -> None:
+        self._exc = exc
+
+    async def execute(self, statement: Any, *args: Any, **kwargs: Any) -> Any:
+        raise self._exc
+
+
 @pytest.fixture
 def app() -> Iterator[FastAPI]:
     from ondeline_api.main import create_app
@@ -61,3 +71,8 @@ def healthy_deps() -> dict[str, Any]:
 @pytest.fixture
 def broken_db_deps() -> dict[str, Any]:
     return {"db": FakeDB(alive=False), "redis": FakeRedis(alive=True)}
+
+
+@pytest.fixture
+def broken_db() -> BrokenDB:
+    return BrokenDB(ConnectionError("simulated db pool failure"))

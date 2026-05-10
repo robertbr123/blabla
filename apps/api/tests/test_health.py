@@ -52,25 +52,15 @@ async def test_healthz_returns_503_when_db_down(
 
 @pytest.mark.asyncio
 async def test_healthz_503_when_db_dependency_yields_broken(
-    app: FastAPI, client: AsyncClient
+    app: FastAPI, client: AsyncClient, broken_db: Any, healthy_deps: dict[str, Any]
 ) -> None:
-    """Verifies the broken-sentinel path that protects against 500s.
-
-    Simulates get_db() yielding a _BrokenDB sentinel (as happens when
-    asyncpg.create_pool raises because Postgres is unreachable), and
-    confirms the route handler catches it and returns 503 instead of 500.
-    """
-    from ondeline_api.deps import _BrokenDB, get_db, get_redis
-
-    from tests.conftest import FakeRedis
-
-    broken = _BrokenDB(ConnectionError("simulated db pool failure"))
+    """The dependency yields a stub whose `execute()` raises ConnectionError; the route handler catches it and returns 503."""
 
     async def yield_broken() -> AsyncIterator[Any]:
-        yield broken
+        yield broken_db
 
     app.dependency_overrides[get_db] = yield_broken
-    app.dependency_overrides[get_redis] = lambda: FakeRedis(alive=True)
+    app.dependency_overrides[get_redis] = lambda: healthy_deps["redis"]
 
     response = await client.get("/healthz")
     assert response.status_code == 503

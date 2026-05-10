@@ -26,7 +26,6 @@ def get_engine() -> AsyncEngine:
         pool_size=5,
         max_overflow=5,
         pool_pre_ping=True,
-        future=True,
     )
 
 

@@ -19,19 +19,6 @@ class RedisLike(Protocol):
     async def ping(self) -> bool: ...
 
 
-class _BrokenDB:
-    """DBSessionLike sentinel: raises the stored exception on execute.
-
-    Kept for test compatibility — test_health.py imports this directly.
-    """
-
-    def __init__(self, exc: BaseException) -> None:
-        self._exc = exc
-
-    async def execute(self, statement: Any, *args: Any, **kwargs: Any) -> Any:
-        raise self._exc
-
-
 @lru_cache(maxsize=1)
 def _redis_client() -> Redis:  # type: ignore[type-arg]
     return Redis.from_url(str(get_settings().redis_url), decode_responses=True)
@@ -47,5 +34,5 @@ async def get_redis() -> RedisLike:
 
 
 def reset_redis_cache() -> None:
-    """Test helper."""
+    """Test helper: drop cached Redis client so the next call picks up a new URL."""
     _redis_client.cache_clear()
