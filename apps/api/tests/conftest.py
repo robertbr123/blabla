@@ -26,17 +26,14 @@ class FakeRedis:
 
 
 class FakeDB:
-    """Minimal DB stub for health tests."""
+    """Minimal async-session stub for /healthz tests."""
 
     def __init__(self, *, alive: bool = True) -> None:
         self._alive = alive
 
-    async def fetchval(self, query: str) -> int:
+    async def execute(self, statement: Any, *args: Any, **kwargs: Any) -> Any:
         if not self._alive:
             raise ConnectionError("db down")
-        return 1
-
-    async def close(self) -> None:
         return None
 
 
