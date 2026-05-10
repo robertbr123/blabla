@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from ondeline_api import __version__
-from ondeline_api.api import health
+from ondeline_api.api import auth, health
 
 
 def create_app() -> FastAPI:
@@ -14,6 +14,7 @@ def create_app() -> FastAPI:
         description="WhatsApp bot + admin API for Ondeline Telecom",
     )
     app.include_router(health.router)
+    app.include_router(auth.router)
     return app
 
 
