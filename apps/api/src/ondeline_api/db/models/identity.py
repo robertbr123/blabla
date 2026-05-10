@@ -32,7 +32,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[Role] = mapped_column(
         Enum(Role, name="user_role", native_enum=False), nullable=False
