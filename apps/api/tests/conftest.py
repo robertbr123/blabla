@@ -100,6 +100,25 @@ def _set_secrets() -> None:
     os.environ.setdefault("PII_HASH_PEPPER", "test-pepper-not-for-prod-32-bytes-x")
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _flush_lockout_keys() -> None:
+    """Wipe lockout keys at session start so leftover state from prior runs doesn't pollute tests."""
+    import os
+
+    from redis import Redis
+
+    url = os.environ.get("REDIS_URL", "redis://localhost:6380/0")
+    try:
+        r = Redis.from_url(url, decode_responses=True)
+        keys = r.keys("lockout:login:*")
+        if keys:
+            r.delete(*keys)
+        r.close()
+    except Exception:
+        # If Redis is unreachable, tests that need it will fail with a clearer error.
+        pass
+
+
 @pytest_asyncio.fixture
 async def db_session() -> collections.abc.AsyncIterator[AsyncSession]:
     """Per-test session with rollback at end. Requires Postgres running."""
