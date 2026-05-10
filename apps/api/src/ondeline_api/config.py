@@ -54,6 +54,15 @@ class Settings(BaseSettings):
     pii_encryption_key: SecretStr = SecretStr("")
     pii_hash_pepper: SecretStr = SecretStr("")
 
+    # Token TTLs
+    access_token_ttl_minutes: int = 15
+    refresh_token_ttl_days: int = 7
+
+    # Cookies
+    cookie_secure: bool = True
+    cookie_domain: str = ""
+    cookie_samesite: str = "strict"
+
     # Observabilidade
     sentry_dsn: str = ""
 
