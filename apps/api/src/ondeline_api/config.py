@@ -63,7 +63,18 @@ class Settings(BaseSettings):
     # Hermes LLM
     hermes_url: str = "http://127.0.0.1:8642/v1"
     hermes_api_key: str = ""
-    hermes_model: str = "anthropic/claude-opus-4.6"
+    hermes_model: str = "Hermes-3"
+
+    # LLM controls
+    llm_max_iter: int = 5
+    llm_timeout_seconds: float = 30.0
+    llm_max_tokens_per_conversa_dia: int = 50_000
+    llm_history_turns: int = 12  # ultimas N mensagens incluidas no prompt
+
+    # SGP cache TTL (segundos)
+    sgp_cache_ttl_cliente: int = 3600
+    sgp_cache_ttl_faturas: int = 300
+    sgp_cache_ttl_negativo: int = 300
 
     # Auth
     jwt_secret: SecretStr = SecretStr("")
