@@ -4,10 +4,10 @@ from __future__ import annotations
 import hashlib
 import hmac as _hmac
 import json
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-
 
 SECRET = "test-secret-9001"
 
@@ -36,7 +36,7 @@ def client(monkeypatch) -> TestClient:
     get_settings.cache_clear()
 
     # Intercepta a delay() pra nao precisar broker real
-    captured: list[dict] = []
+    captured: list[dict[str, Any]] = []
     monkeypatch.setattr(
         "ondeline_api.api.webhook.process_inbound_message_task.delay",
         lambda payload: captured.append(payload),

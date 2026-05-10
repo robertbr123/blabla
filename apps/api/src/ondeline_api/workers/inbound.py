@@ -28,7 +28,6 @@ from ondeline_api.webhook.parser import ParseError, parse_messages_upsert
 from ondeline_api.workers.celery_app import celery_app
 from ondeline_api.workers.runtime import BufferedOutboundEnqueuer, task_session
 
-
 log = structlog.get_logger(__name__)
 
 
@@ -86,7 +85,7 @@ async def _run(payload: dict[str, Any]) -> dict[str, Any]:
     max_retries=3,
     default_retry_delay=5,
 )
-def process_inbound_message_task(self, payload: dict[str, Any]) -> dict[str, Any]:
+def process_inbound_message_task(self: Any, payload: dict[str, Any]) -> dict[str, Any]:
     try:
         # asyncio.run() cannot be called from a running event loop (e.g. when the
         # task fires eagerly inside Starlette's TestClient, which uses anyio).
@@ -104,7 +103,7 @@ def process_inbound_message_task(self, payload: dict[str, Any]) -> dict[str, Any
 
             reset_engine_cache()
 
-            def _run_in_thread(p: dict) -> dict:
+            def _run_in_thread(p: dict[str, Any]) -> dict[str, Any]:
                 reset_engine_cache()  # also reset inside thread for safety
                 return asyncio.run(_run(p))
 
@@ -113,4 +112,4 @@ def process_inbound_message_task(self, payload: dict[str, Any]) -> dict[str, Any
         return asyncio.run(_run(payload))
     except Exception as e:  # pragma: no cover — caminho de retry
         log.error("inbound.task_failed", error=str(e), exc_info=True)
-        raise self.retry(exc=e)
+        raise self.retry(exc=e) from e

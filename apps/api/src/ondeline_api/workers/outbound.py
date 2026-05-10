@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+from typing import Any
 from uuid import UUID
 
 import structlog
@@ -16,7 +17,6 @@ from ondeline_api.observability.metrics import (
 from ondeline_api.repositories.mensagem import MensagemRepo
 from ondeline_api.workers.celery_app import celery_app
 from ondeline_api.workers.runtime import task_session
-
 
 log = structlog.get_logger(__name__)
 
@@ -57,7 +57,7 @@ async def _run(jid: str, text: str, conversa_id: UUID) -> dict[str, str]:
     default_retry_delay=5,
 )
 def send_outbound_task(
-    self, *, jid: str, text: str, conversa_id: str
+    self: Any, *, jid: str, text: str, conversa_id: str
 ) -> dict[str, str]:
     try:
         # asyncio.run() cannot be called from a running event loop (e.g. when the
@@ -73,7 +73,7 @@ def send_outbound_task(
             # own asyncpg pool bound to its event loop (pools are per-loop).
             from ondeline_api.db.engine import reset_engine_cache
 
-            def _run_in_thread(j: str, t: str, c: UUID) -> dict:
+            def _run_in_thread(j: str, t: str, c: UUID) -> dict[str, str]:
                 reset_engine_cache()
                 return asyncio.run(_run(j, t, c))
 
@@ -81,4 +81,4 @@ def send_outbound_task(
                 return pool.submit(_run_in_thread, jid, text, UUID(conversa_id)).result()
         return asyncio.run(_run(jid, text, UUID(conversa_id)))
     except Exception as e:
-        raise self.retry(exc=e)
+        raise self.retry(exc=e) from e

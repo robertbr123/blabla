@@ -56,7 +56,7 @@ def app(db_session: AsyncSession, redis_client: Redis) -> FastAPI:  # type: igno
 
 
 @pytest_asyncio.fixture
-async def client(app: FastAPI):  # type: ignore[no-untyped-def]
+async def client(app: FastAPI):
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         yield c

@@ -4,10 +4,7 @@ from __future__ import annotations
 import hashlib
 import hmac as _hmac
 
-import pytest
-
 from ondeline_api.webhook.hmac import verify_signature
-
 
 SECRET = "supersecret-evolution"
 
@@ -41,7 +38,7 @@ def test_wrong_algo_prefix_fails() -> None:
 
 def test_empty_header_fails() -> None:
     assert verify_signature(b"x", "", SECRET) is False
-    assert verify_signature(b"x", None, SECRET) is False  # type: ignore[arg-type]
+    assert verify_signature(b"x", None, SECRET) is False
 
 
 def test_empty_secret_always_fails() -> None:

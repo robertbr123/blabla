@@ -5,8 +5,9 @@ texto / tipo de midia, e ignoramos eventos irrelevantes.
 """
 from __future__ import annotations
 
-import pytest
+from typing import Any
 
+import pytest
 from ondeline_api.webhook.parser import (
     InboundEvent,
     InboundKind,
@@ -15,7 +16,7 @@ from ondeline_api.webhook.parser import (
 )
 
 
-def _payload(text: str | None = "Oi", from_me: bool = False, **overrides: object) -> dict:
+def _payload(text: str | None = "Oi", from_me: bool = False, **overrides: Any) -> dict[str, Any]:
     msg: dict[str, object] = {}
     if text is not None:
         msg["conversation"] = text

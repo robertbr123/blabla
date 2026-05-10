@@ -9,7 +9,6 @@ from dataclasses import dataclass, field
 from uuid import UUID, uuid4
 
 import pytest
-
 from ondeline_api.db.models.business import (
     Conversa,
     ConversaEstado,
@@ -19,7 +18,6 @@ from ondeline_api.db.models.business import (
 )
 from ondeline_api.services.inbound import InboundDeps, process_inbound_message
 from ondeline_api.webhook.parser import InboundEvent, InboundKind
-
 
 pytestmark = pytest.mark.asyncio
 
@@ -109,87 +107,95 @@ def _evt(kind=InboundKind.TEXT, text="Oi", from_me=False, eid="E1") -> InboundEv
 
 
 async def test_text_msg_inicio_envia_ack_e_marca_humano() -> None:
+    fake_msgs = FakeMensagemRepo()
+    fake_out = FakeOutboundQueue()
     repos = InboundDeps(
         conversas=FakeConversaRepo(),
-        mensagens=FakeMensagemRepo(),
-        outbound=FakeOutboundQueue(),
+        mensagens=fake_msgs,
+        outbound=fake_out,
         ack_text="ACK!",
     )
     out = await process_inbound_message(_evt(), repos)
     assert out.persisted is True
     assert out.duplicate is False
     assert out.escalated is True
-    assert len(repos.mensagens.inserted) == 1
-    assert repos.outbound.sent == [("5511999@s", "ACK!", out.conversa_id)]
+    assert len(fake_msgs.inserted) == 1
+    assert fake_out.sent == [("5511999@s", "ACK!", out.conversa_id)]
 
 
 async def test_duplicate_short_circuits_no_ack() -> None:
+    fake_out = FakeOutboundQueue()
     repos = InboundDeps(
         conversas=FakeConversaRepo(),
         mensagens=FakeMensagemRepo(dedup_ids={"E1"}),
-        outbound=FakeOutboundQueue(),
+        outbound=fake_out,
         ack_text="ACK!",
     )
     out = await process_inbound_message(_evt(eid="E1"), repos)
     assert out.duplicate is True
     assert out.persisted is False
-    assert repos.outbound.sent == []
+    assert fake_out.sent == []
 
 
 async def test_from_me_skipped() -> None:
+    fake_msgs = FakeMensagemRepo()
     repos = InboundDeps(
         conversas=FakeConversaRepo(),
-        mensagens=FakeMensagemRepo(),
+        mensagens=fake_msgs,
         outbound=FakeOutboundQueue(),
         ack_text="ACK!",
     )
     out = await process_inbound_message(_evt(from_me=True), repos)
     assert out.skipped_reason == "from_me"
-    assert repos.mensagens.inserted == []
+    assert fake_msgs.inserted == []
 
 
 async def test_sticker_skipped_silently() -> None:
+    fake_out = FakeOutboundQueue()
     repos = InboundDeps(
         conversas=FakeConversaRepo(),
         mensagens=FakeMensagemRepo(),
-        outbound=FakeOutboundQueue(),
+        outbound=fake_out,
         ack_text="ACK!",
     )
     out = await process_inbound_message(
         _evt(kind=InboundKind.STICKER, text=None), repos
     )
     assert out.skipped_reason == "sticker"
-    assert repos.outbound.sent == []
+    assert fake_out.sent == []
 
 
 async def test_image_event_persists_e_envia_ack() -> None:
+    fake_msgs = FakeMensagemRepo()
+    fake_out = FakeOutboundQueue()
     repos = InboundDeps(
         conversas=FakeConversaRepo(),
-        mensagens=FakeMensagemRepo(),
-        outbound=FakeOutboundQueue(),
+        mensagens=fake_msgs,
+        outbound=fake_out,
         ack_text="ACK!",
     )
     out = await process_inbound_message(
         _evt(kind=InboundKind.IMAGE, text=None), repos
     )
     assert out.persisted is True
-    assert len(repos.mensagens.inserted) == 1
-    assert repos.mensagens.inserted[0].media_type == "image"
-    assert len(repos.outbound.sent) == 1
+    assert len(fake_msgs.inserted) == 1
+    assert fake_msgs.inserted[0].media_type == "image"
+    assert len(fake_out.sent) == 1
 
 
 async def test_humano_nao_envia_ack_repetido() -> None:
+    fake_out = FakeOutboundQueue()
     repos = InboundDeps(
         conversas=FakeConversaRepo(),
         mensagens=FakeMensagemRepo(),
-        outbound=FakeOutboundQueue(),
+        outbound=fake_out,
         ack_text="ACK!",
     )
     # 1a msg -> escala
     out1 = await process_inbound_message(_evt(eid="A"), repos)
     assert out1.escalated is True
-    assert len(repos.outbound.sent) == 1
+    assert len(fake_out.sent) == 1
     # 2a msg do mesmo JID -> conversa ja em HUMANO, sem novo ack
     out2 = await process_inbound_message(_evt(eid="B"), repos)
     assert out2.escalated is False
-    assert len(repos.outbound.sent) == 1
+    assert len(fake_out.sent) == 1

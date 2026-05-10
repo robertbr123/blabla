@@ -17,18 +17,17 @@ Aqui testamos: parse_error skip e task retorna estrutura correta.
 """
 from __future__ import annotations
 
-import json
+from collections.abc import Generator
+from typing import Any
 
 import pytest
-
 from ondeline_api.db.engine import reset_engine_cache
 from ondeline_api.workers.inbound import _run
-
 
 pytestmark = pytest.mark.asyncio
 
 
-def _payload(jid: str, external_id: str, from_me: bool = False) -> dict:
+def _payload(jid: str, external_id: str, from_me: bool = False) -> dict[str, Any]:
     return {
         "event": "messages.upsert",
         "data": {
@@ -40,7 +39,7 @@ def _payload(jid: str, external_id: str, from_me: bool = False) -> dict:
 
 
 @pytest.fixture(autouse=True)
-def _reset_engine() -> None:
+def _reset_engine() -> Generator[None, None, None]:
     """Limpa o cache do engine apos cada teste para que o proximo teste
     crie um pool fresco no novo event loop.
     """
@@ -49,11 +48,11 @@ def _reset_engine() -> None:
 
 
 @pytest.fixture
-def _outbound_no_op(monkeypatch):
+def _outbound_no_op(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
     """Substitui send_outbound_task.delay por no-op para isolar o inbound."""
-    captured: list[dict] = []
+    captured: list[dict[str, Any]] = []
 
-    def fake_delay(**kwargs):
+    def fake_delay(**kwargs: Any) -> None:
         captured.append(kwargs)
 
     monkeypatch.setattr(

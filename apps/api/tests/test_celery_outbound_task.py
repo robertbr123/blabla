@@ -13,22 +13,21 @@ Cada teste usa um JID unico para evitar colisao com dados de execucoes anteriore
 from __future__ import annotations
 
 import uuid
+from collections.abc import Generator
 
 import pytest
 import respx
-
 from ondeline_api.config import get_settings
 from ondeline_api.db.engine import get_sessionmaker, reset_engine_cache
 from ondeline_api.repositories.conversa import ConversaRepo
 from ondeline_api.workers.outbound import _run as outbound_run
 from ondeline_api.workers.runtime import task_session
 
-
 pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture(autouse=True)
-def _reset_engine() -> None:
+def _reset_engine() -> Generator[None, None, None]:
     """Limpa o cache do engine apos cada teste."""
     yield
     reset_engine_cache()
@@ -55,9 +54,8 @@ async def test_send_outbound_persists_and_calls_evolution() -> None:
     assert out["status"] == "ok"
 
     # Assertiva: mensagem do bot persistida. Usa sessao fresca apos o commit do task.
-    from sqlalchemy import select
-
     from ondeline_api.db.models.business import Mensagem, MensagemRole
+    from sqlalchemy import select
 
     sm = get_sessionmaker()
     async with sm() as fresh_session:

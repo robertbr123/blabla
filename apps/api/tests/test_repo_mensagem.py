@@ -4,12 +4,10 @@ inseridor de resposta do bot.
 from __future__ import annotations
 
 import pytest
-
 from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.business import MensagemRole
 from ondeline_api.repositories.conversa import ConversaRepo
 from ondeline_api.repositories.mensagem import MensagemRepo
-
 
 pytestmark = pytest.mark.asyncio
 
@@ -26,6 +24,7 @@ async def test_insert_inbound_persists(db_session) -> None:
     )
     assert inserted is not None
     assert inserted.role is MensagemRole.CLIENTE
+    assert inserted.content_encrypted is not None
     assert decrypt_pii(inserted.content_encrypted) == "Olá"
 
 
@@ -63,4 +62,5 @@ async def test_insert_bot_reply_is_role_bot(db_session) -> None:
     msg = await repo.insert_bot_reply(conversa_id=conv.id, text="Recebido!")
     assert msg.role is MensagemRole.BOT
     assert msg.external_id is None
+    assert msg.content_encrypted is not None
     assert decrypt_pii(msg.content_encrypted) == "Recebido!"

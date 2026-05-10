@@ -19,6 +19,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,7 +62,7 @@ class BufferedOutboundEnqueuer(_OutboundQueueProto):
     sincronamente.
     """
 
-    _pending: list[dict] = field(default_factory=list)
+    _pending: list[dict[str, Any]] = field(default_factory=list)
 
     def enqueue_send_outbound(self, jid: str, text: str, conversa_id: UUID) -> None:
         self._pending.append({"jid": jid, "text": text, "conversa_id": str(conversa_id)})
