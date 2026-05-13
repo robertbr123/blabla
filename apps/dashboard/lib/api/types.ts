@@ -2,3 +2,28 @@
 // Placeholder stub until first generation.
 export type CursorPage<T> = { items: T[]; next_cursor: string | null }
 export interface MeOut { id: string; email: string; role: 'admin' | 'atendente' | 'tecnico'; name: string }
+
+export interface ConversaListItem {
+  id: string
+  whatsapp: string
+  estado: string
+  status: string
+  cliente_id: string | null
+  atendente_id: string | null
+  created_at: string
+  last_message_at: string | null
+}
+
+export interface MensagemOut {
+  id: string
+  conversa_id: string
+  role: 'cliente' | 'bot' | 'atendente'
+  content: string | null
+  media_type: string | null
+  media_url: string | null
+  created_at: string
+}
+
+export interface ConversaDetail extends ConversaListItem {
+  mensagens: MensagemOut[]
+}

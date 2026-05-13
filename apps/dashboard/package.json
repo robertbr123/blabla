@@ -24,7 +24,8 @@
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.0",
     "@radix-ui/react-slot": "^1.1.0",
-    "@radix-ui/react-label": "^2.1.0"
+    "@radix-ui/react-label": "^2.1.0",
+    "@radix-ui/react-select": "^2.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
