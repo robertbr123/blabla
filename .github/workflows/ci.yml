@@ -130,3 +130,45 @@ jobs:
         run: pnpm build
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8000
+
+  pwa:
+    name: tecnico-pwa (lint + typecheck + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/tecnico-pwa
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Enable corepack + pnpm 9
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.0 --activate
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+
+      - name: Install
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
