@@ -4,7 +4,7 @@ Runs daily at 02:30. Idempotent — uses CREATE TABLE IF NOT EXISTS.
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 import structlog
@@ -66,7 +66,7 @@ def ensure_partitions(today: date, n: int = 3) -> list[str]:
 )
 def ensure_future_mensagens_partitions(self: Any) -> dict[str, Any]:
     try:
-        created = ensure_partitions(today=datetime.now().date(), n=3)
+        created = ensure_partitions(today=datetime.now(tz=UTC).date(), n=3)
         log.info("partition_job.completed", created=created)
         return {"created": created}
     except Exception as e:
