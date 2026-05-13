@@ -1,12 +1,18 @@
 """Prometheus counters/histograms compartilhados por router e workers.
 
-Nada e expose ainda neste M3 (endpoint /metrics fica para M8). Aqui apenas
-declaramos os instrumentos para que o codigo de producao ja use desde ja
-e os testes possam validar incremento.
+Em M8 expomos via GET /metrics (ver api/metrics.py). Aqui declaramos os
+instrumentos custom (ondeline_*) e tambem registramos os collectors padrao
+(process_*, python_*, platform_*) no mesmo REGISTRY para que a exposicao
+unica em /metrics contenha tudo.
 """
 from __future__ import annotations
 
-from prometheus_client import CollectorRegistry, Counter
+from prometheus_client import (
+    CollectorRegistry,
+    Counter,
+    PlatformCollector,
+    ProcessCollector,
+)
 
 REGISTRY = CollectorRegistry(auto_describe=True)
 
@@ -28,3 +34,8 @@ evolution_send_total = _counter("ondeline_evolution_send_total", "Envios via Evo
 evolution_send_failure_total = _counter(
     "ondeline_evolution_send_failure_total", "Envios via Evolution falharam"
 )
+
+# Default collectors (process_cpu_seconds_total, python_info, etc.).
+# Registrados uma unica vez no import do modulo (Python cacheia o import).
+ProcessCollector(registry=REGISTRY)
+PlatformCollector(registry=REGISTRY)
