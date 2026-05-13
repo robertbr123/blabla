@@ -282,6 +282,26 @@ async def test_401_unauthenticated() -> None:
 
 
 @pytest.mark.asyncio
+async def test_tecnico_pode_enviar_foto_para_sua_os(app_and_tecnico: Any) -> None:
+    """POST /os/{id}/foto stores foto metadata and returns it in fotos list."""
+    client, token, _user, tec, db_session = app_and_tecnico
+    cliente = await _make_cliente(db_session)
+    os_ = await _make_os(db_session, cliente.id, tec.id, status=OsStatus.EM_ANDAMENTO)
+
+    files = {"file": ("foto.jpg", b"\x89PNG\r\n\x1a\n", "image/png")}
+    r = await client.post(
+        f"/api/v1/tecnico/me/os/{os_.id}/foto",
+        files=files,
+        headers=_auth(token),
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert isinstance(body["fotos"], list)
+    assert len(body["fotos"]) == 1
+    assert body["fotos"][0]["mime"] == "image/png"
+
+
+@pytest.mark.asyncio
 async def test_atendente_gets_403(db_session: AsyncSession, redis_client: Any) -> None:
     """Atendente role gets 403 on tecnico/me endpoints."""
     pw = "test-pwd-123!"
