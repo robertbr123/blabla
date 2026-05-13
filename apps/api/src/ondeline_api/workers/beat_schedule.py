@@ -6,6 +6,7 @@ Jobs:
 - manutencao_job (every 15min): broadcast manutencoes proximas
 - send_notifications (every 1min): processa fila Notificacao pendente
 - lgpd_purge_job (daily 03:00): deleta registros expirados (retention_until < now)
+- ensure_future_mensagens_partitions (daily 02:30): cria as proximas 3 particoes mensais
 """
 from __future__ import annotations
 
@@ -33,5 +34,9 @@ BEAT_SCHEDULE: dict[str, dict[str, Any]] = {
     "lgpd-purge": {
         "task": "ondeline_api.workers.notify_jobs.lgpd_purge_job",
         "schedule": crontab(hour=3, minute=0),
+    },
+    "ensure-future-partitions": {
+        "task": "ondeline_api.workers.partition_jobs.ensure_future_mensagens_partitions",
+        "schedule": crontab(hour=2, minute=30),
     },
 }
