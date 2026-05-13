@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import text
 
 from ondeline_api.deps import DBSessionLike, RedisLike, get_db, get_redis
+from ondeline_api.observability.celery_queue import queue_depths
 
 router = APIRouter(tags=["health"])
 
@@ -23,6 +24,7 @@ async def healthz(
     redis: RedisLike = Depends(get_redis),  # noqa: B008
 ) -> dict[str, Any]:
     checks: dict[str, str] = {}
+    celery: dict[str, int] = {}
 
     try:
         await db.execute(text("SELECT 1"))
@@ -36,8 +38,18 @@ async def healthz(
     except Exception as exc:
         checks["redis"] = f"error: {exc.__class__.__name__}"
 
-    all_ok = all(v == "ok" for v in checks.values())
-    if not all_ok:
+    # Celery queue depth — informativo, nao bloqueia status.
+    try:
+        celery = await queue_depths(redis)
+    except Exception:
+        celery = {}
+
+    critical_ok = all(v == "ok" for v in checks.values())
+    if not critical_ok:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
-    return {"status": "ok" if all_ok else "degraded", "checks": checks}
+    return {
+        "status": "ok" if critical_ok else "degraded",
+        "checks": checks,
+        "celery": celery,
+    }

@@ -17,6 +17,7 @@ class DBSessionLike(Protocol):
 
 class RedisLike(Protocol):
     async def ping(self) -> bool: ...
+    async def llen(self, name: str) -> int: ...
 
 
 @lru_cache(maxsize=1)

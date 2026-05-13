@@ -30,6 +30,11 @@ class FakeRedis:
             raise ConnectionError("redis down")
         return True
 
+    async def llen(self, name: str) -> int:
+        if not self._alive:
+            raise ConnectionError("redis down")
+        return 0
+
     async def aclose(self) -> None:
         return None
 
