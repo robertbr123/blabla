@@ -14,6 +14,7 @@ from ondeline_api.api.v1 import conversas as v1_conversas
 from ondeline_api.api.v1 import conversas_stream as v1_conversas_stream
 from ondeline_api.api.v1 import leads as v1_leads
 from ondeline_api.api.v1 import ordens_servico as v1_os
+from ondeline_api.api.v1 import tecnicos as v1_tecnicos
 from ondeline_api.api.webhook import limiter as webhook_limiter
 from ondeline_api.auth.csrf import CSRFMiddleware
 
@@ -55,6 +56,7 @@ def create_app() -> FastAPI:
     app.include_router(v1_os.router)
     app.include_router(v1_leads.router)
     app.include_router(v1_clientes.router)
+    app.include_router(v1_tecnicos.router)
     return app
 
 
