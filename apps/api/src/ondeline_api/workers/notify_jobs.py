@@ -20,6 +20,7 @@ from ondeline_api.services.notify_planner import (
     schedule_vencimentos,
 )
 from ondeline_api.services.sgp_cache import SgpCacheService
+from ondeline_api.services.sgp_config import load_sgp_config
 from ondeline_api.workers.celery_app import celery_app
 from ondeline_api.workers.runtime import get_redis, reset_redis_cache, task_session
 
@@ -29,16 +30,15 @@ log = structlog.get_logger(__name__)
 async def _run_planner() -> dict[str, int]:
     s = get_settings()
     redis = await get_redis()
-    sgp_router = SgpRouter(
-        primary=SgpOndelineProvider(
-            base_url=s.sgp_ondeline_base, token=s.sgp_ondeline_token, app=s.sgp_ondeline_app
-        ),
-        secondary=SgpLinkNetAMProvider(
-            base_url=s.sgp_linknetam_base, token=s.sgp_linknetam_token, app=s.sgp_linknetam_app
-        ),
-    )
+    sgp_router: SgpRouter | None = None
     try:
         async with task_session() as session:
+            sgp_ond = await load_sgp_config(session, "ondeline")
+            sgp_lnk = await load_sgp_config(session, "linknetam")
+            sgp_router = SgpRouter(
+                primary=SgpOndelineProvider(**sgp_ond),
+                secondary=SgpLinkNetAMProvider(**sgp_lnk),
+            )
             cache = SgpCacheService(
                 redis=redis,
                 session=session,
@@ -51,7 +51,8 @@ async def _run_planner() -> dict[str, int]:
             p = await schedule_pagamentos(session, cache)
         return {"vencimentos": v, "atrasos": a, "pagamentos": p}
     finally:
-        await sgp_router.aclose()
+        if sgp_router is not None:
+            await sgp_router.aclose()
 
 
 def _run_in_thread_or_loop(coro_factory: Any) -> Any:

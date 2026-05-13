@@ -26,6 +26,7 @@ from ondeline_api.config import get_settings
 from ondeline_api.db.models.business import Cliente, Conversa
 from ondeline_api.services.llm_loop import run_turn
 from ondeline_api.services.sgp_cache import SgpCacheService
+from ondeline_api.services.sgp_config import load_sgp_config
 from ondeline_api.services.tokens_budget import TokensBudget
 from ondeline_api.tools.context import ToolContext
 from ondeline_api.workers.celery_app import celery_app
@@ -40,13 +41,6 @@ async def _run(conversa_id: UUID) -> dict[str, Any]:
     evolution = EvolutionAdapter(
         base_url=s.evolution_url, instance=s.evolution_instance, api_key=s.evolution_key
     )
-    sgp_primary = SgpOndelineProvider(
-        base_url=s.sgp_ondeline_base, token=s.sgp_ondeline_token, app=s.sgp_ondeline_app
-    )
-    sgp_secondary = SgpLinkNetAMProvider(
-        base_url=s.sgp_linknetam_base, token=s.sgp_linknetam_token, app=s.sgp_linknetam_app
-    )
-    router = SgpRouter(primary=sgp_primary, secondary=sgp_secondary)
     provider = HermesProvider(
         base_url=s.hermes_url,
         model=s.hermes_model,
@@ -54,9 +48,16 @@ async def _run(conversa_id: UUID) -> dict[str, Any]:
         timeout=s.llm_timeout_seconds,
     )
     budget = TokensBudget(redis, daily_limit=s.llm_max_tokens_per_conversa_dia)
+    router: SgpRouter | None = None
 
     try:
         async with task_session() as session:
+            sgp_ond = await load_sgp_config(session, "ondeline")
+            sgp_lnk = await load_sgp_config(session, "linknetam")
+            router = SgpRouter(
+                primary=SgpOndelineProvider(**sgp_ond),
+                secondary=SgpLinkNetAMProvider(**sgp_lnk),
+            )
             conversa = (
                 await session.execute(select(Conversa).where(Conversa.id == conversa_id))
             ).scalar_one()
@@ -106,7 +107,8 @@ async def _run(conversa_id: UUID) -> dict[str, Any]:
         }
     finally:
         await provider.aclose()
-        await router.aclose()
+        if router is not None:
+            await router.aclose()
         await evolution.aclose()
 
 
