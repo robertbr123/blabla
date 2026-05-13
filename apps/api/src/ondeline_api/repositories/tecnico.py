@@ -108,6 +108,18 @@ class TecnicoRepo:
         await self._session.flush()
         return (result.rowcount or 0) > 0
 
+    async def get_by_user_id(self, user_id: UUID) -> Tecnico | None:
+        stmt = select(Tecnico).where(Tecnico.user_id == user_id)
+        return (await self._session.execute(stmt)).scalar_one_or_none()
+
+    async def update_gps(self, tec: Tecnico, *, lat: float, lng: float) -> None:
+        from datetime import UTC, datetime
+
+        tec.gps_lat = lat
+        tec.gps_lng = lng
+        tec.gps_ts = datetime.now(tz=UTC)
+        await self._session.flush()
+
     async def find_by_area(self, *, cidade: str, rua: str) -> Tecnico | None:
         cidade_lc = (cidade or "").strip().lower()
         rua_lc = (rua or "").strip().lower()

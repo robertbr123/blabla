@@ -90,6 +90,72 @@ class OrdemServicoRepo:
         os_.fotos = existing
         await self._session.flush()
 
+    async def list_for_tecnico(
+        self,
+        tecnico_id: UUID,
+        *,
+        status_filter: str | None = None,
+    ) -> list[OrdemServico]:
+        """List OS assigned to tecnico. By default excludes concluida/cancelada."""
+        from sqlalchemy import desc, select
+
+        stmt = select(OrdemServico).where(OrdemServico.tecnico_id == tecnico_id)
+        if status_filter:
+            stmt = stmt.where(OrdemServico.status == OsStatus(status_filter))
+        else:
+            stmt = stmt.where(
+                OrdemServico.status.in_([OsStatus.PENDENTE, OsStatus.EM_ANDAMENTO])
+            )
+        stmt = stmt.order_by(desc(OrdemServico.criada_em))
+        return list((await self._session.execute(stmt)).scalars().all())
+
+    async def get_by_id_and_tecnico(
+        self, os_id: UUID, tecnico_id: UUID
+    ) -> OrdemServico | None:
+        from sqlalchemy import select
+
+        stmt = select(OrdemServico).where(
+            OrdemServico.id == os_id, OrdemServico.tecnico_id == tecnico_id
+        )
+        return (await self._session.execute(stmt)).scalar_one_or_none()
+
+    async def set_iniciada_with_gps(
+        self,
+        os_: OrdemServico,
+        *,
+        lat: float | None = None,
+        lng: float | None = None,
+    ) -> None:
+        os_.status = OsStatus.EM_ANDAMENTO
+        if lat is not None:
+            os_.gps_inicio_lat = lat
+        if lng is not None:
+            os_.gps_inicio_lng = lng
+        await self._session.flush()
+
+    async def set_concluida_with_gps(
+        self,
+        os_: OrdemServico,
+        *,
+        csat: int | None = None,
+        comentario: str | None = None,
+        lat: float | None = None,
+        lng: float | None = None,
+    ) -> None:
+        from datetime import UTC, datetime
+
+        os_.status = OsStatus.CONCLUIDA
+        os_.concluida_em = datetime.now(tz=UTC)
+        if csat is not None:
+            os_.csat = csat
+        if comentario is not None:
+            os_.comentario_cliente = comentario
+        if lat is not None:
+            os_.gps_fim_lat = lat
+        if lng is not None:
+            os_.gps_fim_lng = lng
+        await self._session.flush()
+
     async def concluir(
         self,
         os_: OrdemServico,
