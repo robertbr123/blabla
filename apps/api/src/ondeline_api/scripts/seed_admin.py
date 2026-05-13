@@ -48,9 +48,9 @@ async def _main() -> int:
     if not email or "@" not in email:
         print("ERROR: set ADMIN_EMAIL to a valid address", file=sys.stderr)
         return 2
-    if len(password) < 12 or password.lower() in {"password", "admin1234567", "changeme1234"}:
+    if len(password) < 8 or password.lower() in {"password", "12345678", "admin1234", "changeme"}:
         print(
-            "ERROR: ADMIN_PASSWORD must be >= 12 chars and not a default placeholder",
+            "ERROR: ADMIN_PASSWORD must be >= 8 chars and not a default placeholder",
             file=sys.stderr,
         )
         return 2

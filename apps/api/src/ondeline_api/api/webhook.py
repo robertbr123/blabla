@@ -42,13 +42,17 @@ async def evolution_webhook(
     # looks for underscored names and misses the hyphenated HTTP header.
     x_hub_signature_256: str | None = request.headers.get("x-hub-signature-256")
 
-    # 1) IP allowlist (opcional)
+    # 1) IP allowlist (opcional). When set, it doubles as an HMAC bypass: a
+    # request coming from an allowlisted IP (typically a peer container on a
+    # private docker network) skips signature verification. Evolution 2.x
+    # does not sign webhooks natively, so this is the practical way to keep
+    # the route secured without standing up a signing proxy.
     allow = settings.evolution_ip_allowlist_set()
-    if allow:
-        client_ip = request.client.host if request.client else ""
-        if client_ip not in allow:
-            log.warning("webhook.ip_blocked", ip=client_ip)
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="ip not allowed")
+    client_ip = request.client.host if request.client else ""
+    ip_allowed = bool(allow) and client_ip in allow
+    if allow and not ip_allowed:
+        log.warning("webhook.ip_blocked", ip=client_ip)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="ip not allowed")
 
     # 2) Body limit (Content-Length + leitura segura)
     cl = request.headers.get("content-length")
@@ -64,8 +68,10 @@ async def evolution_webhook(
             detail="payload too large",
         )
 
-    # 3) HMAC
-    if not verify_signature(body, x_hub_signature_256, settings.evolution_hmac_secret):
+    # 3) HMAC — skipped when the request comes from an allowlisted IP.
+    if not ip_allowed and not verify_signature(
+        body, x_hub_signature_256, settings.evolution_hmac_secret
+    ):
         webhook_invalid_signature_total.inc()
         log.warning("webhook.invalid_signature")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="bad signature")
