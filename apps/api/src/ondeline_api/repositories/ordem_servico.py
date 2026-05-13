@@ -1,6 +1,8 @@
-"""OrdemServicoRepo — create."""
+"""OrdemServicoRepo — CRUD operations."""
 from __future__ import annotations
 
+from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,3 +34,76 @@ class OrdemServicoRepo:
         self._session.add(os_)
         await self._session.flush()
         return os_
+
+    async def get_by_id(self, os_id: UUID) -> OrdemServico | None:
+        from sqlalchemy import select
+
+        stmt = select(OrdemServico).where(OrdemServico.id == os_id)
+        return (await self._session.execute(stmt)).scalar_one_or_none()
+
+    async def list_paginated(
+        self,
+        *,
+        status: str | None = None,
+        tecnico_id: UUID | None = None,
+        cidade: str | None = None,  # filter via Cliente.cidade join
+        cursor: datetime | None = None,
+        limit: int = 50,
+    ) -> tuple[list[OrdemServico], datetime | None]:
+        from sqlalchemy import desc, select
+
+        stmt = select(OrdemServico)
+        if status:
+            stmt = stmt.where(OrdemServico.status == status)
+        if tecnico_id:
+            stmt = stmt.where(OrdemServico.tecnico_id == tecnico_id)
+        if cursor is not None:
+            stmt = stmt.where(OrdemServico.criada_em < cursor)
+        stmt = stmt.order_by(desc(OrdemServico.criada_em)).limit(limit + 1)
+        rows = list((await self._session.execute(stmt)).scalars().all())
+        if len(rows) > limit:
+            next_cursor = rows[limit].criada_em
+            rows = rows[:limit]
+        else:
+            next_cursor = None
+        return rows, next_cursor
+
+    async def update(
+        self,
+        os_: OrdemServico,
+        *,
+        status: str | None = None,
+        tecnico_id: UUID | None = None,
+        agendamento_at: datetime | None = None,
+    ) -> None:
+        if status is not None:
+            os_.status = OsStatus(status)
+        if tecnico_id is not None:
+            os_.tecnico_id = tecnico_id
+        if agendamento_at is not None:
+            os_.agendamento_at = agendamento_at
+        await self._session.flush()
+
+    async def add_foto(self, os_: OrdemServico, foto_meta: dict[str, Any]) -> None:
+        existing = list(os_.fotos or [])
+        existing.append(foto_meta)
+        os_.fotos = existing
+        await self._session.flush()
+
+    async def concluir(
+        self,
+        os_: OrdemServico,
+        *,
+        csat: int | None = None,
+        comentario: str | None = None,
+    ) -> None:
+        from datetime import UTC
+        from datetime import datetime as _datetime
+
+        os_.status = OsStatus.CONCLUIDA
+        os_.concluida_em = _datetime.now(tz=UTC)
+        if csat is not None:
+            os_.csat = csat
+        if comentario is not None:
+            os_.comentario_cliente = comentario
+        await self._session.flush()
