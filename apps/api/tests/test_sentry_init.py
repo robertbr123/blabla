@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import sentry_sdk
@@ -42,16 +42,17 @@ def test_init_sentry_runs_when_dsn_set(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_before_send_masks_pii_in_message() -> None:
-    event = {
+    event: dict[str, Any] = {
         "message": "user joao@example.com com CPF 123.456.789-00",
         "breadcrumbs": {"values": [
             {"message": "fetched 987.654.321-00"},
             {"message": "other"},
         ]},
     }
-    out = mod._before_send(event, {})
+    out = cast(dict[str, Any], mod._before_send(cast(Any, event), cast(Any, {})))
     assert out is not None
     assert "[EMAIL]" in out["message"]
     assert "[CPF]" in out["message"]
-    assert out["breadcrumbs"]["values"][0]["message"] == "fetched [CPF]"
-    assert out["breadcrumbs"]["values"][1]["message"] == "other"
+    breadcrumbs = cast(dict[str, Any], out["breadcrumbs"])
+    assert breadcrumbs["values"][0]["message"] == "fetched [CPF]"
+    assert breadcrumbs["values"][1]["message"] == "other"
