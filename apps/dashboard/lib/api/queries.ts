@@ -1,14 +1,25 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from './client'
 import type {
+  AreaCreate,
+  AreaOut,
+  ClienteDetail,
+  ClienteListItem,
   ConversaDetail,
   ConversaListItem,
   CursorPage,
+  LeadCreate,
+  LeadOut,
+  LeadPatch,
   OsConcluirIn,
   OsCreate,
   OsListItem,
   OsOut,
   OsPatch,
+  TecnicoCreate,
+  TecnicoListItem,
+  TecnicoOut,
+  TecnicoPatch,
 } from './types'
 
 export interface ConversaListFilters {
@@ -167,5 +178,159 @@ export function useUploadFoto(id: string) {
       return (await res.json()) as OsOut
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['os-detail', id] }),
+  })
+}
+
+// ----- Leads -----
+export function useLeads(filters: { status?: string; q?: string } = {}) {
+  const p = new URLSearchParams()
+  if (filters.status) p.set('status', filters.status)
+  if (filters.q) p.set('q', filters.q)
+  const qs = p.toString()
+  return useQuery<CursorPage<LeadOut>>({
+    queryKey: ['leads', filters],
+    queryFn: () => apiFetch(`/api/v1/leads${qs ? `?${qs}` : ''}`),
+  })
+}
+
+export function useLead(id: string) {
+  return useQuery<LeadOut>({
+    queryKey: ['lead', id],
+    queryFn: () => apiFetch(`/api/v1/leads/${id}`),
+    enabled: Boolean(id),
+  })
+}
+
+export function useCreateLead() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (b: LeadCreate) =>
+      apiFetch<LeadOut>('/api/v1/leads', { method: 'POST', body: JSON.stringify(b) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['leads'] }),
+  })
+}
+
+export function usePatchLead(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (b: LeadPatch) =>
+      apiFetch<LeadOut>(`/api/v1/leads/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['lead', id] })
+      qc.invalidateQueries({ queryKey: ['leads'] })
+    },
+  })
+}
+
+export function useDeleteLead(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<void>(`/api/v1/leads/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['leads'] }),
+  })
+}
+
+// ----- Clientes -----
+export function useClientes(filters: { q?: string; cidade?: string } = {}) {
+  const p = new URLSearchParams()
+  if (filters.q) p.set('q', filters.q)
+  if (filters.cidade) p.set('cidade', filters.cidade)
+  const qs = p.toString()
+  return useQuery<CursorPage<ClienteListItem>>({
+    queryKey: ['clientes', filters],
+    queryFn: () => apiFetch(`/api/v1/clientes${qs ? `?${qs}` : ''}`),
+  })
+}
+
+export function useCliente(id: string) {
+  return useQuery<ClienteDetail>({
+    queryKey: ['cliente', id],
+    queryFn: () => apiFetch(`/api/v1/clientes/${id}`),
+    enabled: Boolean(id),
+  })
+}
+
+export function useDeleteCliente(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<void>(`/api/v1/clientes/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['clientes'] }),
+  })
+}
+
+export function exportClienteUrl(clienteId: string): string {
+  const base = process.env.NEXT_PUBLIC_API_URL ?? ''
+  return `${base}/api/v1/clientes/${clienteId}/export`
+}
+
+// ----- Tecnicos -----
+export function useTecnicos(filters: { ativo?: boolean } = {}) {
+  const p = new URLSearchParams()
+  if (filters.ativo !== undefined) p.set('ativo', String(filters.ativo))
+  const qs = p.toString()
+  return useQuery<CursorPage<TecnicoListItem>>({
+    queryKey: ['tecnicos', filters],
+    queryFn: () => apiFetch(`/api/v1/tecnicos${qs ? `?${qs}` : ''}`),
+  })
+}
+
+export function useTecnico(id: string) {
+  return useQuery<TecnicoOut>({
+    queryKey: ['tecnico', id],
+    queryFn: () => apiFetch(`/api/v1/tecnicos/${id}`),
+    enabled: Boolean(id),
+  })
+}
+
+export function useCreateTecnico() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (b: TecnicoCreate) =>
+      apiFetch<TecnicoOut>('/api/v1/tecnicos', { method: 'POST', body: JSON.stringify(b) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tecnicos'] }),
+  })
+}
+
+export function usePatchTecnico(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (b: TecnicoPatch) =>
+      apiFetch<TecnicoOut>(`/api/v1/tecnicos/${id}`, { method: 'PATCH', body: JSON.stringify(b) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['tecnico', id] })
+      qc.invalidateQueries({ queryKey: ['tecnicos'] })
+    },
+  })
+}
+
+export function useDeleteTecnico(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<void>(`/api/v1/tecnicos/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tecnicos'] }),
+  })
+}
+
+export function useAddArea(tecnicoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (b: AreaCreate) =>
+      apiFetch<AreaOut>(`/api/v1/tecnicos/${tecnicoId}/areas`, {
+        method: 'POST',
+        body: JSON.stringify(b),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tecnico', tecnicoId] }),
+  })
+}
+
+export function useRemoveArea(tecnicoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (a: { cidade: string; rua: string }) =>
+      apiFetch<void>(
+        `/api/v1/tecnicos/${tecnicoId}/areas/${encodeURIComponent(a.cidade)}/${encodeURIComponent(a.rua)}`,
+        { method: 'DELETE' },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tecnico', tecnicoId] }),
   })
 }

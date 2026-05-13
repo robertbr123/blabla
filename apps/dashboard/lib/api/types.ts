@@ -71,3 +71,87 @@ export interface OsConcluirIn {
   csat?: number | null
   comentario?: string | null
 }
+
+// Leads
+export interface LeadOut {
+  id: string
+  nome: string
+  whatsapp: string
+  interesse: string | null
+  status: string
+  atendente_id: string | null
+  notas: string | null
+  created_at: string
+  updated_at: string
+}
+export interface LeadCreate {
+  nome: string
+  whatsapp: string
+  interesse?: string | null
+  atendente_id?: string | null
+  notas?: string | null
+}
+export interface LeadPatch {
+  nome?: string | null
+  interesse?: string | null
+  status?: string | null
+  atendente_id?: string | null
+  notas?: string | null
+}
+
+// Clientes
+export interface ClienteListItem {
+  id: string
+  whatsapp: string
+  plano: string | null
+  status: string | null
+  cidade: string | null
+  sgp_provider: string | null
+  sgp_id: string | null
+  created_at: string
+  last_seen_at: string | null
+}
+export interface ClienteDetail extends ClienteListItem {
+  nome: string
+  cpf_cnpj: string
+  endereco: string | null
+  retention_until: string | null
+}
+
+// Tecnicos
+export interface TecnicoListItem {
+  id: string
+  nome: string
+  whatsapp: string | null
+  ativo: boolean
+  user_id: string | null
+  gps_lat: number | null
+  gps_lng: number | null
+  gps_ts: string | null
+}
+export interface AreaOut {
+  cidade: string
+  rua: string
+  prioridade: number
+}
+export interface TecnicoOut extends TecnicoListItem {
+  areas: AreaOut[]
+}
+export interface TecnicoCreate {
+  nome: string
+  whatsapp?: string | null
+  ativo?: boolean
+  user_id?: string | null
+}
+export interface TecnicoPatch {
+  nome?: string | null
+  whatsapp?: string | null
+  ativo?: boolean | null
+  gps_lat?: number | null
+  gps_lng?: number | null
+}
+export interface AreaCreate {
+  cidade: string
+  rua: string
+  prioridade?: number
+}
