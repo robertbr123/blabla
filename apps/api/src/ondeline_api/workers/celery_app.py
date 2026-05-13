@@ -12,8 +12,10 @@ e prefetch=1 para distribuir trabalho uniformemente.
 from __future__ import annotations
 
 from celery import Celery
+from celery.signals import worker_process_init
 
 from ondeline_api.config import get_settings
+from ondeline_api.services.logging_config import configure_logging
 
 
 def create_celery_app() -> Celery:
@@ -69,3 +71,9 @@ def create_celery_app() -> Celery:
 
 
 celery_app = create_celery_app()
+
+
+@worker_process_init.connect
+def _init_worker_logging(**_kwargs: object) -> None:
+    """Reconfigure structlog inside each forked Celery worker process."""
+    configure_logging()
