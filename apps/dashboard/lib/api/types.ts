@@ -27,3 +27,47 @@ export interface MensagemOut {
 export interface ConversaDetail extends ConversaListItem {
   mensagens: MensagemOut[]
 }
+
+export interface OsListItem {
+  id: string
+  codigo: string
+  cliente_id: string
+  tecnico_id: string | null
+  status: string
+  problema: string
+  endereco: string
+  agendamento_at: string | null
+  criada_em: string
+  concluida_em: string | null
+}
+
+export interface OsFoto {
+  url: string
+  ts: string
+  size: number
+  mime: string
+}
+
+export interface OsOut extends OsListItem {
+  fotos: OsFoto[] | null
+  csat: number | null
+  comentario_cliente: string | null
+}
+
+export interface OsCreate {
+  cliente_id: string
+  problema: string
+  endereco: string
+  agendamento_at?: string | null
+}
+
+export interface OsPatch {
+  status?: string | null
+  tecnico_id?: string | null
+  agendamento_at?: string | null
+}
+
+export interface OsConcluirIn {
+  csat?: number | null
+  comentario?: string | null
+}
