@@ -5,12 +5,17 @@ import type {
   AreaOut,
   ClienteDetail,
   ClienteListItem,
+  ConfigOut,
   ConversaDetail,
   ConversaListItem,
   CursorPage,
   LeadCreate,
   LeadOut,
   LeadPatch,
+  ManutencaoCreate,
+  ManutencaoOut,
+  ManutencaoPatch,
+  MetricasOut,
   OsConcluirIn,
   OsCreate,
   OsListItem,
@@ -332,5 +337,85 @@ export function useRemoveArea(tecnicoId: string) {
         { method: 'DELETE' },
       ),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tecnico', tecnicoId] }),
+  })
+}
+
+// ----- Manutencoes -----
+export function useManutencoes(filters: { ativas?: boolean } = {}) {
+  const p = new URLSearchParams()
+  if (filters.ativas !== undefined) p.set('ativas', String(filters.ativas))
+  const qs = p.toString()
+  return useQuery<CursorPage<ManutencaoOut>>({
+    queryKey: ['manutencoes', filters],
+    queryFn: () => apiFetch(`/api/v1/manutencoes${qs ? `?${qs}` : ''}`),
+  })
+}
+export function useManutencao(id: string) {
+  return useQuery<ManutencaoOut>({
+    queryKey: ['manutencao', id],
+    queryFn: () => apiFetch(`/api/v1/manutencoes/${id}`),
+    enabled: Boolean(id),
+  })
+}
+export function useCreateManutencao() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (b: ManutencaoCreate) =>
+      apiFetch<ManutencaoOut>('/api/v1/manutencoes', {
+        method: 'POST',
+        body: JSON.stringify(b),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['manutencoes'] }),
+  })
+}
+export function usePatchManutencao(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (b: ManutencaoPatch) =>
+      apiFetch<ManutencaoOut>(`/api/v1/manutencoes/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(b),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['manutencao', id] })
+      qc.invalidateQueries({ queryKey: ['manutencoes'] })
+    },
+  })
+}
+export function useDeleteManutencao(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => apiFetch<void>(`/api/v1/manutencoes/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['manutencoes'] }),
+  })
+}
+
+// ----- Config -----
+export function useConfigKey(key: string) {
+  return useQuery<ConfigOut>({
+    queryKey: ['config', key],
+    queryFn: () => apiFetch(`/api/v1/config/${encodeURIComponent(key)}`),
+    enabled: Boolean(key),
+    retry: false,
+  })
+}
+export function useSetConfig() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ key, value }: { key: string; value: unknown }) =>
+      apiFetch<ConfigOut>(`/api/v1/config/${encodeURIComponent(key)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ value }),
+      }),
+    onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['config', vars.key] }),
+  })
+}
+
+// ----- Metricas -----
+export function useMetricas() {
+  return useQuery<MetricasOut>({
+    queryKey: ['metricas'],
+    queryFn: () => apiFetch('/api/v1/metricas'),
+    refetchInterval: 30_000,
   })
 }

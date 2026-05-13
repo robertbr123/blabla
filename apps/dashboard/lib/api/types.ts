@@ -155,3 +155,50 @@ export interface AreaCreate {
   rua: string
   prioridade?: number
 }
+
+// Manutencoes
+export interface ManutencaoOut {
+  id: string
+  titulo: string
+  descricao: string | null
+  inicio_at: string
+  fim_at: string
+  cidades: string[] | null
+  notificar: boolean
+  criada_em: string
+}
+export interface ManutencaoCreate {
+  titulo: string
+  descricao?: string | null
+  inicio_at: string
+  fim_at: string
+  cidades?: string[] | null
+  notificar?: boolean
+}
+export interface ManutencaoPatch {
+  titulo?: string | null
+  descricao?: string | null
+  inicio_at?: string | null
+  fim_at?: string | null
+  cidades?: string[] | null
+  notificar?: boolean | null
+}
+
+// Config
+export interface ConfigOut {
+  key: string
+  value: unknown
+  updated_by: string | null
+  updated_at: string
+}
+
+// Metricas
+export interface MetricasOut {
+  conversas_aguardando: number
+  conversas_humano: number
+  msgs_24h: number
+  os_abertas: number
+  os_concluidas_24h: number
+  csat_avg_30d: number | null
+  leads_novos_7d: number
+}
