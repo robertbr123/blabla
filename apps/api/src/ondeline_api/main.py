@@ -10,10 +10,12 @@ from ondeline_api import __version__
 from ondeline_api.api import auth, health
 from ondeline_api.api import webhook as webhook_router
 from ondeline_api.api.v1 import clientes as v1_clientes
+from ondeline_api.api.v1 import config as v1_config
 from ondeline_api.api.v1 import conversas as v1_conversas
 from ondeline_api.api.v1 import conversas_stream as v1_conversas_stream
 from ondeline_api.api.v1 import leads as v1_leads
 from ondeline_api.api.v1 import manutencoes as v1_manutencoes
+from ondeline_api.api.v1 import metricas as v1_metricas
 from ondeline_api.api.v1 import ordens_servico as v1_os
 from ondeline_api.api.v1 import tecnicos as v1_tecnicos
 from ondeline_api.api.webhook import limiter as webhook_limiter
@@ -59,6 +61,8 @@ def create_app() -> FastAPI:
     app.include_router(v1_clientes.router)
     app.include_router(v1_tecnicos.router)
     app.include_router(v1_manutencoes.router)
+    app.include_router(v1_config.router)
+    app.include_router(v1_metricas.router)
     return app
 
 
