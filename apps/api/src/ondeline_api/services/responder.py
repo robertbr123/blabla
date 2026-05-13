@@ -8,11 +8,13 @@ from __future__ import annotations
 from typing import Protocol
 from uuid import UUID
 
+import redis.asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.db.crypto import encrypt_pii
 from ondeline_api.db.models.business import Mensagem, MensagemRole
 from ondeline_api.repositories.conversa import ConversaRepo
+from ondeline_api.services.conversa_events import publish as publish_event
 
 
 class _OutboundEnqueuer(Protocol):
@@ -25,6 +27,7 @@ async def responder(
     atendente_id: UUID,
     text: str,
     enqueuer: _OutboundEnqueuer,
+    redis: aioredis.Redis[bytes] | None = None,
 ) -> Mensagem:
     repo = ConversaRepo(session)
     c = await repo.get_by_id(conversa_id)
@@ -40,4 +43,21 @@ async def responder(
     session.add(msg)
     await session.flush()
     enqueuer.enqueue_send_outbound(c.whatsapp, text, c.id)
+
+    if redis is not None:
+        try:
+            await publish_event(
+                redis,
+                c.id,
+                {
+                    "type": "msg",
+                    "id": str(msg.id),
+                    "role": "atendente",
+                    "text": text,
+                    "ts": msg.created_at.isoformat() if msg.created_at else None,
+                },
+            )
+        except Exception:
+            pass
+
     return msg

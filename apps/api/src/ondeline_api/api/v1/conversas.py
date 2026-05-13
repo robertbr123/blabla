@@ -28,7 +28,7 @@ from ondeline_api.services.conversa_attend import (
     encerrar,
 )
 from ondeline_api.services.responder import responder
-from ondeline_api.workers.runtime import CeleryOutboundEnqueuer
+from ondeline_api.workers.runtime import CeleryOutboundEnqueuer, get_redis
 
 router = APIRouter(prefix="/api/v1/conversas", tags=["conversas"])
 _role_dep = Depends(require_role(Role.ATENDENTE, Role.ADMIN))
@@ -131,8 +131,9 @@ async def responder_endpoint(
     user: Annotated[User, Depends(get_current_user)],
 ) -> None:
     enqueuer = CeleryOutboundEnqueuer()
+    redis = await get_redis()
     try:
-        await responder(session, conversa_id, user.id, body.text, enqueuer)
+        await responder(session, conversa_id, user.id, body.text, enqueuer, redis=redis)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail="conversa not found") from exc
 

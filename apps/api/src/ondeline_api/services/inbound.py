@@ -7,8 +7,8 @@ a mesma interface estrutural.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Protocol
+from dataclasses import dataclass, field
+from typing import Any, Protocol
 from uuid import UUID
 
 from ondeline_api.db.models.business import (
@@ -61,6 +61,7 @@ class InboundDeps:
     mensagens: _MensagemRepoProto
     outbound: _OutboundQueueProto
     ack_text: str
+    redis: Any = field(default=None)  # aioredis.Redis | None — typed Any to keep deps loose
 
 
 @dataclass
@@ -116,6 +117,23 @@ async def process_inbound_message(
         return InboundResult(
             conversa_id=conversa.id, persisted=False, duplicate=True, escalated=False
         )
+
+    if deps.redis is not None:
+        try:
+            from ondeline_api.services.conversa_events import publish as _pub
+            await _pub(
+                deps.redis,
+                conversa.id,
+                {
+                    "type": "msg",
+                    "id": str(msg.id),
+                    "role": "cliente",
+                    "text": evt.text,
+                    "ts": msg.created_at.isoformat() if msg.created_at else None,
+                },
+            )
+        except Exception:
+            pass
 
     decision: FsmDecision = Fsm.transition(
         estado=conversa.estado,

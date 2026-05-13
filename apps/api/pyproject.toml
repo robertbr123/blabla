@@ -26,6 +26,7 @@ dependencies = [
     "celery[redis]>=5.4.0",
     "slowapi>=0.1.9",
     "prometheus-client>=0.21.0",
+    "sse-starlette>=2.1.0",
 ]
 
 [project.optional-dependencies]

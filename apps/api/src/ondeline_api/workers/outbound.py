@@ -16,7 +16,7 @@ from ondeline_api.observability.metrics import (
 )
 from ondeline_api.repositories.mensagem import MensagemRepo
 from ondeline_api.workers.celery_app import celery_app
-from ondeline_api.workers.runtime import task_session
+from ondeline_api.workers.runtime import get_redis, task_session
 
 log = structlog.get_logger(__name__)
 
@@ -40,6 +40,25 @@ async def _run(jid: str, text: str, conversa_id: UUID) -> dict[str, str]:
 
     async with task_session() as session:
         await MensagemRepo(session).insert_bot_reply(conversa_id=conversa_id, text=text)
+
+    redis = await get_redis()
+    try:
+        import datetime
+
+        from ondeline_api.services.conversa_events import publish as _pub
+
+        await _pub(
+            redis,
+            conversa_id,
+            {
+                "type": "msg",
+                "role": "bot",
+                "text": text,
+                "ts": datetime.datetime.now(tz=datetime.UTC).isoformat(),
+            },
+        )
+    except Exception:
+        pass
 
     log.info(
         "outbound.sent",

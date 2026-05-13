@@ -26,7 +26,7 @@ from ondeline_api.services.inbound import (
 )
 from ondeline_api.webhook.parser import ParseError, parse_messages_upsert
 from ondeline_api.workers.celery_app import celery_app
-from ondeline_api.workers.runtime import BufferedOutboundEnqueuer, task_session
+from ondeline_api.workers.runtime import BufferedOutboundEnqueuer, get_redis, task_session
 
 log = structlog.get_logger(__name__)
 
@@ -44,12 +44,14 @@ async def _run(payload: dict[str, Any]) -> dict[str, Any]:
     # Em modo eager (task_always_eager), o flush executaria send_outbound_task
     # sincronamente antes do commit se usassemos CeleryOutboundEnqueuer direto.
     outbound_buf = BufferedOutboundEnqueuer()
+    redis = await get_redis()
     async with task_session() as session:
         deps = InboundDeps(
             conversas=ConversaRepo(session),
             mensagens=MensagemRepo(session),
             outbound=outbound_buf,
             ack_text=settings.bot_ack_text,
+            redis=redis,
         )
         result: InboundResult = await process_inbound_message(evt, deps)
     # Session committed — safe to dispatch outbound tasks now.
