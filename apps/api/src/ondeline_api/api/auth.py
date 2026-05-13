@@ -12,7 +12,7 @@ from ondeline_api.auth import jwt as jwt_mod
 from ondeline_api.auth import lockout
 from ondeline_api.auth.audit import write_audit
 from ondeline_api.auth.deps import get_current_user
-from ondeline_api.auth.passwords import verify_password
+from ondeline_api.auth.passwords import hash_password, verify_password
 from ondeline_api.config import get_settings
 from ondeline_api.db.models.identity import Session as DBSession
 from ondeline_api.db.models.identity import User
@@ -22,6 +22,25 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 REFRESH_COOKIE = "refresh_token"
 CSRF_COOKIE = "csrf_token"
+
+_DUMMY_PASSWORD_HASH: str | None = None
+
+
+def _get_dummy_hash() -> str:
+    """Lazily compute (or read from Settings) an argon2id hash to verify against
+    when the user lookup fails. This keeps login latency for nonexistent emails
+    indistinguishable from latency for wrong passwords.
+    """
+    global _DUMMY_PASSWORD_HASH
+    if _DUMMY_PASSWORD_HASH is not None:
+        return _DUMMY_PASSWORD_HASH
+    settings = get_settings()
+    if settings.dummy_password_hash:
+        _DUMMY_PASSWORD_HASH = settings.dummy_password_hash
+    else:
+        # Hash a fixed-length random-ish string; never matches a real password.
+        _DUMMY_PASSWORD_HASH = hash_password("__timing_oracle_dummy__")
+    return _DUMMY_PASSWORD_HASH
 
 
 class LoginRequest(BaseModel):
@@ -95,11 +114,16 @@ async def login(
     result = await session.execute(select(User).where(User.email == payload.email))
     user = result.scalar_one_or_none()
 
-    valid = (
-        user is not None
-        and user.is_active
-        and verify_password(payload.password, user.password_hash)
-    )
+    # Always call verify_password — against the real hash if user is found and active,
+    # otherwise against the dummy hash. Constant-time behavior prevents email enumeration.
+    if user is not None and user.is_active:
+        password_hash = user.password_hash
+    else:
+        password_hash = _get_dummy_hash()
+
+    password_ok = verify_password(payload.password, password_hash)
+    valid = user is not None and user.is_active and password_ok
+
     if not valid:
         state = await lockout.record_failure(redis, payload.email)  # type: ignore[arg-type]
         await write_audit(

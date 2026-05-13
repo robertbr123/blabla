@@ -81,6 +81,10 @@ class Settings(BaseSettings):
     pii_encryption_key: SecretStr = SecretStr("")
     pii_hash_pepper: SecretStr = SecretStr("")
 
+    # Timing oracle mitigation: pre-computed argon2id hash for nonexistent users.
+    # If empty at startup, auth module computes one lazily (cheaper than re-hashing per request).
+    dummy_password_hash: str = ""
+
     # Token TTLs
     access_token_ttl_minutes: int = 15
     refresh_token_ttl_days: int = 7
