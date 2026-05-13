@@ -51,6 +51,8 @@ dev = [
     "fakeredis>=2.26.0",
     "celery-types>=0.22.0",
     "respx>=0.21.0",
+    "pyyaml>=6.0",
+    "types-pyyaml>=6.0",
 ]
 
 [tool.hatch.build.targets.wheel]

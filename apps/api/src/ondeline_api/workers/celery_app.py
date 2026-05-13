@@ -18,6 +18,7 @@ from ondeline_api.config import get_settings
 from ondeline_api.services.logging_config import configure_logging
 from ondeline_api.services.otel_init import init_otel
 from ondeline_api.services.sentry_init import init_sentry
+from ondeline_api.workers.queues import DEFAULT_QUEUE, QUEUES
 
 
 def create_celery_app() -> Celery:
@@ -39,16 +40,8 @@ def create_celery_app() -> Celery:
         task_acks_late=True,
         task_reject_on_worker_lost=True,
         worker_prefetch_multiplier=1,
-        task_default_queue="default",
-        task_queues={
-            "default": {"exchange": "default", "routing_key": "default"},
-            "llm": {"exchange": "llm", "routing_key": "llm"},
-            "sgp": {"exchange": "sgp", "routing_key": "sgp"},
-            "notifications": {
-                "exchange": "notifications",
-                "routing_key": "notifications",
-            },
-        },
+        task_default_queue=DEFAULT_QUEUE,
+        task_queues={q: {"exchange": q, "routing_key": q} for q in QUEUES},
         task_routes={
             "ondeline_api.workers.inbound.process_inbound_message_task": {
                 "queue": "default"

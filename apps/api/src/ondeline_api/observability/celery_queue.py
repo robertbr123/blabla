@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 from ondeline_api.deps import RedisLike
+from ondeline_api.workers.queues import QUEUES
 
-CELERY_QUEUES = ("default", "llm", "sgp", "notifications")
+# Backward-compat alias — pre-existing code and tests imported CELERY_QUEUES
+# from this module. The canonical source is workers.queues.QUEUES.
+CELERY_QUEUES = QUEUES
 
 
 async def queue_depths(redis: RedisLike) -> dict[str, int]:
@@ -13,6 +16,6 @@ async def queue_depths(redis: RedisLike) -> dict[str, int]:
     LLEN returns 0 for missing keys, so unconfigured queues report cleanly.
     """
     depths: dict[str, int] = {}
-    for q in CELERY_QUEUES:
+    for q in QUEUES:
         depths[q] = int(await redis.llen(q))
     return depths
