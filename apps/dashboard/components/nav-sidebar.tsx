@@ -39,7 +39,7 @@ export function NavSidebar({ role }: { role: 'admin' | 'atendente' | 'tecnico' }
     <aside className="flex h-screen w-60 flex-col border-r bg-card">
       <div className="flex h-14 items-center border-b px-6">
         <Link href="/metricas" className="font-semibold">
-          Ondeline
+          BlaBla
         </Link>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">

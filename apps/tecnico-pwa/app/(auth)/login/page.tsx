@@ -43,7 +43,7 @@ function LoginForm() {
     <main className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Ondeline Técnico</CardTitle>
+          <CardTitle>BlaBla Técnico</CardTitle>
           <CardDescription>Entre com sua conta</CardDescription>
         </CardHeader>
         <CardContent>

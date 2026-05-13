@@ -65,7 +65,7 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Ondeline Dashboard</CardTitle>
+          <CardTitle>BlaBla</CardTitle>
           <CardDescription>Entre com sua conta para continuar</CardDescription>
         </CardHeader>
         <CardContent>
