@@ -29,7 +29,7 @@ from ondeline_api.services.sgp_cache import SgpCacheService
 from ondeline_api.services.tokens_budget import TokensBudget
 from ondeline_api.tools.context import ToolContext
 from ondeline_api.workers.celery_app import celery_app
-from ondeline_api.workers.runtime import get_redis, task_session
+from ondeline_api.workers.runtime import get_redis, reset_redis_cache, task_session
 
 log = structlog.get_logger(__name__)
 
@@ -128,9 +128,11 @@ def llm_turn_task(self: Any, *, conversa_id: str) -> dict[str, Any]:
             from ondeline_api.db.engine import reset_engine_cache
 
             reset_engine_cache()
+            reset_redis_cache()
 
             def _run_in_thread(c: UUID) -> dict[str, Any]:
                 reset_engine_cache()
+                reset_redis_cache()
                 return asyncio.run(_run(c))
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:

@@ -26,7 +26,12 @@ from ondeline_api.services.inbound import (
 )
 from ondeline_api.webhook.parser import ParseError, parse_messages_upsert
 from ondeline_api.workers.celery_app import celery_app
-from ondeline_api.workers.runtime import BufferedOutboundEnqueuer, get_redis, task_session
+from ondeline_api.workers.runtime import (
+    BufferedOutboundEnqueuer,
+    get_redis,
+    reset_redis_cache,
+    task_session,
+)
 
 log = structlog.get_logger(__name__)
 
@@ -104,9 +109,11 @@ def process_inbound_message_task(self: Any, payload: dict[str, Any]) -> dict[str
             from ondeline_api.db.engine import reset_engine_cache
 
             reset_engine_cache()
+            reset_redis_cache()
 
             def _run_in_thread(p: dict[str, Any]) -> dict[str, Any]:
                 reset_engine_cache()  # also reset inside thread for safety
+                reset_redis_cache()
                 return asyncio.run(_run(p))
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:

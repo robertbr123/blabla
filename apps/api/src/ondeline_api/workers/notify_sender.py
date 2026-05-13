@@ -15,7 +15,7 @@ from ondeline_api.db.models.business import Cliente
 from ondeline_api.repositories.notificacao import NotificacaoRepo
 from ondeline_api.services.notify_sender import send_one
 from ondeline_api.workers.celery_app import celery_app
-from ondeline_api.workers.runtime import task_session
+from ondeline_api.workers.runtime import reset_redis_cache, task_session
 
 log = structlog.get_logger(__name__)
 
@@ -64,9 +64,11 @@ def _run_in_thread_or_loop(coro_factory: Any) -> dict[str, int]:
         from ondeline_api.db.engine import reset_engine_cache
 
         reset_engine_cache()
+        reset_redis_cache()
 
         def _run_in_thread() -> dict[str, int]:
             reset_engine_cache()
+            reset_redis_cache()
             return asyncio.run(coro_factory())
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:

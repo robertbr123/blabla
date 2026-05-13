@@ -16,7 +16,7 @@ from ondeline_api.observability.metrics import (
 )
 from ondeline_api.repositories.mensagem import MensagemRepo
 from ondeline_api.workers.celery_app import celery_app
-from ondeline_api.workers.runtime import get_redis, task_session
+from ondeline_api.workers.runtime import get_redis, reset_redis_cache, task_session
 
 log = structlog.get_logger(__name__)
 
@@ -92,8 +92,12 @@ def send_outbound_task(
             # own asyncpg pool bound to its event loop (pools are per-loop).
             from ondeline_api.db.engine import reset_engine_cache
 
+            reset_engine_cache()
+            reset_redis_cache()
+
             def _run_in_thread(j: str, t: str, c: UUID) -> dict[str, str]:
                 reset_engine_cache()
+                reset_redis_cache()
                 return asyncio.run(_run(j, t, c))
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:

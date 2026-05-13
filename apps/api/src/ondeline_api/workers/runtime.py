@@ -40,6 +40,12 @@ async def get_redis() -> aioredis.Redis[bytes]:
     return _redis_singleton
 
 
+def reset_redis_cache() -> None:
+    """Reset the Redis singleton. Call when entering a new event loop."""
+    global _redis_singleton
+    _redis_singleton = None
+
+
 @asynccontextmanager
 async def task_session() -> AsyncIterator[AsyncSession]:
     """Yields a fresh AsyncSession bound a uma transacao. Commit no exit limpo,
