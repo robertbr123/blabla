@@ -1,0 +1,45 @@
+{
+  "title": "Ondeline — Product (placeholder)",
+  "uid": "ondeline-product",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "tags": ["ondeline", "m8", "product"],
+  "time": { "from": "now-24h", "to": "now" },
+  "timezone": "browser",
+  "templating": { "list": [] },
+  "annotations": { "list": [] },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "OS criadas/dia (placeholder)",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 6 },
+      "options": {
+        "mode": "markdown",
+        "content": "**Placeholder** — product KPIs (OS criadas/dia, CSAT, FCR, etc.) require a Postgres data source plugin in Grafana, deferred to post-cutover infra. For now, use the REST endpoint `/api/v1/metricas` to query these values directly from the dashboard app."
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Mensagens/min por status",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "x": 0, "y": 6, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(ondeline_msgs_processed_total[1m]) * 60",
+          "datasource": { "type": "prometheus", "uid": "prometheus" }
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {}
+    }
+  ]
+}
