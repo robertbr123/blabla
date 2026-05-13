@@ -1,3 +1,5 @@
+import { getAccessToken, refreshAccessToken, setAccessToken } from './token'
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
 
 export class ApiError extends Error {
@@ -12,21 +14,48 @@ function getCsrfToken(): string | undefined {
   return m?.[1]
 }
 
-export async function apiFetch<T>(
+function isAuthEndpoint(path: string): boolean {
+  return (
+    path === '/auth/login' ||
+    path === '/auth/logout' ||
+    path === '/auth/refresh'
+  )
+}
+
+async function doFetch(
   path: string,
-  init: RequestInit = {},
-): Promise<T> {
+  init: RequestInit,
+  bearer: string | null,
+): Promise<Response> {
   const headers = new Headers(init.headers)
-  headers.set('Content-Type', 'application/json')
+  if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
   const csrf = getCsrfToken()
   if (csrf && init.method && init.method !== 'GET') {
     headers.set('X-CSRF', csrf)
   }
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers,
-    credentials: 'include',
-  })
+  if (bearer && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${bearer}`)
+  }
+  return fetch(`${API_URL}${path}`, { ...init, headers, credentials: 'include' })
+}
+
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  let res = await doFetch(path, init, getAccessToken())
+
+  if (res.status === 401 && !isAuthEndpoint(path)) {
+    const fresh = await refreshAccessToken(API_URL)
+    if (fresh) {
+      res = await doFetch(path, init, fresh)
+    } else if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      setAccessToken(null)
+      const next = encodeURIComponent(window.location.pathname + window.location.search)
+      window.location.href = `/login?next=${next}`
+    }
+  }
+
   if (!res.ok) {
     let detail = res.statusText
     try {

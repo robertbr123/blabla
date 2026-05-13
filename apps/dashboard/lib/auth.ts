@@ -1,4 +1,5 @@
 import { apiFetch } from './api/client'
+import { setAccessToken } from './api/token'
 
 /** Shape returned by the backend /auth/me endpoint. */
 export interface MeOut {
@@ -18,14 +19,20 @@ export interface LoginOut {
 }
 
 export async function login(email: string, password: string): Promise<LoginOut> {
-  return apiFetch<LoginOut>('/auth/login', {
+  const out = await apiFetch<LoginOut>('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   })
+  setAccessToken(out.access_token)
+  return out
 }
 
 export async function logout(): Promise<void> {
-  await apiFetch<void>('/auth/logout', { method: 'POST' })
+  try {
+    await apiFetch<void>('/auth/logout', { method: 'POST' })
+  } finally {
+    setAccessToken(null)
+  }
 }
 
 export async function getMe(): Promise<MeOut | null> {
