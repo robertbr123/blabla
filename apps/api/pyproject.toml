@@ -28,6 +28,7 @@ dependencies = [
     "prometheus-client>=0.21.0",
     "sse-starlette>=2.1.0",
     "python-multipart>=0.0.20",
+    "sentry-sdk[fastapi,celery,sqlalchemy]>=2.20.0",
 ]
 
 [project.optional-dependencies]

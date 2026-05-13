@@ -16,6 +16,7 @@ from celery.signals import worker_process_init
 
 from ondeline_api.config import get_settings
 from ondeline_api.services.logging_config import configure_logging
+from ondeline_api.services.sentry_init import init_sentry
 
 
 def create_celery_app() -> Celery:
@@ -77,3 +78,4 @@ celery_app = create_celery_app()
 def _init_worker_logging(**_kwargs: object) -> None:
     """Reconfigure structlog inside each forked Celery worker process."""
     configure_logging()
+    init_sentry(component="worker")

@@ -23,6 +23,7 @@ from ondeline_api.api.v1 import tecnicos as v1_tecnicos
 from ondeline_api.api.webhook import limiter as webhook_limiter
 from ondeline_api.auth.csrf import CSRFMiddleware
 from ondeline_api.services.logging_config import configure_logging
+from ondeline_api.services.sentry_init import init_sentry
 
 CSRF_EXEMPT_PATHS = [
     "/auth/login",
@@ -38,6 +39,7 @@ CSRF_EXEMPT_PATHS = [
 
 def create_app() -> FastAPI:
     configure_logging()
+    init_sentry(component="api")
     app = FastAPI(
         title="Ondeline API",
         version=__version__,
