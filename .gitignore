@@ -16,6 +16,10 @@ htmlcov/
 .coverage
 dist/
 build/
+uv.lock
+
+# Harness state (Claude Code scheduled tasks lock, etc.)
+.claude/
 
 # Node / Next.js
 node_modules/
