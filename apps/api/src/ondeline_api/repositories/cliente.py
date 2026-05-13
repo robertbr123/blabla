@@ -1,5 +1,8 @@
-"""ClienteRepo — get_by_cpf_hash + upsert_from_sgp."""
+"""ClienteRepo — get_by_cpf_hash + upsert_from_sgp + list_paginated + soft_delete."""
 from __future__ import annotations
+
+from datetime import datetime
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +30,45 @@ def _format_endereco(c: ClienteSgp) -> str:
 class ClienteRepo:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
+
+    async def get_by_id(self, cliente_id: UUID) -> Cliente | None:
+        from sqlalchemy import select
+        stmt = select(Cliente).where(
+            Cliente.id == cliente_id, Cliente.deleted_at.is_(None)
+        )
+        return (await self._session.execute(stmt)).scalar_one_or_none()
+
+    async def list_paginated(
+        self,
+        *,
+        q: str | None = None,
+        cidade: str | None = None,
+        cursor: datetime | None = None,
+        limit: int = 50,
+    ) -> tuple[list[Cliente], datetime | None]:
+        from sqlalchemy import desc, select
+        stmt = select(Cliente).where(Cliente.deleted_at.is_(None))
+        if q:
+            stmt = stmt.where(Cliente.whatsapp.ilike(f"%{q}%"))
+        if cidade:
+            stmt = stmt.where(Cliente.cidade == cidade)
+        if cursor is not None:
+            stmt = stmt.where(Cliente.created_at < cursor)
+        stmt = stmt.order_by(desc(Cliente.created_at)).limit(limit + 1)
+        rows = list((await self._session.execute(stmt)).scalars().all())
+        if len(rows) > limit:
+            next_cursor = rows[limit].created_at
+            rows = rows[:limit]
+        else:
+            next_cursor = None
+        return rows, next_cursor
+
+    async def soft_delete(self, cliente: Cliente) -> None:
+        from datetime import UTC, datetime, timedelta
+        now = datetime.now(tz=UTC)
+        cliente.deleted_at = now
+        cliente.retention_until = now + timedelta(days=30)
+        await self._session.flush()
 
     async def get_by_cpf_hash(self, cpf_hash: str) -> Cliente | None:
         stmt = (

@@ -9,6 +9,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from ondeline_api import __version__
 from ondeline_api.api import auth, health
 from ondeline_api.api import webhook as webhook_router
+from ondeline_api.api.v1 import clientes as v1_clientes
 from ondeline_api.api.v1 import conversas as v1_conversas
 from ondeline_api.api.v1 import conversas_stream as v1_conversas_stream
 from ondeline_api.api.v1 import leads as v1_leads
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
     app.include_router(v1_conversas_stream.router)
     app.include_router(v1_os.router)
     app.include_router(v1_leads.router)
+    app.include_router(v1_clientes.router)
     return app
 
 
