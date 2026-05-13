@@ -16,6 +16,7 @@ from celery.signals import worker_process_init
 
 from ondeline_api.config import get_settings
 from ondeline_api.services.logging_config import configure_logging
+from ondeline_api.services.otel_init import init_otel
 from ondeline_api.services.sentry_init import init_sentry
 
 
@@ -76,6 +77,7 @@ celery_app = create_celery_app()
 
 @worker_process_init.connect
 def _init_worker_logging(**_kwargs: object) -> None:
-    """Reconfigure structlog inside each forked Celery worker process."""
+    """Reconfigure logging + Sentry + OTel inside each forked Celery worker process."""
     configure_logging()
     init_sentry(component="worker")
+    init_otel(component="worker")

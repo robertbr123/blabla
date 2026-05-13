@@ -93,6 +93,10 @@ class Settings(BaseSettings):
     # Observabilidade
     sentry_dsn: str = ""
 
+    # Tracing (OpenTelemetry)
+    otel_exporter_otlp_endpoint: str = ""  # ex: http://tempo:4318
+    otel_service_name: str = "ondeline-api"
+
     def effective_celery_broker(self) -> str:
         return self.celery_broker_url or self.redis_url
 

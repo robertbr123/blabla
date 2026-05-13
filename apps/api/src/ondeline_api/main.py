@@ -23,6 +23,7 @@ from ondeline_api.api.v1 import tecnicos as v1_tecnicos
 from ondeline_api.api.webhook import limiter as webhook_limiter
 from ondeline_api.auth.csrf import CSRFMiddleware
 from ondeline_api.services.logging_config import configure_logging
+from ondeline_api.services.otel_init import init_otel
 from ondeline_api.services.sentry_init import init_sentry
 
 CSRF_EXEMPT_PATHS = [
@@ -45,6 +46,7 @@ def create_app() -> FastAPI:
         version=__version__,
         description="WhatsApp bot + admin API for Ondeline Telecom",
     )
+    init_otel(component="api", fastapi_app=app)
     app.add_middleware(CSRFMiddleware, exempt_paths=CSRF_EXEMPT_PATHS)
 
     # Rate limiter (slowapi) — apenas o webhook usa por enquanto
