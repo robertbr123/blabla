@@ -36,7 +36,9 @@ export async function getMe(): Promise<MeOut | null> {
   }
 }
 
-/** Server-side getMe helper. Reads cookies from the incoming request. */
+/** Server-side getMe helper. Two-hop because /auth/me needs Bearer:
+ *   refresh (cookie -> access_token), then /auth/me (Bearer -> MeOut).
+ */
 export async function getMeServer(): Promise<MeOut | null> {
   const { cookies } = await import('next/headers')
   const c = await cookies()
@@ -45,14 +47,24 @@ export async function getMeServer(): Promise<MeOut | null> {
     .map(({ name, value }) => `${name}=${value}`)
     .join('; ')
   if (!all) return null
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
+  const apiUrl =
+    process.env.INTERNAL_API_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    'http://127.0.0.1:8000'
   try {
-    const res = await fetch(`${apiUrl}/auth/me`, {
+    const refreshRes = await fetch(`${apiUrl}/auth/refresh`, {
+      method: 'POST',
       headers: { cookie: all },
       cache: 'no-store',
     })
-    if (!res.ok) return null
-    return (await res.json()) as MeOut
+    if (!refreshRes.ok) return null
+    const { access_token } = (await refreshRes.json()) as { access_token: string }
+    const meRes = await fetch(`${apiUrl}/auth/me`, {
+      headers: { Authorization: `Bearer ${access_token}` },
+      cache: 'no-store',
+    })
+    if (!meRes.ok) return null
+    return (await meRes.json()) as MeOut
   } catch {
     return null
   }

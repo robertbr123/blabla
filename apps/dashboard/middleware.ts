@@ -16,10 +16,15 @@ export function middleware(req: NextRequest) {
   const needsAuth = PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))
   if (!needsAuth) return NextResponse.next()
 
-  // The M2 backend sets an httpOnly `refresh_token` cookie on login.
-  // We cannot validate the JWT here (edge runtime), so we treat its presence
-  // as a sufficient signal. The API will reject stale tokens independently.
-  const token = req.cookies.get('refresh_token')
+  // The M2 backend sets two cookies on login:
+  //   - refresh_token (httpOnly, Path=/auth) — used by /auth/refresh only
+  //   - csrf_token    (readable,  Path=/)    — double-submit CSRF token
+  // We probe csrf_token here because the refresh_token's Path=/auth scope
+  // means it isn't sent to /conversas (or any non-/auth path), so the
+  // middleware never sees it. csrf_token is set by /auth/login and cleared
+  // by /auth/logout, so its presence is the right "user is logged in" signal
+  // at the edge. The API still validates the JWT on every protected call.
+  const token = req.cookies.get('csrf_token')
   if (!token) {
     const url = req.nextUrl.clone()
     url.pathname = '/login'

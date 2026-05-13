@@ -72,7 +72,7 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
         secure=secure,
         samesite=settings.cookie_samesite,  # type: ignore[arg-type]
         max_age=settings.refresh_token_ttl_days * 24 * 3600,
-        path="/auth",
+        path="/",
     )
 
 
@@ -235,7 +235,7 @@ async def logout(
             )
             await session.flush()
 
-    response.delete_cookie(REFRESH_COOKIE, path="/auth")
+    response.delete_cookie(REFRESH_COOKIE, path="/")
     response.delete_cookie(CSRF_COOKIE, path="/")
     return Response(status_code=204)
 
