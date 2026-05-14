@@ -29,6 +29,10 @@ class ConversaListItem(BaseModel):
     atendente_id: UUID | None
     created_at: datetime
     last_message_at: datetime | None
+    transferred_at: datetime | None = None
+    first_response_at: datetime | None = None
+    tags: list[str] | None = None
+    sla_minutes: int = 15
 
 
 class ConversaOut(ConversaListItem):
