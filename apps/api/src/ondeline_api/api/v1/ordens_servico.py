@@ -47,7 +47,7 @@ log = structlog.get_logger(__name__)
 
 
 async def _send_whatsapp(whatsapp: str, msg: str) -> None:
-    """Best-effort WhatsApp notification. Never raises (logs and swallows)."""
+    """Best-effort WhatsApp notification. Never raises."""
     try:
         from ondeline_api.adapters.evolution import EvolutionAdapter
         from ondeline_api.config import get_settings
@@ -60,10 +60,12 @@ async def _send_whatsapp(whatsapp: str, msg: str) -> None:
         )
         try:
             await evo.send_text(whatsapp, msg)
+        except Exception:
+            log.warning("os.whatsapp_send_failed", whatsapp=whatsapp, exc_info=True)
         finally:
             await evo.aclose()
     except Exception:
-        log.warning("os.whatsapp_send_failed", whatsapp=whatsapp)
+        log.warning("os.whatsapp_send_failed_cleanup", whatsapp=whatsapp)
 
 
 @router.get("", response_model=CursorPage[OsListItem], dependencies=[_role_dep])
@@ -182,6 +184,8 @@ async def reatribuir_os(
         raise HTTPException(
             status_code=422, detail="OS concluída não pode ser reatribuída"
         )
+    if os_.tecnico_id == body.tecnico_id:
+        return OsOut.model_validate(os_)
 
     tec_repo = TecnicoRepo(session)
     novo_tec = await tec_repo.get_by_id(body.tecnico_id)
@@ -300,6 +304,8 @@ async def concluir_os(
     os_ = await repo.get_by_id(os_id)
     if os_ is None:
         raise HTTPException(status_code=404, detail="OS not found")
+    if os_.status == OsStatus.CONCLUIDA:
+        raise HTTPException(status_code=422, detail="OS já concluída")
     await repo.concluir(os_, csat=body.csat, comentario=body.comentario)
 
     if os_.cliente_id:
