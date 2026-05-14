@@ -1,6 +1,7 @@
 'use client'
 import { useRef, useState } from 'react'
 import { CheckCircle2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,6 +15,8 @@ import {
   usePatchOs,
   useUploadFoto,
 } from '@/lib/api/queries'
+import { apiFetch } from '@/lib/api/client'
+import { getAccessToken } from '@/lib/api/token'
 
 export function OsDetail({ id }: { id: string }) {
   const { data, isLoading, error } = useOs(id)
@@ -23,6 +26,7 @@ export function OsDetail({ id }: { id: string }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [csat, setCsat] = useState('')
   const [comentario, setComentario] = useState('')
+  const [enviandoPdf, setEnviandoPdf] = useState(false)
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Carregando…</p>
   if (error) {
@@ -48,6 +52,34 @@ export function OsDetail({ id }: { id: string }) {
     if (!file) return
     await uploadFoto.mutateAsync(file)
     if (fileRef.current) fileRef.current.value = ''
+  }
+
+  async function handleBaixarPdf() {
+    const token = getAccessToken()
+    const res = await fetch(`/api/v1/os/${id}/pdf`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      credentials: 'include',
+    })
+    if (!res.ok) {
+      toast.error('Erro ao gerar PDF')
+      return
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 10000)
+  }
+
+  async function handleEnviarPdfTecnico() {
+    setEnviandoPdf(true)
+    try {
+      await apiFetch(`/api/v1/os/${id}/enviar-pdf-tecnico`, { method: 'POST' })
+      toast.success('PDF enviado ao técnico via WhatsApp')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao enviar PDF')
+    } finally {
+      setEnviandoPdf(false)
+    }
   }
 
   const isConcluida = data.status === 'concluida'
@@ -145,6 +177,35 @@ export function OsDetail({ id }: { id: string }) {
                   </li>
                 ))}
               </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">PDF da OS</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <Button
+              className="w-full"
+              variant="outline"
+              onClick={handleBaixarPdf}
+            >
+              Baixar PDF
+            </Button>
+            <Button
+              className="w-full"
+              style={{ backgroundColor: '#25d366', color: 'white' }}
+              disabled={enviandoPdf || !data?.tecnico_id}
+              onClick={handleEnviarPdfTecnico}
+              title={!data?.tecnico_id ? 'OS sem técnico atribuído' : undefined}
+            >
+              {enviandoPdf ? 'Enviando…' : 'Enviar PDF ao Técnico'}
+            </Button>
+            {!data?.tecnico_id && (
+              <p className="text-xs text-muted-foreground">
+                Atribua um técnico para habilitar o envio.
+              </p>
             )}
           </CardContent>
         </Card>
