@@ -48,7 +48,7 @@ _DEFAULT_PLANOS: list[dict] = [
 
 async def _load(repo: ConfigRepo) -> list[dict]:
     raw = await repo.get("planos")
-    return raw if isinstance(raw, list) else _DEFAULT_PLANOS
+    return list(raw) if isinstance(raw, list) else list(_DEFAULT_PLANOS)
 
 
 @router.get("", response_model=list[PlanoOut])
@@ -74,6 +74,7 @@ async def create_plano(
     data = body.model_dump()
     planos.append(data)
     await repo.set("planos", planos)
+    await session.commit()
     return PlanoOut(index=len(planos) - 1, **data)
 
 
@@ -90,6 +91,7 @@ async def update_plano(
     data = body.model_dump()
     planos[index] = data
     await repo.set("planos", planos)
+    await session.commit()
     return PlanoOut(index=index, **data)
 
 
@@ -104,3 +106,4 @@ async def delete_plano(
         raise HTTPException(status_code=404, detail="Plano not found")
     planos.pop(index)
     await repo.set("planos", planos)
+    await session.commit()
