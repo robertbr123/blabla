@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any, Protocol
 from uuid import UUID
 
@@ -135,7 +136,12 @@ async def process_inbound_message(
         )
 
     # Detecção de comando CONCLUIDO OS-* (técnico finaliza OS via WhatsApp)
-    if evt.kind is InboundKind.TEXT and evt.text and deps.session is not None:
+    if (
+        evt.kind is InboundKind.TEXT
+        and evt.text
+        and deps.session is not None
+        and conversa.estado is not ConversaEstado.CHECKLIST_OS
+    ):
         _m = _CMD_CONCLUIDO_RE.match((evt.text or "").strip())
         if _m:
             codigo = _m.group(1).upper()
@@ -191,6 +197,21 @@ async def process_inbound_message(
             4: ("foto_url", "5️⃣ Alguma observação adicional? (ou responda NENHUMA)"),
             5: ("observacao", None),
         }
+
+        if step not in _PERGUNTAS:
+            # Step corrupted — reset to CLIENTE state
+            conversa.checklist_metadata = None
+            await deps.conversas.update_estado_status(
+                conversa, estado=ConversaEstado.CLIENTE, status=ConversaStatus.BOT
+            )
+            deps.outbound.enqueue_send_outbound(
+                evt.jid,
+                "Ocorreu um erro no relatório de conclusão. Por favor, envie o comando CONCLUIDO novamente.",
+                conversa.id,
+            )
+            return InboundResult(
+                conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
+            )
 
         campo, proxima_pergunta = _PERGUNTAS[step]
 
@@ -281,6 +302,8 @@ async def process_inbound_message(
         if category in CATEGORIES_ESCALATE:
             # Avisa cliente e escala para humano
             deps.outbound.enqueue_send_outbound(evt.jid, ack, conversa.id)
+            if conversa.transferred_at is None:
+                conversa.transferred_at = datetime.now(tz=UTC)
             await deps.conversas.update_estado_status(
                 conversa,
                 estado=ConversaEstado.AGUARDA_ATENDENTE,
@@ -308,7 +331,7 @@ async def process_inbound_message(
             if conversa.cliente_id is not None:
                 from ondeline_api.db.models.business import Cliente as ClienteModel
                 from sqlalchemy import select as sa_select
-                _session = getattr(deps.conversas, "_session", None)
+                _session = deps.session
                 if _session is not None:
                     cli_row = (
                         await _session.execute(
@@ -330,6 +353,8 @@ async def process_inbound_message(
                     "Um atendente vai te ajudar com os próximos passos. 🙏"
                 )
                 deps.outbound.enqueue_send_outbound(evt.jid, msg_escala, conversa.id)
+                if conversa.transferred_at is None:
+                    conversa.transferred_at = datetime.now(tz=UTC)
                 await deps.conversas.update_estado_status(
                     conversa,
                     estado=ConversaEstado.AGUARDA_ATENDENTE,

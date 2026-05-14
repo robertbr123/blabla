@@ -68,7 +68,7 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
     if (data?.cliente?.endereco && !osEndereco) {
       setOsEndereco(data.cliente.endereco)
     }
-  }, [data?.cliente?.endereco])
+  }, [data?.cliente?.endereco, osEndereco])
 
   // SSE real-time
   useEffect(() => {
@@ -121,6 +121,7 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
     })
     setTab('mensagens')
     setOsProblema('')
+    setOsEndereco('')
     void refetch()
   }
 
