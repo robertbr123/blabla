@@ -58,7 +58,7 @@ async def _make_admin(db_session: AsyncSession) -> dict[str, Any]:
     )
     db_session.add(user)
     await db_session.flush()
-    return {"email": email, "password": password, "id": user.id}
+    return {"email": email, "password": password, "id": user.id, "user": user}
 
 
 async def _make_cliente(db_session: AsyncSession) -> Cliente:
@@ -74,9 +74,19 @@ async def _make_cliente(db_session: AsyncSession) -> Cliente:
     return c
 
 
+async def _make_tecnico(db_session: AsyncSession) -> Any:
+    """Create a minimal Tecnico row (ativo=True, no whatsapp by default)."""
+    from ondeline_api.db.models.business import Tecnico
+    t = Tecnico(nome=f"Tec-{uuid4().hex[:6]}", ativo=True)
+    db_session.add(t)
+    await db_session.flush()
+    return t
+
+
 async def _make_os(
     db_session: AsyncSession,
     cliente: Cliente,
+    tecnico: Any | None = None,
     *,
     codigo: str | None = None,
 ) -> OrdemServico:
@@ -84,7 +94,7 @@ async def _make_os(
     os_ = OrdemServico(
         codigo=codigo or f"OS-20260101-{uuid4().hex[:3]}",
         cliente_id=cliente.id,
-        tecnico_id=None,
+        tecnico_id=tecnico.id if tecnico is not None else None,
         problema="Internet caindo frequentemente",
         endereco="Rua Teste, 123",
         status=OsStatus.PENDENTE,
@@ -120,18 +130,26 @@ async def app_and_token(db_session: AsyncSession, redis_client: Redis) -> Any:  
 @pytest.mark.asyncio
 async def test_create_os_returns_201_with_codigo(app_and_token: Any) -> None:
     """POST /api/v1/os creates an OS with a formatted codigo."""
+    from unittest.mock import AsyncMock, patch
+
     client, token, _admin, db_session = app_and_token
     cliente = await _make_cliente(db_session)
+    tec = await _make_tecnico(db_session)
 
-    r = await client.post(
-        "/api/v1/os",
-        json={
-            "cliente_id": str(cliente.id),
-            "problema": "Sem sinal de internet",
-            "endereco": "Av. Principal, 500",
-        },
-        headers=_auth(token),
-    )
+    with patch(
+        "ondeline_api.api.v1.ordens_servico._send_whatsapp",
+        new_callable=AsyncMock,
+    ):
+        r = await client.post(
+            "/api/v1/os",
+            json={
+                "cliente_id": str(cliente.id),
+                "tecnico_id": str(tec.id),
+                "problema": "Sem sinal de internet",
+                "endereco": "Av. Principal, 500",
+            },
+            headers=_auth(token),
+        )
     assert r.status_code == 201, r.text
     body = r.json()
     assert "codigo" in body
@@ -139,6 +157,7 @@ async def test_create_os_returns_201_with_codigo(app_and_token: Any) -> None:
     assert body["codigo"].startswith("OS-")
     assert body["status"] == "pendente"
     assert body["problema"] == "Sem sinal de internet"
+    assert body["tecnico_id"] == str(tec.id)
 
 
 @pytest.mark.asyncio
@@ -330,3 +349,98 @@ async def test_list_paginated_by_cliente_id(db_session: AsyncSession) -> None:
     rows, _ = await repo.list_paginated(cliente_id=cliente.id)
     assert len(rows) == 1
     assert rows[0].id == os1.id
+
+
+# ─── Reatribuir / Delete / Create-with-tecnico tests ────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_reatribuir_troca_tecnico(
+    db_session: AsyncSession, redis_client: Redis  # type: ignore[type-arg]
+) -> None:
+    from unittest.mock import AsyncMock, patch
+
+    cliente = await _make_cliente(db_session)
+    tec1 = await _make_tecnico(db_session)
+    tec1.whatsapp = "5511111@s"
+    tec2 = await _make_tecnico(db_session)
+    tec2.whatsapp = "5522222@s"
+    await db_session.flush()
+    os_ = await _make_os(db_session, cliente, tec1)
+    admin = await _make_admin(db_session)
+
+    app = _make_app(db_session, redis_client)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        token = await _login(c, admin["email"], admin["password"])
+        with patch(
+            "ondeline_api.api.v1.ordens_servico._send_whatsapp",
+            new_callable=AsyncMock,
+        ):
+            r = await c.post(
+                f"/api/v1/os/{os_.id}/reatribuir",
+                json={"tecnico_id": str(tec2.id)},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["tecnico_id"] == str(tec2.id)
+    assert data["reatribuido_por"] == str(admin["user"].id)
+    assert len(data["historico_reatribuicoes"]) == 1
+    assert data["historico_reatribuicoes"][0]["de"] == str(tec1.id)
+
+
+@pytest.mark.asyncio
+async def test_reatribuir_concluida_retorna_422(
+    db_session: AsyncSession, redis_client: Redis  # type: ignore[type-arg]
+) -> None:
+    from unittest.mock import AsyncMock, patch
+
+    cliente = await _make_cliente(db_session)
+    tec1 = await _make_tecnico(db_session)
+    tec2 = await _make_tecnico(db_session)
+    os_ = await _make_os(db_session, cliente, tec1)
+    os_.status = OsStatus.CONCLUIDA
+    await db_session.flush()
+    admin = await _make_admin(db_session)
+
+    app = _make_app(db_session, redis_client)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        token = await _login(c, admin["email"], admin["password"])
+        with patch(
+            "ondeline_api.api.v1.ordens_servico._send_whatsapp",
+            new_callable=AsyncMock,
+        ):
+            r = await c.post(
+                f"/api/v1/os/{os_.id}/reatribuir",
+                json={"tecnico_id": str(tec2.id)},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_delete_os(
+    db_session: AsyncSession, redis_client: Redis  # type: ignore[type-arg]
+) -> None:
+    from unittest.mock import AsyncMock, patch
+
+    cliente = await _make_cliente(db_session)
+    tec = await _make_tecnico(db_session)
+    tec.whatsapp = "5533333@s"
+    await db_session.flush()
+    os_ = await _make_os(db_session, cliente, tec)
+    admin = await _make_admin(db_session)
+
+    app = _make_app(db_session, redis_client)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        token = await _login(c, admin["email"], admin["password"])
+        with patch(
+            "ondeline_api.api.v1.ordens_servico._send_whatsapp",
+            new_callable=AsyncMock,
+        ):
+            r = await c.delete(
+                f"/api/v1/os/{os_.id}",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+    assert r.status_code == 200
+    assert r.json()["notif_tecnico"] is True
