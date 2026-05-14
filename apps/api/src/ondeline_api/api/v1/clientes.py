@@ -10,12 +10,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel as _BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.api.deps_v1 import CursorParam, LimitParam, parse_cursor, parse_limit
 from ondeline_api.api.schemas.cliente import ClienteDetail, ClienteListItem
 from ondeline_api.api.schemas.pagination import CursorPage, encode_cursor
+from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.rbac import require_role
 from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.business import (
@@ -24,13 +26,23 @@ from ondeline_api.db.models.business import (
     Mensagem,
     OrdemServico,
 )
-from ondeline_api.db.models.identity import Role
+from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db
 from ondeline_api.repositories.cliente import ClienteRepo
 
 router = APIRouter(prefix="/api/v1/clientes", tags=["clientes"])
 _attendant_dep = Depends(require_role(Role.ATENDENTE, Role.ADMIN))
 _admin_dep = Depends(require_role(Role.ADMIN))
+
+
+class SgpClienteOut(_BaseModel):
+    nome: str
+    cpf_cnpj: str
+    plano: str | None
+    status_contrato: str | None
+    cidade: str | None
+    endereco: str | None
+    cliente_id: str | None  # UUID do cliente no nosso DB, se já existir
 
 
 def _to_list_item(c: Cliente) -> ClienteListItem:
@@ -66,6 +78,76 @@ def _to_detail(c: Cliente) -> ClienteDetail:
         "endereco": endereco,
         "retention_until": c.retention_until,
     })
+
+
+@router.get("/sgp", response_model=SgpClienteOut)
+async def sgp_lookup(
+    cpf: Annotated[str, Query()],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: Annotated[User, Depends(get_current_user)],
+) -> SgpClienteOut:
+    """Busca cliente no SGP por CPF/CNPJ para pré-preenchimento de OS."""
+    from ondeline_api.adapters.sgp.ondeline import SgpOndelineProvider
+    from ondeline_api.adapters.sgp.linknetam import SgpLinkNetAMProvider
+    from ondeline_api.adapters.sgp.router import SgpRouter
+    from ondeline_api.services.sgp_cache import SgpCacheService
+    from ondeline_api.services.sgp_config import load_sgp_config
+    from ondeline_api.workers.runtime import get_redis
+    from ondeline_api.config import get_settings
+
+    s = get_settings()
+    redis = await get_redis()
+    sgp_ond = await load_sgp_config(session, "ondeline")
+    sgp_lnk = await load_sgp_config(session, "linknetam")
+    router_sgp = SgpRouter(
+        primary=SgpOndelineProvider(**sgp_ond),
+        secondary=SgpLinkNetAMProvider(**sgp_lnk),
+    )
+    cache = SgpCacheService(
+        redis=redis,
+        session=session,
+        router=router_sgp,
+        ttl_cliente=s.sgp_cache_ttl_cliente,
+        ttl_negativo=s.sgp_cache_ttl_negativo,
+    )
+    cli = await cache.get_cliente(cpf)
+    if cli is None:
+        raise HTTPException(status_code=404, detail="cliente não encontrado no SGP")
+
+    contrato = cli.contratos[0] if cli.contratos else None
+    cidade = (contrato.cidade if contrato and contrato.cidade else None) or (
+        cli.endereco.cidade if cli.endereco else None
+    )
+    endereco_str = (
+        f"{cli.endereco.rua}, {cli.endereco.numero}"
+        if cli.endereco and cli.endereco.rua
+        else None
+    )
+
+    # Verifica se já existe no DB
+    from ondeline_api.db.crypto import hash_pii
+    from ondeline_api.db.models.business import Cliente as ClienteModel
+    from sqlalchemy import select as sa_select
+    cpf_digits = "".join(c for c in cpf if c.isdigit())
+    cpf_hash = hash_pii(cpf_digits)
+    db_cli = (
+        await session.execute(
+            sa_select(ClienteModel).where(
+                ClienteModel.cpf_hash == cpf_hash,
+                ClienteModel.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+
+    return SgpClienteOut(
+        nome=cli.nome,
+        cpf_cnpj=cpf_digits,
+        plano=contrato.plano if contrato else None,
+        status_contrato=contrato.status if contrato else None,
+        cidade=cidade,
+        endereco=endereco_str,
+        cliente_id=str(db_cli.id) if db_cli else None,
+    )
 
 
 @router.get("", response_model=CursorPage[ClienteListItem], dependencies=[_attendant_dep])
