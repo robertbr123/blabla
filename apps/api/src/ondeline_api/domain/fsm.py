@@ -26,6 +26,8 @@ class EventKind(StrEnum):
 class ActionKind(StrEnum):
     SEND_ACK = "send_ack"
     LLM_TURN = "llm_turn"  # M4: pede ao service que rode 1 turno LLM
+    FOLLOWUP_OS_CONFIRMAR = "followup_os_confirmar"  # cliente confirmou que OS resolveu
+    FOLLOWUP_OS_ESCALAR = "followup_os_escalar"  # cliente disse que problema persiste
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +53,16 @@ class InvalidTransition(Exception):
     pass
 
 
+_PALAVRAS_OK = {
+    "sim", "ok", "obrigado", "certo", "tudo bem", "já está", "resolveu",
+    "funcionou", "ótimo", "otimo",
+}
+_PALAVRAS_NOK = {
+    "não", "nao", "ainda não", "ainda nao", "continua", "sem sinal",
+    "sem internet", "mesmo problema", "não resolveu", "nao resolveu",
+}
+
+
 class Fsm:
     """Stateless FSM — nao tem `self`. Composto de regras puras."""
 
@@ -71,6 +83,28 @@ class Fsm:
                 new_estado=estado,
                 new_status=status,
                 actions=[],
+            )
+
+        # aguarda confirmacao de follow-up: classifica deterministicamente antes de chamar LLM
+        if estado is ConversaEstado.AGUARDA_FOLLOWUP_OS:
+            text_norm = (event.text or "").lower().strip()
+            if any(p in text_norm for p in _PALAVRAS_OK):
+                return FsmDecision(
+                    new_estado=ConversaEstado.ENCERRADA,
+                    new_status=ConversaStatus.ENCERRADA,
+                    actions=[Action(kind=ActionKind.FOLLOWUP_OS_CONFIRMAR)],
+                )
+            if any(p in text_norm for p in _PALAVRAS_NOK):
+                return FsmDecision(
+                    new_estado=ConversaEstado.AGUARDA_ATENDENTE,
+                    new_status=ConversaStatus.AGUARDANDO,
+                    actions=[Action(kind=ActionKind.FOLLOWUP_OS_ESCALAR)],
+                )
+            # ambiguo: LLM decide
+            return FsmDecision(
+                new_estado=ConversaEstado.AGUARDA_FOLLOWUP_OS,
+                new_status=ConversaStatus.BOT,
+                actions=[Action(kind=ActionKind.LLM_TURN)],
             )
 
         # encerrada: reabre + LLM cuida da nova interacao desde o inicio
