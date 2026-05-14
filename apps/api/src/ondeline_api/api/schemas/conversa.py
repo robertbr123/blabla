@@ -9,6 +9,16 @@ from pydantic import BaseModel, ConfigDict, Field
 from ondeline_api.api.schemas.mensagem import MensagemOut
 
 
+class ClienteEmbutido(BaseModel):
+    id: UUID
+    nome: str
+    cpf_cnpj: str
+    whatsapp: str
+    plano: str | None
+    cidade: str | None
+    endereco: str | None
+
+
 class ConversaListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -23,6 +33,7 @@ class ConversaListItem(BaseModel):
 
 class ConversaOut(ConversaListItem):
     mensagens: list[MensagemOut] = Field(default_factory=list)
+    cliente: ClienteEmbutido | None = None
 
 
 class ResponderIn(BaseModel):
