@@ -11,6 +11,7 @@ import {
   CalendarClock,
   BarChart3,
   Trophy,
+  Package,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -31,6 +32,7 @@ const ITEMS: ReadonlyArray<NavItem> = [
   { href: '/tecnicos', label: 'Técnicos', icon: Wrench, roles: ['admin'], exact: true },
   { href: '/tecnicos/ranking', label: 'Ranking Técnicos', icon: Trophy, roles: ['admin'] },
   { href: '/manutencoes', label: 'Manutenções', icon: CalendarClock, roles: ['admin'] },
+  { href: '/planos', label: 'Planos', icon: Package, roles: ['admin'] },
   { href: '/config', label: 'Configurações', icon: Settings, roles: ['admin'] },
 ]
 
