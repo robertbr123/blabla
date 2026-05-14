@@ -3,11 +3,10 @@ from __future__ import annotations
 
 import csv
 import io
-from calendar import monthrange
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -119,7 +118,7 @@ async def get_metricas(
 @router.get("/tecnicos", response_model=list[RankingTecnicoOut], dependencies=[_role_dep])
 async def get_ranking_tecnicos(
     session: Annotated[AsyncSession, Depends(get_db)],
-    mes: str | None = None,
+    mes: str | None = Query(None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$"),
 ) -> list[RankingTecnicoOut]:
     """Ranking de técnicos por OS concluídas no mês (formato: YYYY-MM)."""
     now = datetime.now(tz=UTC)
@@ -129,8 +128,10 @@ async def get_ranking_tecnicos(
         year, month = now.year, now.month
 
     inicio = datetime(year, month, 1, tzinfo=UTC)
-    last_day = monthrange(year, month)[1]
-    fim = datetime(year, month, last_day, 23, 59, 59, tzinfo=UTC)
+    if month == 12:
+        fim = datetime(year + 1, 1, 1, tzinfo=UTC)
+    else:
+        fim = datetime(year, month + 1, 1, tzinfo=UTC)
 
     rows = (
         await session.execute(
@@ -149,7 +150,7 @@ async def get_ranking_tecnicos(
                 (OrdemServico.tecnico_id == Tecnico.id)
                 & (OrdemServico.status == OsStatus.CONCLUIDA)
                 & (OrdemServico.concluida_em >= inicio)
-                & (OrdemServico.concluida_em <= fim),
+                & (OrdemServico.concluida_em < fim),
             )
             .where(Tecnico.ativo.is_(True))
             .group_by(Tecnico.id, Tecnico.nome)
@@ -163,7 +164,7 @@ async def get_ranking_tecnicos(
             nome=row.nome,
             os_concluidas=int(row.os_concluidas or 0),
             csat_avg=round(float(row.csat_avg), 2) if row.csat_avg is not None else None,
-            tempo_medio_min=int(row.tempo_medio_min) if row.tempo_medio_min is not None else None,
+            tempo_medio_min=round(float(row.tempo_medio_min)) if row.tempo_medio_min is not None else None,
             ultima_os_em=row.ultima_os_em.isoformat() if row.ultima_os_em else None,
         )
         for row in rows
@@ -173,7 +174,7 @@ async def get_ranking_tecnicos(
 @router.get("/tecnicos/export", dependencies=[_role_dep])
 async def export_ranking_tecnicos_csv(
     session: Annotated[AsyncSession, Depends(get_db)],
-    mes: str | None = None,
+    mes: str | None = Query(None, pattern=r"^\d{4}-(0[1-9]|1[0-2])$"),
 ) -> StreamingResponse:
     """Exporta ranking de técnicos como CSV para download."""
     ranking = await get_ranking_tecnicos(session=session, mes=mes)
@@ -195,5 +196,5 @@ async def export_ranking_tecnicos_csv(
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

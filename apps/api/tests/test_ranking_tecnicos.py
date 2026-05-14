@@ -13,10 +13,8 @@ from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ondeline_api.auth.passwords import hash_password
 from ondeline_api.config import get_settings
 from ondeline_api.db.models.business import OrdemServico, OsStatus, Tecnico
-from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db, get_redis
 from ondeline_api.main import create_app
 
