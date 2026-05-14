@@ -36,6 +36,7 @@ export function PlanoModal({ plano, onClose }: PlanoModalProps) {
   const isEditing = plano !== null && plano !== undefined
   const mutation = isEditing ? updatePlano : createPlano
   const isPending = mutation.isPending
+  const error = mutation.error
 
   function setField<K extends keyof PlanoIn>(key: K, value: PlanoIn[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -124,7 +125,7 @@ export function PlanoModal({ plano, onClose }: PlanoModalProps) {
               <div className="mt-2 flex flex-wrap gap-1">
                 {form.extras.map((ex, i) => (
                   <span
-                    key={i}
+                    key={`${i}-${ex}`}
                     className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800"
                   >
                     {ex}
@@ -158,6 +159,9 @@ export function PlanoModal({ plano, onClose }: PlanoModalProps) {
               Destaque (recomendado pelo bot)
             </label>
           </div>
+          {error && (
+            <p className="text-sm text-red-600">{(error as Error).message ?? 'Erro ao salvar plano'}</p>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancelar
