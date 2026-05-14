@@ -46,6 +46,7 @@ class OrdemServicoRepo:
         *,
         status: str | None = None,
         tecnico_id: UUID | None = None,
+        cliente_id: UUID | None = None,
         cidade: str | None = None,  # filter via Cliente.cidade join
         cursor: datetime | None = None,
         limit: int = 50,
@@ -57,6 +58,8 @@ class OrdemServicoRepo:
             stmt = stmt.where(OrdemServico.status == status)
         if tecnico_id:
             stmt = stmt.where(OrdemServico.tecnico_id == tecnico_id)
+        if cliente_id:
+            stmt = stmt.where(OrdemServico.cliente_id == cliente_id)
         if cursor is not None:
             stmt = stmt.where(OrdemServico.criada_em < cursor)
         stmt = stmt.order_by(desc(OrdemServico.criada_em)).limit(limit + 1)

@@ -136,3 +136,19 @@ class ConversaRepo:
         conversa.status = ConversaStatus.ENCERRADA
         conversa.estado = ConversaEstado.ENCERRADA
         await self._session.flush()
+
+    async def find_active_by_cliente_id(self, cliente_id: UUID) -> "Conversa | None":
+        """Returns the most recent non-encerrada conversa for a client."""
+        from sqlalchemy import desc
+
+        stmt = (
+            select(Conversa)
+            .where(
+                Conversa.cliente_id == cliente_id,
+                Conversa.deleted_at.is_(None),
+                Conversa.status != ConversaStatus.ENCERRADA,
+            )
+            .order_by(desc(Conversa.created_at))
+            .limit(1)
+        )
+        return (await self._session.execute(stmt)).scalar_one_or_none()

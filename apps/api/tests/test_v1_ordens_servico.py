@@ -257,3 +257,76 @@ async def test_list_os_no_auth_returns_401(
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         r = await c.get("/api/v1/os")
     assert r.status_code == 401
+
+
+# ─── Repository-level tests ──────────────────────────────────────────────────
+
+
+async def _make_cliente_repo(session: AsyncSession) -> Cliente:
+    from ondeline_api.db.crypto import hash_pii
+    c = Cliente(
+        cpf_cnpj_encrypted=encrypt_pii("11122233344"),
+        cpf_hash=hash_pii("11122233344"),
+        nome_encrypted=encrypt_pii("Joao"),
+        whatsapp="5511111@s",
+    )
+    session.add(c)
+    await session.flush()
+    return c
+
+
+async def _make_tecnico_repo(session: AsyncSession) -> "Any":
+    from ondeline_api.db.models.business import Tecnico
+    t = Tecnico(nome=f"Tec-{uuid4().hex[:6]}", ativo=True)
+    session.add(t)
+    await session.flush()
+    return t
+
+
+async def _make_os_repo(
+    session: AsyncSession,
+    cliente: Cliente,
+    tecnico: "Any",
+) -> OrdemServico:
+    from ondeline_api.domain.os_sequence import next_codigo
+    from ondeline_api.repositories.ordem_servico import OrdemServicoRepo as _Repo
+    codigo = await next_codigo(session)
+    repo = _Repo(session)
+    return await repo.create(
+        codigo=codigo,
+        cliente_id=cliente.id,
+        tecnico_id=tecnico.id,
+        problema="sem internet",
+        endereco="Rua A, 10",
+    )
+
+
+@pytest.mark.asyncio
+async def test_list_paginated_by_cliente_id(db_session: AsyncSession) -> None:
+    """list_paginated with cliente_id filter only returns OS for that client."""
+    from ondeline_api.repositories.ordem_servico import OrdemServicoRepo as _Repo
+
+    cliente = await _make_cliente_repo(db_session)
+    tec = await _make_tecnico_repo(db_session)
+    os1 = await _make_os_repo(db_session, cliente, tec)
+
+    outros_cliente = Cliente(
+        cpf_cnpj_encrypted=encrypt_pii("99988877766"),
+        cpf_hash="other-hash-" + uuid4().hex[:8],
+        nome_encrypted=encrypt_pii("Y"),
+        whatsapp="5599999@s",
+    )
+    db_session.add(outros_cliente)
+    await db_session.flush()
+    tec2 = await _make_tecnico_repo(db_session)
+    from ondeline_api.domain.os_sequence import next_codigo
+    codigo2 = await next_codigo(db_session)
+    await _Repo(db_session).create(
+        codigo=codigo2, cliente_id=outros_cliente.id, tecnico_id=tec2.id,
+        problema="outro", endereco="Rua B"
+    )
+
+    repo = _Repo(db_session)
+    rows, _ = await repo.list_paginated(cliente_id=cliente.id)
+    assert len(rows) == 1
+    assert rows[0].id == os1.id
