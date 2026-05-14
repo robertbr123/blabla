@@ -261,3 +261,12 @@ export interface SgpClienteOut {
   endereco: string | null
   cliente_id: string | null
 }
+
+export interface RankingTecnicoOut {
+  tecnico_id: string
+  nome: string
+  os_concluidas: number
+  csat_avg: number | null
+  tempo_medio_min: number | null
+  ultima_os_em: string | null
+}

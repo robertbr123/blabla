@@ -23,6 +23,7 @@ import type {
   OsOut,
   OsPatch,
   OsReatribuirIn,
+  RankingTecnicoOut,
   SgpClienteOut,
   TecnicoCreate,
   TecnicoListItem,
@@ -504,4 +505,19 @@ export function useMetricas() {
     queryFn: () => apiFetch('/api/v1/metricas'),
     refetchInterval: 30_000,
   })
+}
+
+// ── Ranking de Técnicos ─────────────────────────────────────────────
+
+export function useRankingTecnicos(mes?: string) {
+  const qs = mes ? `?mes=${mes}` : ''
+  return useQuery<RankingTecnicoOut[]>({
+    queryKey: ['ranking-tecnicos', mes],
+    queryFn: () => apiFetch(`/api/v1/metricas/tecnicos${qs}`),
+  })
+}
+
+export function downloadRankingCsv(mes?: string): void {
+  const qs = mes ? `?mes=${mes}` : ''
+  window.open(`/api/v1/metricas/tecnicos/export${qs}`, '_blank')
 }
