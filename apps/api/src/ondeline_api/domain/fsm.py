@@ -85,6 +85,14 @@ class Fsm:
                 actions=[],
             )
 
+        # estados de coleta sequencial: inbound.py intercepta antes do LLM
+        if estado in (ConversaEstado.MUDANCA_ENDERECO, ConversaEstado.CHECKLIST_OS):
+            return FsmDecision(
+                new_estado=estado,
+                new_status=status,
+                actions=[],
+            )
+
         # aguarda confirmacao de follow-up: classifica deterministicamente antes de chamar LLM
         if estado is ConversaEstado.AGUARDA_FOLLOWUP_OS:
             text_norm = (event.text or "").lower().strip()

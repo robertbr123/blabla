@@ -43,6 +43,8 @@ class ConversaEstado(StrEnum):
     HUMANO = "humano"
     ENCERRADA = "encerrada"
     AGUARDA_FOLLOWUP_OS = "aguarda_followup_os"
+    MUDANCA_ENDERECO = "mudanca_endereco"
+    CHECKLIST_OS = "checklist_os"
 
 
 class ConversaStatus(StrEnum):
@@ -176,6 +178,15 @@ class Conversa(Base):
     followup_os_id: Mapped[UUID | None] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("ordens_servico.id", ondelete="SET NULL"), nullable=True
     )
+    transferred_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    first_response_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    tags: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    sla_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
+    checklist_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     __table_args__ = (
         Index(
