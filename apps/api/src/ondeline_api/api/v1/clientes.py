@@ -119,8 +119,8 @@ async def sgp_lookup(
         cli.endereco.cidade if cli.endereco else None
     )
     endereco_str = (
-        f"{cli.endereco.rua}, {cli.endereco.numero}"
-        if cli.endereco and cli.endereco.rua
+        f"{cli.endereco.logradouro}, {cli.endereco.numero}"
+        if cli.endereco and cli.endereco.logradouro
         else None
     )
 
