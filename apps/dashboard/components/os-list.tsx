@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { Plus, Trash2, UserCog } from 'lucide-react'
+
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
@@ -36,7 +37,7 @@ function DeleteButton({ osId }: { osId: string }) {
   )
 }
 
-export function OsList() {
+export function OsList({ onNovaOs }: { onNovaOs?: () => void } = {}) {
   const [status, setStatus] = useState('')
   const [reatribuirOsId, setReatribuirOsId] = useState<string | null>(null)
   const { data, isLoading, error } = useOsList({ status: status || undefined })
@@ -62,11 +63,9 @@ export function OsList() {
           <option value="cancelada">Cancelada</option>
         </Select>
         <div className="ml-auto">
-          <Link href="/os/nova">
-            <Button>
-              <Plus className="h-4 w-4" /> Nova OS
-            </Button>
-          </Link>
+          <Button onClick={() => onNovaOs?.()}>
+            <Plus className="h-4 w-4" /> Nova OS
+          </Button>
         </div>
       </div>
 
