@@ -270,3 +270,18 @@ export interface RankingTecnicoOut {
   tempo_medio_min: number | null
   ultima_os_em: string | null
 }
+
+// Planos
+export interface PlanoIn {
+  nome: string
+  preco: number
+  velocidade: string
+  extras: string[]
+  descricao: string
+  ativo: boolean
+  destaque: boolean
+}
+
+export interface PlanoOut extends PlanoIn {
+  index: number
+}

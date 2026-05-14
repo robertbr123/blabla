@@ -24,6 +24,8 @@ import type {
   OsOut,
   OsPatch,
   OsReatribuirIn,
+  PlanoIn,
+  PlanoOut,
   RankingTecnicoOut,
   SgpClienteOut,
   TecnicoCreate,
@@ -533,4 +535,46 @@ export async function downloadRankingCsv(mes?: string): Promise<void> {
   a.download = `ranking-tecnicos-${mes ?? new Date().toISOString().slice(0, 7)}.csv`
   a.click()
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
+// ── Planos ──────────────────────────────────────────────────────────
+
+export function usePlanos() {
+  return useQuery<PlanoOut[]>({
+    queryKey: ['planos'],
+    queryFn: () => apiFetch('/api/v1/planos'),
+  })
+}
+
+export function useCreatePlano() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: PlanoIn) =>
+      apiFetch<PlanoOut>('/api/v1/planos', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['planos'] }),
+  })
+}
+
+export function useUpdatePlano(index: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: PlanoIn) =>
+      apiFetch<PlanoOut>(`/api/v1/planos/${index}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['planos'] }),
+  })
+}
+
+export function useDeletePlano() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (index: number) =>
+      apiFetch<void>(`/api/v1/planos/${index}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['planos'] }),
+  })
 }
