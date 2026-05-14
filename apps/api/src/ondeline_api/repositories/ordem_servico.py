@@ -18,7 +18,7 @@ class OrdemServicoRepo:
         self,
         *,
         codigo: str,
-        cliente_id: UUID,
+        cliente_id: UUID | None,
         tecnico_id: UUID | None,
         problema: str,
         endereco: str,

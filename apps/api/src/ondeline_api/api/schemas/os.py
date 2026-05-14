@@ -12,7 +12,7 @@ class OsListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     codigo: str
-    cliente_id: UUID
+    cliente_id: UUID | None
     tecnico_id: UUID | None
     status: str
     problema: str
@@ -35,7 +35,7 @@ class OsOut(OsListItem):
 
 
 class OsCreate(BaseModel):
-    cliente_id: UUID
+    cliente_id: UUID | None = None
     tecnico_id: UUID
     problema: str = Field(min_length=1, max_length=2000)
     endereco: str = Field(min_length=1, max_length=500)

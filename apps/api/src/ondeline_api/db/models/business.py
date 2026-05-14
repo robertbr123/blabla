@@ -315,8 +315,8 @@ class OrdemServico(Base):
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
     codigo: Mapped[str] = mapped_column(String(40), nullable=False)
-    cliente_id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True), ForeignKey("clientes.id", ondelete="RESTRICT"), nullable=False
+    cliente_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("clientes.id", ondelete="SET NULL"), nullable=True
     )
     tecnico_id: Mapped[UUID | None] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("tecnicos.id", ondelete="SET NULL"), nullable=True

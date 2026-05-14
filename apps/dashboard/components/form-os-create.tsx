@@ -1,4 +1,5 @@
 'use client'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -9,10 +10,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { useCreateOs, useTecnicos } from '@/lib/api/queries'
+import { useClientes, useCreateOs, useTecnicos } from '@/lib/api/queries'
 
 const schema = z.object({
-  cliente_id: z.string().uuid('UUID inválido'),
   tecnico_id: z.string().uuid('Selecione o técnico responsável'),
   problema: z.string().min(1, 'Obrigatório').max(2000),
   endereco: z.string().min(1, 'Obrigatório').max(500),
@@ -25,6 +25,16 @@ export function FormOsCreate() {
   const router = useRouter()
   const createOs = useCreateOs()
   const { data: tecnicos } = useTecnicos({ ativo: true })
+
+  const [clienteSearch, setClienteSearch] = useState('')
+  const [clienteId, setClienteId] = useState<string | null>(null)
+  const [clienteLabel, setClienteLabel] = useState<string | null>(null)
+
+  const { data: clientesResult } = useClientes(
+    clienteSearch.length >= 4 ? { q: clienteSearch } : {}
+  )
+  const clienteSugestoes = clienteSearch.length >= 4 ? (clientesResult?.items ?? []) : []
+
   const {
     register,
     handleSubmit,
@@ -33,7 +43,7 @@ export function FormOsCreate() {
 
   async function onSubmit(values: FormValues) {
     const created = await createOs.mutateAsync({
-      cliente_id: values.cliente_id,
+      ...(clienteId ? { cliente_id: clienteId } : {}),
       tecnico_id: values.tecnico_id,
       problema: values.problema,
       endereco: values.endereco,
@@ -49,13 +59,60 @@ export function FormOsCreate() {
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+          {/* Cliente — opcional */}
           <div>
-            <Label htmlFor="cliente_id">Cliente ID</Label>
-            <Input id="cliente_id" {...register('cliente_id')} />
-            {errors.cliente_id && (
-              <p className="mt-1 text-xs text-destructive">{errors.cliente_id.message}</p>
+            <Label htmlFor="cliente_search">
+              Cliente <span className="text-muted-foreground font-normal">(opcional — busca por WhatsApp)</span>
+            </Label>
+            {clienteLabel ? (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm font-medium">{clienteLabel}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs text-muted-foreground"
+                  onClick={() => { setClienteId(null); setClienteLabel(null); setClienteSearch('') }}
+                >
+                  Trocar
+                </Button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Input
+                  id="cliente_search"
+                  placeholder="Digite o WhatsApp (mín. 4 dígitos)…"
+                  value={clienteSearch}
+                  onChange={(e) => { setClienteSearch(e.target.value); setClienteId(null) }}
+                  autoComplete="off"
+                />
+                {clienteSugestoes.length > 0 && (
+                  <div className="absolute z-10 mt-1 w-full rounded-md border bg-card shadow-md">
+                    {clienteSugestoes.slice(0, 6).map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
+                        onClick={() => {
+                          setClienteId(c.id)
+                          setClienteLabel(c.whatsapp)
+                          setClienteSearch('')
+                        }}
+                      >
+                        {c.whatsapp}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {clienteSearch.length >= 4 && clienteSugestoes.length === 0 && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Nenhum cliente encontrado — a OS será aberta sem cliente vinculado.
+                  </p>
+                )}
+              </div>
             )}
           </div>
+
           <div>
             <Label htmlFor="tecnico_id">Técnico responsável *</Label>
             <Select id="tecnico_id" {...register('tecnico_id')} defaultValue="">
@@ -69,14 +126,14 @@ export function FormOsCreate() {
             )}
           </div>
           <div>
-            <Label htmlFor="problema">Problema</Label>
+            <Label htmlFor="problema">Problema *</Label>
             <Textarea id="problema" {...register('problema')} />
             {errors.problema && (
               <p className="mt-1 text-xs text-destructive">{errors.problema.message}</p>
             )}
           </div>
           <div>
-            <Label htmlFor="endereco">Endereço</Label>
+            <Label htmlFor="endereco">Endereço *</Label>
             <Input id="endereco" {...register('endereco')} />
             {errors.endereco && (
               <p className="mt-1 text-xs text-destructive">{errors.endereco.message}</p>

@@ -117,17 +117,17 @@ async def create_os(
         os_.agendamento_at = body.agendamento_at
         await session.flush()
     if tecnico.whatsapp:
-        from sqlalchemy import select
-
         from ondeline_api.db.crypto import decrypt_pii
-        from ondeline_api.db.models.business import Cliente
 
-        cliente_row = (
-            await session.execute(select(Cliente).where(Cliente.id == body.cliente_id))
-        ).scalar_one_or_none()
-        nome_cliente = (
-            decrypt_pii(cliente_row.nome_encrypted) if cliente_row else "Cliente"
-        )
+        nome_cliente = "Cliente"
+        if body.cliente_id is not None:
+            from sqlalchemy import select
+            from ondeline_api.db.models.business import Cliente
+            cliente_row = (
+                await session.execute(select(Cliente).where(Cliente.id == body.cliente_id))
+            ).scalar_one_or_none()
+            if cliente_row:
+                nome_cliente = decrypt_pii(cliente_row.nome_encrypted)
         msg = (
             f"Nova OS {codigo}\n"
             f"Cliente: {nome_cliente}\n"
