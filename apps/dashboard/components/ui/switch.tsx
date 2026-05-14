@@ -26,3 +26,5 @@ export function Switch({
     </SwitchPrimitives.Root>
   )
 }
+
+Switch.displayName = SwitchPrimitives.Root.displayName

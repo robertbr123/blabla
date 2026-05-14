@@ -23,6 +23,7 @@ export function BotToggle() {
 
   // Chave ausente no banco → 404 → bot está ativo (default implícito)
   const notFound = cfg.error && (cfg.error as { status?: number }).status === 404
+  const fetchError = cfg.error && !notFound
   const loading = cfg.isLoading && !notFound
 
   async function handleToggle(value: boolean) {
@@ -44,7 +45,9 @@ export function BotToggle() {
         <CardTitle className="text-base">Bot WhatsApp</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {loading ? (
+        {fetchError ? (
+          <p className="text-xs text-destructive">Erro ao carregar configuração do bot.</p>
+        ) : loading ? (
           <p className="text-xs text-muted-foreground">Carregando…</p>
         ) : (
           <>
