@@ -20,11 +20,14 @@ def _fmt_dt(dt: datetime | None) -> str:
     return dt.astimezone(UTC).strftime("%d/%m/%Y %H:%M")
 
 
+_FOTOS_DIR = Path("/tmp/ondeline_os_fotos")
+
+
 def _load_fotos(os_: OrdemServico) -> list[dict]:
     fotos = []
     for meta in os_.fotos or []:
         path = Path(meta.get("url", ""))
-        if not path.exists():
+        if not path.is_relative_to(_FOTOS_DIR) or not path.exists():
             continue
         b64 = base64.b64encode(path.read_bytes()).decode()
         fotos.append(
