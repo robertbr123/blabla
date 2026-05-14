@@ -1,11 +1,13 @@
 'use client'
 import Link from 'next/link'
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2, UserCog } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
-import { useOsList } from '@/lib/api/queries'
+import { useDeleteOs, useOsList } from '@/lib/api/queries'
+import { DialogReatribuirTecnico } from './dialog-reatribuir-tecnico'
+import type { OsListItem } from '@/lib/api/types'
 
 const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   pendente: 'destructive',
@@ -14,12 +16,39 @@ const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 
   cancelada: 'outline',
 }
 
+function DeleteButton({ osId }: { osId: string }) {
+  const deleteOs = useDeleteOs(osId)
+  async function handleDelete() {
+    if (!confirm('Excluir esta OS? O técnico será notificado.')) return
+    await deleteOs.mutateAsync()
+  }
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-7 w-7 text-destructive hover:text-destructive"
+      onClick={handleDelete}
+      disabled={deleteOs.isPending}
+      title="Excluir OS"
+    >
+      <Trash2 className="h-3.5 w-3.5" />
+    </Button>
+  )
+}
+
 export function OsList() {
   const [status, setStatus] = useState('')
+  const [reatribuirOsId, setReatribuirOsId] = useState<string | null>(null)
   const { data, isLoading, error } = useOsList({ status: status || undefined })
 
   return (
     <div className="space-y-4">
+      {reatribuirOsId && (
+        <DialogReatribuirTecnico
+          osId={reatribuirOsId}
+          onClose={() => setReatribuirOsId(null)}
+        />
+      )}
       <div className="flex items-center gap-3">
         <Select
           value={status}
@@ -58,17 +87,18 @@ export function OsList() {
                 <th className="px-4 py-3">Problema</th>
                 <th className="px-4 py-3">Endereço</th>
                 <th className="px-4 py-3">Criada</th>
+                <th className="px-4 py-3">Ações</th>
               </tr>
             </thead>
             <tbody>
               {data.items.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-muted-foreground">
+                  <td colSpan={6} className="p-6 text-center text-muted-foreground">
                     Nenhuma OS
                   </td>
                 </tr>
               )}
-              {data.items.map((o) => (
+              {data.items.map((o: OsListItem) => (
                 <tr key={o.id} className="border-b last:border-b-0 hover:bg-muted/50">
                   <td className="px-4 py-3">
                     <Link href={`/os/${o.id}`} className="font-medium hover:underline">
@@ -86,6 +116,22 @@ export function OsList() {
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {new Date(o.criada_em).toLocaleString('pt-BR')}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      {o.status !== 'concluida' && o.status !== 'cancelada' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => setReatribuirOsId(o.id)}
+                          title="Reatribuir técnico"
+                        >
+                          <UserCog className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      <DeleteButton osId={o.id} />
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { Send, UserCheck, X } from 'lucide-react'
+import { Send, UserCheck, Wrench, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -8,10 +8,12 @@ import {
   useAtender,
   useConversa,
   useEncerrar,
+  useOsList,
   useResponder,
 } from '@/lib/api/queries'
 import type { MensagemOut } from '@/lib/api/types'
 import { cn } from '@/lib/utils'
+import { DialogAbrirOsFromConversa } from './dialog-abrir-os-from-conversa'
 
 interface SseEvent {
   type: string
@@ -27,6 +29,8 @@ const ROLE_LABEL: Record<string, string> = {
   atendente: 'Atendente',
 }
 
+const OS_STATUS_ABERTA = ['pendente', 'em_andamento']
+
 export function ConversaChat({ conversaId }: { conversaId: string }) {
   const { data, isLoading, refetch } = useConversa(conversaId)
   const responder = useResponder(conversaId)
@@ -34,9 +38,17 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
   const encerrar = useEncerrar(conversaId)
   const [text, setText] = useState('')
   const [liveMsgs, setLiveMsgs] = useState<MensagemOut[]>([])
+  const [showAbrirOs, setShowAbrirOs] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // SSE subscription
+  const clienteId = data?.cliente_id ?? undefined
+  const { data: osAberta } = useOsList(
+    clienteId ? { cliente_id: clienteId } : {}
+  )
+  const osAbertas = (osAberta?.items ?? []).filter((o) =>
+    OS_STATUS_ABERTA.includes(o.status)
+  )
+
   useEffect(() => {
     if (!conversaId) return
     const es = new EventSource(`/api/v1/conversas/${conversaId}/stream`, {
@@ -62,13 +74,10 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
         // ignore malformed
       }
     }
-    es.onerror = () => {
-      // reconexão automática do EventSource cuida disso
-    }
+    es.onerror = () => {}
     return () => es.close()
   }, [conversaId])
 
-  // Scroll to bottom on new messages
   const allMsgs = [...(data?.mensagens ?? []), ...liveMsgs]
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -91,6 +100,27 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
 
   return (
     <div className="flex h-full flex-col gap-4">
+      {showAbrirOs && (
+        <DialogAbrirOsFromConversa
+          conversaId={conversaId}
+          onClose={() => setShowAbrirOs(false)}
+        />
+      )}
+
+      {/* OS abertas alert */}
+      {osAbertas.length > 0 && (
+        <div className="rounded-md border border-yellow-400 bg-yellow-50 dark:bg-yellow-950/20 p-3 text-sm space-y-1">
+          <p className="font-semibold text-yellow-800 dark:text-yellow-300">
+            ⚠️ OS(s) em aberto para este cliente
+          </p>
+          {osAbertas.map((o) => (
+            <p key={o.id} className="text-yellow-700 dark:text-yellow-400">
+              #{o.codigo} · {o.status} · {o.problema.slice(0, 60)}
+            </p>
+          ))}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between rounded-md border bg-card p-4">
         <div>
@@ -100,6 +130,14 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowAbrirOs(true)}
+            title="Abrir OS para este cliente"
+          >
+            <Wrench className="h-4 w-4" /> Abrir OS
+          </Button>
           {data.status === 'aguardando' && (
             <Button
               size="sm"

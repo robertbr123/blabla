@@ -1,10 +1,13 @@
 'use client'
 import Link from 'next/link'
 import { useState } from 'react'
+import { Wrench } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { useConversas } from '@/lib/api/queries'
+import { DialogAbrirOsFromConversa } from './dialog-abrir-os-from-conversa'
 
 const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   bot: 'secondary',
@@ -16,6 +19,7 @@ const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 
 export function ConversaList() {
   const [status, setStatus] = useState('')
   const [q, setQ] = useState('')
+  const [abrirOsConversaId, setAbrirOsConversaId] = useState<string | null>(null)
   const { data, isLoading, error } = useConversas({
     status: status || undefined,
     q: q || undefined,
@@ -23,6 +27,13 @@ export function ConversaList() {
 
   return (
     <div className="space-y-4">
+      {abrirOsConversaId && (
+        <DialogAbrirOsFromConversa
+          conversaId={abrirOsConversaId}
+          onClose={() => setAbrirOsConversaId(null)}
+        />
+      )}
+
       <div className="flex flex-wrap items-center gap-3">
         <Input
           placeholder="Buscar por whatsapp…"
@@ -59,12 +70,13 @@ export function ConversaList() {
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Estado</th>
                 <th className="px-4 py-3">Última msg</th>
+                <th className="px-4 py-3">Ações</th>
               </tr>
             </thead>
             <tbody>
               {data.items.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="p-6 text-center text-muted-foreground">
+                  <td colSpan={5} className="p-6 text-center text-muted-foreground">
                     Nenhuma conversa
                   </td>
                 </tr>
@@ -86,6 +98,19 @@ export function ConversaList() {
                     {c.last_message_at
                       ? new Date(c.last_message_at).toLocaleString('pt-BR')
                       : '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    {c.cliente_id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() => setAbrirOsConversaId(c.id)}
+                        title="Abrir OS para este cliente"
+                      >
+                        <Wrench className="h-3 w-3" /> Abrir OS
+                      </Button>
+                    )}
                   </td>
                 </tr>
               ))}

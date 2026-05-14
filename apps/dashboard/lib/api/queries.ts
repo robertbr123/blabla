@@ -18,9 +18,11 @@ import type {
   MetricasOut,
   OsConcluirIn,
   OsCreate,
+  OsDeleteOut,
   OsListItem,
   OsOut,
   OsPatch,
+  OsReatribuirIn,
   TecnicoCreate,
   TecnicoListItem,
   TecnicoOut,
@@ -97,17 +99,20 @@ export function useEncerrar(conversaId: string) {
 export interface OsListFilters {
   status?: string
   tecnico?: string
+  cliente_id?: string
 }
 
 export function useOsList(filters: OsListFilters = {}) {
   const params = new URLSearchParams()
   if (filters.status) params.set('status', filters.status)
   if (filters.tecnico) params.set('tecnico', filters.tecnico)
+  if (filters.cliente_id) params.set('cliente_id', filters.cliente_id)
   const qs = params.toString()
   return useQuery<CursorPage<OsListItem>>({
     queryKey: ['os', filters],
     queryFn: () => apiFetch(`/api/v1/os${qs ? `?${qs}` : ''}`),
     refetchInterval: 30_000,
+    enabled: filters.cliente_id !== undefined ? Boolean(filters.cliente_id) : true,
   })
 }
 
@@ -143,6 +148,30 @@ export function usePatchOs(id: string) {
       qc.invalidateQueries({ queryKey: ['os-detail', id] })
       qc.invalidateQueries({ queryKey: ['os'] })
     },
+  })
+}
+
+export function useReatribuirOs(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: OsReatribuirIn) =>
+      apiFetch<OsOut>(`/api/v1/os/${id}/reatribuir`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['os-detail', id] })
+      qc.invalidateQueries({ queryKey: ['os'] })
+    },
+  })
+}
+
+export function useDeleteOs(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<OsDeleteOut>(`/api/v1/os/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['os'] }),
   })
 }
 

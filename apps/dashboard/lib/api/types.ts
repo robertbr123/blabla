@@ -24,8 +24,19 @@ export interface MensagemOut {
   created_at: string
 }
 
+export interface ClienteEmbutido {
+  id: string
+  nome: string
+  cpf_cnpj: string
+  whatsapp: string
+  plano: string | null
+  cidade: string | null
+  endereco: string | null
+}
+
 export interface ConversaDetail extends ConversaListItem {
   mensagens: MensagemOut[]
+  cliente: ClienteEmbutido | null
 }
 
 export interface OsListItem {
@@ -39,6 +50,8 @@ export interface OsListItem {
   agendamento_at: string | null
   criada_em: string
   concluida_em: string | null
+  reatribuido_em: string | null
+  reatribuido_por: string | null
 }
 
 export interface OsFoto {
@@ -52,13 +65,26 @@ export interface OsOut extends OsListItem {
   fotos: OsFoto[] | null
   csat: number | null
   comentario_cliente: string | null
+  historico_reatribuicoes: Array<{de: string|null, para: string, em: string, por: string}> | null
+  follow_up_resposta: string | null
+  follow_up_respondido_em: string | null
+  follow_up_resultado: string | null
 }
 
 export interface OsCreate {
   cliente_id: string
+  tecnico_id: string
   problema: string
   endereco: string
   agendamento_at?: string | null
+}
+
+export interface OsReatribuirIn {
+  tecnico_id: string
+}
+
+export interface OsDeleteOut {
+  notif_tecnico: boolean
 }
 
 export interface OsPatch {
