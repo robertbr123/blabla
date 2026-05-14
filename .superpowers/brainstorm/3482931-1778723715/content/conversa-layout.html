@@ -1,0 +1,168 @@
+<h2>Layout da tela de conversa</h2>
+<p class="subtitle">Como você quer ver os dados do cliente, mensagens e ações de OS na mesma tela?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="display:flex;height:220px;font-size:11px;gap:2px;background:#1a1a2e;padding:6px;border-radius:6px;">
+        <!-- Sidebar esquerda: lista de conversas -->
+        <div style="width:28%;background:#16213e;border-radius:4px;padding:6px;display:flex;flex-direction:column;gap:4px;">
+          <div style="color:#7f8c8d;font-size:9px;text-transform:uppercase;margin-bottom:4px;">Conversas</div>
+          <div style="background:#0f3460;border-radius:3px;padding:4px 6px;border-left:3px solid #e94560;">
+            <div style="color:#fff;font-size:10px;">João Silva</div>
+            <div style="color:#7f8c8d;font-size:9px;">Problema na internet...</div>
+          </div>
+          <div style="background:#1a1a2e;border-radius:3px;padding:4px 6px;">
+            <div style="color:#ccc;font-size:10px;">Maria Santos</div>
+            <div style="color:#7f8c8d;font-size:9px;">Quero contratar...</div>
+          </div>
+          <div style="background:#1a1a2e;border-radius:3px;padding:4px 6px;">
+            <div style="color:#ccc;font-size:10px;">Pedro Lima</div>
+            <div style="color:#7f8c8d;font-size:9px;">Boleto venceu...</div>
+          </div>
+        </div>
+        <!-- Centro: mensagens -->
+        <div style="flex:1;background:#0d1117;border-radius:4px;padding:6px;display:flex;flex-direction:column;justify-content:space-between;">
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="align-self:flex-start;background:#1e3a5f;color:#ccc;padding:4px 8px;border-radius:10px;font-size:9px;max-width:70%;">Minha internet está lenta desde ontem</div>
+            <div style="align-self:flex-end;background:#0f3460;color:#fff;padding:4px 8px;border-radius:10px;font-size:9px;max-width:70%;">🤖 Entendido! Vou verificar seu contrato...</div>
+            <div style="align-self:flex-start;background:#1e3a5f;color:#ccc;padding:4px 8px;border-radius:10px;font-size:9px;max-width:70%;">Continua lenta ainda</div>
+            <div style="align-self:flex-end;background:#2d5016;color:#fff;padding:4px 8px;border-radius:10px;font-size:9px;max-width:70%;">👤 Vou abrir uma OS para você</div>
+          </div>
+          <div style="display:flex;gap:4px;margin-top:4px;">
+            <div style="flex:1;background:#1e3a5f;border-radius:3px;height:18px;"></div>
+            <div style="background:#e94560;border-radius:3px;padding:0 8px;height:18px;display:flex;align-items:center;color:#fff;font-size:9px;">Enviar</div>
+          </div>
+        </div>
+        <!-- Direita: dados do cliente + ações -->
+        <div style="width:30%;background:#16213e;border-radius:4px;padding:6px;display:flex;flex-direction:column;gap:4px;">
+          <div style="color:#7f8c8d;font-size:9px;text-transform:uppercase;">Cliente SGP</div>
+          <div style="background:#0f3460;border-radius:3px;padding:5px;font-size:9px;color:#ccc;">
+            <div style="color:#fff;font-weight:bold;margin-bottom:2px;">João Silva</div>
+            <div>Plano: 200mb</div>
+            <div>Status: <span style="color:#e74c3c;">Ativo</span></div>
+            <div>Cidade: Ipixuna</div>
+          </div>
+          <div style="color:#7f8c8d;font-size:9px;text-transform:uppercase;margin-top:4px;">Ações</div>
+          <div style="background:#e94560;border-radius:3px;padding:3px;text-align:center;color:#fff;font-size:9px;">+ Abrir OS</div>
+          <div style="background:#27ae60;border-radius:3px;padding:3px;text-align:center;color:#fff;font-size:9px;">Assumir</div>
+          <div style="background:#c0392b;border-radius:3px;padding:3px;text-align:center;color:#fff;font-size:9px;">Excluir</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Três painéis fixos</h3>
+      <p>Lista de conversas | Chat central | Dados do cliente + ações à direita. Tudo visível sem scroll ou aba.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="display:flex;height:220px;font-size:11px;gap:2px;background:#1a1a2e;padding:6px;border-radius:6px;">
+        <!-- Sidebar esquerda: lista -->
+        <div style="width:28%;background:#16213e;border-radius:4px;padding:6px;display:flex;flex-direction:column;gap:4px;">
+          <div style="color:#7f8c8d;font-size:9px;text-transform:uppercase;margin-bottom:4px;">Conversas</div>
+          <div style="background:#0f3460;border-radius:3px;padding:4px 6px;border-left:3px solid #e94560;">
+            <div style="color:#fff;font-size:10px;">João Silva</div>
+            <div style="color:#7f8c8d;font-size:9px;">⏳ Aguardando</div>
+          </div>
+          <div style="background:#1a1a2e;border-radius:3px;padding:4px 6px;">
+            <div style="color:#ccc;font-size:10px;">Maria Santos</div>
+            <div style="color:#7f8c8d;font-size:9px;">🤖 Bot</div>
+          </div>
+        </div>
+        <!-- Centro: chat + abas de contexto em cima -->
+        <div style="flex:1;background:#0d1117;border-radius:4px;display:flex;flex-direction:column;">
+          <!-- Abas: Mensagens | Cliente | OS -->
+          <div style="display:flex;background:#16213e;border-radius:4px 4px 0 0;padding:4px 6px;gap:4px;">
+            <div style="background:#e94560;color:#fff;padding:2px 8px;border-radius:3px;font-size:9px;">Mensagens</div>
+            <div style="color:#7f8c8d;padding:2px 8px;border-radius:3px;font-size:9px;">Cliente SGP</div>
+            <div style="color:#7f8c8d;padding:2px 8px;border-radius:3px;font-size:9px;">Ordens de Serviço</div>
+          </div>
+          <div style="flex:1;padding:6px;display:flex;flex-direction:column;justify-content:space-between;">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <div style="align-self:flex-start;background:#1e3a5f;color:#ccc;padding:4px 8px;border-radius:10px;font-size:9px;">Minha internet está lenta</div>
+              <div style="align-self:flex-end;background:#0f3460;color:#fff;padding:4px 8px;border-radius:10px;font-size:9px;">🤖 Verificando seu contrato...</div>
+              <div style="align-self:flex-start;background:#1e3a5f;color:#ccc;padding:4px 8px;border-radius:10px;font-size:9px;">Continua lenta ainda</div>
+            </div>
+            <div style="display:flex;gap:4px;">
+              <div style="flex:1;background:#1e3a5f;border-radius:3px;height:18px;"></div>
+              <div style="background:#e94560;border-radius:3px;padding:0 8px;height:18px;display:flex;align-items:center;color:#fff;font-size:9px;">Enviar</div>
+            </div>
+          </div>
+        </div>
+        <!-- Direita: ações fixas -->
+        <div style="width:22%;background:#16213e;border-radius:4px;padding:6px;display:flex;flex-direction:column;gap:4px;">
+          <div style="color:#7f8c8d;font-size:9px;text-transform:uppercase;">Ações rápidas</div>
+          <div style="background:#e94560;border-radius:3px;padding:3px;text-align:center;color:#fff;font-size:9px;">+ Abrir OS</div>
+          <div style="background:#27ae60;border-radius:3px;padding:3px;text-align:center;color:#fff;font-size:9px;">Assumir</div>
+          <div style="background:#8e44ad;border-radius:3px;padding:3px;text-align:center;color:#fff;font-size:9px;">Encerrar</div>
+          <div style="background:#c0392b;border-radius:3px;padding:3px;text-align:center;color:#fff;font-size:9px;">Excluir</div>
+          <div style="margin-top:4px;color:#7f8c8d;font-size:9px;text-transform:uppercase;">SLA</div>
+          <div style="background:#0f3460;border-radius:3px;padding:4px;font-size:9px;color:#f39c12;">⏱ 23min em fila</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Chat com abas + ações fixas</h3>
+      <p>Chat ocupa o centro. Dados do cliente e OS ficam em abas. Ações rápidas sempre visíveis à direita.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="display:flex;height:220px;font-size:11px;gap:2px;background:#1a1a2e;padding:6px;border-radius:6px;">
+        <!-- Lista -->
+        <div style="width:28%;background:#16213e;border-radius:4px;padding:6px;display:flex;flex-direction:column;gap:4px;">
+          <div style="color:#7f8c8d;font-size:9px;text-transform:uppercase;margin-bottom:4px;">Conversas</div>
+          <div style="background:#0f3460;border-radius:3px;padding:4px 6px;border-left:3px solid #f39c12;">
+            <div style="color:#fff;font-size:10px;">João Silva</div>
+            <div style="color:#f39c12;font-size:9px;">🏠 Mudança endereço</div>
+          </div>
+          <div style="background:#1a1a2e;border-radius:3px;padding:4px 6px;border-left:3px solid #e94560;">
+            <div style="color:#ccc;font-size:10px;">Maria Santos</div>
+            <div style="color:#e94560;font-size:9px;">🔧 OS aberta</div>
+          </div>
+          <div style="background:#1a1a2e;border-radius:3px;padding:4px 6px;">
+            <div style="color:#ccc;font-size:10px;">Pedro Lima</div>
+            <div style="color:#7f8c8d;font-size:9px;">💬 Cobrança</div>
+          </div>
+        </div>
+        <!-- Centro: chat com banner de cliente no topo -->
+        <div style="flex:1;background:#0d1117;border-radius:4px;display:flex;flex-direction:column;">
+          <!-- Banner do cliente -->
+          <div style="background:#0f3460;padding:5px 8px;border-radius:4px 4px 0 0;display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <span style="color:#fff;font-size:10px;font-weight:bold;">João Silva</span>
+              <span style="color:#7f8c8d;font-size:9px;margin-left:6px;">200mb · Ativo · Ipixuna</span>
+            </div>
+            <div style="display:flex;gap:4px;">
+              <div style="background:#e94560;border-radius:3px;padding:2px 6px;color:#fff;font-size:8px;">+ OS</div>
+              <div style="background:#27ae60;border-radius:3px;padding:2px 6px;color:#fff;font-size:8px;">Assumir</div>
+              <div style="background:#7f8c8d;border-radius:3px;padding:2px 6px;color:#fff;font-size:8px;">⋯</div>
+            </div>
+          </div>
+          <!-- Mensagens -->
+          <div style="flex:1;padding:6px;display:flex;flex-direction:column;justify-content:space-between;">
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <div style="align-self:flex-start;background:#1e3a5f;color:#ccc;padding:4px 8px;border-radius:10px;font-size:9px;">Quero mudar meu endereço</div>
+              <div style="align-self:flex-end;background:#0f3460;color:#fff;padding:4px 8px;border-radius:10px;font-size:9px;">🤖 Me informe o novo endereço...</div>
+              <div style="align-self:flex-start;background:#1e3a5f;color:#ccc;padding:4px 8px;border-radius:10px;font-size:9px;">Rua das Flores, 123, Ipixuna</div>
+              <div style="align-self:flex-end;background:#2d5016;color:#fff;padding:4px 8px;border-radius:10px;font-size:9px;">👤 Atualizando seu endereço...</div>
+            </div>
+            <div style="display:flex;gap:4px;">
+              <div style="flex:1;background:#1e3a5f;border-radius:3px;height:18px;"></div>
+              <div style="background:#e94560;border-radius:3px;padding:0 8px;height:18px;display:flex;align-items:center;color:#fff;font-size:9px;">Enviar</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Banner de cliente no topo do chat</h3>
+      <p>Dados do cliente aparecem como banner colado no topo do chat. Ações principais (+ OS, Assumir) ficam no próprio banner. Mais espaço para mensagens.</p>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,131 @@
+<h2>Como abrir o formulário de OS dentro da conversa?</h2>
+<p class="subtitle">Ao clicar em "+ OS" na conversa, de que forma o formulário aparece?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="position:relative;height:220px;background:#1a1a2e;border-radius:6px;overflow:hidden;padding:6px;">
+        <!-- fundo escurecido simulando o chat -->
+        <div style="display:flex;height:100%;gap:2px;opacity:0.35;">
+          <div style="width:28%;background:#16213e;border-radius:4px;"></div>
+          <div style="flex:1;background:#0d1117;border-radius:4px;"></div>
+          <div style="width:22%;background:#16213e;border-radius:4px;"></div>
+        </div>
+        <!-- Modal centralizado -->
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#16213e;border-radius:8px;padding:12px;width:60%;border:1px solid #0f3460;box-shadow:0 4px 24px #000;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="color:#fff;font-size:11px;font-weight:bold;">Abrir Ordem de Serviço</span>
+            <span style="color:#7f8c8d;font-size:10px;cursor:pointer;">✕</span>
+          </div>
+          <!-- cliente pre-preenchido -->
+          <div style="background:#0f3460;border-radius:4px;padding:5px 8px;margin-bottom:6px;font-size:9px;">
+            <span style="color:#7f8c8d;">Cliente: </span><span style="color:#fff;">João Silva · CPF auto</span>
+            <span style="background:#27ae60;color:#fff;font-size:7px;padding:1px 4px;border-radius:3px;margin-left:4px;">Auto-preenchido</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <div style="background:#0d1117;border-radius:3px;height:16px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+              <span style="color:#7f8c8d;font-size:8px;">Descrição do problema</span>
+            </div>
+            <div style="background:#0d1117;border-radius:3px;height:16px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+              <span style="color:#7f8c8d;font-size:8px;">Rua / Endereço</span>
+            </div>
+            <div style="display:flex;gap:4px;">
+              <div style="flex:1;background:#0d1117;border-radius:3px;height:16px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+                <span style="color:#7f8c8d;font-size:8px;">Técnico</span>
+              </div>
+              <div style="background:#e94560;border-radius:3px;padding:0 10px;height:16px;display:flex;align-items:center;color:#fff;font-size:8px;">Abrir OS</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Modal centralizado</h3>
+      <p>Popup sobre o chat. Cliente auto-preenchido da conversa. Campos: problema, endereço, técnico. Simples e direto.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="display:flex;height:220px;background:#1a1a2e;border-radius:6px;overflow:hidden;gap:2px;padding:6px;">
+        <!-- lista esquerda -->
+        <div style="width:28%;background:#16213e;border-radius:4px;opacity:0.5;"></div>
+        <!-- chat central, empurrado -->
+        <div style="flex:1;background:#0d1117;border-radius:4px;display:flex;flex-direction:column;padding:6px;opacity:0.6;">
+          <div style="display:flex;flex-direction:column;gap:3px;flex:1;">
+            <div style="align-self:flex-start;background:#1e3a5f;color:#ccc;padding:3px 6px;border-radius:6px;font-size:8px;">Minha internet tá lenta</div>
+            <div style="align-self:flex-end;background:#0f3460;color:#fff;padding:3px 6px;border-radius:6px;font-size:8px;">🤖 Verificando...</div>
+          </div>
+        </div>
+        <!-- Painel lateral deslizante -->
+        <div style="width:40%;background:#16213e;border-radius:4px;padding:8px;border-left:2px solid #e94560;display:flex;flex-direction:column;gap:5px;">
+          <div style="color:#fff;font-size:10px;font-weight:bold;border-bottom:1px solid #0f3460;padding-bottom:4px;">Nova OS</div>
+          <div style="background:#0f3460;border-radius:3px;padding:4px 6px;font-size:8px;">
+            <div style="color:#7f8c8d;">Cliente</div>
+            <div style="color:#fff;">João Silva</div>
+          </div>
+          <div style="background:#0d1117;border-radius:3px;height:16px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+            <span style="color:#7f8c8d;font-size:8px;">Descrição</span>
+          </div>
+          <div style="background:#0d1117;border-radius:3px;height:16px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+            <span style="color:#7f8c8d;font-size:8px;">Endereço</span>
+          </div>
+          <div style="background:#0d1117;border-radius:3px;height:16px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+            <span style="color:#7f8c8d;font-size:8px;">Técnico ▾</span>
+          </div>
+          <div style="background:#e94560;border-radius:3px;padding:4px;text-align:center;color:#fff;font-size:9px;">Abrir OS</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Painel lateral deslizante</h3>
+      <p>O formulário de OS aparece como painel que empurra o chat para a esquerda. Mais espaço para preencher sem perder o contexto da conversa.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="display:flex;height:220px;background:#1a1a2e;border-radius:6px;overflow:hidden;gap:2px;padding:6px;">
+        <!-- lista -->
+        <div style="width:28%;background:#16213e;border-radius:4px;opacity:0.5;"></div>
+        <!-- chat + aba OS no mesmo centro -->
+        <div style="flex:1;background:#0d1117;border-radius:4px;display:flex;flex-direction:column;">
+          <!-- abas em cima, OS selecionada -->
+          <div style="display:flex;background:#16213e;padding:4px 6px;gap:4px;border-radius:4px 4px 0 0;">
+            <div style="color:#7f8c8d;padding:2px 8px;border-radius:3px;font-size:9px;">Mensagens</div>
+            <div style="color:#7f8c8d;padding:2px 8px;border-radius:3px;font-size:9px;">Cliente</div>
+            <div style="background:#e94560;color:#fff;padding:2px 8px;border-radius:3px;font-size:9px;">+ Nova OS</div>
+          </div>
+          <!-- Formulário OS como aba -->
+          <div style="padding:8px;display:flex;flex-direction:column;gap:5px;flex:1;">
+            <div style="background:#0f3460;border-radius:3px;padding:4px 8px;font-size:8px;">
+              <span style="color:#7f8c8d;">Cliente: </span><span style="color:#fff;">João Silva · Plano 200mb · Ipixuna</span>
+            </div>
+            <div style="background:#0d1117;border-radius:3px;height:16px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+              <span style="color:#7f8c8d;font-size:8px;">Descrição do problema</span>
+            </div>
+            <div style="background:#0d1117;border-radius:3px;height:16px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+              <span style="color:#7f8c8d;font-size:8px;">Endereço</span>
+            </div>
+            <div style="background:#0d1117;border-radius:3px;height:16px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+              <span style="color:#7f8c8d;font-size:8px;">Selecionar técnico ▾</span>
+            </div>
+            <div style="background:#e94560;border-radius:3px;padding:4px;text-align:center;color:#fff;font-size:9px;">Confirmar e Abrir OS</div>
+          </div>
+        </div>
+        <!-- ações fixas direita -->
+        <div style="width:22%;background:#16213e;border-radius:4px;padding:6px;display:flex;flex-direction:column;gap:4px;opacity:0.6;">
+          <div style="color:#7f8c8d;font-size:9px;">Ações</div>
+          <div style="background:#27ae60;border-radius:3px;padding:3px;text-align:center;color:#fff;font-size:9px;">Assumir</div>
+          <div style="background:#7f8c8d;border-radius:3px;padding:3px;text-align:center;color:#fff;font-size:9px;">Encerrar</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Aba "Nova OS" dentro do chat</h3>
+      <p>O botão "+ OS" vira uma nova aba no centro. O formulário ocupa o espaço do chat. Ações rápidas continuam visíveis à direita.</p>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,124 @@
+<h2>Feature 3: Ranking de Técnicos — Onde e como exibir?</h2>
+<p class="subtitle">Métricas: OS concluídas, CSAT médio, tempo médio de conclusão. Escolha onde aparece no dashboard.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">/dashboard/tecnicos — Página dedicada</div>
+        <div class="mockup-body" style="padding:12px;font-size:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:12px;font-weight:700;">Ranking de Técnicos</div>
+            <div style="display:flex;gap:4px;">
+              <select style="font-size:9px;padding:2px 4px;border:1px solid #d1d5db;border-radius:4px;background:#fff;">
+                <option>Maio 2026</option>
+                <option>Abril 2026</option>
+              </select>
+              <button class="mock-button" style="font-size:9px;padding:2px 8px;background:#1e40af;color:white;border:none;border-radius:4px;">Exportar CSV</button>
+            </div>
+          </div>
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="background:#f1f5f9;font-size:9px;color:#6b7280;">
+                <th style="padding:4px;text-align:left;">#</th>
+                <th style="padding:4px;text-align:left;">Técnico</th>
+                <th style="padding:4px;text-align:center;">OS Concluídas</th>
+                <th style="padding:4px;text-align:center;">CSAT Médio</th>
+                <th style="padding:4px;text-align:center;">Tempo Médio</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom:1px solid #e2e8f0;background:#fffbeb;">
+                <td style="padding:4px;font-weight:700;color:#f59e0b;">🥇1</td>
+                <td style="padding:4px;font-weight:600;">Carlos Silva</td>
+                <td style="padding:4px;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:1px 6px;border-radius:10px;font-weight:700;">47</span></td>
+                <td style="padding:4px;text-align:center;">⭐ 4.8</td>
+                <td style="padding:4px;text-align:center;">1h 42min</td>
+              </tr>
+              <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="padding:4px;font-weight:700;color:#94a3b8;">🥈2</td>
+                <td style="padding:4px;font-weight:600;">Ana Souza</td>
+                <td style="padding:4px;text-align:center;"><span style="background:#dcfce7;color:#16a34a;padding:1px 6px;border-radius:10px;font-weight:700;">38</span></td>
+                <td style="padding:4px;text-align:center;">⭐ 4.6</td>
+                <td style="padding:4px;text-align:center;">2h 10min</td>
+              </tr>
+              <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="padding:4px;font-weight:700;color:#b45309;">🥉3</td>
+                <td style="padding:4px;font-weight:600;">Pedro Lima</td>
+                <td style="padding:4px;text-align:center;"><span style="background:#fef9c3;color:#854d0e;padding:1px 6px;border-radius:10px;font-weight:700;">21</span></td>
+                <td style="padding:4px;text-align:center;">⭐ 4.2</td>
+                <td style="padding:4px;text-align:center;">2h 55min</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="margin-top:6px;font-size:9px;color:#6b7280;text-align:right;">Total: 106 OS concluídas no período</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Página dedicada /tecnicos/ranking</h3>
+      <p>Nova rota no dashboard com tabela completa, filtro por mês e exportação CSV para calcular pagamentos.</p>
+      <div class="pros-cons" style="font-size:12px;margin-top:8px;">
+        <div class="pros"><h4>Prós</h4><ul><li>Espaço para crescer (mais filtros)</li><li>Exportar CSV para pagamento</li><li>Fácil de acessar direto</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>Nova página no menu</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">/dashboard/metricas — Seção no final da página atual</div>
+        <div class="mockup-body" style="padding:12px;font-size:10px;">
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <div style="flex:1;background:#f1f5f9;border-radius:6px;padding:6px;text-align:center;">
+              <div style="font-size:9px;color:#6b7280;">OS Abertas</div>
+              <div style="font-size:16px;font-weight:700;color:#1e40af;">12</div>
+            </div>
+            <div style="flex:1;background:#f1f5f9;border-radius:6px;padding:6px;text-align:center;">
+              <div style="font-size:9px;color:#6b7280;">OS Hoje</div>
+              <div style="font-size:16px;font-weight:700;color:#16a34a;">8</div>
+            </div>
+            <div style="flex:1;background:#f1f5f9;border-radius:6px;padding:6px;text-align:center;">
+              <div style="font-size:9px;color:#6b7280;">CSAT 30d</div>
+              <div style="font-size:16px;font-weight:700;color:#f59e0b;">4.5⭐</div>
+            </div>
+          </div>
+          <div style="border-top:1px solid #e2e8f0;padding-top:8px;">
+            <div style="font-size:10px;font-weight:600;margin-bottom:4px;">Ranking do Mês</div>
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              <div style="display:flex;align-items:center;gap:6px;background:#fffbeb;border-radius:4px;padding:3px 6px;">
+                <span style="font-size:11px;">🥇</span>
+                <span style="flex:1;font-weight:600;font-size:9px;">Carlos Silva</span>
+                <span style="font-size:9px;background:#dcfce7;color:#16a34a;padding:1px 5px;border-radius:8px;">47 OS</span>
+                <span style="font-size:9px;color:#6b7280;">⭐4.8</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;border-radius:4px;padding:3px 6px;">
+                <span style="font-size:11px;">🥈</span>
+                <span style="flex:1;font-weight:600;font-size:9px;">Ana Souza</span>
+                <span style="font-size:9px;background:#dcfce7;color:#16a34a;padding:1px 5px;border-radius:8px;">38 OS</span>
+                <span style="font-size:9px;color:#6b7280;">⭐4.6</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;border-radius:4px;padding:3px 6px;">
+                <span style="font-size:11px;">🥉</span>
+                <span style="flex:1;font-weight:600;font-size:9px;">Pedro Lima</span>
+                <span style="font-size:9px;background:#fef9c3;color:#854d0e;padding:1px 5px;border-radius:8px;">21 OS</span>
+                <span style="font-size:9px;color:#6b7280;">⭐4.2</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Seção na página de Métricas existente</h3>
+      <p>Ranking aparece como uma seção abaixo dos números globais já existentes. Menos cliques para ver, mas sem filtro de período ou exportação.</p>
+      <div class="pros-cons" style="font-size:12px;margin-top:8px;">
+        <div class="pros"><h4>Prós</h4><ul><li>Sem nova rota</li><li>Contexto junto com métricas globais</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>Sem filtro de mês</li><li>Sem exportação CSV</li><li>Pouco espaço</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px;">⭐ Recomendação: <strong>Opção A</strong> — página dedicada. Como o objetivo é calcular pagamento por OS, você vai precisar filtrar por mês e exportar — isso não cabe bem numa seção pequena.</p>

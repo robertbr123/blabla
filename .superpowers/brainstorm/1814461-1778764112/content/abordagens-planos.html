@@ -1,0 +1,111 @@
+<h2>Feature 1: Gestão de Planos — Qual layout?</h2>
+<p class="subtitle">Escolha como o admin vai criar/editar/excluir planos</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Planos de Internet</div>
+        <div class="mockup-body" style="padding:12px;font-size:12px;">
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <div style="flex:1;border:1px solid #ddd;border-radius:6px;padding:8px;background:#f9fafb;">
+              <div style="font-weight:600;color:#1e40af;">Essencial</div>
+              <div style="color:#6b7280;font-size:11px;">35MB · R$110</div>
+              <div style="font-size:10px;color:#6b7280;margin-top:4px;">IPTV gratis</div>
+              <div style="display:flex;gap:4px;margin-top:6px;">
+                <button class="mock-button" style="font-size:10px;padding:2px 6px;background:#3b82f6;color:white;border:none;border-radius:4px;">Editar</button>
+                <button class="mock-button" style="font-size:10px;padding:2px 6px;background:#ef4444;color:white;border:none;border-radius:4px;">Excluir</button>
+              </div>
+            </div>
+            <div style="flex:1;border:1px solid #ddd;border-radius:6px;padding:8px;background:#f9fafb;">
+              <div style="font-weight:600;color:#1e40af;">Plus</div>
+              <div style="color:#6b7280;font-size:11px;">55MB · R$130</div>
+              <div style="font-size:10px;color:#6b7280;margin-top:4px;">IPTV, câmera</div>
+              <div style="display:flex;gap:4px;margin-top:6px;">
+                <button class="mock-button" style="font-size:10px;padding:2px 6px;background:#3b82f6;color:white;border:none;border-radius:4px;">Editar</button>
+                <button class="mock-button" style="font-size:10px;padding:2px 6px;background:#ef4444;color:white;border:none;border-radius:4px;">Excluir</button>
+              </div>
+            </div>
+          </div>
+          <button class="mock-button" style="width:100%;padding:6px;background:#10b981;color:white;border:none;border-radius:6px;font-size:11px;">+ Novo Plano</button>
+          <!-- Modal overlay -->
+          <div style="margin-top:10px;border:1px dashed #3b82f6;border-radius:6px;padding:8px;background:#eff6ff;">
+            <div style="font-size:11px;font-weight:600;color:#1e40af;margin-bottom:6px;">✏️ Editar: Essencial</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+              <input class="mock-input" placeholder="Nome" style="font-size:10px;padding:3px 6px;" />
+              <input class="mock-input" placeholder="Preço R$" style="font-size:10px;padding:3px 6px;" />
+              <input class="mock-input" placeholder="Velocidade" style="font-size:10px;padding:3px 6px;" />
+              <input class="mock-input" placeholder="Descrição" style="font-size:10px;padding:3px 6px;" />
+            </div>
+            <div style="margin-top:4px;font-size:10px;color:#6b7280;">Extras: <span style="background:#dbeafe;padding:1px 4px;border-radius:3px;color:#1e40af;">IPTV gratis ×</span></div>
+            <div style="display:flex;gap:4px;margin-top:6px;">
+              <label style="font-size:10px;display:flex;align-items:center;gap:2px;"><input type="checkbox" checked /> Ativo</label>
+              <label style="font-size:10px;display:flex;align-items:center;gap:2px;"><input type="checkbox" /> Destaque</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Cards + Modal lateral</h3>
+      <p>Cada plano vira um card. Clicar em "Editar" abre um painel/modal com o formulário. Mais visual, fácil de ver todos os planos de uma vez.</p>
+      <div class="pros-cons" style="font-size:12px;margin-top:8px;">
+        <div class="pros"><h4>Prós</h4><ul><li>Visual e intuitivo</li><li>Vê todos os planos juntos</li><li>Fácil de reordenar</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>Mais código de frontend</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">Planos de Internet</div>
+        <div class="mockup-body" style="padding:12px;font-size:11px;">
+          <table style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr style="background:#f1f5f9;font-size:10px;color:#6b7280;">
+                <th style="padding:4px;text-align:left;">Nome</th>
+                <th style="padding:4px;text-align:left;">Preço</th>
+                <th style="padding:4px;text-align:left;">Vel.</th>
+                <th style="padding:4px;text-align:left;">Ativo</th>
+                <th style="padding:4px;text-align:left;">Destaque</th>
+                <th style="padding:4px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="padding:4px;"><input class="mock-input" value="Essencial" style="font-size:10px;width:60px;padding:2px 4px;" /></td>
+                <td style="padding:4px;"><input class="mock-input" value="110" style="font-size:10px;width:40px;padding:2px 4px;" /></td>
+                <td style="padding:4px;"><input class="mock-input" value="35MB" style="font-size:10px;width:40px;padding:2px 4px;" /></td>
+                <td style="padding:4px;text-align:center;"><input type="checkbox" checked /></td>
+                <td style="padding:4px;text-align:center;"><input type="checkbox" /></td>
+                <td style="padding:4px;"><span style="color:#ef4444;cursor:pointer;font-size:14px;">×</span></td>
+              </tr>
+              <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="padding:4px;"><input class="mock-input" value="Plus" style="font-size:10px;width:60px;padding:2px 4px;" /></td>
+                <td style="padding:4px;"><input class="mock-input" value="130" style="font-size:10px;width:40px;padding:2px 4px;" /></td>
+                <td style="padding:4px;"><input class="mock-input" value="55MB" style="font-size:10px;width:40px;padding:2px 4px;" /></td>
+                <td style="padding:4px;text-align:center;"><input type="checkbox" checked /></td>
+                <td style="padding:4px;text-align:center;"><input type="checkbox" checked /></td>
+                <td style="padding:4px;"><span style="color:#ef4444;cursor:pointer;font-size:14px;">×</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="margin-top:6px;font-size:10px;color:#6b7280;">Extras: editados em linha abaixo de cada plano</div>
+          <button class="mock-button" style="margin-top:6px;width:100%;padding:4px;background:#10b981;color:white;border:none;border-radius:4px;font-size:10px;">+ Adicionar Plano</button>
+          <button class="mock-button" style="margin-top:4px;width:100%;padding:4px;background:#3b82f6;color:white;border:none;border-radius:4px;font-size:10px;">💾 Salvar Todos</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Tabela editável inline</h3>
+      <p>Campos editáveis diretamente na tabela. Um botão "Salvar Todos" no final. Compacto, rápido para editar múltiplos planos de uma vez.</p>
+      <div class="pros-cons" style="font-size:12px;margin-top:8px;">
+        <div class="pros"><h4>Prós</h4><ul><li>Edição rápida em massa</li><li>Menos cliques</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>Extras e descrição ficam escondidos</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px;">⭐ Recomendação: <strong>Opção A</strong> — cards + modal. Fica mais claro para admin não-técnico e cabe todos os campos incluindo extras e descrição longa.</p>

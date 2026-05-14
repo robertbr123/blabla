@@ -1,0 +1,124 @@
+<h2>Nova OS — página de Ordens de Serviço</h2>
+<p class="subtitle">Ao clicar "Nova OS" na lista de OS (fora de uma conversa), como deve funcionar a criação com busca por CPF?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:220px;background:#1a1a2e;border-radius:6px;padding:6px;display:flex;flex-direction:column;gap:4px;font-size:9px;">
+        <!-- Topo: lista de OS com botão -->
+        <div style="background:#16213e;border-radius:4px;padding:5px 8px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:#fff;font-size:10px;font-weight:bold;">Ordens de Serviço</span>
+          <div style="background:#e94560;border-radius:3px;padding:2px 8px;color:#fff;font-size:9px;">+ Nova OS</div>
+        </div>
+        <!-- Lista OS fundo -->
+        <div style="flex:1;position:relative;">
+          <div style="display:flex;flex-direction:column;gap:3px;opacity:0.3;">
+            <div style="background:#16213e;border-radius:3px;padding:5px 8px;display:flex;justify-content:space-between;">
+              <span style="color:#ccc;">OS-20260513-001 · Riquelme</span>
+              <span style="background:#27ae60;color:#fff;padding:1px 5px;border-radius:10px;font-size:8px;">Concluída</span>
+            </div>
+            <div style="background:#16213e;border-radius:3px;padding:5px 8px;display:flex;justify-content:space-between;">
+              <span style="color:#ccc;">OS-20260513-002 · Ilgner</span>
+              <span style="background:#f39c12;color:#fff;padding:1px 5px;border-radius:10px;font-size:8px;">Em andamento</span>
+            </div>
+          </div>
+          <!-- Modal centralizado -->
+          <div style="position:absolute;top:5px;left:50%;transform:translateX(-50%);background:#16213e;border-radius:8px;padding:10px;width:85%;border:1px solid #e94560;">
+            <div style="color:#fff;font-size:10px;font-weight:bold;margin-bottom:6px;">Nova Ordem de Serviço</div>
+            <!-- Passo 1: busca -->
+            <div style="display:flex;gap:3px;margin-bottom:5px;">
+              <div style="flex:1;background:#0d1117;border-radius:3px;height:18px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+                <span style="color:#7f8c8d;">CPF ou nome do cliente</span>
+              </div>
+              <div style="background:#3498db;border-radius:3px;padding:0 8px;height:18px;display:flex;align-items:center;color:#fff;">Buscar</div>
+            </div>
+            <!-- resultado SGP -->
+            <div style="background:#0f3460;border-radius:4px;padding:5px 8px;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;">
+              <div>
+                <div style="color:#fff;font-size:9px;font-weight:bold;">João Silva</div>
+                <div style="color:#7f8c8d;font-size:8px;">200mb · Ativo · Ipixuna · Rua Av. Principal 45</div>
+              </div>
+              <div style="background:#27ae60;color:#fff;font-size:7px;padding:1px 5px;border-radius:3px;">SGP ✓</div>
+            </div>
+            <!-- campos restantes -->
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              <div style="background:#0d1117;border-radius:3px;height:16px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+                <span style="color:#7f8c8d;">Descrição do problema</span>
+              </div>
+              <div style="background:#0d1117;border-radius:3px;height:16px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+                <span style="color:#ccc;">Rua Av. Principal 45, Ipixuna</span>
+                <span style="color:#27ae60;font-size:7px;margin-left:4px;">✓ auto</span>
+              </div>
+              <div style="display:flex;gap:3px;">
+                <div style="flex:1;background:#0d1117;border-radius:3px;height:16px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+                  <span style="color:#7f8c8d;">Selecionar técnico ▾</span>
+                </div>
+                <div style="background:#e94560;border-radius:3px;padding:0 8px;height:16px;display:flex;align-items:center;color:#fff;">Abrir OS</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Modal sobre a lista de OS</h3>
+      <p>Popup com 2 passos: busca por CPF → dados do SGP aparecem → preenche problema + técnico → abre. Endereço auto-preenchido do SGP.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="height:220px;background:#1a1a2e;border-radius:6px;padding:6px;display:flex;gap:4px;font-size:9px;">
+        <!-- Lista OS à esquerda -->
+        <div style="width:40%;background:#16213e;border-radius:4px;padding:6px;display:flex;flex-direction:column;gap:3px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+            <span style="color:#fff;font-size:9px;font-weight:bold;">OS</span>
+            <div style="background:#e94560;border-radius:3px;padding:1px 6px;color:#fff;font-size:8px;">+ Nova</div>
+          </div>
+          <div style="background:#0f3460;border-radius:3px;padding:4px 6px;border-left:2px solid #e94560;">
+            <div style="color:#fff;font-size:8px;">OS-001 · Riquelme</div>
+            <div style="color:#27ae60;font-size:7px;">Concluída</div>
+          </div>
+          <div style="background:#0d1117;border-radius:3px;padding:4px 6px;">
+            <div style="color:#ccc;font-size:8px;">OS-002 · Ilgner</div>
+            <div style="color:#f39c12;font-size:7px;">Em andamento</div>
+          </div>
+          <div style="background:#0d1117;border-radius:3px;padding:4px 6px;">
+            <div style="color:#ccc;font-size:8px;">OS-003 · Hercules</div>
+            <div style="color:#3498db;font-size:7px;">Pendente</div>
+          </div>
+        </div>
+        <!-- Formulário à direita (painel dedicado) -->
+        <div style="flex:1;background:#16213e;border-radius:4px;padding:8px;display:flex;flex-direction:column;gap:4px;border-left:2px solid #e94560;">
+          <div style="color:#fff;font-size:10px;font-weight:bold;border-bottom:1px solid #0f3460;padding-bottom:4px;">Nova OS</div>
+          <div style="display:flex;gap:3px;">
+            <div style="flex:1;background:#0d1117;border-radius:3px;height:18px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+              <span style="color:#7f8c8d;">CPF do cliente</span>
+            </div>
+            <div style="background:#3498db;border-radius:3px;padding:0 8px;height:18px;display:flex;align-items:center;color:#fff;font-size:8px;">Buscar</div>
+          </div>
+          <div style="background:#0f3460;border-radius:3px;padding:5px 8px;">
+            <div style="color:#fff;font-size:9px;font-weight:bold;">João Silva</div>
+            <div style="color:#7f8c8d;font-size:8px;">200mb · Ativo · Rua Av. Principal 45</div>
+          </div>
+          <div style="background:#0d1117;border-radius:3px;height:16px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+            <span style="color:#7f8c8d;">Descrição do problema</span>
+          </div>
+          <div style="background:#0d1117;border-radius:3px;height:16px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+            <span style="color:#ccc;font-size:8px;">Rua Av. Principal 45, Ipixuna ✓</span>
+          </div>
+          <div style="background:#0d1117;border-radius:3px;height:16px;border:1px solid #0f3460;padding:0 6px;display:flex;align-items:center;">
+            <span style="color:#7f8c8d;">Técnico ▾</span>
+          </div>
+          <div style="background:#e94560;border-radius:3px;padding:4px;text-align:center;color:#fff;font-size:9px;">Abrir OS e Notificar Técnico</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Painel lateral fixo na página de OS</h3>
+      <p>Lista de OS à esquerda, formulário de nova OS ocupa a direita. CPF → SGP → endereço auto-preenchido → técnico → abrir.</p>
+    </div>
+  </div>
+
+</div>

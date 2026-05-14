@@ -1,0 +1,203 @@
+<h2>Design Completo — 3 Features</h2>
+<p class="subtitle">Revise cada seção e confirme antes de prosseguir para o plano de implementação</p>
+
+<div class="section">
+  <h3>🗂️ Feature 1 — Gestão de Planos</h3>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;">
+    <div>
+      <div class="label">Backend — novos endpoints</div>
+      <div style="font-size:12px;margin-top:6px;">
+        <div style="background:#f8fafc;border-radius:6px;padding:10px;font-family:monospace;font-size:11px;line-height:1.7;">
+          <div><span style="color:#16a34a;">GET</span>    /api/v1/planos           <span style="color:#6b7280;"># público (bot+UI)</span></div>
+          <div><span style="color:#2563eb;">POST</span>   /api/v1/planos           <span style="color:#6b7280;"># criar plano (ADMIN)</span></div>
+          <div><span style="color:#f59e0b;">PATCH</span>  /api/v1/planos/{id}      <span style="color:#6b7280;"># editar (ADMIN)</span></div>
+          <div><span style="color:#ef4444;">DELETE</span> /api/v1/planos/{id}      <span style="color:#6b7280;"># excluir (ADMIN)</span></div>
+        </div>
+      </div>
+      <div class="label" style="margin-top:10px;">Schema por plano</div>
+      <div style="background:#f8fafc;border-radius:6px;padding:10px;font-family:monospace;font-size:11px;margin-top:6px;line-height:1.7;">
+        <div>nome:       <span style="color:#7c3aed;">string</span></div>
+        <div>preco:      <span style="color:#7c3aed;">float</span></div>
+        <div>velocidade: <span style="color:#7c3aed;">string</span>  <span style="color:#6b7280;"># "35MB"</span></div>
+        <div>extras:     <span style="color:#7c3aed;">string[]</span></div>
+        <div>descricao:  <span style="color:#7c3aed;">string</span>  <span style="color:#6b7280;"># novo</span></div>
+        <div>ativo:      <span style="color:#7c3aed;">bool</span>    <span style="color:#6b7280;"># novo</span></div>
+        <div>destaque:   <span style="color:#7c3aed;">bool</span>    <span style="color:#6b7280;"># novo</span></div>
+      </div>
+      <div class="label" style="margin-top:10px;">Armazenamento</div>
+      <div style="font-size:12px;margin-top:4px;color:#374151;">Continua como JSONB na tabela <code>config</code> (chave "planos"). Os novos endpoints são wrappers que leem/escrevem o array completo atomicamente. Não precisa migração de banco.</div>
+    </div>
+    <div>
+      <div class="label">Frontend — nova página</div>
+      <div style="margin-top:6px;">
+        <div class="mockup">
+          <div class="mockup-header">/configuracoes/planos</div>
+          <div class="mockup-body" style="padding:10px;font-size:10px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+              <div style="font-size:11px;font-weight:600;">Planos de Internet</div>
+              <button style="background:#10b981;color:white;border:none;border-radius:4px;padding:3px 8px;font-size:9px;">+ Novo Plano</button>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+              <div style="border:1px solid #d1d5db;border-radius:6px;padding:6px;">
+                <div style="display:flex;justify-content:space-between;">
+                  <span style="font-weight:600;font-size:10px;">Essencial</span>
+                  <span style="background:#dcfce7;color:#16a34a;font-size:8px;padding:1px 4px;border-radius:8px;">ativo</span>
+                </div>
+                <div style="font-size:9px;color:#6b7280;">35MB · R$110</div>
+                <div style="font-size:9px;color:#374151;margin-top:2px;">Internet fibra básica</div>
+                <div style="display:flex;gap:3px;margin-top:4px;">
+                  <button style="background:#3b82f6;color:white;border:none;border-radius:3px;padding:1px 5px;font-size:8px;">✏️ Editar</button>
+                  <button style="background:#ef4444;color:white;border:none;border-radius:3px;padding:1px 5px;font-size:8px;">🗑️</button>
+                </div>
+              </div>
+              <div style="border:2px solid #f59e0b;border-radius:6px;padding:6px;background:#fffbeb;">
+                <div style="display:flex;justify-content:space-between;">
+                  <span style="font-weight:600;font-size:10px;">Plus</span>
+                  <span style="background:#fef3c7;color:#92400e;font-size:8px;padding:1px 4px;border-radius:8px;">⭐ destaque</span>
+                </div>
+                <div style="font-size:9px;color:#6b7280;">55MB · R$130</div>
+                <div style="font-size:9px;color:#374151;margin-top:2px;">Com IPTV incluso</div>
+                <div style="display:flex;gap:3px;margin-top:4px;">
+                  <button style="background:#3b82f6;color:white;border:none;border-radius:3px;padding:1px 5px;font-size:8px;">✏️ Editar</button>
+                  <button style="background:#ef4444;color:white;border:none;border-radius:3px;padding:1px 5px;font-size:8px;">🗑️</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#374151;margin-top:8px;">Modal de edição com campos: nome, preço, velocidade, descrição, extras (chips removíveis + campo para adicionar), toggles ativo/destaque. Bot só apresenta planos com <code>ativo=true</code>. Plano com <code>destaque=true</code> recebe borda destacada.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>📄 Feature 2 — PDF de OS</h3>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;">
+    <div>
+      <div class="label">Backend</div>
+      <div style="background:#f8fafc;border-radius:6px;padding:10px;font-family:monospace;font-size:11px;margin-top:6px;line-height:1.7;">
+        <div><span style="color:#16a34a;">GET</span> /api/v1/os/{id}/pdf</div>
+        <div style="color:#6b7280;font-size:10px;">→ retorna PDF (application/pdf)</div>
+        <div style="margin-top:4px;"><span style="color:#2563eb;">POST</span> /api/v1/os/{id}/enviar-pdf-tecnico</div>
+        <div style="color:#6b7280;font-size:10px;">→ gera PDF + envia ao técnico via Evolution</div>
+      </div>
+      <div class="label" style="margin-top:10px;">Geração (WeasyPrint)</div>
+      <div style="font-size:12px;margin-top:4px;color:#374151;">
+        <div style="margin-bottom:4px;">1. Template HTML Jinja2 renderiza dados da OS</div>
+        <div style="margin-bottom:4px;">2. WeasyPrint converte HTML+CSS → PDF em memória</div>
+        <div style="margin-bottom:4px;">3. Fotos lidas do filesystem e embutidas como base64 na pág 2</div>
+        <div>4. PDF retornado como StreamingResponse ou salvo em /tmp para envio</div>
+      </div>
+      <div class="label" style="margin-top:10px;">Página 1 do PDF inclui</div>
+      <div style="font-size:11px;color:#374151;margin-top:4px;line-height:1.6;">Header Ondeline · Código OS · Nome + tel cliente · Nome + tel técnico · Endereço · Problema · Status · Agendamento · Data conclusão · CSAT (se disponível)</div>
+      <div class="label" style="margin-top:10px;">Página 2 (fotos)</div>
+      <div style="font-size:11px;color:#374151;margin-top:4px;">Fotos em grid 2 colunas com timestamp de cada. Se não houver fotos, página 2 omitida.</div>
+    </div>
+    <div>
+      <div class="label">Frontend</div>
+      <div style="font-size:11px;color:#374151;margin-top:6px;">Na página de detalhe da OS (<code>os-detail.tsx</code>), dois botões novos:</div>
+      <div class="mockup" style="margin-top:6px;">
+        <div class="mockup-header">Detalhe da OS — OS-ABC123</div>
+        <div class="mockup-body" style="padding:10px;font-size:10px;">
+          <div style="background:#f1f5f9;border-radius:6px;padding:8px;margin-bottom:6px;">
+            <div style="font-weight:600;">Problema: Internet caindo</div>
+            <div style="color:#6b7280;font-size:9px;">Carlos Silva · Rua das Flores, 123</div>
+          </div>
+          <div style="display:flex;gap:4px;margin-top:8px;">
+            <button style="flex:1;background:#1e40af;color:white;border:none;border-radius:4px;padding:5px;font-size:9px;">⬇️ Baixar PDF</button>
+            <button style="flex:1;background:#25d366;color:white;border:none;border-radius:4px;padding:5px;font-size:9px;">📲 Enviar PDF ao Técnico</button>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#374151;margin-top:8px;">"Baixar PDF" abre nova aba com o PDF. "Enviar PDF ao Técnico" faz POST e exibe toast de confirmação. Botões disponíveis para ADMIN e ATENDENTE.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>📊 Feature 3 — Ranking de Técnicos</h3>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px;">
+    <div>
+      <div class="label">Backend — novos endpoints</div>
+      <div style="background:#f8fafc;border-radius:6px;padding:10px;font-family:monospace;font-size:11px;margin-top:6px;line-height:1.7;">
+        <div><span style="color:#16a34a;">GET</span> /api/v1/metricas/tecnicos</div>
+        <div style="color:#6b7280;font-size:10px;">  ?mes=2026-05  (default: mês atual)</div>
+        <div style="margin-top:4px;"><span style="color:#16a34a;">GET</span> /api/v1/metricas/tecnicos/export</div>
+        <div style="color:#6b7280;font-size:10px;">  ?mes=2026-05  → CSV para download</div>
+      </div>
+      <div class="label" style="margin-top:10px;">Response por técnico</div>
+      <div style="background:#f8fafc;border-radius:6px;padding:10px;font-family:monospace;font-size:11px;margin-top:6px;line-height:1.7;">
+        <div>tecnico_id:        <span style="color:#7c3aed;">UUID</span></div>
+        <div>nome:              <span style="color:#7c3aed;">string</span></div>
+        <div>os_concluidas:     <span style="color:#7c3aed;">int</span></div>
+        <div>csat_avg:          <span style="color:#7c3aed;">float | null</span></div>
+        <div>tempo_medio_min:   <span style="color:#7c3aed;">int | null</span></div>
+        <div>ultima_os_em:      <span style="color:#7c3aed;">datetime | null</span></div>
+      </div>
+      <div style="font-size:11px;color:#374151;margin-top:8px;">Query agrupa OS por tecnico_id WHERE status=CONCLUIDA E concluida_em no mês. Ordenado por os_concluidas DESC.</div>
+    </div>
+    <div>
+      <div class="label">Frontend — /tecnicos/ranking</div>
+      <div class="mockup" style="margin-top:6px;">
+        <div class="mockup-header">Ranking de Técnicos</div>
+        <div class="mockup-body" style="padding:10px;font-size:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <select style="font-size:9px;padding:2px 4px;border:1px solid #d1d5db;border-radius:4px;">
+              <option>Maio 2026</option>
+            </select>
+            <button style="background:#1e40af;color:white;border:none;border-radius:4px;padding:3px 8px;font-size:9px;">⬇️ Exportar CSV</button>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:9px;">
+            <thead>
+              <tr style="background:#f1f5f9;color:#6b7280;">
+                <th style="padding:3px;text-align:left;">#</th>
+                <th style="padding:3px;text-align:left;">Técnico</th>
+                <th style="padding:3px;text-align:center;">OS</th>
+                <th style="padding:3px;text-align:center;">CSAT</th>
+                <th style="padding:3px;text-align:center;">Tempo Médio</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="background:#fffbeb;border-bottom:1px solid #e2e8f0;">
+                <td style="padding:3px;">🥇</td><td style="padding:3px;font-weight:600;">Carlos S.</td>
+                <td style="padding:3px;text-align:center;"><b>47</b></td>
+                <td style="padding:3px;text-align:center;">⭐4.8</td>
+                <td style="padding:3px;text-align:center;">1h42</td>
+              </tr>
+              <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="padding:3px;">🥈</td><td style="padding:3px;font-weight:600;">Ana S.</td>
+                <td style="padding:3px;text-align:center;"><b>38</b></td>
+                <td style="padding:3px;text-align:center;">⭐4.6</td>
+                <td style="padding:3px;text-align:center;">2h10</td>
+              </tr>
+              <tr>
+                <td style="padding:3px;">🥉</td><td style="padding:3px;font-weight:600;">Pedro L.</td>
+                <td style="padding:3px;text-align:center;"><b>21</b></td>
+                <td style="padding:3px;text-align:center;">⭐4.2</td>
+                <td style="padding:3px;text-align:center;">2h55</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="margin-top:6px;font-size:9px;color:#6b7280;">Total: 106 OS concluídas · Acesso: ADMIN e ATENDENTE</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#374151;margin-top:8px;">Nova rota no menu lateral abaixo de "Configurações". Exportação CSV inclui: nome, OS concluídas, CSAT médio, tempo médio — pronto para copiar numa planilha de pagamento.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="background:#f0fdf4;border-radius:8px;padding:16px;border:1px solid #bbf7d0;">
+  <h3 style="color:#15803d;">✅ Este design te atende? Confirme para gerarmos o spec.</h3>
+  <div style="font-size:12px;color:#374151;margin-top:8px;">
+    <b>Resumo das decisões:</b>
+    <ul style="margin-top:6px;line-height:2;">
+      <li>Planos: CRUD com cards + modal, campos novos: ativo, destaque, descrição</li>
+      <li>PDF: WeasyPrint backend, dados pág 1 + fotos pág 2, 2 botões na tela de OS</li>
+      <li>Ranking: página dedicada /tecnicos/ranking, filtro por mês, exportação CSV</li>
+    </ul>
+  </div>
+</div>

@@ -1,0 +1,124 @@
+<h2>Feature 2: PDF da Ordem de Serviço — Layout do documento</h2>
+<p class="subtitle">Geração backend com WeasyPrint (HTML→PDF). Escolha o layout do documento.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">OS-ABC123.pdf — Layout A: Compacto</div>
+        <div class="mockup-body" style="padding:12px;font-family:monospace;font-size:10px;background:#fff;">
+          <div style="border-bottom:2px solid #1e40af;padding-bottom:6px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#1e40af;">ONDELINE TELECOM</div>
+              <div style="font-size:10px;color:#6b7280;">Ordem de Serviço</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:13px;font-weight:700;">OS-ABC123</div>
+              <div style="font-size:9px;color:#6b7280;">14/05/2026 09:00</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <div>
+              <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Cliente</div>
+              <div style="font-weight:600;">João da Silva</div>
+              <div style="font-size:9px;color:#374151;">📱 (11) 99999-9999</div>
+            </div>
+            <div>
+              <div style="font-size:9px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Técnico</div>
+              <div style="font-weight:600;">Carlos Manutenção</div>
+              <div style="font-size:9px;color:#374151;">📱 (11) 98888-8888</div>
+            </div>
+          </div>
+          <div style="background:#f8fafc;border-left:3px solid #1e40af;padding:6px;margin-bottom:8px;border-radius:0 4px 4px 0;">
+            <div style="font-size:9px;color:#6b7280;text-transform:uppercase;">Endereço</div>
+            <div style="font-size:10px;">Rua das Flores, 123 — Bairro Centro</div>
+          </div>
+          <div style="background:#fef3c7;border-left:3px solid #f59e0b;padding:6px;margin-bottom:8px;border-radius:0 4px 4px 0;">
+            <div style="font-size:9px;color:#6b7280;text-transform:uppercase;">Problema Reportado</div>
+            <div style="font-size:10px;">Internet caindo a cada 2 horas. Cliente relata perda de pacotes.</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <div style="flex:1;text-align:center;background:#dcfce7;border-radius:4px;padding:4px;">
+              <div style="font-size:9px;color:#6b7280;">Status</div>
+              <div style="font-size:10px;font-weight:600;color:#16a34a;">✓ CONCLUÍDA</div>
+            </div>
+            <div style="flex:1;text-align:center;background:#f1f5f9;border-radius:4px;padding:4px;">
+              <div style="font-size:9px;color:#6b7280;">Agendamento</div>
+              <div style="font-size:10px;">14/05 às 10:00</div>
+            </div>
+            <div style="flex:1;text-align:center;background:#f1f5f9;border-radius:4px;padding:4px;">
+              <div style="font-size:9px;color:#6b7280;">Conclusão</div>
+              <div style="font-size:10px;">14/05 às 12:35</div>
+            </div>
+          </div>
+          <div style="border-top:1px dashed #d1d5db;padding-top:6px;font-size:9px;color:#9ca3af;">
+            📷 3 fotos anexadas — página 2
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Compacto (1 folha + fotos)</h3>
+      <p>Dados principais em 1 página, fotos agrupadas na página 2. Ideal para imprimir rápido e enviar por WhatsApp (arquivo menor).</p>
+      <div class="pros-cons" style="font-size:12px;margin-top:8px;">
+        <div class="pros"><h4>Prós</h4><ul><li>Arquivo menor para WhatsApp</li><li>Carrega rápido no celular</li><li>Visual limpo</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>Fotos ficam separadas dos dados</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">OS-ABC123.pdf — Layout B: Completo</div>
+        <div class="mockup-body" style="padding:12px;font-family:monospace;font-size:10px;background:#fff;">
+          <div style="border-bottom:2px solid #1e40af;padding-bottom:6px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#1e40af;">ONDELINE TELECOM</div>
+              <div style="font-size:10px;color:#6b7280;">Ordem de Serviço</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:13px;font-weight:700;">OS-ABC123</div>
+              <div style="font-size:9px;color:#6b7280;">14/05/2026 09:00</div>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <div>
+              <div style="font-size:9px;color:#6b7280;text-transform:uppercase;">Cliente</div>
+              <div style="font-weight:600;">João da Silva</div>
+              <div style="font-size:9px;">📱 (11) 99999-9999</div>
+            </div>
+            <div>
+              <div style="font-size:9px;color:#6b7280;text-transform:uppercase;">Técnico</div>
+              <div style="font-weight:600;">Carlos Manutenção</div>
+              <div style="font-size:9px;">📱 (11) 98888-8888</div>
+            </div>
+          </div>
+          <div style="background:#fef3c7;border-left:3px solid #f59e0b;padding:6px;margin-bottom:6px;border-radius:0 4px 4px 0;">
+            <div style="font-size:9px;color:#6b7280;">Problema</div>
+            <div style="font-size:10px;">Internet caindo a cada 2 horas.</div>
+          </div>
+          <div style="font-size:9px;color:#6b7280;text-transform:uppercase;margin-bottom:4px;">Fotos da OS</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:6px;">
+            <div style="background:#e2e8f0;border-radius:4px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:16px;">📷</div>
+            <div style="background:#e2e8f0;border-radius:4px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:16px;">📷</div>
+            <div style="background:#e2e8f0;border-radius:4px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:16px;">📷</div>
+          </div>
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:5px;font-size:9px;">
+            <span style="font-weight:600;color:#16a34a;">✓ CSAT: ★★★★★</span> · Conclusão: 14/05 às 12:35
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Completo (tudo em uma folha)</h3>
+      <p>Fotos inseridas inline junto com os dados. Tudo em sequência, sem paginação. Bom para impressão e arquivo, mas arquivo maior.</p>
+      <div class="pros-cons" style="font-size:12px;margin-top:8px;">
+        <div class="pros"><h4>Prós</h4><ul><li>Tudo junto numa leitura só</li><li>Melhor para impressão</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>Arquivo maior (fotos inline)</li><li>Pode ficar longo</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px;">⭐ Recomendação: <strong>Opção A</strong> — compacto com fotos na pág 2. Arquivo menor facilita envio pelo WhatsApp e carrega melhor no celular do técnico.</p>
