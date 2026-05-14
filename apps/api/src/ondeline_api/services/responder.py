@@ -5,6 +5,7 @@ Reusa BufferedOutboundEnqueuer para envio pos-commit.
 """
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Protocol
 from uuid import UUID
 
@@ -33,6 +34,10 @@ async def responder(
     c = await repo.get_by_id(conversa_id)
     if c is None:
         raise LookupError(str(conversa_id))
+
+    if c.first_response_at is None:
+        c.first_response_at = datetime.now(tz=UTC)
+        await session.flush()
 
     msg = Mensagem(
         conversa_id=c.id,

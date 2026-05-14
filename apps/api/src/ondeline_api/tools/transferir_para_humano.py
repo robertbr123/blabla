@@ -1,6 +1,7 @@
 """Tool: transferir conversa para atendente humano."""
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any
 
 from ondeline_api.db.models.business import ConversaEstado, ConversaStatus
@@ -31,5 +32,7 @@ SCHEMA: dict[str, Any] = {
 async def transferir_para_humano(ctx: ToolContext, *, motivo: str) -> dict[str, Any]:
     ctx.conversa.estado = ConversaEstado.AGUARDA_ATENDENTE
     ctx.conversa.status = ConversaStatus.AGUARDANDO
+    if ctx.conversa.transferred_at is None:
+        ctx.conversa.transferred_at = datetime.now(tz=UTC)
     await ctx.session.flush()
     return {"ok": True, "motivo": motivo}
