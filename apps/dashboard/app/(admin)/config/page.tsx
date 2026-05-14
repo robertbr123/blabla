@@ -1,3 +1,4 @@
+import { BotToggle } from '@/components/bot-toggle'
 import { ConfigEditor } from '@/components/config-editor'
 import { SgpConfigEditor } from '@/components/sgp-config-editor'
 
@@ -10,6 +11,7 @@ export default function ConfigPage() {
           Editor de chaves de configuração (admin only)
         </p>
       </div>
+      <BotToggle />
       <SgpConfigEditor />
       <div>
         <h2 className="text-lg font-semibold">Editor genérico (k/v)</h2>
