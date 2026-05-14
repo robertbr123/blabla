@@ -36,8 +36,22 @@ async def test_default_quando_config_vazio(db_session) -> None:
 
 async def test_le_do_config_quando_presente(db_session) -> None:
     await ConfigRepo(db_session).set(
-        "planos", [{"nome": "X", "preco": 1.0, "velocidade": "1MB"}]
+        "planos", [{"nome": "X", "preco": 1.0, "velocidade": "1MB", "ativo": True}]
     )
     await db_session.flush()
     out = await consultar_planos(_ctx(db_session))
-    assert out["planos"] == [{"nome": "X", "preco": 1.0, "velocidade": "1MB"}]
+    assert out["planos"] == [{"nome": "X", "preco": 1.0, "velocidade": "1MB", "ativo": True}]
+
+
+async def test_filtra_planos_inativos(db_session) -> None:
+    await ConfigRepo(db_session).set(
+        "planos",
+        [
+            {"nome": "Ativo", "preco": 100.0, "velocidade": "50MB", "ativo": True},
+            {"nome": "Inativo", "preco": 200.0, "velocidade": "100MB", "ativo": False},
+        ],
+    )
+    await db_session.flush()
+    out = await consultar_planos(_ctx(db_session))
+    assert len(out["planos"]) == 1
+    assert out["planos"][0]["nome"] == "Ativo"

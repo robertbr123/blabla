@@ -10,9 +10,33 @@ from ondeline_api.tools.registry import tool
 SCHEMA: dict[str, Any] = {"type": "object", "properties": {}}
 
 _DEFAULT_PLANOS = [
-    {"nome": "Essencial", "preco": 110.0, "velocidade": "35MB"},
-    {"nome": "Plus", "preco": 130.0, "velocidade": "55MB", "extras": ["IPTV gratis"]},
-    {"nome": "Premium", "preco": 150.0, "velocidade": "55MB", "extras": ["IPTV", "camera comodato"]},
+    {
+        "nome": "Essencial",
+        "preco": 110.0,
+        "velocidade": "35MB",
+        "extras": [],
+        "descricao": "",
+        "ativo": True,
+        "destaque": False,
+    },
+    {
+        "nome": "Plus",
+        "preco": 130.0,
+        "velocidade": "55MB",
+        "extras": ["IPTV gratis"],
+        "descricao": "",
+        "ativo": True,
+        "destaque": True,
+    },
+    {
+        "nome": "Premium",
+        "preco": 150.0,
+        "velocidade": "55MB",
+        "extras": ["IPTV", "camera comodato"],
+        "descricao": "",
+        "ativo": True,
+        "destaque": False,
+    },
 ]
 
 
@@ -25,4 +49,5 @@ async def consultar_planos(ctx: ToolContext) -> dict[str, Any]:
     repo = ConfigRepo(ctx.session)
     raw = await repo.get("planos")
     planos = raw if isinstance(raw, list) else _DEFAULT_PLANOS
-    return {"planos": planos, "pagamento": ["PIX", "Boleto"]}
+    planos_ativos = [p for p in planos if p.get("ativo", True)]
+    return {"planos": planos_ativos, "pagamento": ["PIX", "Boleto"]}
