@@ -155,6 +155,79 @@ async def process_inbound_message(
                 conversa_id=conversa.id, persisted=True, duplicate=False, escalated=True
             )
 
+    # Intercepta coleta sequencial de mudanca de endereco
+    if conversa.estado is ConversaEstado.MUDANCA_ENDERECO and evt.kind is InboundKind.TEXT:
+        meta: dict = conversa.checklist_metadata or {}
+        step = meta.get("step", "rua")
+        dados: dict = meta.get("novo_endereco", {})
+        dados[step] = (evt.text or "").strip()
+
+        if step == "referencia":
+            # Coleta completa — decide baseado em status financeiro
+            endereco_str = (
+                f"{dados.get('rua', '')}, {dados.get('bairro', '')}"
+                f" — Ref: {dados.get('referencia', 'N/A')}"
+            )
+            # Verifica status do cliente no cache
+            cliente_status = None
+            if conversa.cliente_id is not None:
+                from ondeline_api.db.models.business import Cliente as ClienteModel
+                from sqlalchemy import select as sa_select
+                _session = getattr(deps.conversas, "_session", None)
+                if _session is not None:
+                    cli_row = (
+                        await _session.execute(
+                            sa_select(ClienteModel).where(ClienteModel.id == conversa.cliente_id)
+                        )
+                    ).scalar_one_or_none()
+                    cliente_status = cli_row.status if cli_row else None
+
+            conversa.checklist_metadata = None
+            await deps.conversas.update_estado_status(
+                conversa, estado=ConversaEstado.CLIENTE, status=ConversaStatus.BOT
+            )
+
+            if cliente_status and cliente_status.lower() in ("suspenso", "bloqueado", "inadimplente"):
+                # Escala com dados já coletados
+                msg_escala = (
+                    f"Recebi o novo endereço: {endereco_str}. "
+                    "Porém há uma pendência financeira no seu contrato. "
+                    "Um atendente vai te ajudar com os próximos passos. 🙏"
+                )
+                deps.outbound.enqueue_send_outbound(evt.jid, msg_escala, conversa.id)
+                await deps.conversas.update_estado_status(
+                    conversa,
+                    estado=ConversaEstado.AGUARDA_ATENDENTE,
+                    status=ConversaStatus.AGUARDANDO,
+                )
+            else:
+                # Abre OS de mudança via LLM
+                msg_ok = (
+                    f"Perfeito! Registrei o novo endereço: {endereco_str}. "
+                    "Vou criar uma ordem de serviço para a mudança de instalação. "
+                    "Em breve nosso técnico entrará em contato! 🔧"
+                )
+                deps.outbound.enqueue_send_outbound(evt.jid, msg_ok, conversa.id)
+                deps.outbound.enqueue_llm_turn(conversa.id)
+
+        else:
+            # Próximo passo
+            next_step = "bairro" if step == "rua" else "referencia"
+            next_question = (
+                "Qual é o bairro?"
+                if next_step == "bairro"
+                else "Algum ponto de referência? (ou responda NENHUM)"
+            )
+            conversa.checklist_metadata = {**meta, "step": next_step, "novo_endereco": dados}
+            await deps.conversas.update_estado_status(
+                conversa, estado=ConversaEstado.MUDANCA_ENDERECO, status=ConversaStatus.BOT
+            )
+            deps.outbound.enqueue_send_outbound(evt.jid, next_question, conversa.id)
+
+        return InboundResult(
+            conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
+        )
+
     if deps.redis is not None:
         try:
             from ondeline_api.services.conversa_events import publish as _pub
