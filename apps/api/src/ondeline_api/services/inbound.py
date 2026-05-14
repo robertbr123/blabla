@@ -28,6 +28,7 @@ from ondeline_api.domain.fsm import (
     Fsm,
     FsmDecision,
 )
+from ondeline_api.repositories.config import ConfigRepo
 from ondeline_api.services.media_classifier import (
     CATEGORIES_ESCALATE,
     CATEGORY_ACK,
@@ -35,7 +36,6 @@ from ondeline_api.services.media_classifier import (
     MediaCategory,
     classify_media,
 )
-from ondeline_api.repositories.config import ConfigRepo
 from ondeline_api.webhook.parser import InboundEvent, InboundKind
 
 
