@@ -75,6 +75,11 @@ class CeleryOutboundEnqueuer(_OutboundQueueProto):
 
         llm_turn_task.delay(conversa_id=str(conversa_id))
 
+    def enqueue_followup_os(self, conversa_id: UUID, resultado: str, resposta: str) -> None:
+        from ondeline_api.workers.followup import followup_os_task
+
+        followup_os_task.delay(conversa_id=str(conversa_id), resultado=resultado, resposta=resposta)
+
 
 @dataclass
 class BufferedOutboundEnqueuer(_OutboundQueueProto):
@@ -86,6 +91,7 @@ class BufferedOutboundEnqueuer(_OutboundQueueProto):
 
     _pending_outbound: list[dict[str, Any]] = field(default_factory=list)
     _pending_llm_turns: list[UUID] = field(default_factory=list)
+    _pending_followup: list[dict[str, Any]] = field(default_factory=list)
 
     def enqueue_send_outbound(self, jid: str, text: str, conversa_id: UUID) -> None:
         self._pending_outbound.append({"jid": jid, "text": text, "conversa_id": str(conversa_id)})
@@ -93,8 +99,14 @@ class BufferedOutboundEnqueuer(_OutboundQueueProto):
     def enqueue_llm_turn(self, conversa_id: UUID) -> None:
         self._pending_llm_turns.append(conversa_id)
 
+    def enqueue_followup_os(self, conversa_id: UUID, resultado: str, resposta: str) -> None:
+        self._pending_followup.append({
+            "conversa_id": str(conversa_id), "resultado": resultado, "resposta": resposta
+        })
+
     def flush(self) -> None:
         """Dispara todas as tasks Celery pendentes. Chame APOS o commit da sessao."""
+        from ondeline_api.workers.followup import followup_os_task
         from ondeline_api.workers.llm_turn import llm_turn_task
         from ondeline_api.workers.outbound import send_outbound_task
 
@@ -102,5 +114,8 @@ class BufferedOutboundEnqueuer(_OutboundQueueProto):
             send_outbound_task.delay(**item)
         for cid in self._pending_llm_turns:
             llm_turn_task.delay(conversa_id=str(cid))
+        for item in self._pending_followup:
+            followup_os_task.delay(**item)
         self._pending_outbound.clear()
         self._pending_llm_turns.clear()
+        self._pending_followup.clear()

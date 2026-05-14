@@ -53,6 +53,7 @@ class _MensagemRepoProto(Protocol):
 class _OutboundQueueProto(Protocol):
     def enqueue_send_outbound(self, jid: str, text: str, conversa_id: UUID) -> None: ...
     def enqueue_llm_turn(self, conversa_id: UUID) -> None: ...
+    def enqueue_followup_os(self, conversa_id: UUID, resultado: str, resposta: str) -> None: ...
 
 
 @dataclass
@@ -153,6 +154,14 @@ async def process_inbound_message(
             # Backward compat M3 — nao usado em M4 (FSM nao emite mais SEND_ACK)
             deps.outbound.enqueue_send_outbound(evt.jid, deps.ack_text, conversa.id)
             escalated = True
+        elif action.kind is ActionKind.FOLLOWUP_OS_CONFIRMAR:
+            deps.outbound.enqueue_followup_os(
+                conversa.id, resultado="ok", resposta=evt.text or ""
+            )
+        elif action.kind is ActionKind.FOLLOWUP_OS_ESCALAR:
+            deps.outbound.enqueue_followup_os(
+                conversa.id, resultado="nao_ok", resposta=evt.text or ""
+            )
 
     if llm_turn_requested:
         deps.outbound.enqueue_llm_turn(conversa.id)
