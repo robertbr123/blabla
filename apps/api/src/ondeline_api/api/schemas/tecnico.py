@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class TecnicoListItem(BaseModel):
@@ -26,8 +26,18 @@ class AreaOut(BaseModel):
     prioridade: int
 
 
+class TecnicoUserOut(BaseModel):
+    """Login info for the User linked to a Tecnico (PWA access)."""
+    model_config = ConfigDict(from_attributes=True)
+    user_id: UUID
+    email: str
+    is_active: bool
+    last_login_at: datetime | None
+
+
 class TecnicoOut(TecnicoListItem):
     areas: list[AreaOut] = Field(default_factory=list)
+    user: TecnicoUserOut | None = None
 
 
 class TecnicoCreate(BaseModel):
@@ -35,6 +45,22 @@ class TecnicoCreate(BaseModel):
     whatsapp: str | None = Field(default=None, max_length=64)
     ativo: bool = True
     user_id: UUID | None = None
+    # Optional: create login user atomically. If `email` is given, `password` must be too.
+    email: EmailStr | None = None
+    password: str | None = Field(default=None, min_length=8, max_length=128)
+
+
+class TecnicoUserCreate(BaseModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+
+
+class TecnicoUserResetPassword(BaseModel):
+    password: str = Field(min_length=8, max_length=128)
+
+
+class TecnicoUserPatch(BaseModel):
+    is_active: bool | None = None
 
 
 class TecnicoPatch(BaseModel):

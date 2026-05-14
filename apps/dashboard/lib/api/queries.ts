@@ -25,6 +25,10 @@ import type {
   TecnicoListItem,
   TecnicoOut,
   TecnicoPatch,
+  TecnicoUserCreate,
+  TecnicoUserOut,
+  TecnicoUserPatch,
+  TecnicoUserResetPassword,
 } from './types'
 
 export interface ConversaListFilters {
@@ -336,6 +340,40 @@ export function useRemoveArea(tecnicoId: string) {
         `/api/v1/tecnicos/${tecnicoId}/areas/${encodeURIComponent(a.cidade)}/${encodeURIComponent(a.rua)}`,
         { method: 'DELETE' },
       ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tecnico', tecnicoId] }),
+  })
+}
+
+export function useCreateTecnicoUser(tecnicoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (b: TecnicoUserCreate) =>
+      apiFetch<TecnicoUserOut>(`/api/v1/tecnicos/${tecnicoId}/user`, {
+        method: 'POST',
+        body: JSON.stringify(b),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tecnico', tecnicoId] }),
+  })
+}
+
+export function useResetTecnicoUserPassword(tecnicoId: string) {
+  return useMutation({
+    mutationFn: (b: TecnicoUserResetPassword) =>
+      apiFetch<void>(`/api/v1/tecnicos/${tecnicoId}/user/reset-password`, {
+        method: 'POST',
+        body: JSON.stringify(b),
+      }),
+  })
+}
+
+export function usePatchTecnicoUser(tecnicoId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (b: TecnicoUserPatch) =>
+      apiFetch<TecnicoUserOut>(`/api/v1/tecnicos/${tecnicoId}/user`, {
+        method: 'PATCH',
+        body: JSON.stringify(b),
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['tecnico', tecnicoId] }),
   })
 }

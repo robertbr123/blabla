@@ -134,14 +134,33 @@ export interface AreaOut {
   rua: string
   prioridade: number
 }
+export interface TecnicoUserOut {
+  user_id: string
+  email: string
+  is_active: boolean
+  last_login_at: string | null
+}
 export interface TecnicoOut extends TecnicoListItem {
   areas: AreaOut[]
+  user: TecnicoUserOut | null
 }
 export interface TecnicoCreate {
   nome: string
   whatsapp?: string | null
   ativo?: boolean
   user_id?: string | null
+  email?: string | null
+  password?: string | null
+}
+export interface TecnicoUserCreate {
+  email: string
+  password: string
+}
+export interface TecnicoUserResetPassword {
+  password: string
+}
+export interface TecnicoUserPatch {
+  is_active?: boolean | null
 }
 export interface TecnicoPatch {
   nome?: string | null

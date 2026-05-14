@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { TecnicoUserCard } from '@/components/tecnico-user-card'
 import {
   useAddArea,
   useDeleteTecnico,
@@ -128,8 +129,8 @@ export function TecnicoDetail({ id }: { id: string }) {
                   <p className="mt-1 text-sm">{data.whatsapp ?? '—'}</p>
                 </div>
                 <div>
-                  <div className="text-xs uppercase text-muted-foreground">User ID</div>
-                  <p className="mt-1 text-sm font-mono text-xs">{data.user_id ?? '—'}</p>
+                  <div className="text-xs uppercase text-muted-foreground">Login</div>
+                  <p className="mt-1 text-sm">{data.user?.email ?? '—'}</p>
                 </div>
               </div>
               {data.gps_lat !== null && data.gps_lng !== null && (
@@ -154,6 +155,7 @@ export function TecnicoDetail({ id }: { id: string }) {
       </Card>
 
       <div className="space-y-4">
+        <TecnicoUserCard tecnicoId={data.id} user={data.user ?? null} />
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Áreas de atuação</CardTitle>
