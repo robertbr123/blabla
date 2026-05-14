@@ -14,7 +14,7 @@ from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PgUUID
 
 revision: str = "0005_os_followup_reatribuicao"
-down_revision: str | None = "0004"
+down_revision: str | Sequence[str] | None = "0004"
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None
 
@@ -49,7 +49,7 @@ def upgrade() -> None:
         ondelete="SET NULL",
     )
 
-    # widen conversas.estado varchar to accommodate 'aguarda_followup_os' (20 chars)
+    # widen conversas.estado varchar to accommodate 'aguarda_followup_os' (19 chars)
     # conversa_estado is a non-native enum (varchar), so no ALTER TYPE needed
     op.alter_column(
         "conversas", "estado",
@@ -69,4 +69,10 @@ def downgrade() -> None:
     op.drop_column("ordens_servico", "follow_up_resposta")
     op.drop_column("ordens_servico", "follow_up_respondido_em")
     op.drop_column("ordens_servico", "follow_up_resultado")
-    # Cannot remove enum value in PostgreSQL; downgrade leaves 'aguarda_followup_os' in enum
+    # WARNING: will fail if any row holds a value longer than 17 chars (e.g. 'aguarda_followup_os').
+    op.alter_column(
+        "conversas", "estado",
+        existing_type=sa.String(20),
+        type_=sa.String(17),
+        existing_nullable=False,
+    )
