@@ -57,6 +57,7 @@ async def _run(payload: dict[str, Any]) -> dict[str, Any]:
             outbound=outbound_buf,
             ack_text=settings.bot_ack_text,
             redis=redis,
+            session=session,
         )
         result: InboundResult = await process_inbound_message(evt, deps)
     # Session committed — safe to dispatch outbound tasks now.
