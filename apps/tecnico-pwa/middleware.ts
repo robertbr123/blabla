@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
-  if (pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname === '/login' || pathname === '/manifest.json' || pathname === '/sw.js' || pathname.startsWith('/icon-')) {
+  if (pathname.startsWith('/_next') || pathname.startsWith('/api') || pathname.startsWith('/auth') || pathname === '/login' || pathname === '/manifest.json' || pathname === '/sw.js' || pathname.startsWith('/icon-')) {
     return NextResponse.next()
   }
   // csrf_token (Path=/) is the right cookie to probe here — refresh_token's

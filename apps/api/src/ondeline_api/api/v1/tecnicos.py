@@ -38,6 +38,17 @@ router = APIRouter(prefix="/api/v1/tecnicos", tags=["tecnicos"])
 _admin_dep = Depends(require_role(Role.ADMIN))
 
 
+def _user_to_out(user: User) -> TecnicoUserOut:
+    # `TecnicoUserOut.user_id` maps to `User.id` — model_validate(from_attributes)
+    # wouldn't pick this up, so build it explicitly.
+    return TecnicoUserOut(
+        user_id=user.id,
+        email=user.email,
+        is_active=user.is_active,
+        last_login_at=user.last_login_at,
+    )
+
+
 async def _build_out(session: AsyncSession, tec: Tecnico) -> TecnicoOut:
     out = TecnicoOut.model_validate(tec)
     areas = await TecnicoRepo(session).list_areas(tec.id)
@@ -45,7 +56,7 @@ async def _build_out(session: AsyncSession, tec: Tecnico) -> TecnicoOut:
     if tec.user_id is not None:
         user = await session.get(User, tec.user_id)
         if user is not None:
-            out.user = TecnicoUserOut.model_validate(user)
+            out.user = _user_to_out(user)
     return out
 
 
@@ -198,7 +209,7 @@ async def create_tecnico_user(
         resource_id=str(user.id),
         after={"role": user.role.value, "tecnico_id": str(tec.id)},
     )
-    return TecnicoUserOut.model_validate(user)
+    return _user_to_out(user)
 
 
 @router.post(
@@ -252,7 +263,7 @@ async def patch_tecnico_user(
             before={"is_active": before},
             after={"is_active": user.is_active},
         )
-    return TecnicoUserOut.model_validate(user)
+    return _user_to_out(user)
 
 
 @router.get(
