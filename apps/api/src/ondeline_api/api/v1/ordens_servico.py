@@ -353,7 +353,7 @@ async def _send_whatsapp_document(whatsapp: str, pdf_bytes: bytes, filename: str
         log.warning("os.pdf_send_failed_cleanup", whatsapp=whatsapp)
 
 
-@router.get("/{os_id}/pdf", dependencies=[_role_dep])
+@router.get("/{os_id}/pdf", dependencies=[_role_dep], response_class=StreamingResponse)
 async def download_os_pdf(
     os_id: UUID,
     session: Annotated[AsyncSession, Depends(get_db)],
@@ -378,7 +378,7 @@ async def download_os_pdf(
     return StreamingResponse(
         iter([pdf_bytes]),
         media_type="application/pdf",
-        headers={"Content-Disposition": f"inline; filename={filename}"},
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
     )
 
 
