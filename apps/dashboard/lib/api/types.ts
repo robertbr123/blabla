@@ -12,6 +12,10 @@ export interface ConversaListItem {
   atendente_id: string | null
   created_at: string
   last_message_at: string | null
+  transferred_at: string | null
+  first_response_at: string | null
+  tags: string[] | null
+  sla_minutes: number
 }
 
 export interface MensagemOut {
@@ -246,4 +250,14 @@ export interface MetricasOut {
   os_concluidas_24h: number
   csat_avg_30d: number | null
   leads_novos_7d: number
+}
+
+export interface SgpClienteOut {
+  nome: string
+  cpf_cnpj: string
+  plano: string | null
+  status_contrato: string | null
+  cidade: string | null
+  endereco: string | null
+  cliente_id: string | null
 }

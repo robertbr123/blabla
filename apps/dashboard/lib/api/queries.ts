@@ -23,6 +23,7 @@ import type {
   OsOut,
   OsPatch,
   OsReatribuirIn,
+  SgpClienteOut,
   TecnicoCreate,
   TecnicoListItem,
   TecnicoOut,
@@ -91,6 +92,24 @@ export function useEncerrar(conversaId: string) {
       qc.invalidateQueries({ queryKey: ['conversa', conversaId] })
       qc.invalidateQueries({ queryKey: ['conversas'] })
     },
+  })
+}
+
+export function useDeleteConversa(conversaId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<void>(`/api/v1/conversas/${conversaId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['conversas'] })
+    },
+  })
+}
+
+export function useSgpLookup() {
+  return useMutation({
+    mutationFn: (cpf: string) =>
+      apiFetch<SgpClienteOut>(`/api/v1/clientes/sgp?cpf=${encodeURIComponent(cpf)}`),
   })
 }
 
