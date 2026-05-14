@@ -17,8 +17,9 @@ from ondeline_api.api.schemas.mensagem import MensagemOut
 from ondeline_api.api.schemas.pagination import CursorPage, encode_cursor
 from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.rbac import require_role
+from ondeline_api.api.schemas.conversa import ClienteEmbutido
 from ondeline_api.db.crypto import decrypt_pii
-from ondeline_api.db.models.business import Mensagem
+from ondeline_api.db.models.business import Cliente, Mensagem
 from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db
 from ondeline_api.repositories.conversa import ConversaRepo
@@ -72,6 +73,8 @@ async def get_conversa(
     conversa_id: UUID,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ConversaOut:
+    from sqlalchemy import select
+
     repo = ConversaRepo(session)
     c = await repo.get_by_id(conversa_id)
     if c is None:
@@ -79,6 +82,21 @@ async def get_conversa(
     msgs, _ = await repo.list_messages(c.id, limit=50)
     out = ConversaOut.model_validate(c)
     out.mensagens = [_to_msg_out(m) for m in msgs]
+
+    if c.cliente_id is not None:
+        cliente_row = (
+            await session.execute(select(Cliente).where(Cliente.id == c.cliente_id))
+        ).scalar_one_or_none()
+        if cliente_row is not None:
+            out.cliente = ClienteEmbutido(
+                id=cliente_row.id,
+                nome=decrypt_pii(cliente_row.nome_encrypted) if cliente_row.nome_encrypted else "",
+                cpf_cnpj=decrypt_pii(cliente_row.cpf_cnpj_encrypted) if cliente_row.cpf_cnpj_encrypted else "",
+                whatsapp=cliente_row.whatsapp,
+                plano=cliente_row.plano,
+                cidade=cliente_row.cidade,
+                endereco=decrypt_pii(cliente_row.endereco_encrypted) if cliente_row.endereco_encrypted else None,
+            )
     return out
 
 
