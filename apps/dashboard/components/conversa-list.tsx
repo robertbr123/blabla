@@ -1,14 +1,74 @@
 'use client'
 import Link from 'next/link'
 import { useState } from 'react'
-import { Wrench } from 'lucide-react'
+import { Trash2, Wrench, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { useConversas } from '@/lib/api/queries'
+import { useConversas, useDeleteConversa, useEncerrar } from '@/lib/api/queries'
+import type { ConversaListItem } from '@/lib/api/types'
 import { DialogAbrirOsFromConversa } from './dialog-abrir-os-from-conversa'
 import { ConversaSlaTimer } from './conversa-sla-timer'
+
+function ConversaRowActions({
+  c,
+  onAbrirOs,
+}: {
+  c: ConversaListItem
+  onAbrirOs: (id: string) => void
+}) {
+  const encerrar = useEncerrar(c.id)
+  const excluir = useDeleteConversa(c.id)
+
+  async function handleEncerrar() {
+    if (!confirm('Encerrar esta conversa?')) return
+    await encerrar.mutateAsync()
+  }
+
+  async function handleExcluir() {
+    if (!confirm('Excluir esta conversa? O histórico será preservado por 30 dias.')) return
+    await excluir.mutateAsync()
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {c.status !== 'encerrada' && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1 text-xs"
+          onClick={() => void handleEncerrar()}
+          disabled={encerrar.isPending}
+          title="Encerrar conversa"
+        >
+          <X className="h-3 w-3" /> Encerrar
+        </Button>
+      )}
+      {c.cliente_id && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1 text-xs"
+          onClick={() => onAbrirOs(c.id)}
+          title="Abrir OS para este cliente"
+        >
+          <Wrench className="h-3 w-3" /> Abrir OS
+        </Button>
+      )}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-7 gap-1 text-xs text-destructive hover:text-destructive"
+        onClick={() => void handleExcluir()}
+        disabled={excluir.isPending}
+        title="Excluir conversa"
+      >
+        <Trash2 className="h-3 w-3" /> Excluir
+      </Button>
+    </div>
+  )
+}
 
 const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   bot: 'secondary',
@@ -112,17 +172,7 @@ export function ConversaList() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    {c.cliente_id && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 gap-1 text-xs"
-                        onClick={() => setAbrirOsConversaId(c.id)}
-                        title="Abrir OS para este cliente"
-                      >
-                        <Wrench className="h-3 w-3" /> Abrir OS
-                      </Button>
-                    )}
+                    <ConversaRowActions c={c} onAbrirOs={setAbrirOsConversaId} />
                   </td>
                 </tr>
               ))}
