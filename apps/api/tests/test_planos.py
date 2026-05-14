@@ -144,3 +144,16 @@ async def test_delete_plano_not_found(client: AsyncClient, created_user: dict[st
     token = await _admin_token(client, created_user)
     r = await client.delete("/api/v1/planos/9999", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_plano_requires_auth(client: AsyncClient) -> None:
+    body = {"nome": "X", "preco": 1.0, "velocidade": "1MB", "extras": [], "descricao": "", "ativo": True, "destaque": False}
+    r = await client.patch("/api/v1/planos/0", json=body)
+    assert r.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_delete_plano_requires_auth(client: AsyncClient) -> None:
+    r = await client.delete("/api/v1/planos/0")
+    assert r.status_code == 401
