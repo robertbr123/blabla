@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from './client'
+import { getAccessToken } from '@/lib/api/token'
 import type {
   AreaCreate,
   AreaOut,
@@ -517,7 +518,19 @@ export function useRankingTecnicos(mes?: string) {
   })
 }
 
-export function downloadRankingCsv(mes?: string): void {
+export async function downloadRankingCsv(mes?: string): Promise<void> {
   const qs = mes ? `?mes=${mes}` : ''
-  window.open(`/api/v1/metricas/tecnicos/export${qs}`, '_blank')
+  const token = getAccessToken()
+  const res = await fetch(`/api/v1/metricas/tecnicos/export${qs}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: 'include',
+  })
+  if (!res.ok) throw new Error('Erro ao exportar CSV')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `ranking-tecnicos-${mes ?? new Date().toISOString().slice(0, 7)}.csv`
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }

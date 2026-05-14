@@ -19,6 +19,7 @@ interface NavItem {
   label: string
   icon: React.ComponentType<{ className?: string }>
   roles?: ReadonlyArray<'admin' | 'atendente'>
+  exact?: boolean
 }
 
 const ITEMS: ReadonlyArray<NavItem> = [
@@ -27,7 +28,7 @@ const ITEMS: ReadonlyArray<NavItem> = [
   { href: '/os', label: 'Ordens de serviço', icon: ClipboardList, roles: ['admin', 'atendente'] },
   { href: '/leads', label: 'Leads', icon: UserPlus, roles: ['admin', 'atendente'] },
   { href: '/clientes', label: 'Clientes', icon: Users, roles: ['admin', 'atendente'] },
-  { href: '/tecnicos', label: 'Técnicos', icon: Wrench, roles: ['admin'] },
+  { href: '/tecnicos', label: 'Técnicos', icon: Wrench, roles: ['admin'], exact: true },
   { href: '/tecnicos/ranking', label: 'Ranking Técnicos', icon: Trophy, roles: ['admin'] },
   { href: '/manutencoes', label: 'Manutenções', icon: CalendarClock, roles: ['admin'] },
   { href: '/config', label: 'Configurações', icon: Settings, roles: ['admin'] },
@@ -47,7 +48,7 @@ export function NavSidebar({ role }: { role: 'admin' | 'atendente' | 'tecnico' }
       <nav className="flex-1 space-y-1 px-3 py-4">
         {items.map((it) => {
           const Icon = it.icon
-          const active = pathname === it.href || pathname.startsWith(it.href + '/')
+          const active = pathname === it.href || (!it.exact && pathname.startsWith(it.href + '/'))
           return (
             <Link
               key={it.href}
