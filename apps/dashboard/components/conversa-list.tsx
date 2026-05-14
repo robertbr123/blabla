@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { useConversas } from '@/lib/api/queries'
 import { DialogAbrirOsFromConversa } from './dialog-abrir-os-from-conversa'
+import { ConversaSlaTimer } from './conversa-sla-timer'
 
 const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   bot: 'secondary',
@@ -70,13 +71,14 @@ export function ConversaList() {
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Estado</th>
                 <th className="px-4 py-3">Última msg</th>
+                <th className="px-4 py-3">Fila / SLA</th>
                 <th className="px-4 py-3">Ações</th>
               </tr>
             </thead>
             <tbody>
               {data.items.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-6 text-center text-muted-foreground">
+                  <td colSpan={6} className="p-6 text-center text-muted-foreground">
                     Nenhuma conversa
                   </td>
                 </tr>
@@ -98,6 +100,16 @@ export function ConversaList() {
                     {c.last_message_at
                       ? new Date(c.last_message_at).toLocaleString('pt-BR')
                       : '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    {c.status === 'aguardando' && c.transferred_at ? (
+                      <ConversaSlaTimer
+                        transferredAt={c.transferred_at}
+                        slaMinutes={c.sla_minutes ?? 15}
+                      />
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {c.cliente_id && (
