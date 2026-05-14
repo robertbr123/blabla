@@ -6,6 +6,7 @@ o que acontece?". Sem Celery, sem httpx real, sem Postgres real.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
@@ -94,6 +95,27 @@ class FakeOutboundQueue:
 
     def enqueue_llm_turn(self, conversa_id: UUID) -> None:
         self.llm_turns.append(conversa_id)
+
+
+# ── FakeConfigSession ─────────────────────────────────────────
+
+
+class _FakeScalar:
+    def __init__(self, value: Any) -> None:
+        self._v = value
+
+    def scalar_one_or_none(self) -> Any:
+        return self._v
+
+
+class FakeConfigSession:
+    """Fake AsyncSession suficiente para ConfigRepo.get('bot.ativo')."""
+
+    def __init__(self, bot_ativo: Any = True) -> None:
+        self._bot_ativo = bot_ativo
+
+    async def execute(self, stmt: Any) -> _FakeScalar:  # noqa: ARG002
+        return _FakeScalar(self._bot_ativo)
 
 
 def _evt(kind=InboundKind.TEXT, text="Oi", from_me=False, eid="E1") -> InboundEvent:
@@ -214,3 +236,58 @@ async def test_humano_nao_dispara_llm() -> None:
     assert out2.escalated is False
     assert len(fake_out.llm_turns) == 1  # nenhum adicional
     assert fake_out.sent == []
+
+
+async def test_bot_desativado_persiste_e_retorna_skipped() -> None:
+    """Bot desativado: mensagem é salva mas retorna skipped_reason=bot_desativado."""
+    fake_msgs = FakeMensagemRepo()
+    fake_out = FakeOutboundQueue()
+    deps = InboundDeps(
+        conversas=FakeConversaRepo(),
+        mensagens=fake_msgs,
+        outbound=fake_out,
+        ack_text="ACK!",
+        session=FakeConfigSession(bot_ativo=False),
+    )
+    out = await process_inbound_message(_evt(), deps)
+    assert out.skipped_reason == "bot_desativado"
+    assert out.persisted is True
+    assert out.duplicate is False
+    assert out.escalated is False
+    assert len(fake_msgs.inserted) == 1
+    assert fake_out.sent == []
+    assert fake_out.llm_turns == []
+
+
+async def test_bot_ativo_true_processa_normalmente() -> None:
+    """Bot ativo (value=True): fluxo normal passa pela FSM."""
+    fake_msgs = FakeMensagemRepo()
+    fake_out = FakeOutboundQueue()
+    deps = InboundDeps(
+        conversas=FakeConversaRepo(),
+        mensagens=fake_msgs,
+        outbound=fake_out,
+        ack_text="ACK!",
+        session=FakeConfigSession(bot_ativo=True),
+    )
+    out = await process_inbound_message(_evt(), deps)
+    assert out.skipped_reason is None
+    assert out.persisted is True
+    assert len(fake_out.llm_turns) == 1
+
+
+async def test_bot_ativo_none_processa_normalmente() -> None:
+    """Bot ativo implícito (chave ausente, value=None): default é ativo."""
+    fake_msgs = FakeMensagemRepo()
+    fake_out = FakeOutboundQueue()
+    deps = InboundDeps(
+        conversas=FakeConversaRepo(),
+        mensagens=fake_msgs,
+        outbound=fake_out,
+        ack_text="ACK!",
+        session=FakeConfigSession(bot_ativo=None),
+    )
+    out = await process_inbound_message(_evt(), deps)
+    assert out.skipped_reason is None
+    assert out.persisted is True
+    assert len(fake_out.llm_turns) == 1

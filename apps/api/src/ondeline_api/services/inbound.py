@@ -35,6 +35,7 @@ from ondeline_api.services.media_classifier import (
     MediaCategory,
     classify_media,
 )
+from ondeline_api.repositories.config import ConfigRepo
 from ondeline_api.webhook.parser import InboundEvent, InboundKind
 
 
@@ -119,6 +120,25 @@ async def process_inbound_message(
         return InboundResult(
             conversa_id=None, persisted=False, duplicate=False, escalated=False, skipped_reason="empty_text"
         )
+
+    if deps.session is not None:
+        bot_ativo = await ConfigRepo(deps.session).get("bot.ativo")
+        if bot_ativo is False:
+            conversa = await deps.conversas.get_or_create_by_whatsapp(evt.jid)
+            await deps.mensagens.insert_inbound_or_skip(
+                conversa_id=conversa.id,
+                external_id=evt.external_id,
+                text=evt.text,
+                media_type=evt.kind.value if evt.kind in _MEDIA_KINDS else None,
+                media_url=None,
+            )
+            return InboundResult(
+                conversa_id=conversa.id,
+                persisted=True,
+                duplicate=False,
+                escalated=False,
+                skipped_reason="bot_desativado",
+            )
 
     conversa = await deps.conversas.get_or_create_by_whatsapp(evt.jid)
 
