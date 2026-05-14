@@ -8,6 +8,7 @@ from uuid import UUID, uuid4
 
 import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.api.deps_v1 import CursorParam, LimitParam, parse_cursor, parse_limit
@@ -30,6 +31,7 @@ from ondeline_api.domain.os_sequence import next_codigo
 from ondeline_api.repositories.conversa import ConversaRepo
 from ondeline_api.repositories.ordem_servico import OrdemServicoRepo
 from ondeline_api.repositories.tecnico import TecnicoRepo
+from ondeline_api.services.os_pdf import generate_os_pdf
 
 router = APIRouter(prefix="/api/v1/os", tags=["ordens-servico"])
 _role_dep = Depends(require_role(Role.ATENDENTE, Role.ADMIN))
@@ -317,3 +319,92 @@ async def concluir_os(
             await session.flush()
 
     return OsOut.model_validate(os_)
+
+
+async def _send_whatsapp_document(whatsapp: str, pdf_bytes: bytes, filename: str) -> None:
+    """Best-effort envio de documento PDF via WhatsApp. Nunca levanta exceção."""
+    try:
+        import base64
+
+        from ondeline_api.adapters.evolution import EvolutionAdapter
+        from ondeline_api.config import get_settings
+
+        s = get_settings()
+        evo = EvolutionAdapter(
+            base_url=s.evolution_url,
+            instance=s.evolution_instance,
+            api_key=s.evolution_key,
+        )
+        try:
+            b64 = base64.b64encode(pdf_bytes).decode()
+            await evo.send_media(
+                whatsapp,
+                url=f"data:application/pdf;base64,{b64}",
+                mediatype="document",
+                mimetype="application/pdf",
+                file_name=filename,
+                caption=f"PDF da OS: {filename}",
+            )
+        except Exception:
+            log.warning("os.pdf_send_failed", whatsapp=whatsapp, exc_info=True)
+        finally:
+            await evo.aclose()
+    except Exception:
+        log.warning("os.pdf_send_failed_cleanup", whatsapp=whatsapp)
+
+
+@router.get("/{os_id}/pdf", dependencies=[_role_dep])
+async def download_os_pdf(
+    os_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> StreamingResponse:
+    repo = OrdemServicoRepo(session)
+    os_ = await repo.get_by_id(os_id)
+    if os_ is None:
+        raise HTTPException(status_code=404, detail="OS not found")
+
+    tecnico = None
+    if os_.tecnico_id:
+        tecnico = await TecnicoRepo(session).get_by_id(os_.tecnico_id)
+
+    pdf_bytes = generate_os_pdf(
+        os_=os_,
+        cliente_nome=None,
+        cliente_whatsapp=None,
+        tecnico_nome=tecnico.nome if tecnico else None,
+        tecnico_whatsapp=tecnico.whatsapp if tecnico else None,
+    )
+    filename = f"{os_.codigo}.pdf"
+    return StreamingResponse(
+        iter([pdf_bytes]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"inline; filename={filename}"},
+    )
+
+
+@router.post("/{os_id}/enviar-pdf-tecnico", dependencies=[_role_dep])
+async def enviar_pdf_tecnico(
+    os_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict:
+    repo = OrdemServicoRepo(session)
+    os_ = await repo.get_by_id(os_id)
+    if os_ is None:
+        raise HTTPException(status_code=404, detail="OS not found")
+    if os_.tecnico_id is None:
+        raise HTTPException(status_code=422, detail="OS sem técnico atribuído")
+
+    tecnico = await TecnicoRepo(session).get_by_id(os_.tecnico_id)
+    if tecnico is None or not tecnico.whatsapp:
+        raise HTTPException(status_code=422, detail="Técnico sem WhatsApp cadastrado")
+
+    pdf_bytes = generate_os_pdf(
+        os_=os_,
+        cliente_nome=None,
+        cliente_whatsapp=None,
+        tecnico_nome=tecnico.nome,
+        tecnico_whatsapp=tecnico.whatsapp,
+    )
+    filename = f"{os_.codigo}.pdf"
+    await _send_whatsapp_document(tecnico.whatsapp, pdf_bytes, filename)
+    return {"enviado": True, "tecnico": tecnico.nome, "whatsapp": tecnico.whatsapp}
