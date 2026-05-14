@@ -52,8 +52,11 @@ services:
       redis:
         condition: service_healthy
     # Nginx Proxy Manager terminates TLS and proxies to this port over the docker network.
-    expose:
-      - "8000"
+    # Also bind on host loopback so the Next.js dashboard/PWA (running on the host)
+    # can reach the API via INTERNAL_API_URL=http://127.0.0.1:8000. 127.0.0.1 binding
+    # keeps it off the public internet — NPM is the only external entry point.
+    ports:
+      - "127.0.0.1:8000:8000"
     restart: unless-stopped
     logging: *default-logging
 
