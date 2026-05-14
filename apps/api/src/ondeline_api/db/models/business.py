@@ -42,6 +42,7 @@ class ConversaEstado(StrEnum):
     AGUARDA_ATENDENTE = "aguarda_atendente"
     HUMANO = "humano"
     ENCERRADA = "encerrada"
+    AGUARDA_FOLLOWUP_OS = "aguarda_followup_os"
 
 
 class ConversaStatus(StrEnum):
@@ -171,6 +172,9 @@ class Conversa(Base):
     )
     deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    followup_os_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("ordens_servico.id", ondelete="SET NULL"), nullable=True
     )
 
     __table_args__ = (
@@ -331,6 +335,20 @@ class OrdemServico(Base):
     csat: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     nps: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     comentario_cliente: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reatribuido_em: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    reatribuido_por: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    historico_reatribuicoes: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JSONB, nullable=True
+    )
+    follow_up_resposta: Mapped[str | None] = mapped_column(Text, nullable=True)
+    follow_up_respondido_em: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    follow_up_resultado: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     __table_args__ = (
         Index("ix_os_codigo", "codigo", unique=True),
