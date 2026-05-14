@@ -54,6 +54,12 @@ class ConversaRepo:
         conversa.cliente_id = cliente_id
         await self._session.flush()
 
+    async def add_tag(self, conversa: Conversa, tag: str) -> None:
+        current: list[str] = conversa.tags or []
+        if tag not in current:
+            conversa.tags = [*current, tag]
+            await self._session.flush()
+
     async def list_paginated(
         self,
         *,

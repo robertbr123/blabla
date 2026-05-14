@@ -24,6 +24,13 @@ from ondeline_api.domain.fsm import (
     Fsm,
     FsmDecision,
 )
+from ondeline_api.services.media_classifier import (
+    CATEGORIES_ESCALATE,
+    CATEGORY_ACK,
+    CATEGORY_TAG,
+    MediaCategory,
+    classify_media,
+)
 from ondeline_api.webhook.parser import InboundEvent, InboundKind
 
 
@@ -33,6 +40,7 @@ class _ConversaRepoProto(Protocol):
         self, conversa: Conversa, *, estado: ConversaEstado, status: ConversaStatus
     ) -> None: ...
     async def set_cliente(self, conversa: Conversa, cliente_id: UUID) -> None: ...
+    async def add_tag(self, conversa: Conversa, tag: str) -> None: ...
 
 
 class _MensagemRepoProto(Protocol):
@@ -118,6 +126,34 @@ async def process_inbound_message(
         return InboundResult(
             conversa_id=conversa.id, persisted=False, duplicate=True, escalated=False
         )
+
+    # Intercepta midia para classificacao antes do FSM
+    if evt.kind in _MEDIA_KINDS:
+        category = classify_media(evt.kind, evt.text)
+        ack = CATEGORY_ACK[category]
+        tag = CATEGORY_TAG.get(category)
+
+        if tag:
+            await deps.conversas.add_tag(conversa, tag)
+
+        if category is MediaCategory.AUDIO:
+            # Nao escala — apenas avisa cliente e continua no estado atual
+            deps.outbound.enqueue_send_outbound(evt.jid, ack, conversa.id)
+            return InboundResult(
+                conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
+            )
+
+        if category in CATEGORIES_ESCALATE:
+            # Avisa cliente e escala para humano
+            deps.outbound.enqueue_send_outbound(evt.jid, ack, conversa.id)
+            await deps.conversas.update_estado_status(
+                conversa,
+                estado=ConversaEstado.AGUARDA_ATENDENTE,
+                status=ConversaStatus.AGUARDANDO,
+            )
+            return InboundResult(
+                conversa_id=conversa.id, persisted=True, duplicate=False, escalated=True
+            )
 
     if deps.redis is not None:
         try:
