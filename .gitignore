@@ -16,7 +16,7 @@ htmlcov/
 .coverage
 dist/
 build/
-uv.lock
+# uv.lock must be committed — it ensures reproducible builds in CI/Docker
 
 # Harness state (Claude Code scheduled tasks lock, etc.)
 .claude/
