@@ -9,7 +9,7 @@ x-logging: &default-logging
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: ondeline-postgres
+    container_name: blabla-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-ondeline}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required in .env}
@@ -27,7 +27,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: ondeline-redis
+    container_name: blabla-redis
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis_data:/data
@@ -40,10 +40,8 @@ services:
     logging: *default-logging
 
   api:
-    build:
-      context: ../apps/api
-      dockerfile: Dockerfile
-    container_name: ondeline-api
+    image: ghcr.io/${GHCR_OWNER}/blabla-api:latest
+    container_name: blabla-api
     env_file:
       - ../.env
     depends_on:
@@ -51,20 +49,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    # Nginx Proxy Manager terminates TLS and proxies to this port over the docker network.
-    # Also bind on host loopback so the Next.js dashboard/PWA (running on the host)
-    # can reach the API via INTERNAL_API_URL=http://127.0.0.1:8000. 127.0.0.1 binding
-    # keeps it off the public internet — NPM is the only external entry point.
     ports:
       - "127.0.0.1:8000:8000"
     restart: unless-stopped
     logging: *default-logging
 
   worker:
-    build:
-      context: ../apps/api
-      dockerfile: Dockerfile
-    container_name: ondeline-worker
+    image: ghcr.io/${GHCR_OWNER}/blabla-api:latest
+    container_name: blabla-worker
     command: ["celery", "-A", "ondeline_api.workers.celery_app:celery_app", "worker", "-Q", "default,llm,sgp,notifications", "--concurrency=4", "--loglevel=info"]
     env_file:
       - ../.env
@@ -83,10 +75,8 @@ services:
     logging: *default-logging
 
   beat:
-    build:
-      context: ../apps/api
-      dockerfile: Dockerfile
-    container_name: ondeline-beat
+    image: ghcr.io/${GHCR_OWNER}/blabla-api:latest
+    container_name: blabla-beat
     command: ["celery", "-A", "ondeline_api.workers.celery_app:celery_app", "beat", "--loglevel=info", "--schedule=/tmp/celerybeat-schedule"]
     env_file:
       - ../.env
@@ -101,6 +91,30 @@ services:
       timeout: 5s
       retries: 3
       start_period: 60s
+    restart: unless-stopped
+    logging: *default-logging
+
+  dashboard:
+    image: ghcr.io/${GHCR_OWNER}/blabla-dashboard:latest
+    container_name: blabla-dashboard
+    env_file:
+      - ../.env
+    ports:
+      - "3002:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+    logging: *default-logging
+
+  tecnico-pwa:
+    image: ghcr.io/${GHCR_OWNER}/blabla-tecnico-pwa:latest
+    container_name: blabla-tecnico-pwa
+    env_file:
+      - ../.env
+    ports:
+      - "3003:3000"
+    depends_on:
+      - api
     restart: unless-stopped
     logging: *default-logging
 
