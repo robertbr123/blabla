@@ -73,6 +73,8 @@ export interface OsOut extends OsListItem {
   follow_up_resposta: string | null
   follow_up_respondido_em: string | null
   follow_up_resultado: string | null
+  pppoe_login: string | null
+  pppoe_senha: string | null
 }
 
 export interface OsCreate {
@@ -81,6 +83,8 @@ export interface OsCreate {
   problema: string
   endereco: string
   agendamento_at?: string | null
+  pppoe_login?: string | null
+  pppoe_senha?: string | null
 }
 
 export interface OsReatribuirIn {
@@ -260,6 +264,8 @@ export interface SgpClienteOut {
   cidade: string | null
   endereco: string | null
   cliente_id: string | null
+  pppoe_login: string
+  pppoe_senha: string
 }
 
 export interface RankingTecnicoOut {
