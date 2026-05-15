@@ -22,6 +22,8 @@ class OrdemServicoRepo:
         tecnico_id: UUID | None,
         problema: str,
         endereco: str,
+        pppoe_login: str | None = None,
+        pppoe_senha: str | None = None,
     ) -> OrdemServico:
         os_ = OrdemServico(
             codigo=codigo,
@@ -30,6 +32,8 @@ class OrdemServicoRepo:
             problema=problema,
             endereco=endereco,
             status=OsStatus.PENDENTE,
+            pppoe_login=pppoe_login,
+            pppoe_senha=pppoe_senha,
         )
         self._session.add(os_)
         await self._session.flush()

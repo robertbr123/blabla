@@ -48,6 +48,12 @@ FOLLOWUP_MSG = (
 log = structlog.get_logger(__name__)
 
 
+def _normalize_whatsapp(number: str) -> str:
+    """Strip non-numeric characters so Evolution API receives a bare JID like 5592984109856."""
+    import re
+    return re.sub(r"\D", "", number)
+
+
 async def _send_whatsapp(whatsapp: str, msg: str) -> None:
     """Best-effort WhatsApp notification. Never raises."""
     try:
@@ -61,7 +67,7 @@ async def _send_whatsapp(whatsapp: str, msg: str) -> None:
             api_key=s.evolution_key,
         )
         try:
-            await evo.send_text(whatsapp, msg)
+            await evo.send_text(_normalize_whatsapp(whatsapp), msg)
         except Exception:
             log.warning("os.whatsapp_send_failed", whatsapp=whatsapp, exc_info=True)
         finally:
@@ -114,6 +120,8 @@ async def create_os(
         tecnico_id=body.tecnico_id,
         problema=body.problema,
         endereco=body.endereco,
+        pppoe_login=body.pppoe_login,
+        pppoe_senha=body.pppoe_senha,
     )
     if body.agendamento_at:
         os_.agendamento_at = body.agendamento_at
@@ -338,8 +346,8 @@ async def _send_whatsapp_document(whatsapp: str, pdf_bytes: bytes, filename: str
         try:
             b64 = base64.b64encode(pdf_bytes).decode()
             await evo.send_media(
-                whatsapp,
-                url=f"data:application/pdf;base64,{b64}",
+                _normalize_whatsapp(whatsapp),
+                url=b64,
                 mediatype="document",
                 mimetype="application/pdf",
                 file_name=filename,

@@ -32,6 +32,8 @@ class OsOut(OsListItem):
     follow_up_resposta: str | None = None
     follow_up_respondido_em: datetime | None = None
     follow_up_resultado: str | None = None
+    pppoe_login: str | None = None
+    pppoe_senha: str | None = None
 
 
 class OsCreate(BaseModel):
@@ -40,6 +42,8 @@ class OsCreate(BaseModel):
     problema: str = Field(min_length=1, max_length=2000)
     endereco: str = Field(min_length=1, max_length=500)
     agendamento_at: datetime | None = None
+    pppoe_login: str | None = None
+    pppoe_senha: str | None = None
 
 
 class OsPatch(BaseModel):

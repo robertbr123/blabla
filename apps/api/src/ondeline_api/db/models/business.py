@@ -360,6 +360,8 @@ class OrdemServico(Base):
         DateTime(timezone=True), nullable=True
     )
     follow_up_resultado: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    pppoe_login: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    pppoe_senha: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
     __table_args__ = (
         Index("ix_os_codigo", "codigo", unique=True),
