@@ -1,5 +1,6 @@
 import { BotToggle } from '@/components/bot-toggle'
 import { ConfigEditor } from '@/components/config-editor'
+import { EvolutionStatus } from '@/components/evolution-status'
 import { SgpConfigEditor } from '@/components/sgp-config-editor'
 
 export default function ConfigPage() {
@@ -11,6 +12,7 @@ export default function ConfigPage() {
           Editor de chaves de configuração (admin only)
         </p>
       </div>
+      <EvolutionStatus />
       <BotToggle />
       <SgpConfigEditor />
       <div>

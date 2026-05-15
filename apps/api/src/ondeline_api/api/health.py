@@ -3,9 +3,11 @@ from __future__ import annotations
 
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import text
 
+from ondeline_api.config import get_settings
 from ondeline_api.deps import DBSessionLike, RedisLike, get_db, get_redis
 from ondeline_api.observability.celery_queue import queue_depths
 
@@ -37,6 +39,19 @@ async def healthz(
         checks["redis"] = "ok"
     except Exception as exc:
         checks["redis"] = f"error: {exc.__class__.__name__}"
+
+    try:
+        s = get_settings()
+        url = f"{s.evolution_url.rstrip('/')}/instance/connectionState/{s.evolution_instance}"
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(url, headers={"apikey": s.evolution_key})
+        if r.status_code == 200:
+            state = r.json().get("instance", {}).get("state", "unknown")
+            checks["evolution"] = "ok" if state == "open" else f"disconnected ({state})"
+        else:
+            checks["evolution"] = f"error: HTTP {r.status_code}"
+    except Exception as exc:
+        checks["evolution"] = f"error: {exc.__class__.__name__}"
 
     # Celery queue depth — informativo, nao bloqueia status.
     try:
