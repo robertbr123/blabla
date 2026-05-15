@@ -55,19 +55,3 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app }}
 
-  deploy:
-    name: Deploy to server
-    needs: build-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: SSH deploy
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /root/BLABLA/ondeline-v2
-            git pull
-            docker compose -f infra/docker-compose.prod.yml pull
-            docker compose -f infra/docker-compose.prod.yml up -d
