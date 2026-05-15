@@ -73,6 +73,7 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
         samesite=settings.cookie_samesite,  # type: ignore[arg-type]
         max_age=settings.refresh_token_ttl_days * 24 * 3600,
         path="/",
+        domain=settings.cookie_domain or None,
     )
 
 
@@ -86,6 +87,7 @@ def _set_csrf_cookie(response: Response, value: str) -> None:
         secure=secure,
         samesite=settings.cookie_samesite,  # type: ignore[arg-type]
         path="/",
+        domain=settings.cookie_domain or None,
     )
 
 
