@@ -1,8 +1,7 @@
-const CACHE = 'tecnico-pwa-v2'
-const STATIC_CACHE = 'tecnico-pwa-static-v2'
+const CACHE = 'tecnico-pwa-v3'
+const STATIC_CACHE = 'tecnico-pwa-static-v3'
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/'])))
   self.skipWaiting()
 })
 
@@ -33,7 +32,10 @@ self.addEventListener('fetch', (e) => {
         cache.match(req).then((cached) => {
           if (cached) return cached
           return fetch(req).then((res) => {
-            if (res.ok) cache.put(req, res.clone())
+            if (res.ok) {
+              const clone = res.clone()  // clone synchronously before body is consumed
+              cache.put(req, clone)
+            }
             return res
           })
         })
@@ -42,27 +44,13 @@ self.addEventListener('fetch', (e) => {
     return
   }
 
-  // HTML navigation requests — always network-first to avoid stale chunk references
-  if (req.mode === 'navigate' || req.headers.get('accept')?.includes('text/html')) {
-    e.respondWith(
-      fetch(req)
-        .then((res) => {
-          if (res.ok) {
-            caches.open(CACHE).then((c) => c.put(req, res.clone()))
-          }
-          return res
-        })
-        .catch(() => caches.match(req))
-    )
-    return
-  }
-
-  // Everything else — network-first with cache fallback
+  // HTML and everything else: network-first, cache only for offline fallback
   e.respondWith(
     fetch(req)
       .then((res) => {
         if (res.ok && res.type === 'basic') {
-          caches.open(CACHE).then((c) => c.put(req, res.clone()))
+          const clone = res.clone()  // clone synchronously before body is consumed
+          caches.open(CACHE).then((c) => c.put(req, clone))
         }
         return res
       })
