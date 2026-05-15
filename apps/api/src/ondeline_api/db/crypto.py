@@ -4,17 +4,21 @@ from __future__ import annotations
 import hashlib
 import hmac
 from functools import lru_cache
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from cryptography.fernet import Fernet
 
 from ondeline_api.config import get_settings
 
 
 @lru_cache(maxsize=1)
-def _fernet_or_none():  # type: ignore[return]
+def _fernet_or_none() -> Fernet | None:
     key = get_settings().pii_encryption_key.get_secret_value()
     if not key:
         return None
-    from cryptography.fernet import Fernet
-    return Fernet(key.encode())
+    from cryptography.fernet import Fernet as _Fernet
+    return _Fernet(key.encode())
 
 
 @lru_cache(maxsize=1)
