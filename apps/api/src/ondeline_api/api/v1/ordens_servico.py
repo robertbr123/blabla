@@ -160,7 +160,7 @@ async def create_os(
             msg += f"🔐 *PPPoE Senha:* {body.pppoe_senha}\n"
         msg += f"\n⚠️ *Problema:*\n{body.problema}\n"
         msg += f"\n🗓️ *Agendamento:* {agendamento_str}\n"
-        msg += "\n_Acesse o app para mais detalhes._"
+        msg += f"\n_Para concluir via WhatsApp, envie:_ *CONCLUIR {codigo}*"
 
         await _send_whatsapp(tecnico.whatsapp, msg)
     return OsOut.model_validate(os_)

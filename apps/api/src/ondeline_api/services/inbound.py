@@ -96,7 +96,7 @@ _MEDIA_KINDS = {
 }
 
 
-_CMD_CONCLUIDO_RE = re.compile(r"^concluido\s+(OS-\d{8}-\d{3})$", re.IGNORECASE)
+_CMD_CONCLUIR_RE = re.compile(r"^conclu[ií]r\s+(OS-[\w-]+)\b", re.IGNORECASE)
 
 
 def _to_fsm_event(kind: InboundKind, text: str | None) -> Event:
@@ -155,122 +155,136 @@ async def process_inbound_message(
             conversa_id=conversa.id, persisted=False, duplicate=True, escalated=False
         )
 
-    # Detecção de comando CONCLUIDO OS-* (técnico finaliza OS via WhatsApp)
+    # Detecção de comando CONCLUIR OS-* (técnico finaliza OS via WhatsApp)
     if (
         evt.kind is InboundKind.TEXT
         and evt.text
         and deps.session is not None
         and conversa.estado is not ConversaEstado.CHECKLIST_OS
     ):
-        _m = _CMD_CONCLUIDO_RE.match((evt.text or "").strip())
+        _m = _CMD_CONCLUIR_RE.match((evt.text or "").strip())
         if _m:
             codigo = _m.group(1).upper()
+            import re as _re
             from sqlalchemy import select as sa_select
-            os_row = (
-                await deps.session.execute(
-                    sa_select(OrdemServico).where(
-                        OrdemServico.codigo == codigo,
-                        OrdemServico.status.in_(
-                            [OsStatus.PENDENTE, OsStatus.EM_ANDAMENTO]
-                        ),
+            from ondeline_api.db.models.business import Tecnico as TecnicoModel
+
+            # Verifica se remetente é um técnico cadastrado
+            jid_digits = _re.sub(r"\D", "", evt.jid)
+            tecnicos_all = list(
+                (await deps.session.execute(
+                    sa_select(TecnicoModel).where(TecnicoModel.whatsapp.isnot(None))
+                )).scalars().all()
+            )
+            tecnico_sender = next(
+                (t for t in tecnicos_all if _re.sub(r"\D", "", t.whatsapp or "") == jid_digits),
+                None,
+            )
+            if tecnico_sender is None:
+                # Não é técnico — deixa o fluxo normal do bot tratar
+                pass
+            else:
+                os_row = (
+                    await deps.session.execute(
+                        sa_select(OrdemServico).where(
+                            OrdemServico.codigo == codigo,
+                            OrdemServico.status.in_(
+                                [OsStatus.PENDENTE, OsStatus.EM_ANDAMENTO]
+                            ),
+                        )
                     )
+                ).scalar_one_or_none()
+                if os_row is None:
+                    deps.outbound.enqueue_send_outbound(
+                        evt.jid,
+                        f"OS {codigo} não encontrada ou já concluída. Verifique o código e tente novamente.",
+                        conversa.id,
+                    )
+                    return InboundResult(
+                        conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
+                    )
+                if os_row.tecnico_id != tecnico_sender.id:
+                    deps.outbound.enqueue_send_outbound(
+                        evt.jid,
+                        f"A OS {codigo} não está atribuída a você.",
+                        conversa.id,
+                    )
+                    return InboundResult(
+                        conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
+                    )
+                conversa.checklist_metadata = {
+                    "os_id": str(os_row.id),
+                    "os_codigo": codigo,
+                    "step": 1,
+                    "respostas": {},
+                }
+                await deps.conversas.update_estado_status(
+                    conversa, estado=ConversaEstado.CHECKLIST_OS, status=ConversaStatus.BOT
                 )
-            ).scalar_one_or_none()
-            if os_row is None:
                 deps.outbound.enqueue_send_outbound(
                     evt.jid,
-                    f"OS {codigo} não encontrada ou já concluída. Verifique o código e tente novamente.",
+                    f"✅ OS *{codigo}* encontrada! Vamos registrar a conclusão em 3 passos.\n\n"
+                    "1️⃣ *O que foi feito?* Descreva o serviço realizado.",
                     conversa.id,
                 )
                 return InboundResult(
                     conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
                 )
-            conversa.checklist_metadata = {
-                "os_id": str(os_row.id),
-                "os_codigo": codigo,
-                "step": 1,
-                "respostas": {},
-            }
-            await deps.conversas.update_estado_status(
-                conversa, estado=ConversaEstado.CHECKLIST_OS, status=ConversaStatus.BOT
-            )
-            deps.outbound.enqueue_send_outbound(
-                evt.jid,
-                f"✅ OS {codigo} encontrada! Iniciando relatório de conclusão.\n\n"
-                "1️⃣ O que foi feito? Descreva o serviço realizado.",
-                conversa.id,
-            )
-            return InboundResult(
-                conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
-            )
 
-    # Intercepta CHECKLIST_OS — coleta sequencial de conclusão
+    # Intercepta CHECKLIST_OS — coleta sequencial de conclusão (3 passos)
     if conversa.estado is ConversaEstado.CHECKLIST_OS and deps.session is not None:
         meta: dict = conversa.checklist_metadata or {}
         step: int = meta.get("step", 1)
         respostas: dict = meta.get("respostas", {})
 
-        _PERGUNTAS = {
-            1: ("servico_realizado", "2️⃣ Houve visita presencial? Responda SIM ou NÃO."),
-            2: ("visita_presencial", "3️⃣ Qual material foi utilizado? (ex: cabo, ONU — ou NENHUM)"),
-            3: ("material_utilizado", "4️⃣ Mande uma foto de comprovação da instalação."),
-            4: ("foto_url", "5️⃣ Alguma observação adicional? (ou responda NENHUMA)"),
-            5: ("observacao", None),
+        # Passo 1: relatorio | Passo 2: houve_visita | Passo 3: materiais (conclusão)
+        _PROXIMA: dict[int, str] = {
+            1: "2️⃣ *Houve visita presencial?* Responda *SIM* ou *NÃO*.",
+            2: "3️⃣ *Materiais / gastos?* (ex: 10m cabo UTP, R$ 25 — ou responda *NENHUM*)",
         }
 
-        if step not in _PERGUNTAS:
-            # Step corrupted — reset to CLIENTE state
+        if step not in (1, 2, 3):
             conversa.checklist_metadata = None
             await deps.conversas.update_estado_status(
                 conversa, estado=ConversaEstado.CLIENTE, status=ConversaStatus.BOT
             )
             deps.outbound.enqueue_send_outbound(
                 evt.jid,
-                "Ocorreu um erro no relatório de conclusão. Por favor, envie o comando CONCLUIDO novamente.",
+                "Ocorreu um erro no relatório. Envie *CONCLUIR OS-XXXX* novamente para recomeçar.",
                 conversa.id,
             )
             return InboundResult(
                 conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
             )
 
-        campo, proxima_pergunta = _PERGUNTAS[step]
-
-        # Validações por passo
+        # Passo 2: valida SIM/NÃO
         if step == 2:
-            resp = (evt.text or "").strip().upper()
-            if resp not in ("SIM", "NÃO", "NAO"):
+            resp = (evt.text or "").strip().upper().replace("Ã", "A")
+            if resp not in ("SIM", "NAO", "NÃO"):
                 deps.outbound.enqueue_send_outbound(
-                    evt.jid, "Por favor, responda apenas SIM ou NÃO.", conversa.id
+                    evt.jid, "Por favor, responda apenas *SIM* ou *NÃO*.", conversa.id
                 )
                 return InboundResult(
                     conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
                 )
-            respostas[campo] = resp
-        elif step == 4:
-            if evt.kind not in (InboundKind.IMAGE,):
-                deps.outbound.enqueue_send_outbound(
-                    evt.jid,
-                    "Por favor, mande uma foto de comprovação (imagem). Outros tipos de arquivo não são aceitos.",
-                    conversa.id,
-                )
-                return InboundResult(
-                    conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
-                )
-            respostas[campo] = msg.media_url or "foto_recebida"
-        else:
-            respostas[campo] = (evt.text or "").strip()
+            respostas["houve_visita"] = resp in ("SIM",)
+        elif step == 1:
+            respostas["relatorio"] = (evt.text or "").strip()
+        else:  # step == 3
+            mat = (evt.text or "").strip()
+            respostas["materiais"] = None if mat.upper() == "NENHUM" else mat
 
-        if step < 5:
+        if step < 3:
             conversa.checklist_metadata = {**meta, "step": step + 1, "respostas": respostas}
             await deps.conversas.update_estado_status(
                 conversa, estado=ConversaEstado.CHECKLIST_OS, status=ConversaStatus.BOT
             )
-            deps.outbound.enqueue_send_outbound(evt.jid, proxima_pergunta, conversa.id)
+            deps.outbound.enqueue_send_outbound(evt.jid, _PROXIMA[step], conversa.id)
         else:
-            # Checklist completo — conclui OS
-            respostas[campo] = (evt.text or "").strip()
+            # Checklist completo — conclui OS nos campos corretos
             os_id = meta.get("os_id")
             codigo = meta.get("os_codigo", "")
+            cliente_id_para_followup = None
             if os_id:
                 from uuid import UUID as _UUID
                 from datetime import UTC as _UTC, datetime as _dt
@@ -283,8 +297,10 @@ async def process_inbound_message(
                 if os_row:
                     os_row.status = OsStatus.CONCLUIDA
                     os_row.concluida_em = _dt.now(tz=_UTC)
-                    existing_fotos = os_row.fotos or []
-                    os_row.fotos = [*existing_fotos, {"checklist_wa": respostas}]
+                    os_row.relatorio = respostas.get("relatorio")
+                    os_row.houve_visita = respostas.get("houve_visita", True)
+                    os_row.materiais = respostas.get("materiais")
+                    cliente_id_para_followup = os_row.cliente_id
                     await deps.session.flush()
 
             conversa.checklist_metadata = None
@@ -293,11 +309,23 @@ async def process_inbound_message(
             )
             deps.outbound.enqueue_send_outbound(
                 evt.jid,
-                f"✅ OS {codigo} concluída com sucesso! O cliente será notificado em breve. Obrigado! 🙏",
+                f"✅ *OS {codigo} concluída!* O cliente será notificado em breve. Obrigado! 🙏",
                 conversa.id,
             )
-            # Enfileira follow-up para o cliente (resultado="ok", resposta vazia pois foi bot)
-            deps.outbound.enqueue_followup_os(conversa.id, resultado="ok", resposta="")
+            # Envia follow-up para o cliente (conversa do cliente, não do técnico)
+            if cliente_id_para_followup is not None:
+                from sqlalchemy import select as sa_select
+                from ondeline_api.db.models.business import Conversa as ConversaModel, ConversaEstado as CE
+                cli_conversa = (
+                    await deps.session.execute(
+                        sa_select(ConversaModel).where(
+                            ConversaModel.cliente_id == cliente_id_para_followup,
+                            ConversaModel.estado.notin_([CE.ENCERRADA]),
+                        ).order_by(ConversaModel.created_at.desc()).limit(1)
+                    )
+                ).scalar_one_or_none()
+                if cli_conversa:
+                    deps.outbound.enqueue_followup_os(cli_conversa.id, resultado="ok", resposta="")
 
         return InboundResult(
             conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
