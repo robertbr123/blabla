@@ -151,10 +151,12 @@ async def create_os(
         pppoe_login=body.pppoe_login,
         pppoe_senha=body.pppoe_senha,
     )
+    if body.nome_sgp:
+        os_.nome_sgp = body.nome_sgp
     if body.agendamento_at:
         os_.agendamento_at = body.agendamento_at
-        await session.flush()
-    nome_cliente_str = await _fetch_nome_cliente(session, body.cliente_id)
+    await session.flush()
+    nome_cliente_str = (await _fetch_nome_cliente(session, body.cliente_id)) or body.nome_sgp
 
     if tecnico.whatsapp:
         agendamento_str = "Não definido"
@@ -195,7 +197,7 @@ async def get_os(
     if os_ is None:
         raise HTTPException(status_code=404, detail="OS not found")
     out = OsOut.model_validate(os_)
-    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
     return out
 
 
@@ -216,7 +218,7 @@ async def patch_os(
         agendamento_at=body.agendamento_at,
     )
     out = OsOut.model_validate(os_)
-    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
     return out
 
 
@@ -237,7 +239,7 @@ async def reatribuir_os(
         )
     if os_.tecnico_id == body.tecnico_id:
         out = OsOut.model_validate(os_)
-        out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+        out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
         return out
 
     tec_repo = TecnicoRepo(session)
@@ -281,7 +283,7 @@ async def reatribuir_os(
         await _send_whatsapp(novo_tec.whatsapp, msg)
 
     out = OsOut.model_validate(os_)
-    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
     return out
 
 
@@ -343,7 +345,7 @@ async def upload_foto(
         },
     )
     out = OsOut.model_validate(os_)
-    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
     return out
 
 
@@ -381,7 +383,7 @@ async def concluir_os(
             await session.flush()
 
     out = OsOut.model_validate(os_)
-    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
     return out
 
 

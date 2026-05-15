@@ -142,7 +142,6 @@ async def process_inbound_message(
         evt.kind is InboundKind.TEXT
         and evt.text
         and deps.session is not None
-        and conversa.estado is not ConversaEstado.CHECKLIST_OS
     ):
         _m = _CMD_CONCLUIR_RE.match((evt.text or "").strip())
         if _m:

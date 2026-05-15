@@ -84,6 +84,7 @@ export interface OsOut extends OsListItem {
 
 export interface OsCreate {
   cliente_id?: string | null
+  nome_sgp?: string | null
   tecnico_id: string
   problema: string
   endereco: string

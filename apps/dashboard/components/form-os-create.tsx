@@ -73,6 +73,7 @@ export function FormOsCreate() {
   async function onSubmit(values: FormValues) {
     const created = await createOs.mutateAsync({
       ...(clienteId ? { cliente_id: clienteId } : {}),
+      ...(sgpCliente?.nome && !clienteId ? { nome_sgp: sgpCliente.nome } : {}),
       tecnico_id: values.tecnico_id,
       problema: values.problema,
       endereco: values.endereco,

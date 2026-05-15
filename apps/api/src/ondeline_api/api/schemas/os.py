@@ -43,6 +43,7 @@ class OsOut(OsListItem):
 
 class OsCreate(BaseModel):
     cliente_id: UUID | None = None
+    nome_sgp: str | None = Field(default=None, max_length=200)
     tecnico_id: UUID
     problema: str = Field(min_length=1, max_length=2000)
     endereco: str = Field(min_length=1, max_length=500)

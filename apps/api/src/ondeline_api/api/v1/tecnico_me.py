@@ -68,7 +68,7 @@ async def my_os_detail(
     if os_ is None:
         raise HTTPException(status_code=404, detail="OS not assigned to you")
     out = OsOut.model_validate(os_)
-    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
     return out
 
 
@@ -99,7 +99,7 @@ async def iniciar_os(
         raise HTTPException(status_code=404, detail="OS not assigned to you")
     await repo.set_iniciada_with_gps(os_, lat=body.lat, lng=body.lng)
     out = OsOut.model_validate(os_)
-    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
     return out
 
 
@@ -129,7 +129,7 @@ async def concluir_os(
         lng=body.lng,
     )
     out = OsOut.model_validate(os_)
-    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
     return out
 
 
@@ -167,5 +167,5 @@ async def upload_foto_my_os(
         },
     )
     out = OsOut.model_validate(os_)
-    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
     return out
