@@ -1,4 +1,6 @@
-.PHONY: dev dev-build down test lint logs worker-logs install format
+.PHONY: dev dev-build down logs worker-logs prod prod-build prod-down prod-logs prod-worker-logs test lint install format
+
+# ── Desenvolvimento ──────────────────────────────────────────────────────────
 
 # Sobe os serviços usando imagens cacheadas (não reconstrói)
 dev:
@@ -16,6 +18,25 @@ logs:
 
 worker-logs:
 	docker compose -f infra/docker-compose.dev.yml logs -f worker
+
+# ── Produção ─────────────────────────────────────────────────────────────────
+
+# Sobe produção usando imagens cacheadas
+prod:
+	docker compose -f infra/docker-compose.prod.yml --env-file .env up -d
+
+# Força rebuild em produção (use após deploy de nova versão)
+prod-build:
+	docker compose -f infra/docker-compose.prod.yml --env-file .env up -d --build --force-recreate
+
+prod-down:
+	docker compose -f infra/docker-compose.prod.yml down
+
+prod-logs:
+	docker compose -f infra/docker-compose.prod.yml logs -f
+
+prod-worker-logs:
+	docker compose -f infra/docker-compose.prod.yml logs -f worker
 
 install:
 	cd apps/api && [ -d .venv ] || python3 -m venv .venv
