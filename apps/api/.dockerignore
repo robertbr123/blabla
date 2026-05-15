@@ -10,6 +10,4 @@ build/
 .ruff_cache/
 tests/
 conftest.py
-alembic/
-alembic.ini
 *.md
