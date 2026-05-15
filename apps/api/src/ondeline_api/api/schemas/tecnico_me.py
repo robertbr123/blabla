@@ -17,5 +17,8 @@ class IniciarIn(BaseModel):
 class ConcluirIn(BaseModel):
     csat: int | None = Field(default=None, ge=1, le=5)
     comentario: str | None = Field(default=None, max_length=2000)
+    relatorio: str | None = Field(default=None, max_length=5000)
+    houve_visita: bool = True
+    materiais: str | None = Field(default=None, max_length=2000)
     lat: float | None = Field(default=None, ge=-90, le=90)
     lng: float | None = Field(default=None, ge=-180, le=180)

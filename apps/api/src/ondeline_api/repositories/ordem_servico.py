@@ -22,6 +22,7 @@ class OrdemServicoRepo:
         tecnico_id: UUID | None,
         problema: str,
         endereco: str,
+        plano: str | None = None,
         pppoe_login: str | None = None,
         pppoe_senha: str | None = None,
     ) -> OrdemServico:
@@ -32,6 +33,7 @@ class OrdemServicoRepo:
             problema=problema,
             endereco=endereco,
             status=OsStatus.PENDENTE,
+            plano=plano,
             pppoe_login=pppoe_login,
             pppoe_senha=pppoe_senha,
         )
@@ -146,6 +148,9 @@ class OrdemServicoRepo:
         *,
         csat: int | None = None,
         comentario: str | None = None,
+        relatorio: str | None = None,
+        houve_visita: bool | None = None,
+        materiais: str | None = None,
         lat: float | None = None,
         lng: float | None = None,
     ) -> None:
@@ -157,6 +162,12 @@ class OrdemServicoRepo:
             os_.csat = csat
         if comentario is not None:
             os_.comentario_cliente = comentario
+        if relatorio is not None:
+            os_.relatorio = relatorio
+        if houve_visita is not None:
+            os_.houve_visita = houve_visita
+        if materiais is not None:
+            os_.materiais = materiais
         if lat is not None:
             os_.gps_fim_lat = lat
         if lng is not None:
@@ -169,6 +180,9 @@ class OrdemServicoRepo:
         *,
         csat: int | None = None,
         comentario: str | None = None,
+        relatorio: str | None = None,
+        houve_visita: bool | None = None,
+        materiais: str | None = None,
     ) -> None:
         from datetime import UTC
         from datetime import datetime as _datetime
@@ -179,4 +193,10 @@ class OrdemServicoRepo:
             os_.csat = csat
         if comentario is not None:
             os_.comentario_cliente = comentario
+        if relatorio is not None:
+            os_.relatorio = relatorio
+        if houve_visita is not None:
+            os_.houve_visita = houve_visita
+        if materiais is not None:
+            os_.materiais = materiais
         await self._session.flush()

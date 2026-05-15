@@ -1,5 +1,5 @@
 'use client'
-import { Calendar, MapPin } from 'lucide-react'
+import { Calendar, MapPin, Wifi } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import type { OsOut } from '@/lib/api/types'
@@ -20,6 +20,13 @@ export function OsDetailView({ os }: { os: OsOut }) {
           <Badge variant={STATUS_VARIANTS[os.status] ?? 'outline'}>{os.status}</Badge>
         </div>
 
+        {os.plano && (
+          <div>
+            <div className="text-xs uppercase text-muted-foreground">Plano</div>
+            <p className="mt-1 text-sm font-medium">{os.plano}</p>
+          </div>
+        )}
+
         <div>
           <div className="text-xs uppercase text-muted-foreground">Problema</div>
           <p className="mt-1 text-sm whitespace-pre-wrap">{os.problema}</p>
@@ -33,6 +40,18 @@ export function OsDetailView({ os }: { os: OsOut }) {
           </p>
         </div>
 
+        {(os.pppoe_login || os.pppoe_senha) && (
+          <div>
+            <div className="text-xs uppercase text-muted-foreground flex items-center gap-1">
+              <Wifi className="h-3 w-3" /> PPPoE
+            </div>
+            <div className="mt-1 space-y-0.5 text-sm font-mono">
+              {os.pppoe_login && <p>Login: {os.pppoe_login}</p>}
+              {os.pppoe_senha && <p>Senha: {os.pppoe_senha}</p>}
+            </div>
+          </div>
+        )}
+
         {os.agendamento_at && (
           <div>
             <div className="text-xs uppercase text-muted-foreground">Agendamento</div>
@@ -40,6 +59,27 @@ export function OsDetailView({ os }: { os: OsOut }) {
               <Calendar className="h-4 w-4 text-muted-foreground" />
               {new Date(os.agendamento_at).toLocaleString('pt-BR')}
             </p>
+          </div>
+        )}
+
+        {os.relatorio && (
+          <div>
+            <div className="text-xs uppercase text-muted-foreground">Relatório do técnico</div>
+            <p className="mt-1 text-sm whitespace-pre-wrap">{os.relatorio}</p>
+          </div>
+        )}
+
+        {os.houve_visita !== null && os.houve_visita !== undefined && (
+          <div>
+            <div className="text-xs uppercase text-muted-foreground">Houve visita</div>
+            <p className="mt-1 text-sm">{os.houve_visita ? 'Sim' : 'Não'}</p>
+          </div>
+        )}
+
+        {os.materiais && (
+          <div>
+            <div className="text-xs uppercase text-muted-foreground">Materiais / Gastos</div>
+            <p className="mt-1 text-sm whitespace-pre-wrap">{os.materiais}</p>
           </div>
         )}
 

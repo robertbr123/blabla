@@ -110,6 +110,7 @@ class SgpOndelineProvider(SgpProvider):
             )
             pppoe_login = sv.get("login", "") or ""
             pppoe_senha = sv.get("senha", "") or ""
+            endereco_contrato = _build_endereco(sv.get("endereco") or ct.get("endereco"))
             contratos.append(
                 Contrato(
                     id=str(ct.get("id", "")),
@@ -119,6 +120,7 @@ class SgpOndelineProvider(SgpProvider):
                     cidade=cidade,
                     pppoe_login=pppoe_login,
                     pppoe_senha=pppoe_senha,
+                    endereco=endereco_contrato,
                 )
             )
         titulos = [_build_fatura(t) for t in (c.get("titulos") or [])]

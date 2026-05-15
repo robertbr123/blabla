@@ -48,6 +48,7 @@ class Contrato:
     cidade: str = ""
     pppoe_login: str = ""
     pppoe_senha: str = ""
+    endereco: EnderecoSgp = field(default_factory=EnderecoSgp)
 
 
 @dataclass(frozen=True, slots=True)

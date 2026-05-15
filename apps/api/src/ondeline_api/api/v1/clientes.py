@@ -122,10 +122,16 @@ async def sgp_lookup(
     cidade = (contrato.cidade if contrato and contrato.cidade else None) or (
         cli.endereco.cidade if cli.endereco else None
     )
+    def _fmt_endereco(e: object) -> str | None:
+        if e and e.logradouro:  # type: ignore[union-attr]
+            num = e.numero or ""  # type: ignore[union-attr]
+            return f"{e.logradouro}, {num}".strip(", ") if num else e.logradouro  # type: ignore[union-attr]
+        return None
+
     endereco_str = (
-        f"{cli.endereco.logradouro}, {cli.endereco.numero}"
-        if cli.endereco and cli.endereco.logradouro
-        else None
+        _fmt_endereco(cli.endereco)
+        or (contrato and _fmt_endereco(contrato.endereco))
+        or None
     )
 
     # Verifica se já existe no DB

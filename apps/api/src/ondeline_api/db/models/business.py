@@ -362,6 +362,10 @@ class OrdemServico(Base):
     follow_up_resultado: Mapped[str | None] = mapped_column(String(20), nullable=True)
     pppoe_login: Mapped[str | None] = mapped_column(String(120), nullable=True)
     pppoe_senha: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    plano: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    relatorio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    houve_visita: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    materiais: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (
         Index("ix_os_codigo", "codigo", unique=True),

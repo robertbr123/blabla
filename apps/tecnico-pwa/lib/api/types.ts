@@ -9,6 +9,7 @@ export interface OsListItem {
   status: string
   problema: string
   endereco: string
+  plano: string | null
   agendamento_at: string | null
   criada_em: string
   concluida_em: string | null
@@ -25,6 +26,11 @@ export interface OsOut extends OsListItem {
   fotos: OsFoto[] | null
   csat: number | null
   comentario_cliente: string | null
+  pppoe_login: string | null
+  pppoe_senha: string | null
+  relatorio: string | null
+  houve_visita: boolean | null
+  materiais: string | null
 }
 
 export interface IniciarIn {
@@ -35,6 +41,9 @@ export interface IniciarIn {
 export interface ConcluirIn {
   csat?: number | null
   comentario?: string | null
+  relatorio?: string | null
+  houve_visita?: boolean
+  materiais?: string | null
   lat?: number | null
   lng?: number | null
 }

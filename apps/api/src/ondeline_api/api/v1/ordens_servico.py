@@ -120,6 +120,7 @@ async def create_os(
         tecnico_id=body.tecnico_id,
         problema=body.problema,
         endereco=body.endereco,
+        plano=body.plano,
         pppoe_login=body.pppoe_login,
         pppoe_senha=body.pppoe_senha,
     )
@@ -138,12 +139,29 @@ async def create_os(
             ).scalar_one_or_none()
             if cliente_row:
                 nome_cliente = decrypt_pii(cliente_row.nome_encrypted)
-        msg = (
-            f"Nova OS {codigo}\n"
-            f"Cliente: {nome_cliente}\n"
-            f"Endereço: {body.endereco}\n"
-            f"Problema: {body.problema}"
-        )
+
+        agendamento_str = "Não definido"
+        if body.agendamento_at:
+            try:
+                from zoneinfo import ZoneInfo
+                ag = body.agendamento_at.astimezone(ZoneInfo("America/Manaus"))
+                agendamento_str = ag.strftime("%d/%m/%Y às %H:%M")
+            except Exception:
+                agendamento_str = str(body.agendamento_at)
+
+        msg = f"🔧 *Nova OS {codigo}*\n\n"
+        msg += f"👤 *Cliente:* {nome_cliente}\n"
+        msg += f"📍 *Endereço:* {body.endereco}\n"
+        if body.plano:
+            msg += f"📦 *Plano:* {body.plano}\n"
+        if body.pppoe_login:
+            msg += f"🔑 *PPPoE Login:* {body.pppoe_login}\n"
+        if body.pppoe_senha:
+            msg += f"🔐 *PPPoE Senha:* {body.pppoe_senha}\n"
+        msg += f"\n⚠️ *Problema:*\n{body.problema}\n"
+        msg += f"\n🗓️ *Agendamento:* {agendamento_str}\n"
+        msg += "\n_Acesse o app para mais detalhes._"
+
         await _send_whatsapp(tecnico.whatsapp, msg)
     return OsOut.model_validate(os_)
 
@@ -316,7 +334,14 @@ async def concluir_os(
         raise HTTPException(status_code=404, detail="OS not found")
     if os_.status == OsStatus.CONCLUIDA:
         raise HTTPException(status_code=422, detail="OS já concluída")
-    await repo.concluir(os_, csat=body.csat, comentario=body.comentario)
+    await repo.concluir(
+        os_,
+        csat=body.csat,
+        comentario=body.comentario,
+        relatorio=body.relatorio,
+        houve_visita=body.houve_visita,
+        materiais=body.materiais,
+    )
 
     if os_.cliente_id:
         conversa = await ConversaRepo(session).find_active_by_cliente_id(os_.cliente_id)

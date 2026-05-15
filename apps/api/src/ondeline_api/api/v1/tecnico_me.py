@@ -105,7 +105,14 @@ async def concluir_os(
     if os_ is None:
         raise HTTPException(status_code=404, detail="OS not assigned to you")
     await repo.set_concluida_with_gps(
-        os_, csat=body.csat, comentario=body.comentario, lat=body.lat, lng=body.lng
+        os_,
+        csat=body.csat,
+        comentario=body.comentario,
+        relatorio=body.relatorio,
+        houve_visita=body.houve_visita,
+        materiais=body.materiais,
+        lat=body.lat,
+        lng=body.lng,
     )
     return OsOut.model_validate(os_)
 

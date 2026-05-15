@@ -76,6 +76,7 @@ export function FormOsCreate() {
       tecnico_id: values.tecnico_id,
       problema: values.problema,
       endereco: values.endereco,
+      plano: sgpCliente?.plano ?? null,
       agendamento_at: values.agendamento_at || null,
       pppoe_login: values.pppoe_login || null,
       pppoe_senha: values.pppoe_senha || null,

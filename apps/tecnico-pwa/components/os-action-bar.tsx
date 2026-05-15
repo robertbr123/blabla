@@ -22,6 +22,9 @@ export function OsActionBar({ os }: { os: OsOut }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [csat, setCsat] = useState('')
   const [comentario, setComentario] = useState('')
+  const [relatorio, setRelatorio] = useState('')
+  const [houveVisita, setHouveVisita] = useState(true)
+  const [materiais, setMateriais] = useState('')
   const [pendingGps, setPendingGps] = useState<{ lat: number; lng: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -52,15 +55,24 @@ export function OsActionBar({ os }: { os: OsOut }) {
 
   async function handleConcluir() {
     setError(null)
+    if (!relatorio.trim()) {
+      setError('Informe o que foi feito (relatório obrigatório)')
+      return
+    }
     try {
       await concluir.mutateAsync({
         csat: csat ? Number(csat) : undefined,
         comentario: comentario || undefined,
+        relatorio: relatorio.trim(),
+        houve_visita: houveVisita,
+        materiais: materiais.trim() || undefined,
         lat: pendingGps?.lat,
         lng: pendingGps?.lng,
       })
-      setCsat('')
+      setRelatorio('')
+      setMateriais('')
       setComentario('')
+      setCsat('')
       setPendingGps(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro')
@@ -136,10 +148,46 @@ export function OsActionBar({ os }: { os: OsOut }) {
         <div className="space-y-3">
           <div>
             <h3 className="text-sm font-semibold">Concluir atendimento</h3>
-            <p className="text-xs text-muted-foreground">
-              Capture o GPS final e (opcionalmente) registre o feedback do cliente.
-            </p>
           </div>
+
+          <div>
+            <Label htmlFor="relatorio">
+              O que foi feito? <span className="text-destructive">*</span>
+            </Label>
+            <textarea
+              id="relatorio"
+              value={relatorio}
+              onChange={(e) => setRelatorio(e.target.value)}
+              placeholder="Descreva o que foi feito, o problema encontrado e como foi resolvido…"
+              className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              id="houve_visita"
+              type="checkbox"
+              checked={houveVisita}
+              onChange={(e) => setHouveVisita(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            <Label htmlFor="houve_visita" className="cursor-pointer">
+              Houve visita presencial
+            </Label>
+          </div>
+
+          <div>
+            <Label htmlFor="materiais">Materiais / Gastos (opcional)</Label>
+            <textarea
+              id="materiais"
+              value={materiais}
+              onChange={(e) => setMateriais(e.target.value)}
+              placeholder="Ex: 10m cabo UTP, 2 conectores RJ45, R$ 25,00"
+              className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+
+          <hr className="border-border" />
 
           <GpsButton
             onCapture={async (lat, lng) => {
@@ -154,7 +202,7 @@ export function OsActionBar({ os }: { os: OsOut }) {
           />
 
           <div>
-            <Label htmlFor="csat">CSAT (1-5)</Label>
+            <Label htmlFor="csat">CSAT do cliente (1-5, opcional)</Label>
             <Input
               id="csat"
               type="number"
@@ -168,12 +216,12 @@ export function OsActionBar({ os }: { os: OsOut }) {
           </div>
 
           <div>
-            <Label htmlFor="comentario">Comentário do cliente</Label>
+            <Label htmlFor="comentario">Comentário do cliente (opcional)</Label>
             <textarea
               id="comentario"
               value={comentario}
               onChange={(e) => setComentario(e.target.value)}
-              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
 

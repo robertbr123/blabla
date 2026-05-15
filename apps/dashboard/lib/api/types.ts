@@ -51,6 +51,7 @@ export interface OsListItem {
   status: string
   problema: string
   endereco: string
+  plano: string | null
   agendamento_at: string | null
   criada_em: string
   concluida_em: string | null
@@ -75,6 +76,9 @@ export interface OsOut extends OsListItem {
   follow_up_resultado: string | null
   pppoe_login: string | null
   pppoe_senha: string | null
+  relatorio: string | null
+  houve_visita: boolean | null
+  materiais: string | null
 }
 
 export interface OsCreate {
@@ -82,6 +86,7 @@ export interface OsCreate {
   tecnico_id: string
   problema: string
   endereco: string
+  plano?: string | null
   agendamento_at?: string | null
   pppoe_login?: string | null
   pppoe_senha?: string | null
