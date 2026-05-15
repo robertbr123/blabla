@@ -1,4 +1,4 @@
-name: ondeline-v2
+name: blabla
 
 x-logging: &default-logging
   driver: json-file
