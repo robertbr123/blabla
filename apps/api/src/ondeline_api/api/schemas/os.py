@@ -42,8 +42,8 @@ class OsCreate(BaseModel):
     problema: str = Field(min_length=1, max_length=2000)
     endereco: str = Field(min_length=1, max_length=500)
     agendamento_at: datetime | None = None
-    pppoe_login: str | None = None
-    pppoe_senha: str | None = None
+    pppoe_login: str | None = Field(default=None, max_length=120)
+    pppoe_senha: str | None = Field(default=None, max_length=120)
 
 
 class OsPatch(BaseModel):
