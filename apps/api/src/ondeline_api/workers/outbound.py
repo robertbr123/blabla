@@ -1,8 +1,6 @@
 """Task Celery: envia mensagem do bot para Evolution + persiste em Mensagem(role=BOT)."""
 from __future__ import annotations
 
-import asyncio
-import concurrent.futures
 from typing import Any
 from uuid import UUID
 
@@ -16,7 +14,7 @@ from ondeline_api.observability.metrics import (
 )
 from ondeline_api.repositories.mensagem import MensagemRepo
 from ondeline_api.workers.celery_app import celery_app
-from ondeline_api.workers.runtime import get_redis, reset_redis_cache, task_session
+from ondeline_api.workers.runtime import get_redis, run_task, task_session
 
 log = structlog.get_logger(__name__)
 
@@ -78,30 +76,8 @@ async def _run(jid: str, text: str, conversa_id: UUID) -> dict[str, str]:
 def send_outbound_task(
     self: Any, *, jid: str, text: str, conversa_id: str
 ) -> dict[str, str]:
+    cid = UUID(conversa_id)
     try:
-        # asyncio.run() cannot be called from a running event loop (e.g. when the
-        # task fires eagerly inside Starlette's TestClient or from another task
-        # thread).  Detect and run in a dedicated thread to get a fresh loop.
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-
-        if loop is not None and loop.is_running():
-            # Reset engine cache before spawning thread so the thread creates its
-            # own asyncpg pool bound to its event loop (pools are per-loop).
-            from ondeline_api.db.engine import reset_engine_cache
-
-            reset_engine_cache()
-            reset_redis_cache()
-
-            def _run_in_thread(j: str, t: str, c: UUID) -> dict[str, str]:
-                reset_engine_cache()
-                reset_redis_cache()
-                return asyncio.run(_run(j, t, c))
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                return pool.submit(_run_in_thread, jid, text, UUID(conversa_id)).result()
-        return asyncio.run(_run(jid, text, UUID(conversa_id)))
+        return run_task(lambda: _run(jid, text, cid))
     except Exception as e:
         raise self.retry(exc=e) from e

@@ -1,8 +1,6 @@
 """Celery worker that processes the Notificacao queue."""
 from __future__ import annotations
 
-import asyncio
-import concurrent.futures
 from datetime import UTC, datetime
 from typing import Any
 
@@ -15,7 +13,7 @@ from ondeline_api.db.models.business import Cliente
 from ondeline_api.repositories.notificacao import NotificacaoRepo
 from ondeline_api.services.notify_sender import send_one
 from ondeline_api.workers.celery_app import celery_app
-from ondeline_api.workers.runtime import reset_redis_cache, task_session
+from ondeline_api.workers.runtime import run_task, task_session
 
 log = structlog.get_logger(__name__)
 
@@ -53,27 +51,6 @@ async def _flush() -> dict[str, int]:
     return {"sent": sent, "failed": failed}
 
 
-def _run_in_thread_or_loop(coro_factory: Any) -> dict[str, int]:
-    """Same pattern as inbound/outbound — handle eager mode."""
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop is not None and loop.is_running():
-        from ondeline_api.db.engine import reset_engine_cache
-
-        reset_engine_cache()
-        reset_redis_cache()
-
-        def _run_in_thread() -> dict[str, int]:
-            reset_engine_cache()
-            reset_redis_cache()
-            return asyncio.run(coro_factory())
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            return pool.submit(_run_in_thread).result()
-    return asyncio.run(coro_factory())
 
 
 @celery_app.task(
@@ -82,7 +59,7 @@ def _run_in_thread_or_loop(coro_factory: Any) -> dict[str, int]:
 )
 def flush_pending(self: Any) -> dict[str, int]:
     try:
-        result = _run_in_thread_or_loop(_flush)
+        result: dict[str, int] = run_task(_flush)
         log.info("notify.flush.completed", **result)
         return result
     except Exception as e:

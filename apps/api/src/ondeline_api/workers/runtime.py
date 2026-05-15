@@ -16,17 +16,21 @@ uma conversa ainda nao commitada.
 """
 from __future__ import annotations
 
+import asyncio
+import concurrent.futures
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable, TypeVar
 from uuid import UUID
 
 import redis.asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ondeline_api.db.engine import get_sessionmaker
+from ondeline_api.db.engine import get_sessionmaker, reset_engine_cache
 from ondeline_api.services.inbound import _OutboundQueueProto
+
+_T = TypeVar("_T")
 
 _redis_singleton: aioredis.Redis[bytes] | None = None
 
@@ -44,6 +48,36 @@ def reset_redis_cache() -> None:
     """Reset the Redis singleton. Call when entering a new event loop."""
     global _redis_singleton
     _redis_singleton = None
+
+
+def run_task(coro_factory: Callable[[], Any]) -> Any:
+    """Run an async coroutine factory in a fresh event loop.
+
+    Always resets the SQLAlchemy engine cache and Redis singleton before
+    calling asyncio.run() so that asyncpg pools are never reused across
+    different event loops (which causes 'Future attached to a different loop').
+
+    When called from inside a running loop (e.g. TestClient eager mode), spawns
+    a thread with its own loop instead.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+
+    reset_engine_cache()
+    reset_redis_cache()
+
+    if loop is not None and loop.is_running():
+        def _thread() -> Any:
+            reset_engine_cache()
+            reset_redis_cache()
+            return asyncio.run(coro_factory())
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+            return ex.submit(_thread).result()
+
+    return asyncio.run(coro_factory())
 
 
 @asynccontextmanager

@@ -1,8 +1,6 @@
 """Notification planner Celery jobs (Beat-triggered)."""
 from __future__ import annotations
 
-import asyncio
-import concurrent.futures
 from typing import Any
 
 import structlog
@@ -22,7 +20,7 @@ from ondeline_api.services.notify_planner import (
 from ondeline_api.services.sgp_cache import SgpCacheService
 from ondeline_api.services.sgp_config import load_sgp_config
 from ondeline_api.workers.celery_app import celery_app
-from ondeline_api.workers.runtime import get_redis, reset_redis_cache, task_session
+from ondeline_api.workers.runtime import get_redis, run_task, task_session
 
 log = structlog.get_logger(__name__)
 
@@ -55,27 +53,6 @@ async def _run_planner() -> dict[str, int]:
             await sgp_router.aclose()
 
 
-def _run_in_thread_or_loop(coro_factory: Any) -> Any:
-    """Same pattern as inbound/outbound — handle eager mode."""
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
-
-    if loop is not None and loop.is_running():
-        from ondeline_api.db.engine import reset_engine_cache
-
-        reset_engine_cache()
-        reset_redis_cache()
-
-        def _run_in_thread() -> Any:
-            reset_engine_cache()
-            reset_redis_cache()
-            return asyncio.run(coro_factory())
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            return pool.submit(_run_in_thread).result()
-    return asyncio.run(coro_factory())
 
 
 @celery_app.task(
@@ -85,7 +62,7 @@ def _run_in_thread_or_loop(coro_factory: Any) -> Any:
 def run_planner_jobs(self: Any) -> dict[str, int]:
     """Beat-triggered: vencimentos + atrasos + pagamentos."""
     try:
-        result: dict[str, int] = _run_in_thread_or_loop(_run_planner)
+        result: dict[str, int] = run_task(_run_planner)
         log.info("planner_jobs.completed", **result)
         return result
     except Exception as e:
@@ -114,7 +91,7 @@ async def _run_lgpd() -> dict[str, int]:
 )
 def followup_os_job(self: Any) -> int:
     try:
-        result: int = _run_in_thread_or_loop(_run_followup_os)
+        result: int = run_task(_run_followup_os)
         log.info("followup_os_job.completed", count=result)
         return result
     except Exception as e:
@@ -128,7 +105,7 @@ def followup_os_job(self: Any) -> int:
 )
 def manutencao_job(self: Any) -> int:
     try:
-        result: int = _run_in_thread_or_loop(_run_manutencao)
+        result: int = run_task(_run_manutencao)
         log.info("manutencao_job.completed", count=result)
         return result
     except Exception as e:
@@ -142,7 +119,7 @@ def manutencao_job(self: Any) -> int:
 )
 def lgpd_purge_job(self: Any) -> dict[str, int]:
     try:
-        result: dict[str, int] = _run_in_thread_or_loop(_run_lgpd)
+        result: dict[str, int] = run_task(_run_lgpd)
         log.info("lgpd_purge_job.completed", **result)
         return result
     except Exception as e:

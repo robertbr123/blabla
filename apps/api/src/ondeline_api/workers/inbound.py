@@ -6,8 +6,6 @@ Retorna dict com o resultado para fins de telemetria/debug.
 """
 from __future__ import annotations
 
-import asyncio
-import concurrent.futures
 from typing import Any
 
 import structlog
@@ -29,7 +27,7 @@ from ondeline_api.workers.celery_app import celery_app
 from ondeline_api.workers.runtime import (
     BufferedOutboundEnqueuer,
     get_redis,
-    reset_redis_cache,
+    run_task,
     task_session,
 )
 
@@ -95,31 +93,7 @@ async def _run(payload: dict[str, Any]) -> dict[str, Any]:
 )
 def process_inbound_message_task(self: Any, payload: dict[str, Any]) -> dict[str, Any]:
     try:
-        # asyncio.run() cannot be called from a running event loop (e.g. when the
-        # task fires eagerly inside Starlette's TestClient, which uses anyio).
-        # Detect this and run in a fresh thread instead so each path gets its own loop.
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-
-        if loop is not None and loop.is_running():
-            # Reset the engine cache before entering the new thread so the thread
-            # gets a fresh asyncpg pool bound to its own event loop — not to the
-            # caller's loop (asyncpg pools are per-loop and cannot be shared).
-            from ondeline_api.db.engine import reset_engine_cache
-
-            reset_engine_cache()
-            reset_redis_cache()
-
-            def _run_in_thread(p: dict[str, Any]) -> dict[str, Any]:
-                reset_engine_cache()  # also reset inside thread for safety
-                reset_redis_cache()
-                return asyncio.run(_run(p))
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                return pool.submit(_run_in_thread, payload).result()
-        return asyncio.run(_run(payload))
+        return run_task(lambda: _run(payload))
     except Exception as e:  # pragma: no cover — caminho de retry
         log.error("inbound.task_failed", error=str(e), exc_info=True)
         raise self.retry(exc=e) from e

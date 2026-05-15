@@ -1,8 +1,6 @@
 """Task Celery: atualiza OS e envia mensagem de resultado do follow-up."""
 from __future__ import annotations
 
-import asyncio
-import concurrent.futures
 from typing import Any
 from uuid import UUID
 
@@ -10,7 +8,7 @@ import structlog
 from sqlalchemy import select
 
 from ondeline_api.workers.celery_app import celery_app
-from ondeline_api.workers.runtime import get_redis, reset_redis_cache, task_session
+from ondeline_api.workers.runtime import run_task, task_session
 
 log = structlog.get_logger(__name__)
 
@@ -66,25 +64,8 @@ async def _run_followup(conversa_id: UUID, resultado: str, resposta: str) -> Non
     default_retry_delay=5,
 )
 def followup_os_task(self: Any, *, conversa_id: str, resultado: str, resposta: str) -> None:
+    cid = UUID(conversa_id)
     try:
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            loop = None
-
-        if loop is not None and loop.is_running():
-            from ondeline_api.db.engine import reset_engine_cache
-            reset_engine_cache()
-            reset_redis_cache()
-
-            def _in_thread() -> None:
-                reset_engine_cache()
-                reset_redis_cache()
-                asyncio.run(_run_followup(UUID(conversa_id), resultado, resposta))
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                pool.submit(_in_thread).result()
-        else:
-            asyncio.run(_run_followup(UUID(conversa_id), resultado, resposta))
+        run_task(lambda: _run_followup(cid, resultado, resposta))
     except Exception as e:
         raise self.retry(exc=e) from e
