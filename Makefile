@@ -1,6 +1,11 @@
-.PHONY: dev down test lint logs worker-logs install format
+.PHONY: dev dev-build down test lint logs worker-logs install format
 
+# Sobe os serviços usando imagens cacheadas (não reconstrói)
 dev:
+	docker compose -f infra/docker-compose.dev.yml --env-file .env up -d
+
+# Força rebuild das imagens antes de subir (use após mudar Dockerfile ou deps)
+dev-build:
 	docker compose -f infra/docker-compose.dev.yml --env-file .env up -d --build
 
 down:
