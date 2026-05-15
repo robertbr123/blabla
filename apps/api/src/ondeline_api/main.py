@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -23,6 +24,7 @@ from ondeline_api.api.v1 import tecnico_me as v1_tecnico_me
 from ondeline_api.api.v1 import tecnicos as v1_tecnicos
 from ondeline_api.api.webhook import limiter as webhook_limiter
 from ondeline_api.auth.csrf import CSRFMiddleware
+from ondeline_api.config import get_settings
 from ondeline_api.services.logging_config import configure_logging
 from ondeline_api.services.otel_init import init_otel
 from ondeline_api.services.sentry_init import init_sentry
@@ -42,6 +44,7 @@ CSRF_EXEMPT_PATHS = [
 def create_app() -> FastAPI:
     configure_logging()
     init_sentry(component="api")
+    settings = get_settings()
     app = FastAPI(
         title="Ondeline API",
         version=__version__,
@@ -49,6 +52,16 @@ def create_app() -> FastAPI:
     )
     init_otel(component="api", fastapi_app=app)
     app.add_middleware(CSRFMiddleware, exempt_paths=CSRF_EXEMPT_PATHS)
+
+    allowed_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+    if allowed_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=allowed_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
 
     # Rate limiter (slowapi) — apenas o webhook usa por enquanto
     app.state.limiter = webhook_limiter

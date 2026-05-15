@@ -89,6 +89,9 @@ class Settings(BaseSettings):
     access_token_ttl_minutes: int = 15
     refresh_token_ttl_days: int = 7
 
+    # CORS
+    cors_origins: str = ""  # CSV de origens permitidas, ex: https://blabla.robertbr.dev
+
     # Cookies
     cookie_secure: bool = True
     cookie_domain: str = ""
