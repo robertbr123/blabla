@@ -1,4 +1,4 @@
-# Ondeline v2
+# BLABLAv2
 
 [![CI](https://github.com/robertbr123/blabla/actions/workflows/ci.yml/badge.svg)](https://github.com/robertbr123/blabla/actions/workflows/ci.yml)
 
