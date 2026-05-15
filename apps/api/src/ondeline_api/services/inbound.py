@@ -250,9 +250,9 @@ async def process_inbound_message(
 
     # Intercepta CHECKLIST_OS — coleta sequencial de conclusão (3 passos)
     if conversa.estado is ConversaEstado.CHECKLIST_OS and deps.session is not None:
-        meta: dict = conversa.checklist_metadata or {}
+        meta: dict[str, Any] = conversa.checklist_metadata or {}
         step: int = meta.get("step", 1)
-        respostas: dict = meta.get("respostas", {})
+        respostas: dict[str, Any] = meta.get("respostas", {})
 
         # Passo 1: relatorio | Passo 2: houve_visita | Passo 3: materiais (conclusão)
         _PROXIMA: dict[int, str] = {
@@ -398,16 +398,16 @@ async def process_inbound_message(
 
     # Intercepta coleta sequencial de mudanca de endereco
     if conversa.estado is ConversaEstado.MUDANCA_ENDERECO and evt.kind is InboundKind.TEXT:
-        meta: dict = conversa.checklist_metadata or {}
-        step = meta.get("step", "rua")
-        dados: dict = meta.get("novo_endereco", {})
-        dados[step] = (evt.text or "").strip()
+        addr_meta: dict[str, Any] = conversa.checklist_metadata or {}
+        addr_step: str = addr_meta.get("step", "rua")
+        addr_dados: dict[str, Any] = addr_meta.get("novo_endereco", {})
+        addr_dados[addr_step] = (evt.text or "").strip()
 
-        if step == "referencia":
+        if addr_step == "referencia":
             # Coleta completa — decide baseado em status financeiro
             endereco_str = (
-                f"{dados.get('rua', '')}, {dados.get('bairro', '')}"
-                f" — Ref: {dados.get('referencia', 'N/A')}"
+                f"{addr_dados.get('rua', '')}, {addr_dados.get('bairro', '')}"
+                f" — Ref: {addr_dados.get('referencia', 'N/A')}"
             )
             # Verifica status do cliente no cache
             cliente_status = None
@@ -456,13 +456,13 @@ async def process_inbound_message(
 
         else:
             # Próximo passo
-            next_step = "bairro" if step == "rua" else "referencia"
+            next_step = "bairro" if addr_step == "rua" else "referencia"
             next_question = (
                 "Qual é o bairro?"
                 if next_step == "bairro"
                 else "Algum ponto de referência? (ou responda NENHUM)"
             )
-            conversa.checklist_metadata = {**meta, "step": next_step, "novo_endereco": dados}
+            conversa.checklist_metadata = {**addr_meta, "step": next_step, "novo_endereco": addr_dados}
             await deps.conversas.update_estado_status(
                 conversa, estado=ConversaEstado.MUDANCA_ENDERECO, status=ConversaStatus.BOT
             )

@@ -1,7 +1,7 @@
 """CRUD /api/v1/planos — leitura/escrita sobre config['planos']."""
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +15,7 @@ from ondeline_api.repositories.config import ConfigRepo
 router = APIRouter(prefix="/api/v1/planos", tags=["planos"])
 _admin_dep = Depends(require_role(Role.ADMIN))
 
-_DEFAULT_PLANOS: list[dict] = [
+_DEFAULT_PLANOS: list[dict[str, Any]] = [
     {
         "nome": "Essencial",
         "preco": 110.0,
@@ -46,7 +46,7 @@ _DEFAULT_PLANOS: list[dict] = [
 ]
 
 
-async def _load(repo: ConfigRepo) -> list[dict]:
+async def _load(repo: ConfigRepo) -> list[dict[str, Any]]:
     raw = await repo.get("planos")
     return list(raw) if isinstance(raw, list) else list(_DEFAULT_PLANOS)
 

@@ -81,6 +81,10 @@ disallow_untyped_decorators = false
 module = "asyncpg.*"
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = ["weasyprint", "weasyprint.*"]
+ignore_missing_imports = true
+
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true

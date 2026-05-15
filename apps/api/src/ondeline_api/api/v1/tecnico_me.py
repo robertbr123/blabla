@@ -52,7 +52,7 @@ async def my_os(
     result = []
     for o in rows:
         item = OsListItem.model_validate(o)
-        item.nome_cliente = nomes.get(o.cliente_id)
+        item.nome_cliente = nomes.get(o.cliente_id) if o.cliente_id is not None else None
         result.append(item)
     return result
 

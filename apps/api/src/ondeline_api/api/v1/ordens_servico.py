@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID, uuid4
 
 import structlog
@@ -37,7 +37,7 @@ from ondeline_api.services.os_pdf import generate_os_pdf
 router = APIRouter(prefix="/api/v1/os", tags=["ordens-servico"])
 
 
-async def _fetch_cliente(session: AsyncSession, cliente_id: UUID | None):
+async def _fetch_cliente(session: AsyncSession, cliente_id: UUID | None) -> Cliente | None:
     if cliente_id is None:
         return None
     from sqlalchemy import select
@@ -78,7 +78,7 @@ def _os_msg_block(os_: OrdemServico, nome_cliente: str | None) -> str:
     lines.append(f"📍 *Endereço:* {os_.endereco}")
     if getattr(os_, "plano", None):
         lines.append(f"📦 *Plano:* {os_.plano}")
-    if getattr(os_, "agendamento_at", None):
+    if os_.agendamento_at is not None:
         try:
             ag = os_.agendamento_at.astimezone(_tz)
             lines.append(f"🗓️ *Agendamento:* {ag.strftime('%d/%m/%Y às %H:%M')}")
@@ -137,7 +137,7 @@ async def list_os(
     items = []
     for o in rows:
         item = OsListItem.model_validate(o)
-        item.nome_cliente = nomes.get(o.cliente_id)
+        item.nome_cliente = nomes.get(o.cliente_id) if o.cliente_id is not None else None
         items.append(item)
     return CursorPage[OsListItem](
         items=items,
@@ -478,7 +478,7 @@ async def download_os_pdf(
 async def enviar_pdf_tecnico(
     os_id: UUID,
     session: Annotated[AsyncSession, Depends(get_db)],
-) -> dict:
+) -> dict[str, Any]:
     repo = OrdemServicoRepo(session)
     os_ = await repo.get_by_id(os_id)
     if os_ is None:

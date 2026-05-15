@@ -235,6 +235,8 @@ async def schedule_followup_os(session: AsyncSession) -> int:
     when = now + timedelta(minutes=1)
     count = 0
     for os_ in rows:
+        if os_.cliente_id is None:
+            continue
         n = await repo.schedule(
             cliente_id=os_.cliente_id,
             tipo=NotificacaoTipo.OS_CONCLUIDA,

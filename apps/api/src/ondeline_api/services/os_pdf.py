@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any, cast
 
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
@@ -23,7 +24,7 @@ def _fmt_dt(dt: datetime | None) -> str:
 _FOTOS_DIR = Path("/tmp/ondeline_os_fotos")
 
 
-def _load_fotos(os_: OrdemServico) -> list[dict]:
+def _load_fotos(os_: OrdemServico) -> list[dict[str, Any]]:
     fotos = []
     for meta in os_.fotos or []:
         path = Path(meta.get("url", ""))
@@ -78,4 +79,4 @@ def generate_os_pdf(
         gerado_em=datetime.now(tz=UTC).strftime("%d/%m/%Y %H:%M"),
     )
 
-    return HTML(string=html_content, base_url=str(_TEMPLATES_DIR)).write_pdf()
+    return cast(bytes, HTML(string=html_content, base_url=str(_TEMPLATES_DIR)).write_pdf())

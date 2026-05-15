@@ -123,9 +123,9 @@ async def sgp_lookup(
         cli.endereco.cidade if cli.endereco else None
     )
     def _fmt_endereco(e: object) -> str | None:
-        if e and e.logradouro:  # type: ignore[union-attr]
-            num = e.numero or ""  # type: ignore[union-attr]
-            return f"{e.logradouro}, {num}".strip(", ") if num else e.logradouro  # type: ignore[union-attr]
+        if e and e.logradouro:  # type: ignore[attr-defined]
+            num = e.numero or ""  # type: ignore[attr-defined]
+            return f"{e.logradouro}, {num}".strip(", ") if num else e.logradouro  # type: ignore[attr-defined]
         return None
 
     endereco_str = (

@@ -1,7 +1,7 @@
 """Task Celery: envia mensagem do bot para Evolution + persiste em Mensagem(role=BOT)."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import structlog
@@ -78,6 +78,6 @@ def send_outbound_task(
 ) -> dict[str, str]:
     cid = UUID(conversa_id)
     try:
-        return run_task(lambda: _run(jid, text, cid))
+        return cast(dict[str, str], run_task(lambda: _run(jid, text, cid)))
     except Exception as e:
         raise self.retry(exc=e) from e

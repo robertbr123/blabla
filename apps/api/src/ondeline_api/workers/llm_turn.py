@@ -1,7 +1,7 @@
 """Task Celery: roda 1 turno do LLM para uma Conversa."""
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 import structlog
@@ -119,6 +119,6 @@ async def _run(conversa_id: UUID) -> dict[str, Any]:
 def llm_turn_task(self: Any, *, conversa_id: str) -> dict[str, Any]:
     cid = UUID(conversa_id)
     try:
-        return run_task(lambda: _run(cid))
+        return cast(dict[str, Any], run_task(lambda: _run(cid)))
     except Exception as e:
         raise self.retry(exc=e) from e

@@ -6,7 +6,7 @@ Retorna dict com o resultado para fins de telemetria/debug.
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import structlog
 
@@ -93,7 +93,7 @@ async def _run(payload: dict[str, Any]) -> dict[str, Any]:
 )
 def process_inbound_message_task(self: Any, payload: dict[str, Any]) -> dict[str, Any]:
     try:
-        return run_task(lambda: _run(payload))
+        return cast(dict[str, Any], run_task(lambda: _run(payload)))
     except Exception as e:  # pragma: no cover — caminho de retry
         log.error("inbound.task_failed", error=str(e), exc_info=True)
         raise self.retry(exc=e) from e

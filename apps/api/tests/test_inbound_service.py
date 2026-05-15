@@ -51,6 +51,9 @@ class FakeConversaRepo:
     async def set_cliente(self, conversa: Conversa, cliente_id: UUID) -> None:
         conversa.cliente_id = cliente_id
 
+    async def add_tag(self, conversa: Conversa, tag: str) -> None:
+        pass
+
 
 class FakeMensagemRepo:
     def __init__(self, dedup_ids: set[str] | None = None) -> None:
@@ -95,6 +98,9 @@ class FakeOutboundQueue:
 
     def enqueue_llm_turn(self, conversa_id: UUID) -> None:
         self.llm_turns.append(conversa_id)
+
+    def enqueue_followup_os(self, conversa_id: UUID, resultado: str, resposta: str) -> None:
+        pass
 
 
 # ── FakeConfigSession ─────────────────────────────────────────
