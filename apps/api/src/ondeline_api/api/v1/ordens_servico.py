@@ -70,6 +70,25 @@ FOLLOWUP_MSG = (
 log = structlog.get_logger(__name__)
 
 
+def _os_msg_block(os_: "OrdemServico", nome_cliente: str | None) -> str:
+    """Bloco padrão de dados da OS para mensagens WhatsApp."""
+    from zoneinfo import ZoneInfo
+    _tz = ZoneInfo("America/Manaus")
+    lines = []
+    lines.append(f"👤 *Cliente:* {nome_cliente or 'Cliente'}")
+    lines.append(f"📍 *Endereço:* {os_.endereco}")
+    if getattr(os_, "plano", None):
+        lines.append(f"📦 *Plano:* {os_.plano}")
+    if getattr(os_, "agendamento_at", None):
+        try:
+            ag = os_.agendamento_at.astimezone(_tz)
+            lines.append(f"🗓️ *Agendamento:* {ag.strftime('%d/%m/%Y às %H:%M')}")
+        except Exception:
+            pass
+    lines.append(f"\n⚠️ *Problema:*\n{os_.problema}")
+    return "\n".join(lines)
+
+
 def _normalize_whatsapp(number: str) -> str:
     """Strip non-numeric characters so Evolution API receives a bare JID like 5592984109856."""
     import re
@@ -269,18 +288,21 @@ async def reatribuir_os(
     os_.historico_reatribuicoes = historico
     await session.flush()
 
+    nome_cli = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
     if old_tec and old_tec.whatsapp:
-        await _send_whatsapp(
-            old_tec.whatsapp,
-            f"A OS {os_.codigo} foi reatribuída para outro técnico. Obrigado!",
-        )
+        msg_old = f"🔄 *OS Reatribuída: {os_.codigo}*\n\n"
+        msg_old += _os_msg_block(os_, nome_cli)
+        msg_old += "\n\n_Esta OS foi passada para outro técnico. Obrigado pelo seu trabalho! 🙏_"
+        await _send_whatsapp(old_tec.whatsapp, msg_old)
     if novo_tec.whatsapp:
-        msg = (
-            f"OS reatribuída para você: {os_.codigo}\n"
-            f"Endereço: {os_.endereco}\n"
-            f"Problema: {os_.problema}"
-        )
-        await _send_whatsapp(novo_tec.whatsapp, msg)
+        msg_new = f"🔄 *OS Reatribuída para você: {os_.codigo}*\n\n"
+        msg_new += _os_msg_block(os_, nome_cli)
+        if getattr(os_, "pppoe_login", None):
+            msg_new += f"\n🔑 *PPPoE Login:* {os_.pppoe_login}"
+        if getattr(os_, "pppoe_senha", None):
+            msg_new += f"\n🔐 *PPPoE Senha:* {os_.pppoe_senha}"
+        msg_new += f"\n\n_Para concluir via WhatsApp, envie:_ *CONCLUIR {os_.codigo}*"
+        await _send_whatsapp(novo_tec.whatsapp, msg_new)
 
     out = OsOut.model_validate(os_)
     out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
@@ -301,10 +323,11 @@ async def delete_os(
     if os_.tecnico_id:
         tec = await TecnicoRepo(session).get_by_id(os_.tecnico_id)
         if tec and tec.whatsapp:
-            await _send_whatsapp(
-                tec.whatsapp,
-                f"A OS {os_.codigo} foi cancelada no sistema.",
-            )
+            nome_cli = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
+            msg = f"❌ *OS Cancelada: {os_.codigo}*\n\n"
+            msg += _os_msg_block(os_, nome_cli)
+            msg += "\n\n_Esta OS foi cancelada no sistema._"
+            await _send_whatsapp(tec.whatsapp, msg)
             notif_sent = True
 
     await session.delete(os_)
@@ -387,7 +410,9 @@ async def concluir_os(
     return out
 
 
-async def _send_whatsapp_document(whatsapp: str, pdf_bytes: bytes, filename: str) -> None:
+async def _send_whatsapp_document(
+    whatsapp: str, pdf_bytes: bytes, filename: str, caption: str | None = None
+) -> None:
     """Best-effort envio de documento PDF via WhatsApp. Nunca levanta exceção."""
     try:
         import base64
@@ -409,7 +434,7 @@ async def _send_whatsapp_document(whatsapp: str, pdf_bytes: bytes, filename: str
                 mediatype="document",
                 mimetype="application/pdf",
                 file_name=filename,
-                caption=f"PDF da OS: {filename}",
+                caption=caption or f"📋 PDF da OS: {filename}",
             )
         except Exception:
             log.warning("os.pdf_send_failed", whatsapp=whatsapp, exc_info=True)
@@ -440,6 +465,7 @@ async def download_os_pdf(
         cliente_whatsapp=cli.whatsapp if cli else None,
         tecnico_nome=tecnico.nome if tecnico else None,
         tecnico_whatsapp=tecnico.whatsapp if tecnico else None,
+        nome_sgp=os_.nome_sgp,
     )
     filename = f"{os_.codigo}.pdf"
     return StreamingResponse(
@@ -466,13 +492,18 @@ async def enviar_pdf_tecnico(
         raise HTTPException(status_code=422, detail="Técnico sem WhatsApp cadastrado")
 
     cli = await _fetch_cliente(session, os_.cliente_id)
+    nome_cli = (decrypt_pii(cli.nome_encrypted) if cli else None) or os_.nome_sgp
     pdf_bytes = generate_os_pdf(
         os_=os_,
-        cliente_nome=decrypt_pii(cli.nome_encrypted) if cli else None,
+        cliente_nome=nome_cli,
         cliente_whatsapp=cli.whatsapp if cli else None,
         tecnico_nome=tecnico.nome,
         tecnico_whatsapp=tecnico.whatsapp,
+        nome_sgp=os_.nome_sgp,
     )
     filename = f"{os_.codigo}.pdf"
-    await _send_whatsapp_document(tecnico.whatsapp, pdf_bytes, filename)
+    caption = f"📋 *Relatório OS {os_.codigo}*"
+    if nome_cli:
+        caption += f" — {nome_cli}"
+    await _send_whatsapp_document(tecnico.whatsapp, pdf_bytes, filename, caption=caption)
     return {"enviado": True, "tecnico": tecnico.nome, "whatsapp": tecnico.whatsapp}

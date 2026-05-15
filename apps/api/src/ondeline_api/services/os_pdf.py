@@ -46,6 +46,7 @@ def generate_os_pdf(
     cliente_whatsapp: str | None,
     tecnico_nome: str | None,
     tecnico_whatsapp: str | None,
+    nome_sgp: str | None = None,
 ) -> bytes:
     """Renderiza template HTML e converte para PDF em memória. Retorna bytes do PDF."""
     template = _jinja_env.get_template("os_pdf.html")
@@ -56,16 +57,20 @@ def generate_os_pdf(
         "status": os_.status.value,
         "problema": os_.problema,
         "endereco": os_.endereco,
+        "plano": getattr(os_, "plano", None),
         "criada_em": _fmt_dt(os_.criada_em),
         "concluida_em": _fmt_dt(os_.concluida_em),
         "agendamento_at": _fmt_dt(os_.agendamento_at),
         "csat": os_.csat,
         "comentario_cliente": os_.comentario_cliente,
+        "relatorio": getattr(os_, "relatorio", None),
+        "materiais": getattr(os_, "materiais", None),
+        "houve_visita": getattr(os_, "houve_visita", None),
     }
 
     html_content = template.render(
         os=os_data,
-        cliente_nome=cliente_nome,
+        cliente_nome=cliente_nome or nome_sgp,
         cliente_whatsapp=cliente_whatsapp,
         tecnico_nome=tecnico_nome,
         tecnico_whatsapp=tecnico_whatsapp,

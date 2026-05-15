@@ -19,7 +19,9 @@
     .field-sub { font-size: 11px; color: #374151; margin-top: 1px; }
     .block { background: #f8fafc; border-left: 3px solid #1e40af; padding: 10px 12px; margin-bottom: 16px; border-radius: 0 4px 4px 0; }
     .block-problema { background: #fef3c7; border-left-color: #f59e0b; }
-    .badges { display: flex; gap: 12px; margin-bottom: 16px; }
+    .block-relatorio { background: #f0f9ff; border-left-color: #0ea5e9; }
+    .block-materiais { background: #fdf4ff; border-left-color: #a855f7; }
+    .badges { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
     .badge { background: #f1f5f9; border-radius: 6px; padding: 8px 12px; text-align: center; }
     .badge-label { font-size: 9px; color: #6b7280; text-transform: uppercase; }
     .badge-value { font-size: 12px; font-weight: 600; margin-top: 2px; }
@@ -71,6 +73,13 @@
       <div class="field-value">{{ os.endereco }}</div>
     </div>
 
+    {% if os.plano %}
+    <div class="block">
+      <div class="field-label">Plano</div>
+      <div class="field-value">{{ os.plano }}</div>
+    </div>
+    {% endif %}
+
     <div class="block block-problema">
       <div class="field-label">Problema Reportado</div>
       <div class="field-value">{{ os.problema }}</div>
@@ -81,6 +90,12 @@
         <div class="badge-label">Status</div>
         <div class="badge-value">{{ os.status | upper }}</div>
       </div>
+      {% if os.houve_visita is not none %}
+      <div class="badge {% if os.houve_visita %}badge-concluida{% endif %}">
+        <div class="badge-label">Visita</div>
+        <div class="badge-value">{{ "Sim" if os.houve_visita else "Não" }}</div>
+      </div>
+      {% endif %}
       {% if os.agendamento_at %}
       <div class="badge">
         <div class="badge-label">Agendamento</div>
@@ -94,6 +109,20 @@
       </div>
       {% endif %}
     </div>
+
+    {% if os.relatorio %}
+    <div class="block block-relatorio">
+      <div class="field-label">Relatório do Técnico</div>
+      <div class="field-value" style="font-weight: normal; white-space: pre-wrap;">{{ os.relatorio }}</div>
+    </div>
+    {% endif %}
+
+    {% if os.materiais %}
+    <div class="block block-materiais">
+      <div class="field-label">Materiais / Gastos</div>
+      <div class="field-value" style="font-weight: normal; white-space: pre-wrap;">{{ os.materiais }}</div>
+    </div>
+    {% endif %}
 
     {% if os.csat is not none %}
     <div class="csat-section">

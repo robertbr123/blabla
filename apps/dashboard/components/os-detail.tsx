@@ -94,6 +94,12 @@ export function OsDetail({ id }: { id: string }) {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {data.nome_cliente && (
+            <div>
+              <div className="text-xs uppercase text-muted-foreground">Cliente</div>
+              <p className="mt-1 text-sm font-medium">{data.nome_cliente}</p>
+            </div>
+          )}
           <div>
             <div className="text-xs uppercase text-muted-foreground">Problema</div>
             <p className="mt-1 text-sm whitespace-pre-wrap">{data.problema}</p>
@@ -102,6 +108,12 @@ export function OsDetail({ id }: { id: string }) {
             <div className="text-xs uppercase text-muted-foreground">Endereço</div>
             <p className="mt-1 text-sm">{data.endereco}</p>
           </div>
+          {data.plano && (
+            <div>
+              <div className="text-xs uppercase text-muted-foreground">Plano</div>
+              <p className="mt-1 text-sm">{data.plano}</p>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <div className="text-xs uppercase text-muted-foreground">Criada em</div>
@@ -118,6 +130,32 @@ export function OsDetail({ id }: { id: string }) {
               </p>
             </div>
           </div>
+          {data.agendamento_at && (
+            <div>
+              <div className="text-xs uppercase text-muted-foreground">Agendamento</div>
+              <p className="mt-1 text-sm">
+                {new Date(data.agendamento_at).toLocaleString('pt-BR')}
+              </p>
+            </div>
+          )}
+          {data.relatorio && (
+            <div>
+              <div className="text-xs uppercase text-muted-foreground">Relatório do técnico</div>
+              <p className="mt-1 text-sm whitespace-pre-wrap">{data.relatorio}</p>
+            </div>
+          )}
+          {data.houve_visita !== null && data.houve_visita !== undefined && (
+            <div>
+              <div className="text-xs uppercase text-muted-foreground">Houve visita</div>
+              <p className="mt-1 text-sm">{data.houve_visita ? 'Sim' : 'Não'}</p>
+            </div>
+          )}
+          {data.materiais && (
+            <div>
+              <div className="text-xs uppercase text-muted-foreground">Materiais / Gastos</div>
+              <p className="mt-1 text-sm whitespace-pre-wrap">{data.materiais}</p>
+            </div>
+          )}
           {data.csat !== null && (
             <div>
               <div className="text-xs uppercase text-muted-foreground">CSAT</div>
