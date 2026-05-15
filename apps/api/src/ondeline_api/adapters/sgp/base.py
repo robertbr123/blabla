@@ -46,6 +46,8 @@ class Contrato:
     status: str
     motivo_status: str = ""
     cidade: str = ""
+    pppoe_login: str = ""
+    pppoe_senha: str = ""
 
 
 @dataclass(frozen=True, slots=True)
