@@ -119,7 +119,7 @@ services:
     logging: *default-logging
 
   evolution-api:
-    image: atendai/evolution-api:latest
+    image: evoapicloud/evolution-api:latest
     container_name: blabla-evolution
     ports:
       - "127.0.0.1:8080:8080"
@@ -151,6 +151,9 @@ services:
     container_name: blabla-watchtower
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - /root/.docker/config.json:/config.json:ro
+    environment:
+      - DOCKER_CONFIG=/
     command: --interval 30 --cleanup
     restart: unless-stopped
     logging: *default-logging
