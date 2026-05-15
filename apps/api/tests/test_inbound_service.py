@@ -193,7 +193,8 @@ async def test_sticker_skipped_silently() -> None:
     assert fake_out.sent == []
 
 
-async def test_image_event_persists_e_enfileira_llm_turn() -> None:
+async def test_image_sem_caption_escala_e_envia_ack() -> None:
+    """IMAGE sem caption é classificada como OUTRO → escalada com ack, sem LLM turn."""
     fake_msgs = FakeMensagemRepo()
     fake_out = FakeOutboundQueue()
     repos = InboundDeps(
@@ -206,11 +207,11 @@ async def test_image_event_persists_e_enfileira_llm_turn() -> None:
         _evt(kind=InboundKind.IMAGE, text=None), repos
     )
     assert out.persisted is True
+    assert out.escalated is True
     assert len(fake_msgs.inserted) == 1
     assert fake_msgs.inserted[0].media_type == "image"
-    assert fake_out.sent == []  # sem ack direto em M4
-    assert len(fake_out.llm_turns) == 1
-    assert fake_out.llm_turns[0] == out.conversa_id
+    assert len(fake_out.sent) == 1  # ack enviado para o cliente
+    assert len(fake_out.llm_turns) == 0  # sem LLM turn quando escalado
 
 
 async def test_humano_nao_dispara_llm() -> None:

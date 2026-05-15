@@ -13,6 +13,7 @@ from ondeline_api.api.schemas.os import OsListItem, OsOut
 from ondeline_api.api.schemas.tecnico_me import ConcluirIn, GpsUpdate, IniciarIn
 from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.rbac import require_role
+from ondeline_api.api.v1.ordens_servico import _fetch_nome_cliente
 from ondeline_api.db.models.business import Tecnico
 from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db
@@ -42,25 +43,16 @@ async def my_os(
     tec: Annotated[Tecnico, Depends(current_tecnico)],
     status_filter: Annotated[str | None, Query(alias="status")] = None,
 ) -> list[OsListItem]:
-    from sqlalchemy import select
-    from ondeline_api.db.models.business import Cliente
-    from ondeline_api.db.crypto import decrypt_pii
+    from ondeline_api.api.v1.ordens_servico import _batch_nomes_clientes
 
     repo = OrdemServicoRepo(session)
     rows = await repo.list_for_tecnico(tec.id, status_filter=status_filter)
-
-    cliente_ids = [r.cliente_id for r in rows if r.cliente_id is not None]
-    nomes: dict = {}
-    if cliente_ids:
-        cli_rows = (await session.execute(
-            select(Cliente).where(Cliente.id.in_(cliente_ids))
-        )).scalars().all()
-        nomes = {c.id: decrypt_pii(c.nome_encrypted) for c in cli_rows}
+    nomes = await _batch_nomes_clientes(session, {o.cliente_id for o in rows if o.cliente_id})
 
     result = []
     for o in rows:
         item = OsListItem.model_validate(o)
-        item.nome_cliente = nomes.get(o.cliente_id) if o.cliente_id else None
+        item.nome_cliente = nomes.get(o.cliente_id)
         result.append(item)
     return result
 
@@ -75,7 +67,9 @@ async def my_os_detail(
     os_ = await repo.get_by_id_and_tecnico(os_id, tec.id)
     if os_ is None:
         raise HTTPException(status_code=404, detail="OS not assigned to you")
-    return OsOut.model_validate(os_)
+    out = OsOut.model_validate(os_)
+    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    return out
 
 
 @router.post("/gps", status_code=status.HTTP_204_NO_CONTENT, dependencies=[_role_dep])
@@ -104,7 +98,9 @@ async def iniciar_os(
     if os_ is None:
         raise HTTPException(status_code=404, detail="OS not assigned to you")
     await repo.set_iniciada_with_gps(os_, lat=body.lat, lng=body.lng)
-    return OsOut.model_validate(os_)
+    out = OsOut.model_validate(os_)
+    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    return out
 
 
 @router.post(
@@ -132,7 +128,9 @@ async def concluir_os(
         lat=body.lat,
         lng=body.lng,
     )
-    return OsOut.model_validate(os_)
+    out = OsOut.model_validate(os_)
+    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    return out
 
 
 @router.post(
@@ -168,4 +166,6 @@ async def upload_foto_my_os(
             "mime": file.content_type,
         },
     )
-    return OsOut.model_validate(os_)
+    out = OsOut.model_validate(os_)
+    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    return out

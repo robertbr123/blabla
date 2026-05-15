@@ -27,6 +27,8 @@ from ondeline_api.auth.rbac import require_role
 from ondeline_api.db.models.business import ConversaEstado, OsStatus
 from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db
+from ondeline_api.db.crypto import decrypt_pii
+from ondeline_api.db.models.business import Cliente
 from ondeline_api.domain.os_sequence import next_codigo
 from ondeline_api.repositories.conversa import ConversaRepo
 from ondeline_api.repositories.ordem_servico import OrdemServicoRepo
@@ -34,6 +36,22 @@ from ondeline_api.repositories.tecnico import TecnicoRepo
 from ondeline_api.services.os_pdf import generate_os_pdf
 
 router = APIRouter(prefix="/api/v1/os", tags=["ordens-servico"])
+
+
+async def _fetch_nome_cliente(session: AsyncSession, cliente_id: UUID | None) -> str | None:
+    if cliente_id is None:
+        return None
+    from sqlalchemy import select
+    row = (await session.execute(select(Cliente).where(Cliente.id == cliente_id))).scalar_one_or_none()
+    return decrypt_pii(row.nome_encrypted) if row else None
+
+
+async def _batch_nomes_clientes(session: AsyncSession, ids: set[UUID]) -> dict[UUID, str]:
+    if not ids:
+        return {}
+    from sqlalchemy import select
+    rows = (await session.execute(select(Cliente).where(Cliente.id.in_(ids)))).scalars().all()
+    return {r.id: decrypt_pii(r.nome_encrypted) for r in rows}
 _role_dep = Depends(require_role(Role.ATENDENTE, Role.ADMIN))
 _admin_dep = Depends(require_role(Role.ADMIN))
 
@@ -93,7 +111,12 @@ async def list_os(
         cursor=parse_cursor(cursor),
         limit=parse_limit(limit),
     )
-    items = [OsListItem.model_validate(o) for o in rows]
+    nomes = await _batch_nomes_clientes(session, {o.cliente_id for o in rows if o.cliente_id})
+    items = []
+    for o in rows:
+        item = OsListItem.model_validate(o)
+        item.nome_cliente = nomes.get(o.cliente_id)
+        items.append(item)
     return CursorPage[OsListItem](
         items=items,
         next_cursor=encode_cursor(next_cur) if next_cur else None,
@@ -127,19 +150,9 @@ async def create_os(
     if body.agendamento_at:
         os_.agendamento_at = body.agendamento_at
         await session.flush()
+    nome_cliente_str = await _fetch_nome_cliente(session, body.cliente_id)
+
     if tecnico.whatsapp:
-        from ondeline_api.db.crypto import decrypt_pii
-
-        nome_cliente = "Cliente"
-        if body.cliente_id is not None:
-            from sqlalchemy import select
-            from ondeline_api.db.models.business import Cliente
-            cliente_row = (
-                await session.execute(select(Cliente).where(Cliente.id == body.cliente_id))
-            ).scalar_one_or_none()
-            if cliente_row:
-                nome_cliente = decrypt_pii(cliente_row.nome_encrypted)
-
         agendamento_str = "Não definido"
         if body.agendamento_at:
             try:
@@ -150,7 +163,7 @@ async def create_os(
                 agendamento_str = str(body.agendamento_at)
 
         msg = f"🔧 *Nova OS {codigo}*\n\n"
-        msg += f"👤 *Cliente:* {nome_cliente}\n"
+        msg += f"👤 *Cliente:* {nome_cliente_str or 'Cliente'}\n"
         msg += f"📍 *Endereço:* {body.endereco}\n"
         if body.plano:
             msg += f"📦 *Plano:* {body.plano}\n"
@@ -163,7 +176,9 @@ async def create_os(
         msg += f"\n_Para concluir via WhatsApp, envie:_ *CONCLUIR {codigo}*"
 
         await _send_whatsapp(tecnico.whatsapp, msg)
-    return OsOut.model_validate(os_)
+    out = OsOut.model_validate(os_)
+    out.nome_cliente = nome_cliente_str
+    return out
 
 
 @router.get("/{os_id}", response_model=OsOut, dependencies=[_role_dep])
@@ -175,7 +190,9 @@ async def get_os(
     os_ = await repo.get_by_id(os_id)
     if os_ is None:
         raise HTTPException(status_code=404, detail="OS not found")
-    return OsOut.model_validate(os_)
+    out = OsOut.model_validate(os_)
+    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    return out
 
 
 @router.patch("/{os_id}", response_model=OsOut, dependencies=[_role_dep])
@@ -194,7 +211,9 @@ async def patch_os(
         tecnico_id=body.tecnico_id,
         agendamento_at=body.agendamento_at,
     )
-    return OsOut.model_validate(os_)
+    out = OsOut.model_validate(os_)
+    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    return out
 
 
 @router.post("/{os_id}/reatribuir", response_model=OsOut, dependencies=[_role_dep])
@@ -213,7 +232,9 @@ async def reatribuir_os(
             status_code=422, detail="OS concluída não pode ser reatribuída"
         )
     if os_.tecnico_id == body.tecnico_id:
-        return OsOut.model_validate(os_)
+        out = OsOut.model_validate(os_)
+        out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+        return out
 
     tec_repo = TecnicoRepo(session)
     novo_tec = await tec_repo.get_by_id(body.tecnico_id)
@@ -255,7 +276,9 @@ async def reatribuir_os(
         )
         await _send_whatsapp(novo_tec.whatsapp, msg)
 
-    return OsOut.model_validate(os_)
+    out = OsOut.model_validate(os_)
+    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    return out
 
 
 @router.delete("/{os_id}", response_model=OsDeleteOut, dependencies=[_admin_dep])
@@ -315,7 +338,9 @@ async def upload_foto(
             "mime": file.content_type,
         },
     )
-    return OsOut.model_validate(os_)
+    out = OsOut.model_validate(os_)
+    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    return out
 
 
 @router.post(
@@ -351,7 +376,9 @@ async def concluir_os(
             conversa.followup_os_id = os_.id
             await session.flush()
 
-    return OsOut.model_validate(os_)
+    out = OsOut.model_validate(os_)
+    out.nome_cliente = await _fetch_nome_cliente(session, os_.cliente_id)
+    return out
 
 
 async def _send_whatsapp_document(whatsapp: str, pdf_bytes: bytes, filename: str) -> None:

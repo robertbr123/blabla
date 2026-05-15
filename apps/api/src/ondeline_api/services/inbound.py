@@ -121,25 +121,6 @@ async def process_inbound_message(
             conversa_id=None, persisted=False, duplicate=False, escalated=False, skipped_reason="empty_text"
         )
 
-    if deps.session is not None:
-        bot_ativo = await ConfigRepo(deps.session).get("bot.ativo")
-        if bot_ativo is False:
-            conversa = await deps.conversas.get_or_create_by_whatsapp(evt.jid)
-            await deps.mensagens.insert_inbound_or_skip(
-                conversa_id=conversa.id,
-                external_id=evt.external_id,
-                text=evt.text,
-                media_type=evt.kind.value if evt.kind in _MEDIA_KINDS else None,
-                media_url=None,
-            )
-            return InboundResult(
-                conversa_id=conversa.id,
-                persisted=True,
-                duplicate=False,
-                escalated=False,
-                skipped_reason="bot_desativado",
-            )
-
     conversa = await deps.conversas.get_or_create_by_whatsapp(evt.jid)
 
     media_type = evt.kind.value if evt.kind in _MEDIA_KINDS else None
@@ -155,7 +136,8 @@ async def process_inbound_message(
             conversa_id=conversa.id, persisted=False, duplicate=True, escalated=False
         )
 
-    # Detecção de comando CONCLUIR OS-* (técnico finaliza OS via WhatsApp)
+    # Detecção de comando CONCLUIR OS-* (técnico finaliza OS via WhatsApp).
+    # Roda antes da verificação de bot.ativo para que técnicos sempre consigam concluir.
     if (
         evt.kind is InboundKind.TEXT
         and evt.text
@@ -169,7 +151,8 @@ async def process_inbound_message(
             from sqlalchemy import select as sa_select
             from ondeline_api.db.models.business import Tecnico as TecnicoModel
 
-            # Verifica se remetente é um técnico cadastrado
+            # Usa endswith para tolerar número sem código de país
+            # (ex: "6999999999" armazenado vs JID "556999999999").
             jid_digits = _re.sub(r"\D", "", evt.jid)
             tecnicos_all = list(
                 (await deps.session.execute(
@@ -177,7 +160,11 @@ async def process_inbound_message(
                 )).scalars().all()
             )
             tecnico_sender = next(
-                (t for t in tecnicos_all if _re.sub(r"\D", "", t.whatsapp or "") == jid_digits),
+                (
+                    t for t in tecnicos_all
+                    if (t_digits := _re.sub(r"\D", "", t.whatsapp or ""))
+                    and jid_digits.endswith(t_digits)
+                ),
                 None,
             )
             if tecnico_sender is None:
@@ -330,6 +317,20 @@ async def process_inbound_message(
         return InboundResult(
             conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
         )
+
+    # Bloqueia mensagens de clientes quando bot está desativado.
+    # Executado APÓS os blocos de CONCLUIR e CHECKLIST_OS para que técnicos
+    # sempre possam finalizar OS mesmo com bot desligado.
+    if deps.session is not None:
+        bot_ativo = await ConfigRepo(deps.session).get("bot.ativo")
+        if bot_ativo is False:
+            return InboundResult(
+                conversa_id=conversa.id,
+                persisted=True,
+                duplicate=False,
+                escalated=False,
+                skipped_reason="bot_desativado",
+            )
 
     # Intercepta midia para classificacao antes do FSM
     if evt.kind in _MEDIA_KINDS:
