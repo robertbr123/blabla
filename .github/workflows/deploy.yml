@@ -20,15 +20,15 @@ jobs:
         include:
           - app: api
             context: apps/api
-            dockerfile: apps/api/Dockerfile
+            file: apps/api/Dockerfile
             image: blabla-api
           - app: dashboard
             context: .
-            dockerfile: apps/dashboard/Dockerfile
+            file: apps/dashboard/Dockerfile
             image: blabla-dashboard
           - app: tecnico-pwa
             context: .
-            dockerfile: apps/tecnico-pwa/Dockerfile
+            file: apps/tecnico-pwa/Dockerfile
             image: blabla-tecnico-pwa
     steps:
       - uses: actions/checkout@v4
@@ -47,7 +47,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.context }}
-          dockerfile: ${{ matrix.dockerfile }}
+          file: ${{ matrix.file }}
           push: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:latest
