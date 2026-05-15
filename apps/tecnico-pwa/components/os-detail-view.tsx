@@ -1,5 +1,5 @@
 'use client'
-import { Calendar, MapPin, Wifi } from 'lucide-react'
+import { Calendar, MapPin, Navigation, User, Wifi } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import type { OsOut } from '@/lib/api/types'
@@ -20,6 +20,13 @@ export function OsDetailView({ os }: { os: OsOut }) {
           <Badge variant={STATUS_VARIANTS[os.status] ?? 'outline'}>{os.status}</Badge>
         </div>
 
+        {os.nome_cliente && (
+          <div className="flex items-center gap-1 text-sm font-medium">
+            <User className="h-4 w-4 text-muted-foreground" />
+            {os.nome_cliente}
+          </div>
+        )}
+
         {os.plano && (
           <div>
             <div className="text-xs uppercase text-muted-foreground">Plano</div>
@@ -34,10 +41,20 @@ export function OsDetailView({ os }: { os: OsOut }) {
 
         <div>
           <div className="text-xs uppercase text-muted-foreground">Endereço</div>
-          <p className="mt-1 flex items-start gap-1 text-sm">
-            <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
-            {os.endereco}
-          </p>
+          <div className="mt-1 flex items-start justify-between gap-2">
+            <p className="flex items-start gap-1 text-sm">
+              <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+              {os.endereco}
+            </p>
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(os.endereco)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground shrink-0"
+            >
+              <Navigation className="h-3 w-3" /> Navegar
+            </a>
+          </div>
         </div>
 
         {(os.pppoe_login || os.pppoe_senha) && (

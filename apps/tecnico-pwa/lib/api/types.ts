@@ -10,6 +10,7 @@ export interface OsListItem {
   problema: string
   endereco: string
   plano: string | null
+  nome_cliente: string | null
   agendamento_at: string | null
   criada_em: string
   concluida_em: string | null

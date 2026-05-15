@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { ChevronRight, MapPin } from 'lucide-react'
+import { ChevronRight, MapPin, User } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import type { OsListItem } from '@/lib/api/types'
 
@@ -25,10 +25,16 @@ export function OsCard({ os }: { os: OsListItem }) {
               {os.status}
             </Badge>
           </div>
-          <p className="mt-2 text-sm line-clamp-2">{os.problema}</p>
-          <div className="mt-2 flex items-start gap-1 text-xs text-muted-foreground">
+          {os.nome_cliente && (
+            <div className="mt-1 flex items-center gap-1 text-xs font-medium text-foreground">
+              <User className="h-3 w-3 shrink-0" />
+              {os.nome_cliente}
+            </div>
+          )}
+          <p className="mt-1 text-sm line-clamp-2 text-muted-foreground">{os.problema}</p>
+          <div className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
             <MapPin className="h-3 w-3 shrink-0 mt-0.5" />
-            <span className="line-clamp-2">{os.endereco}</span>
+            <span className="line-clamp-1">{os.endereco}</span>
           </div>
         </div>
         <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />

@@ -42,9 +42,27 @@ async def my_os(
     tec: Annotated[Tecnico, Depends(current_tecnico)],
     status_filter: Annotated[str | None, Query(alias="status")] = None,
 ) -> list[OsListItem]:
+    from sqlalchemy import select
+    from ondeline_api.db.models.business import Cliente
+    from ondeline_api.db.crypto import decrypt_pii
+
     repo = OrdemServicoRepo(session)
     rows = await repo.list_for_tecnico(tec.id, status_filter=status_filter)
-    return [OsListItem.model_validate(o) for o in rows]
+
+    cliente_ids = [r.cliente_id for r in rows if r.cliente_id is not None]
+    nomes: dict = {}
+    if cliente_ids:
+        cli_rows = (await session.execute(
+            select(Cliente).where(Cliente.id.in_(cliente_ids))
+        )).scalars().all()
+        nomes = {c.id: decrypt_pii(c.nome_encrypted) for c in cli_rows}
+
+    result = []
+    for o in rows:
+        item = OsListItem.model_validate(o)
+        item.nome_cliente = nomes.get(o.cliente_id) if o.cliente_id else None
+        result.append(item)
+    return result
 
 
 @router.get("/os/{os_id}", response_model=OsOut, dependencies=[_role_dep])

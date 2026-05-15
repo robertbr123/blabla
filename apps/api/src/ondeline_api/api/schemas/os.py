@@ -18,6 +18,7 @@ class OsListItem(BaseModel):
     problema: str
     endereco: str
     plano: str | None = None
+    nome_cliente: str | None = None
     agendamento_at: datetime | None
     criada_em: datetime
     concluida_em: datetime | None
