@@ -9,8 +9,7 @@ FROM base AS deps
 WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/dashboard/package.json ./apps/dashboard/
-COPY apps/tecnico-pwa/package.json ./apps/tecnico-pwa/
-RUN --mount=type=cache,target=/pnpm/store \
+RUN --mount=type=cache,id=pnpm-dashboard,sharing=locked,target=/pnpm/store \
     pnpm install --frozen-lockfile
 
 # ── Build ─────────────────────────────────────────────────────────────────────
@@ -32,5 +31,7 @@ ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
 COPY --from=builder /app/apps/dashboard/.next/standalone ./
 COPY --from=builder /app/apps/dashboard/.next/static ./apps/dashboard/.next/static
 COPY --from=builder /app/apps/dashboard/public ./apps/dashboard/public
+RUN addgroup -S nodejs && adduser -S nextjs -G nodejs
+USER nextjs
 EXPOSE 3000
 CMD ["node", "apps/dashboard/server.js"]
