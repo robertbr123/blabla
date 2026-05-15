@@ -89,13 +89,13 @@ async def sgp_lookup(
     _current_user: Annotated[User, Depends(get_current_user)],
 ) -> SgpClienteOut:
     """Busca cliente no SGP por CPF/CNPJ para pré-preenchimento de OS."""
-    from ondeline_api.adapters.sgp.ondeline import SgpOndelineProvider
     from ondeline_api.adapters.sgp.linknetam import SgpLinkNetAMProvider
+    from ondeline_api.adapters.sgp.ondeline import SgpOndelineProvider
     from ondeline_api.adapters.sgp.router import SgpRouter
+    from ondeline_api.config import get_settings
     from ondeline_api.services.sgp_cache import SgpCacheService
     from ondeline_api.services.sgp_config import load_sgp_config
     from ondeline_api.workers.runtime import get_redis
-    from ondeline_api.config import get_settings
 
     s = get_settings()
     redis = await get_redis()
@@ -135,9 +135,10 @@ async def sgp_lookup(
     )
 
     # Verifica se já existe no DB
+    from sqlalchemy import select as sa_select
+
     from ondeline_api.db.crypto import hash_pii
     from ondeline_api.db.models.business import Cliente as ClienteModel
-    from sqlalchemy import select as sa_select
     cpf_digits = "".join(c for c in cpf if c.isdigit())
     cpf_hash = hash_pii(cpf_digits)
     db_cli = (

@@ -11,9 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.api.schemas.os import OsListItem, OsOut
 from ondeline_api.api.schemas.tecnico_me import ConcluirIn, GpsUpdate, IniciarIn
+from ondeline_api.api.v1.ordens_servico import _fetch_nome_cliente
 from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.rbac import require_role
-from ondeline_api.api.v1.ordens_servico import _fetch_nome_cliente
 from ondeline_api.db.models.business import Tecnico
 from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db

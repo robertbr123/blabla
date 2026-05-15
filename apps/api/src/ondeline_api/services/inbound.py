@@ -15,8 +15,6 @@ from uuid import UUID
 
 import structlog
 
-log = structlog.get_logger(__name__)
-
 from ondeline_api.db.models.business import (
     Conversa,
     ConversaEstado,
@@ -41,6 +39,8 @@ from ondeline_api.services.media_classifier import (
     classify_media,
 )
 from ondeline_api.webhook.parser import InboundEvent, InboundKind
+
+log = structlog.get_logger(__name__)
 
 
 class _ConversaRepoProto(Protocol):
@@ -169,7 +169,9 @@ async def process_inbound_message(
         if _m:
             codigo = _m.group(1).upper()
             import re as _re
+
             from sqlalchemy import select as sa_select
+
             from ondeline_api.db.models.business import Tecnico as TecnicoModel
 
             # Normaliza para os 8 dígitos locais para tolerar formato antigo/novo do 9° dígito BR.
@@ -301,8 +303,10 @@ async def process_inbound_message(
             codigo = meta.get("os_codigo", "")
             cliente_id_para_followup = None
             if os_id:
+                from datetime import UTC as _UTC
+                from datetime import datetime as _dt
                 from uuid import UUID as _UUID
-                from datetime import UTC as _UTC, datetime as _dt
+
                 from sqlalchemy import select as sa_select
                 os_row = (
                     await deps.session.execute(
@@ -330,7 +334,9 @@ async def process_inbound_message(
             # Envia follow-up para o cliente (conversa do cliente, não do técnico)
             if cliente_id_para_followup is not None:
                 from sqlalchemy import select as sa_select
-                from ondeline_api.db.models.business import Conversa as ConversaModel, ConversaEstado as CE
+
+                from ondeline_api.db.models.business import Conversa as ConversaModel
+                from ondeline_api.db.models.business import ConversaEstado as CE
                 cli_conversa = (
                     await deps.session.execute(
                         sa_select(ConversaModel).where(
@@ -406,8 +412,9 @@ async def process_inbound_message(
             # Verifica status do cliente no cache
             cliente_status = None
             if conversa.cliente_id is not None:
-                from ondeline_api.db.models.business import Cliente as ClienteModel
                 from sqlalchemy import select as sa_select
+
+                from ondeline_api.db.models.business import Cliente as ClienteModel
                 _session = deps.session
                 if _session is not None:
                     cli_row = (

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import pytest
-
 from ondeline_api.db.models.business import ConversaEstado, ConversaStatus
 from ondeline_api.domain.fsm import ActionKind, Event, EventKind, Fsm
 

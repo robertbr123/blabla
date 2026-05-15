@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ondeline_api.db.models.business import ConversaEstado, ConversaStatus
+from ondeline_api.db.models.business import ConversaEstado
 from ondeline_api.tools.context import ToolContext
 from ondeline_api.tools.registry import tool
 

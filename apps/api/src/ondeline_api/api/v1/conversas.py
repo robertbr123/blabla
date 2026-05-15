@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.api.deps_v1 import CursorParam, LimitParam, parse_cursor, parse_limit
 from ondeline_api.api.schemas.conversa import (
+    ClienteEmbutido,
     ConversaListItem,
     ConversaOut,
     ResponderIn,
@@ -17,7 +18,6 @@ from ondeline_api.api.schemas.mensagem import MensagemOut
 from ondeline_api.api.schemas.pagination import CursorPage, encode_cursor
 from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.rbac import require_role
-from ondeline_api.api.schemas.conversa import ClienteEmbutido
 from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.business import Cliente, Mensagem
 from ondeline_api.db.models.identity import Role, User

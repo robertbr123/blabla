@@ -114,7 +114,7 @@ class FakeConfigSession:
     def __init__(self, bot_ativo: Any = True) -> None:
         self._bot_ativo = bot_ativo
 
-    async def execute(self, stmt: Any) -> _FakeScalar:  # noqa: ARG002
+    async def execute(self, stmt: Any) -> _FakeScalar:
         return _FakeScalar(self._bot_ativo)
 
 

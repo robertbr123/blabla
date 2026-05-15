@@ -10,13 +10,12 @@ import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from ondeline_api.config import get_settings
 from ondeline_api.db.models.business import OrdemServico, OsStatus, Tecnico
 from ondeline_api.deps import get_db, get_redis
 from ondeline_api.main import create_app
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest_asyncio.fixture

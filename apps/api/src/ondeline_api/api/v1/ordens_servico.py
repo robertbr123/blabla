@@ -24,11 +24,10 @@ from ondeline_api.api.schemas.os import (
 from ondeline_api.api.schemas.pagination import CursorPage, encode_cursor
 from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.rbac import require_role
-from ondeline_api.db.models.business import ConversaEstado, OsStatus
+from ondeline_api.db.crypto import decrypt_pii
+from ondeline_api.db.models.business import Cliente, ConversaEstado, OrdemServico, OsStatus
 from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db
-from ondeline_api.db.crypto import decrypt_pii
-from ondeline_api.db.models.business import Cliente
 from ondeline_api.domain.os_sequence import next_codigo
 from ondeline_api.repositories.conversa import ConversaRepo
 from ondeline_api.repositories.ordem_servico import OrdemServicoRepo
@@ -70,7 +69,7 @@ FOLLOWUP_MSG = (
 log = structlog.get_logger(__name__)
 
 
-def _os_msg_block(os_: "OrdemServico", nome_cliente: str | None) -> str:
+def _os_msg_block(os_: OrdemServico, nome_cliente: str | None) -> str:
     """Bloco padrão de dados da OS para mensagens WhatsApp."""
     from zoneinfo import ZoneInfo
     _tz = ZoneInfo("America/Manaus")

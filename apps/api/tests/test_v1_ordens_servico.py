@@ -294,7 +294,7 @@ async def _make_cliente_repo(session: AsyncSession) -> Cliente:
     return c
 
 
-async def _make_tecnico_repo(session: AsyncSession) -> "Any":
+async def _make_tecnico_repo(session: AsyncSession) -> Any:
     from ondeline_api.db.models.business import Tecnico
     t = Tecnico(nome=f"Tec-{uuid4().hex[:6]}", ativo=True)
     session.add(t)
@@ -305,7 +305,7 @@ async def _make_tecnico_repo(session: AsyncSession) -> "Any":
 async def _make_os_repo(
     session: AsyncSession,
     cliente: Cliente,
-    tecnico: "Any",
+    tecnico: Any,
 ) -> OrdemServico:
     from ondeline_api.domain.os_sequence import next_codigo
     from ondeline_api.repositories.ordem_servico import OrdemServicoRepo as _Repo
