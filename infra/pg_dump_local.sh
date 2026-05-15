@@ -11,7 +11,7 @@ set -euo pipefail
 
 BACKUP_DIR="${BACKUP_DIR:-/root/BLABLA/ondeline-backups}"
 RETENTION_DAYS="${RETENTION_DAYS:-30}"
-CONTAINER="${CONTAINER:-ondeline-postgres}"
+CONTAINER="${CONTAINER:-blabla-postgres}"
 DB="${DB:-ondeline}"
 USER="${PG_USER:-ondeline}"
 

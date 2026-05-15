@@ -171,7 +171,7 @@ Se NÃO receber resposta em 30s → **Rollback** (próxima seção).
 
 ### Liga monitoramento + plantão por 2h
 Mantenha:
-- `docker logs -f ondeline-api ondeline-worker ondeline-beat` (filtro por `ERROR`/`WARNING`)
+- `docker logs -f blabla-api blabla-worker blabla-beat` (filtro por `ERROR`/`WARNING`)
 - `/healthz` aberto refreshing a cada 30s
 - Grafana operational (se já provisionado) aberto na aba
 
@@ -193,8 +193,8 @@ Sinais de alarme:
 
 ```bash
 # Logs do dia
-docker logs --since 24h ondeline-api 2>&1 | grep -iE 'error|exception' | head -50
-docker logs --since 24h ondeline-worker 2>&1 | grep -iE 'error|exception' | head -50
+docker logs --since 24h blabla-api 2>&1 | grep -iE 'error|exception' | head -50
+docker logs --since 24h blabla-worker 2>&1 | grep -iE 'error|exception' | head -50
 
 # Métricas: snapshot do /metrics em algum lugar persistente
 curl -s http://localhost:8000/metrics > "/root/BLABLA/ondeline-archive/metrics-cutover+1d-$(date +%Y%m%d).txt"
@@ -220,7 +220,7 @@ Antes de remover o v1 do disco:
 sha256sum /root/BLABLA/ondeline-archive/v1-snapshot-*.zip
 
 # Confirmar que 7 dias de tráfego passou pelo v2 sem incidente alto
-docker logs --since 7d ondeline-api 2>&1 | grep -c ERROR
+docker logs --since 7d blabla-api 2>&1 | grep -c ERROR
 ```
 
 Se o número de ERROR está baixo (< 100, todos investigados), pode:
@@ -278,14 +278,14 @@ Antes do T-0, NPM precisa ter 3 proxy hosts apontando para os containers v2:
 
 | Subdomínio | Forward to | Notes |
 |---|---|---|
-| `api.ondeline.<dominio>` | `ondeline-api:8000` HTTP | precisa `proxy_buffering off` no path `/api/v1/conversas/.*/stream` (SSE) |
+| `api.ondeline.<dominio>` | `blabla-api:8000` HTTP | precisa `proxy_buffering off` no path `/api/v1/conversas/.*/stream` (SSE) |
 | `admin.ondeline.<dominio>` | `<container do dashboard>:3000` HTTP | dashboard precisa apontar para `api.ondeline.<dominio>` via env |
 | `tec.ondeline.<dominio>` | `<container do pwa>:3001` HTTP | mesmo |
 
 **Custom config no NPM (Advanced tab do host `api.ondeline.<dominio>`)** — desabilitar buffering para SSE:
 ```nginx
 location ~ ^/api/v1/conversas/.*/stream$ {
-    proxy_pass http://ondeline-api:8000;
+    proxy_pass http://blabla-api:8000;
     proxy_buffering off;
     proxy_cache off;
     proxy_set_header Connection '';

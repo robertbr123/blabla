@@ -42,7 +42,7 @@
 | Sintoma | O que checar |
 |---|---|
 | 503 em `/healthz` | Campo `checks.db` ou `checks.redis` mostra error. Inspecionar logs do container do componente que falhou. |
-| Worker `unhealthy` | `docker logs ondeline-worker` + dentro do container: `celery -A ondeline_api.workers.celery_app:celery_app inspect active`. |
+| Worker `unhealthy` | `docker logs blabla-worker` + dentro do container: `celery -A ondeline_api.workers.celery_app:celery_app inspect active`. |
 | Filas crescendo (`celery` field em `/healthz` com counts altos) | Worker scaled-down, tarefa travada, ou pico de tráfego. Inspecionar logs do worker. |
 | Sem traces no backend OTel | `OTEL_EXPORTER_OTLP_ENDPOINT` setado? Endpoint acessível do container (try `curl` de dentro)? `BatchSpanProcessor` faz batching — esperar ~30s antes de concluir que nada está saindo. |
 | Sem erros no Sentry | `SENTRY_DSN` setado? Sentry quota não esgotou? `_before_send` retornou `None`? |

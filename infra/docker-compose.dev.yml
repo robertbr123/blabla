@@ -3,7 +3,7 @@ name: ondeline-v2
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: ondeline-postgres
+    container_name: blabla-postgres
     environment:
       POSTGRES_USER: ondeline
       POSTGRES_PASSWORD: ondeline
@@ -21,7 +21,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: ondeline-redis
+    container_name: blabla-redis
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis_data:/data
@@ -38,7 +38,7 @@ services:
     build:
       context: ../apps/api
       dockerfile: Dockerfile
-    container_name: ondeline-api
+    container_name: blabla-api
     command: ["uvicorn", "ondeline_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     volumes:
       - ../apps/api/src:/app/src
@@ -63,7 +63,7 @@ services:
     build:
       context: ../apps/api
       dockerfile: Dockerfile
-    container_name: ondeline-worker
+    container_name: blabla-worker
     command: ["celery", "-A", "ondeline_api.workers.celery_app:celery_app", "worker", "-Q", "default,llm,sgp,notifications", "--concurrency=4", "--loglevel=info"]
     environment:
       ENV: development
@@ -90,7 +90,7 @@ services:
     build:
       context: ../apps/api
       dockerfile: Dockerfile
-    container_name: ondeline-beat
+    container_name: blabla-beat
     command: ["celery", "-A", "ondeline_api.workers.celery_app:celery_app", "beat", "--loglevel=info", "--schedule=/tmp/celerybeat-schedule"]
     environment:
       ENV: development
