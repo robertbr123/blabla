@@ -11,14 +11,14 @@ services:
     image: postgres:16-alpine
     container_name: blabla-postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-ondeline}
+      POSTGRES_USER: ${POSTGRES_USER:-blabla}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required in .env}
-      POSTGRES_DB: ${POSTGRES_DB:-ondeline}
+      POSTGRES_DB: ${POSTGRES_DB:-blabla}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     # No host port mapping in prod — only docker network.
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-ondeline}", "-d", "${POSTGRES_DB:-ondeline}"]
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER:-blabla}", "-d", "${POSTGRES_DB:-blabla}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -43,7 +43,7 @@ services:
     image: ghcr.io/${GHCR_OWNER}/blabla-api:latest
     container_name: blabla-api
     env_file:
-      - ../.env
+      - .env
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,7 +59,7 @@ services:
     container_name: blabla-worker
     command: ["celery", "-A", "ondeline_api.workers.celery_app:celery_app", "worker", "-Q", "default,llm,sgp,notifications", "--concurrency=4", "--loglevel=info"]
     env_file:
-      - ../.env
+      - .env
     depends_on:
       postgres:
         condition: service_healthy
@@ -79,7 +79,7 @@ services:
     container_name: blabla-beat
     command: ["celery", "-A", "ondeline_api.workers.celery_app:celery_app", "beat", "--loglevel=info", "--schedule=/tmp/celerybeat-schedule"]
     env_file:
-      - ../.env
+      - .env
     depends_on:
       postgres:
         condition: service_healthy
@@ -98,7 +98,7 @@ services:
     image: ghcr.io/${GHCR_OWNER}/blabla-dashboard:latest
     container_name: blabla-dashboard
     env_file:
-      - ../.env
+      - .env
     ports:
       - "3002:3000"
     depends_on:
@@ -110,7 +110,7 @@ services:
     image: ghcr.io/${GHCR_OWNER}/blabla-tecnico-pwa:latest
     container_name: blabla-tecnico-pwa
     env_file:
-      - ../.env
+      - .env
     ports:
       - "3003:3000"
     depends_on:
@@ -131,7 +131,7 @@ services:
       - AUTHENTICATION_API_KEY=${EVOLUTION_KEY}
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://${POSTGRES_USER:-ondeline}:${POSTGRES_PASSWORD}@postgres:5432/evolution
+      - DATABASE_CONNECTION_URI=postgresql://${POSTGRES_USER:-blabla}:${POSTGRES_PASSWORD}@postgres:5432/evolution
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://redis:6379/1
       - CACHE_REDIS_PREFIX_KEY=evolution
