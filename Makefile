@@ -6,7 +6,7 @@ dev:
 
 # Força rebuild das imagens antes de subir (use após mudar Dockerfile ou deps)
 dev-build:
-	docker compose -f infra/docker-compose.dev.yml --env-file .env up -d --build
+	docker compose -f infra/docker-compose.dev.yml --env-file .env up -d --build --force-recreate
 
 down:
 	docker compose -f infra/docker-compose.dev.yml down
