@@ -2,8 +2,8 @@ import path from 'path'
 import type { NextConfig } from 'next'
 
 const INTERNAL = process.env.INTERNAL_API_URL
-  ?? process.env.NEXT_PUBLIC_API_URL
-  ?? 'http://localhost:8000'
+  || process.env.NEXT_PUBLIC_API_URL
+  || 'http://localhost:8000'
 
 const nextConfig: NextConfig = {
   output: 'standalone',
