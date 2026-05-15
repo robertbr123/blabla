@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from './client'
+import { getAccessToken } from './token'
 import type {
   ConcluirIn,
   GpsUpdate,
@@ -75,8 +76,10 @@ export function useUploadFotoMy(id: string) {
         typeof document !== 'undefined'
           ? document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/)?.[1]
           : undefined
-      const headers: HeadersInit = {}
+      const headers: Record<string, string> = {}
       if (csrf) headers['X-CSRF'] = csrf
+      const token = getAccessToken()
+      if (token) headers['Authorization'] = `Bearer ${token}`
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL ?? ''}/api/v1/tecnico/me/os/${id}/foto`,
         {

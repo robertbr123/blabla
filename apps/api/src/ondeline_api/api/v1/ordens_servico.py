@@ -38,11 +38,15 @@ from ondeline_api.services.os_pdf import generate_os_pdf
 router = APIRouter(prefix="/api/v1/os", tags=["ordens-servico"])
 
 
-async def _fetch_nome_cliente(session: AsyncSession, cliente_id: UUID | None) -> str | None:
+async def _fetch_cliente(session: AsyncSession, cliente_id: UUID | None):
     if cliente_id is None:
         return None
     from sqlalchemy import select
-    row = (await session.execute(select(Cliente).where(Cliente.id == cliente_id))).scalar_one_or_none()
+    return (await session.execute(select(Cliente).where(Cliente.id == cliente_id))).scalar_one_or_none()
+
+
+async def _fetch_nome_cliente(session: AsyncSession, cliente_id: UUID | None) -> str | None:
+    row = await _fetch_cliente(session, cliente_id)
     return decrypt_pii(row.nome_encrypted) if row else None
 
 
@@ -427,10 +431,11 @@ async def download_os_pdf(
     if os_.tecnico_id:
         tecnico = await TecnicoRepo(session).get_by_id(os_.tecnico_id)
 
+    cli = await _fetch_cliente(session, os_.cliente_id)
     pdf_bytes = generate_os_pdf(
         os_=os_,
-        cliente_nome=None,
-        cliente_whatsapp=None,
+        cliente_nome=decrypt_pii(cli.nome_encrypted) if cli else None,
+        cliente_whatsapp=cli.whatsapp if cli else None,
         tecnico_nome=tecnico.nome if tecnico else None,
         tecnico_whatsapp=tecnico.whatsapp if tecnico else None,
     )
@@ -458,10 +463,11 @@ async def enviar_pdf_tecnico(
     if tecnico is None or not tecnico.whatsapp:
         raise HTTPException(status_code=422, detail="Técnico sem WhatsApp cadastrado")
 
+    cli = await _fetch_cliente(session, os_.cliente_id)
     pdf_bytes = generate_os_pdf(
         os_=os_,
-        cliente_nome=None,
-        cliente_whatsapp=None,
+        cliente_nome=decrypt_pii(cli.nome_encrypted) if cli else None,
+        cliente_whatsapp=cli.whatsapp if cli else None,
         tecnico_nome=tecnico.nome,
         tecnico_whatsapp=tecnico.whatsapp,
     )
