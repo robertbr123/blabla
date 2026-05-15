@@ -43,6 +43,8 @@ class SgpClienteOut(_BaseModel):
     cidade: str | None
     endereco: str | None
     cliente_id: str | None  # UUID do cliente no nosso DB, se já existir
+    pppoe_login: str
+    pppoe_senha: str
 
 
 def _to_list_item(c: Cliente) -> ClienteListItem:
@@ -115,6 +117,8 @@ async def sgp_lookup(
         raise HTTPException(status_code=404, detail="cliente não encontrado no SGP")
 
     contrato = cli.contratos[0] if cli.contratos else None
+    pppoe_login = contrato.pppoe_login if contrato else ""
+    pppoe_senha = contrato.pppoe_senha if contrato else ""
     cidade = (contrato.cidade if contrato and contrato.cidade else None) or (
         cli.endereco.cidade if cli.endereco else None
     )
@@ -147,6 +151,8 @@ async def sgp_lookup(
         cidade=cidade,
         endereco=endereco_str,
         cliente_id=str(db_cli.id) if db_cli else None,
+        pppoe_login=pppoe_login,
+        pppoe_senha=pppoe_senha,
     )
 
 
