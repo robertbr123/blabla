@@ -31,8 +31,13 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 # Layer 2: copia o código e instala o pacote (rápido — só o pacote, deps já estão no cache)
 COPY --chown=app:app src /app/src
+COPY --chown=app:app alembic /app/alembic
+COPY --chown=app:app alembic.ini /app/alembic.ini
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen
+
+COPY --chown=app:app entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 USER app
 
@@ -41,4 +46,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=3 \
     CMD curl -fsS http://localhost:8000/livez || exit 1
 
-CMD ["uvicorn", "ondeline_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/app/entrypoint.sh"]
