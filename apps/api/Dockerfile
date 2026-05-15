@@ -4,12 +4,10 @@ FROM python:3.11-slim-bookworm AS base
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PATH="/app/.venv/bin:$PATH"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
-        build-essential \
         libglib2.0-0 \
         libpango-1.0-0 \
         libpangocairo-1.0-0 \
@@ -20,19 +18,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
-# Non-root user
+# uv: gerenciador de pacotes Python muito mais rápido que pip
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
 RUN groupadd --system app && useradd --system --gid app --create-home app
 WORKDIR /app
 
-# Copy project metadata + source for editable install
-COPY --chown=app:app pyproject.toml /app/
+# Layer 1: instala só as dependências (cacheada enquanto pyproject.toml/uv.lock não mudam)
+COPY --chown=app:app pyproject.toml uv.lock /app/
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-install-project
+
+# Layer 2: copia o código e instala o pacote (rápido — só o pacote, deps já estão no cache)
 COPY --chown=app:app src /app/src
-
-RUN pip install --upgrade pip && \
-    pip install .
-
-# Drop build-essential after install to keep image small
-RUN apt-get purge -y --auto-remove build-essential
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen
 
 USER app
 
