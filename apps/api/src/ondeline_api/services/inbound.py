@@ -13,6 +13,10 @@ from datetime import UTC, datetime
 from typing import Any, Protocol
 from uuid import UUID
 
+import structlog
+
+log = structlog.get_logger(__name__)
+
 from ondeline_api.db.models.business import (
     Conversa,
     ConversaEstado,
@@ -99,6 +103,23 @@ _MEDIA_KINDS = {
 _CMD_CONCLUIR_RE = re.compile(r"^conclu[ií]r\s+(OS-[\w-]+)\b", re.IGNORECASE)
 
 
+def _br_local_digits(digits: str) -> str:
+    """Normaliza dígitos de número BR para os 8 dígitos locais.
+
+    Tolera: com/sem código de país (55), com/sem DDD, com/sem nono dígito.
+    Ex: "559784109856" → "84109856"
+        "5597984109856" → "84109856"
+        "97984109856" → "84109856"
+    """
+    if digits.startswith("55") and len(digits) in (12, 13):
+        digits = digits[2:]
+    if len(digits) in (10, 11):
+        digits = digits[2:]
+    if len(digits) == 9 and digits[0] == "9":
+        digits = digits[1:]
+    return digits
+
+
 def _to_fsm_event(kind: InboundKind, text: str | None) -> Event:
     if kind is InboundKind.TEXT:
         return Event(kind=EventKind.MSG_CLIENTE_TEXT, text=text)
@@ -144,15 +165,16 @@ async def process_inbound_message(
         and deps.session is not None
     ):
         _m = _CMD_CONCLUIR_RE.match((evt.text or "").strip())
+        log.info("concluir.cmd_check", regex_matched=bool(_m))
         if _m:
             codigo = _m.group(1).upper()
             import re as _re
             from sqlalchemy import select as sa_select
             from ondeline_api.db.models.business import Tecnico as TecnicoModel
 
-            # Usa endswith para tolerar número sem código de país
-            # (ex: "6999999999" armazenado vs JID "556999999999").
+            # Normaliza para os 8 dígitos locais para tolerar formato antigo/novo do 9° dígito BR.
             jid_digits = _re.sub(r"\D", "", evt.jid)
+            jid_local = _br_local_digits(jid_digits)
             tecnicos_all = list(
                 (await deps.session.execute(
                     sa_select(TecnicoModel).where(TecnicoModel.whatsapp.isnot(None))
@@ -161,10 +183,17 @@ async def process_inbound_message(
             tecnico_sender = next(
                 (
                     t for t in tecnicos_all
-                    if (t_digits := _re.sub(r"\D", "", t.whatsapp or ""))
-                    and jid_digits.endswith(t_digits)
+                    if (t_local := _br_local_digits(_re.sub(r"\D", "", t.whatsapp or "")))
+                    and len(t_local) == 8
+                    and len(jid_local) == 8
+                    and jid_local == t_local
                 ),
                 None,
+            )
+            log.info(
+                "concluir.tecnico_lookup",
+                tecnico_found=tecnico_sender is not None,
+                codigo=codigo,
             )
             if tecnico_sender is None:
                 # Não é técnico — deixa o fluxo normal do bot tratar
