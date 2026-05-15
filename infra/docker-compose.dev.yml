@@ -39,6 +39,9 @@ services:
       context: ../apps/api
       dockerfile: Dockerfile
     container_name: ondeline-api
+    command: ["uvicorn", "ondeline_api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - ../apps/api/src:/app/src
     environment:
       ENV: development
       LOG_LEVEL: INFO
