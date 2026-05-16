@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import structlog
+
 from ondeline_api.adapters.sgp.base import EnderecoSgp
 from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.domain.os_sequence import next_codigo
@@ -16,6 +18,8 @@ from ondeline_api.repositories.ordem_servico import OrdemServicoRepo
 from ondeline_api.repositories.tecnico import TecnicoRepo
 from ondeline_api.tools.context import ToolContext
 from ondeline_api.tools.registry import tool
+
+log = structlog.get_logger(__name__)
 
 SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -141,6 +145,7 @@ async def abrir_ordem_servico(
         endereco=endereco_final,
     )
 
+    tecnico_notificado = False
     if tecnico is not None and tecnico.whatsapp:
         nome_cliente = (
             decrypt_pii(ctx.cliente.nome_encrypted)
@@ -153,13 +158,25 @@ async def abrir_ordem_servico(
             f"Endereco: {endereco_final}\n"
             f"Problema: {problema}"
         )
-        await ctx.evolution.send_text(tecnico.whatsapp, msg)
+        # Notificacao do tecnico e best-effort: a OS ja esta persistida.
+        # Se o numero nao existe no WhatsApp / Evolution falha, nao quebrar a tool.
+        try:
+            await ctx.evolution.send_text(tecnico.whatsapp, msg)
+            tecnico_notificado = True
+        except Exception as e:
+            log.warning(
+                "abrir_os.tecnico_send_failed",
+                tecnico_id=str(tecnico.id),
+                error=str(e),
+                exc_info=True,
+            )
 
     return {
         "ok": True,
         "codigo": codigo,
         "tecnico_nome": tecnico.nome if tecnico else None,
         "tecnico_atribuido": tecnico is not None,
+        "tecnico_notificado": tecnico_notificado,
         "endereco_usado": endereco_final,
         "os_id": str(os_.id),
     }
