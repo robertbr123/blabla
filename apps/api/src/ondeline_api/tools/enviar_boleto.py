@@ -92,15 +92,28 @@ def _fatura_year_month(t: Fatura) -> tuple[int, int] | None:
         return None
 
 
+def _is_overdue(t: Fatura, today: date) -> bool:
+    """Confiavel: usa data de vencimento. NAO confiar em t.dias_atraso porque
+    alguns SGPs devolvem o campo com semantica inconsistente.
+    """
+    if not t.vencimento:
+        return False
+    try:
+        v = datetime.fromisoformat(t.vencimento).date()
+    except ValueError:
+        return False
+    return v < today
+
+
 def _escolher_faturas(
     abertos: list[Fatura], mes: str | None, max_boletos: int
 ) -> list[Fatura]:
     today = _today()
     alvo = _parse_mes_alvo(mes, today)
+    # atrasadas ordenadas pela DATA de vencimento (mais antiga primeiro)
     overdue_sorted = sorted(
-        (t for t in abertos if t.dias_atraso > 0),
-        key=lambda t: t.dias_atraso,
-        reverse=True,
+        (t for t in abertos if _is_overdue(t, today)),
+        key=lambda t: t.vencimento,
     )
     if alvo is None:  # explicitamente pediu 'atrasado'
         candidatos = overdue_sorted
@@ -108,10 +121,10 @@ def _escolher_faturas(
         candidatos = [t for t in abertos if _fatura_year_month(t) == alvo]
     elif max_boletos > 1:
         # cliente pediu mais de 1 sem mes: devolve todas, atrasadas primeiro
-        sem_atraso = [t for t in abertos if t.dias_atraso <= 0]
-        candidatos = overdue_sorted + sorted(sem_atraso, key=lambda t: t.vencimento or "")
+        nao_atrasadas = [t for t in abertos if not _is_overdue(t, today)]
+        candidatos = overdue_sorted + sorted(nao_atrasadas, key=lambda t: t.vencimento or "")
     else:
-        # default: 1 fatura, prioriza atrasada > mes atual > primeira aberta
+        # default: 1 fatura, prioriza atrasada mais antiga > mes atual > primeira aberta por data
         candidatos = (
             overdue_sorted
             or [t for t in abertos if _fatura_year_month(t) == alvo]
@@ -127,6 +140,20 @@ def _fmt_data(d: str) -> str:
     return d
 
 
+def _dias_atraso_real(t: Fatura, today: date) -> int:
+    """Calcula atraso a partir da data de vencimento — ignora t.dias_atraso
+    porque alguns SGPs retornam esse campo com semantica inconsistente.
+    """
+    if not t.vencimento:
+        return 0
+    try:
+        v = datetime.fromisoformat(t.vencimento).date()
+    except ValueError:
+        return 0
+    delta = (today - v).days
+    return max(0, delta)
+
+
 def _build_caption(idx: int, total: int, t: Fatura) -> str:
     venc = _fmt_data(t.vencimento)
     valor = f"R$ {t.valor:.2f}".replace(".", ",")
@@ -134,8 +161,9 @@ def _build_caption(idx: int, total: int, t: Fatura) -> str:
         cap = f"Fatura {idx + 1} de {total}\nVencimento: {venc}\nValor: {valor}"
     else:
         cap = f"Vencimento: {venc}\nValor: {valor}"
-    if t.dias_atraso > 0:
-        cap += f"\nAtenção: {t.dias_atraso} dia(s) em atraso"
+    atraso = _dias_atraso_real(t, _today())
+    if atraso > 0:
+        cap += f"\nAtenção: {atraso} dia(s) em atraso"
     return cap
 
 

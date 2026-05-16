@@ -6,12 +6,17 @@ proxima fatura, e lista resumida de contratos quando houver mais de um).
 """
 from __future__ import annotations
 
+from datetime import UTC, date, datetime
 from typing import Any
 
 from ondeline_api.adapters.sgp.base import Contrato, Fatura
 from ondeline_api.repositories.cliente import ClienteRepo
 from ondeline_api.tools.context import ToolContext
 from ondeline_api.tools.registry import tool
+
+
+def _today() -> date:
+    return datetime.now(tz=UTC).date()
 
 SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -33,27 +38,49 @@ def _is_suspenso(status: str | None) -> bool:
     return any(tok in s for tok in _SUSPENSO_TOKENS)
 
 
-def _proxima_fatura(titulos: list[Fatura]) -> Fatura | None:
+def _vencimento_date(t: Fatura) -> date | None:
+    if not t.vencimento:
+        return None
+    try:
+        return datetime.fromisoformat(t.vencimento).date()
+    except ValueError:
+        return None
+
+
+def _is_overdue(t: Fatura, today: date) -> bool:
+    v = _vencimento_date(t)
+    return v is not None and v < today
+
+
+def _proxima_fatura(titulos: list[Fatura], today: date) -> Fatura | None:
+    """Mais antiga em atraso > vencimento futuro mais proximo.
+
+    Confiavel: usa data de vencimento, NAO t.dias_atraso (alguns SGPs retornam
+    esse campo invertido/inconsistente).
+    """
     abertos = [t for t in titulos if t.status == "aberto" and t.vencimento]
     if not abertos:
         return None
-    # primeiro: mais antiga em atraso; senao: a com vencimento mais proximo
     atrasados = sorted(
-        (t for t in abertos if t.dias_atraso > 0),
-        key=lambda t: t.dias_atraso,
-        reverse=True,
+        (t for t in abertos if _is_overdue(t, today)),
+        key=lambda t: t.vencimento,  # ASC: mais antiga primeiro
     )
     if atrasados:
         return atrasados[0]
-    return sorted(abertos, key=lambda t: t.vencimento)[0]
+    futuros = sorted(
+        (t for t in abertos if not _is_overdue(t, today)),
+        key=lambda t: t.vencimento,
+    )
+    return futuros[0] if futuros else None
 
 
 def _resumo_titulos(titulos: list[Fatura]) -> dict[str, Any]:
+    today = _today()
     abertos = [t for t in titulos if t.status == "aberto"]
-    prox = _proxima_fatura(titulos)
+    prox = _proxima_fatura(titulos, today)
     return {
         "abertos": len(abertos),
-        "atrasados": sum(1 for t in abertos if t.dias_atraso > 0),
+        "atrasados": sum(1 for t in abertos if _is_overdue(t, today)),
         "vencimentos": [t.vencimento for t in abertos[:3]],
         "proximo_vencimento": prox.vencimento if prox else None,
         "proximo_valor": prox.valor if prox else None,

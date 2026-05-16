@@ -36,15 +36,21 @@ pytestmark = pytest.mark.asyncio
 
 
 def _faturas(*, atrasados: int = 0, atual_y: int, atual_m: int) -> list[Fatura]:
-    """3 faturas: atrasada (com dias_atraso) + mes corrente + mes seguinte."""
+    """3 faturas: mes anterior (atrasada) + mes corrente + mes seguinte.
+
+    `atrasados` (dias_atraso do SGP) NAO afeta a logica nova — a lib calcula
+    atraso a partir da data de vencimento vs today (monkeypatched _today).
+    Param mantido por compatibilidade com chamadas antigas.
+    """
     nxt_m = (atual_m % 12) + 1
     nxt_y = atual_y + (1 if atual_m == 12 else 0)
+    prev_m = 12 if atual_m == 1 else atual_m - 1
+    prev_y = atual_y - 1 if atual_m == 1 else atual_y
     return [
         Fatura(
             id="T_ATRASADA",
             valor=110,
-            vencimento=f"{atual_y - 1 if atual_m == 1 else atual_y:04d}-"
-            f"{12 if atual_m == 1 else atual_m - 1:02d}-15",
+            vencimento=f"{prev_y:04d}-{prev_m:02d}-15",
             status="aberto",
             link_pdf="https://sgp/T_ATRASADA.pdf",
             codigo_pix="PIX_ATRASADA",
@@ -53,7 +59,7 @@ def _faturas(*, atrasados: int = 0, atual_y: int, atual_m: int) -> list[Fatura]:
         Fatura(
             id="T_ATUAL",
             valor=110,
-            vencimento=f"{atual_y:04d}-{atual_m:02d}-15",
+            vencimento=f"{atual_y:04d}-{atual_m:02d}-25",
             status="aberto",
             link_pdf="https://sgp/T_ATUAL.pdf",
             codigo_pix="PIX_ATUAL",
@@ -142,11 +148,18 @@ async def test_default_envia_apenas_1_fatura_atrasada_quando_houver(
 async def test_default_envia_fatura_do_mes_corrente_quando_sem_atraso(
     db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Sem atrasada (todas futuras): pega a do mes corrente."""
     monkeypatch.setattr(
         enviar_boleto_mod, "_today",
         lambda: datetime(2026, 5, 16, tzinfo=UTC).date(),
     )
-    titulos = _faturas(atrasados=0, atual_y=2026, atual_m=5)
+    # so faturas futuras — nenhuma atrasada
+    titulos = [
+        Fatura(id="T_ATUAL", valor=110, vencimento="2026-05-25", status="aberto",
+               link_pdf="https://sgp/T1.pdf", codigo_pix="PIX1"),
+        Fatura(id="T_PROX", valor=110, vencimento="2026-06-15", status="aberto",
+               link_pdf="https://sgp/T2.pdf", codigo_pix="PIX2"),
+    ]
     cliente, conv, cache = await _setup(db_session, titulos)
     BASE, INST = "http://evo.test", "ONDELINE"
     with respx.mock(assert_all_called=False) as router:
@@ -160,7 +173,45 @@ async def test_default_envia_fatura_do_mes_corrente_quando_sem_atraso(
         out = await enviar_boleto(ctx)
         await adapter.aclose()
     assert out["enviados"] == 1
-    assert out["vencimentos"] == ["2026-05-15"]
+    assert out["vencimentos"] == ["2026-05-25"]
+
+
+async def test_default_ignora_dias_atraso_inconsistente_do_sgp(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regressao: SGP retornou dias_atraso=228 pra fatura de 2026-12-30 (futura).
+    Tool nao pode confiar nesse campo — deve usar a data de vencimento.
+    Hoje=2026-05-16, faturas: 04, 05 (futura), 12 (futura). Atrasada = so 04.
+    """
+    monkeypatch.setattr(
+        enviar_boleto_mod, "_today",
+        lambda: datetime(2026, 5, 16, tzinfo=UTC).date(),
+    )
+    titulos = [
+        Fatura(id="T_04", valor=110, vencimento="2026-04-30", status="aberto",
+               link_pdf="https://sgp/T04.pdf", codigo_pix="PIX04",
+               dias_atraso=16),  # SGP diz 16, mas e atrasada de verdade
+        Fatura(id="T_05", valor=110, vencimento="2026-05-30", status="aberto",
+               link_pdf="https://sgp/T05.pdf", codigo_pix="PIX05",
+               dias_atraso=45),  # SGP diz 45, mas e futura
+        Fatura(id="T_12", valor=110, vencimento="2026-12-30", status="aberto",
+               link_pdf="https://sgp/T12.pdf", codigo_pix="PIX12",
+               dias_atraso=228),  # SGP diz 228, mas e futura
+    ]
+    cliente, conv, cache = await _setup(db_session, titulos)
+    BASE, INST = "http://evo.test", "ONDELINE"
+    with respx.mock(assert_all_called=False) as router:
+        router.post(f"{BASE}/message/sendMedia/{INST}").respond(200, json={"ok": True})
+        router.post(f"{BASE}/message/sendText/{INST}").respond(200, json={"key": {"id": "X"}})
+        adapter = EvolutionAdapter(base_url=BASE, instance=INST, api_key="k")
+        ctx = ToolContext(
+            session=db_session, conversa=conv, cliente=cliente,
+            evolution=adapter, sgp_router=None, sgp_cache=cache,  # type: ignore[arg-type]
+        )
+        out = await enviar_boleto(ctx)
+        await adapter.aclose()
+    # Deve pegar T_04 (a unica realmente atrasada por data), NAO T_12
+    assert out["vencimentos"] == ["2026-04-30"]
 
 
 async def test_mes_proximo_seleciona_mes_seguinte(
