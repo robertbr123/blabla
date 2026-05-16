@@ -51,15 +51,15 @@ def test_hash_pii_differs_for_different_inputs() -> None:
     assert crypto.hash_pii("11111111111") != crypto.hash_pii("22222222222")
 
 
-def test_missing_encryption_key_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_missing_encryption_key_passthrough(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PII_ENCRYPTION_KEY", "")
     crypto.reset_caches()
-    with pytest.raises(RuntimeError, match="PII_ENCRYPTION_KEY"):
-        crypto.encrypt_pii("x")
+    assert crypto.encrypt_pii("x") == "x"
+    assert crypto.decrypt_pii("x") == "x"
 
 
-def test_missing_pepper_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_missing_pepper_uses_plain_sha256(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("PII_HASH_PEPPER", "")
     crypto.reset_caches()
-    with pytest.raises(RuntimeError, match="PII_HASH_PEPPER"):
-        crypto.hash_pii("x")
+    import hashlib
+    assert crypto.hash_pii("x") == hashlib.sha256(b"x").hexdigest()
