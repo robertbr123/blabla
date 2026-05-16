@@ -60,7 +60,21 @@ class Settings(BaseSettings):
     sgp_linknetam_token: str = ""
     sgp_linknetam_app: str = "APP"
 
-    # Hermes LLM
+    # LLM provider switching — escolhe entre openai | xai | hermes (default openai)
+    llm_provider: str = "openai"
+
+    # OpenAI (https://api.openai.com/v1) — provider padrao
+    openai_url: str = "https://api.openai.com/v1"
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+
+    # xAI Grok (https://api.x.ai/v1)
+    xai_url: str = "https://api.x.ai/v1"
+    xai_api_key: str = ""
+    xai_model: str = "grok-2-mini"
+
+    # Hermes/local self-hosted (legacy). Mantido para back-compat e cenarios
+    # on-prem; se LLM_PROVIDER=hermes, estes valores sao usados.
     hermes_url: str = "http://127.0.0.1:8642/v1"
     hermes_api_key: str = ""
     hermes_model: str = "Hermes-3"
@@ -112,6 +126,25 @@ class Settings(BaseSettings):
 
     def evolution_ip_allowlist_set(self) -> set[str]:
         return {ip.strip() for ip in self.evolution_ip_allowlist.split(",") if ip.strip()}
+
+    def effective_llm(self) -> tuple[str, str, str]:
+        """Returns (base_url, api_key, model) for the active LLM provider.
+
+        Selected by `LLM_PROVIDER` env var. Falls back to OpenAI when unset
+        or unknown. `hermes_api_key` is used as last-resort fallback when
+        provider=openai but `openai_api_key` is empty — eases migration from
+        deployments that previously used HERMES_* vars to talk to OpenAI.
+        """
+        p = (self.llm_provider or "openai").strip().lower()
+        if p in ("xai", "grok"):
+            return self.xai_url, self.xai_api_key, self.xai_model
+        if p == "hermes":
+            return self.hermes_url, self.hermes_api_key, self.hermes_model
+        return (
+            self.openai_url,
+            self.openai_api_key or self.hermes_api_key,
+            self.openai_model,
+        )
 
 
 @lru_cache(maxsize=1)

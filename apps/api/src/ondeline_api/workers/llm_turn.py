@@ -39,10 +39,11 @@ async def _run(conversa_id: UUID) -> dict[str, Any]:
     evolution = EvolutionAdapter(
         base_url=s.evolution_url, instance=s.evolution_instance, api_key=s.evolution_key
     )
+    llm_url, llm_key, llm_model = s.effective_llm()
     provider = HermesProvider(
-        base_url=s.hermes_url,
-        model=s.hermes_model,
-        api_key=s.hermes_api_key,
+        base_url=llm_url,
+        model=llm_model,
+        api_key=llm_key,
         timeout=s.llm_timeout_seconds,
     )
     budget = TokensBudget(redis, daily_limit=s.llm_max_tokens_per_conversa_dia)
@@ -84,7 +85,7 @@ async def _run(conversa_id: UUID) -> dict[str, Any]:
             outcome = await run_turn(
                 ctx=ctx,
                 provider=provider,
-                model=s.hermes_model,
+                model=llm_model,
                 history_turns=s.llm_history_turns,
                 max_iter=s.llm_max_iter,
                 budget=budget,
