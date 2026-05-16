@@ -144,3 +144,29 @@ async def test_invalidate_remove_redis_e_negativo(db_session) -> None:
     assert await redis.get("sgp:cliente:11122233344") is not None
     await cache.invalidate("11122233344")
     assert await redis.get("sgp:cliente:11122233344") is None
+
+
+def test_deserialize_round_trip_preserva_enderecos_tipados() -> None:
+    """Bug #11: serializer.asdict() vira dict, mas deserializer precisa
+    reconstruir EnderecoSgp dentro de Contrato e no topo do cliente.
+    Sem isso, a tool abrir_ordem_servico recebe um dict e quebra com
+    AttributeError em prod (FakeRedis nao pega porque nao faz JSON roundtrip).
+    """
+    import json
+
+    from ondeline_api.adapters.sgp.base import EnderecoSgp
+    from ondeline_api.db.models.business import SgpProvider as SgpProviderEnum
+    from ondeline_api.services.sgp_cache import (
+        _deserialize_cliente,
+        _serialize_cliente,
+    )
+
+    original = _cli()
+    # round-trip pelo JSON, como acontece no Redis real
+    payload = json.loads(json.dumps(_serialize_cliente(original)))
+    restored = _deserialize_cliente(payload)
+
+    assert restored.provider == SgpProviderEnum.ONDELINE
+    assert isinstance(restored.endereco, EnderecoSgp)
+    assert restored.endereco.cidade == "SP"
+    assert restored.contratos[0].endereco.__class__.__name__ == "EnderecoSgp"

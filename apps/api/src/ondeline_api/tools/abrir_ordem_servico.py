@@ -37,13 +37,35 @@ SCHEMA: dict[str, Any] = {
 }
 
 
-def _fmt_endereco(e: EnderecoSgp) -> str:
+def _fmt_endereco(e: EnderecoSgp | dict[str, Any]) -> str:
+    """Tolerante a dict (caso o cache devolva nao-tipado)."""
+    if isinstance(e, dict):
+        logradouro = e.get("logradouro", "") or ""
+        numero = e.get("numero", "") or ""
+        bairro = e.get("bairro", "") or ""
+        cidade = e.get("cidade", "") or ""
+        uf = e.get("uf", "") or ""
+    else:
+        logradouro = e.logradouro
+        numero = e.numero
+        bairro = e.bairro
+        cidade = e.cidade
+        uf = e.uf
     parts = [
-        f"{e.logradouro}, {e.numero}".strip(", ") if e.logradouro else "",
-        e.bairro,
-        e.cidade + ("/" + e.uf if e.uf else ""),
+        f"{logradouro}, {numero}".strip(", ") if logradouro else "",
+        bairro,
+        cidade + ("/" + uf if uf else ""),
     ]
     return " — ".join(p for p in parts if p)
+
+
+def _endereco_attrs(e: EnderecoSgp | dict[str, Any] | None) -> tuple[str, str]:
+    """Returns (logradouro, cidade) tolerando dict/EnderecoSgp/None."""
+    if e is None:
+        return "", ""
+    if isinstance(e, dict):
+        return (e.get("logradouro", "") or "", e.get("cidade", "") or "")
+    return (e.logradouro or "", e.cidade or "")
 
 
 def _split_endereco(endereco: str) -> tuple[str, str]:
@@ -76,8 +98,9 @@ async def _resolve_endereco_do_cadastro(ctx: ToolContext) -> tuple[str, str, str
         or cli_sgp.endereco
     )
     endereco_str = _fmt_endereco(end) if end else cidade_db
-    rua = (end.logradouro if end else "") or ""
-    cidade = (end.cidade if end else "") or cidade_db
+    rua, cidade = _endereco_attrs(end)
+    if not cidade:
+        cidade = cidade_db
     return endereco_str, rua, cidade
 
 

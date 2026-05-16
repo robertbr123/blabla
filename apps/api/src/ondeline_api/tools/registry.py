@@ -11,8 +11,12 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
+import structlog
+
 from ondeline_api.adapters.llm.base import ToolSpec
 from ondeline_api.tools.context import ToolContext
+
+log = structlog.get_logger(__name__)
 
 ToolFn = Callable[..., Awaitable[dict[str, Any]]]
 
@@ -53,12 +57,15 @@ def names() -> list[str]:
 async def invoke(name: str, ctx: ToolContext, arguments: dict[str, Any]) -> dict[str, Any]:
     entry = _REGISTRY.get(name)
     if entry is None:
+        log.warning("tool.unknown", name=name)
         return {"error": f"unknown tool: {name}"}
     try:
         return await entry.fn(ctx, **arguments)
     except TypeError as e:
+        log.warning("tool.bad_arguments", name=name, error=str(e), args=arguments)
         return {"error": f"bad arguments for {name}: {e}"}
     except Exception as e:
+        log.exception("tool.failed", name=name, error=str(e), exc_type=type(e).__name__)
         return {"error": f"tool {name} failed: {type(e).__name__}: {e}"}
 
 

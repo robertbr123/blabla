@@ -53,6 +53,20 @@ def _serialize_cliente(c: ClienteSgp) -> dict[str, Any]:
     }
 
 
+def _to_endereco(d: Any) -> EnderecoSgp:
+    if isinstance(d, EnderecoSgp):
+        return d
+    if isinstance(d, dict):
+        return EnderecoSgp(**d)
+    return EnderecoSgp()
+
+
+def _to_contrato(c: dict[str, Any]) -> Contrato:
+    end = c.get("endereco")
+    fields = {k: v for k, v in c.items() if k != "endereco"}
+    return Contrato(**fields, endereco=_to_endereco(end))
+
+
 def _deserialize_cliente(d: dict[str, Any]) -> ClienteSgp:
     return ClienteSgp(
         provider=SgpProviderEnum(d["provider"]),
@@ -60,8 +74,8 @@ def _deserialize_cliente(d: dict[str, Any]) -> ClienteSgp:
         nome=d["nome"],
         cpf_cnpj=d["cpf_cnpj"],
         whatsapp=d.get("whatsapp", ""),
-        contratos=[Contrato(**c) for c in d.get("contratos", [])],
-        endereco=EnderecoSgp(**d.get("endereco", {})),
+        contratos=[_to_contrato(c) for c in d.get("contratos", [])],
+        endereco=_to_endereco(d.get("endereco", {})),
         titulos=[Fatura(**t) for t in d.get("titulos", [])],
     )
 
