@@ -49,7 +49,12 @@ export async function getMe(): Promise<MeOut | null> {
  * cookie used only by /auth/refresh. So this helper does two hops: refresh
  * the access token (cookie -> access_token), then call /auth/me with Bearer.
  */
-export async function getMeServer(): Promise<MeOut | null> {
+export interface MeServerResult {
+  me: MeOut
+  accessToken: string
+}
+
+export async function getMeServer(): Promise<MeServerResult | null> {
   const { cookies } = await import('next/headers')
   const c = await cookies()
   const all = c
@@ -75,7 +80,8 @@ export async function getMeServer(): Promise<MeOut | null> {
       cache: 'no-store',
     })
     if (!meRes.ok) return null
-    return (await meRes.json()) as MeOut
+    const me = (await meRes.json()) as MeOut
+    return { me, accessToken: access_token }
   } catch {
     return null
   }
