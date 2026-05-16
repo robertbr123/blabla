@@ -68,9 +68,13 @@ async def evolution_webhook(
             detail="payload too large",
         )
 
-    # 3) HMAC — skipped when the request comes from an allowlisted IP.
-    if not ip_allowed and not verify_signature(
-        body, x_hub_signature_256, settings.evolution_hmac_secret
+    # 3) HMAC — skipped when allowlisted IP or when no secret is configured.
+    # Evolution API 2.x does not sign webhooks natively; leaving EVOLUTION_HMAC_SECRET
+    # empty disables signature verification (rely on IP allowlist or network isolation).
+    if (
+        not ip_allowed
+        and settings.evolution_hmac_secret
+        and not verify_signature(body, x_hub_signature_256, settings.evolution_hmac_secret)
     ):
         webhook_invalid_signature_total.inc()
         log.warning("webhook.invalid_signature")
