@@ -1,6 +1,7 @@
-"""Tool enviar_boleto — envia ate N boletos via Evolution mock."""
+"""Tool enviar_boleto — selecao por mes/atraso + envio via Evolution mock."""
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -26,6 +27,7 @@ from ondeline_api.db.models.business import (
     SgpProvider as SgpProviderEnum,
 )
 from ondeline_api.services.sgp_cache import SgpCacheService
+from ondeline_api.tools import enviar_boleto as enviar_boleto_mod
 from ondeline_api.tools.context import ToolContext
 from ondeline_api.tools.enviar_boleto import enviar_boleto
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +35,41 @@ from sqlalchemy.ext.asyncio import AsyncSession
 pytestmark = pytest.mark.asyncio
 
 
-def _cli_sgp_com_2_faturas() -> ClienteSgp:
+def _faturas(*, atrasados: int = 0, atual_y: int, atual_m: int) -> list[Fatura]:
+    """3 faturas: atrasada (com dias_atraso) + mes corrente + mes seguinte."""
+    nxt_m = (atual_m % 12) + 1
+    nxt_y = atual_y + (1 if atual_m == 12 else 0)
+    return [
+        Fatura(
+            id="T_ATRASADA",
+            valor=110,
+            vencimento=f"{atual_y - 1 if atual_m == 1 else atual_y:04d}-"
+            f"{12 if atual_m == 1 else atual_m - 1:02d}-15",
+            status="aberto",
+            link_pdf="https://sgp/T_ATRASADA.pdf",
+            codigo_pix="PIX_ATRASADA",
+            dias_atraso=atrasados,
+        ),
+        Fatura(
+            id="T_ATUAL",
+            valor=110,
+            vencimento=f"{atual_y:04d}-{atual_m:02d}-15",
+            status="aberto",
+            link_pdf="https://sgp/T_ATUAL.pdf",
+            codigo_pix="PIX_ATUAL",
+        ),
+        Fatura(
+            id="T_PROX",
+            valor=110,
+            vencimento=f"{nxt_y:04d}-{nxt_m:02d}-15",
+            status="aberto",
+            link_pdf="https://sgp/T_PROX.pdf",
+            codigo_pix="PIX_PROX",
+        ),
+    ]
+
+
+def _cli_with_titles(titulos: list[Fatura]) -> ClienteSgp:
     return ClienteSgp(
         provider=SgpProviderEnum.ONDELINE,
         sgp_id="42",
@@ -41,21 +77,12 @@ def _cli_sgp_com_2_faturas() -> ClienteSgp:
         cpf_cnpj="11122233344",
         contratos=[Contrato(id="100", plano="P", status="ativo", cidade="SP")],
         endereco=EnderecoSgp(cidade="SP"),
-        titulos=[
-            Fatura(
-                id="T1", valor=110, vencimento="2026-05-15", status="aberto",
-                link_pdf="https://sgp/T1.pdf", codigo_pix="PIXPIX_T1"
-            ),
-            Fatura(
-                id="T2", valor=110, vencimento="2026-06-15", status="aberto",
-                link_pdf="https://sgp/T2.pdf", codigo_pix="PIXPIX_T2"
-            ),
-        ],
+        titulos=titulos,
     )
 
 
-async def test_envia_2_boletos(db_session: AsyncSession) -> None:
-    cli_sgp = _cli_sgp_com_2_faturas()
+async def _setup(db_session: AsyncSession, titulos: list[Fatura]) -> tuple[Cliente, Conversa, SgpCacheService]:
+    cli_sgp = _cli_with_titles(titulos)
     cache = SgpCacheService(
         redis=FakeRedis(decode_responses=False),
         session=db_session,
@@ -73,73 +100,196 @@ async def test_envia_2_boletos(db_session: AsyncSession) -> None:
         whatsapp="5511@s",
     )
     conv = Conversa(
-        id=uuid4(), whatsapp="5511@s", estado=ConversaEstado.CLIENTE, status=ConversaStatus.BOT
+        id=uuid4(),
+        whatsapp="5511@s",
+        estado=ConversaEstado.CLIENTE,
+        status=ConversaStatus.BOT,
     )
     db_session.add_all([cliente, conv])
     await db_session.flush()
+    return cliente, conv, cache
 
-    BASE = "http://evo.test"
-    INST = "hermes-wa"
-    with respx.mock(assert_all_called=True) as router:
-        router.post(f"{BASE}/message/sendMedia/{INST}").respond(200, json={"ok": True})
-        router.post(f"{BASE}/message/sendText/{INST}").respond(
-            200, json={"key": {"id": "PIX_OUT"}}
-        )
+
+async def test_default_envia_apenas_1_fatura_atrasada_quando_houver(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        enviar_boleto_mod, "_today",
+        lambda: datetime(2026, 5, 16, tzinfo=UTC).date(),
+    )
+    titulos = _faturas(atrasados=10, atual_y=2026, atual_m=5)
+    cliente, conv, cache = await _setup(db_session, titulos)
+
+    BASE, INST = "http://evo.test", "ONDELINE"
+    with respx.mock(assert_all_called=False) as router:
+        m = router.post(f"{BASE}/message/sendMedia/{INST}").respond(200, json={"ok": True})
+        t = router.post(f"{BASE}/message/sendText/{INST}").respond(200, json={"key": {"id": "X"}})
         adapter = EvolutionAdapter(base_url=BASE, instance=INST, api_key="k")
         ctx = ToolContext(
-            session=db_session,
-            conversa=conv,
-            cliente=cliente,
-            evolution=adapter,
-            sgp_router=None,  # type: ignore[arg-type]
-            sgp_cache=cache,
+            session=db_session, conversa=conv, cliente=cliente,
+            evolution=adapter, sgp_router=None, sgp_cache=cache,  # type: ignore[arg-type]
         )
-        out = await enviar_boleto(ctx, max_boletos=2)
+        out = await enviar_boleto(ctx)
         await adapter.aclose()
 
     assert out["ok"] is True
-    assert out["enviados"] == 2
-    assert out["vencimentos"] == ["2026-05-15", "2026-06-15"]
+    assert out["enviados"] == 1
+    assert out["vencimentos"] == [titulos[0].vencimento]  # T_ATRASADA
+    assert m.call_count == 1  # so 1 PDF
+    assert t.call_count == 1  # so 1 PIX
+
+
+async def test_default_envia_fatura_do_mes_corrente_quando_sem_atraso(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        enviar_boleto_mod, "_today",
+        lambda: datetime(2026, 5, 16, tzinfo=UTC).date(),
+    )
+    titulos = _faturas(atrasados=0, atual_y=2026, atual_m=5)
+    cliente, conv, cache = await _setup(db_session, titulos)
+    BASE, INST = "http://evo.test", "ONDELINE"
+    with respx.mock(assert_all_called=False) as router:
+        router.post(f"{BASE}/message/sendMedia/{INST}").respond(200, json={"ok": True})
+        router.post(f"{BASE}/message/sendText/{INST}").respond(200, json={"key": {"id": "X"}})
+        adapter = EvolutionAdapter(base_url=BASE, instance=INST, api_key="k")
+        ctx = ToolContext(
+            session=db_session, conversa=conv, cliente=cliente,
+            evolution=adapter, sgp_router=None, sgp_cache=cache,  # type: ignore[arg-type]
+        )
+        out = await enviar_boleto(ctx)
+        await adapter.aclose()
+    assert out["enviados"] == 1
+    assert out["vencimentos"] == ["2026-05-15"]
+
+
+async def test_mes_proximo_seleciona_mes_seguinte(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        enviar_boleto_mod, "_today",
+        lambda: datetime(2026, 5, 16, tzinfo=UTC).date(),
+    )
+    titulos = _faturas(atrasados=10, atual_y=2026, atual_m=5)
+    cliente, conv, cache = await _setup(db_session, titulos)
+    BASE, INST = "http://evo.test", "ONDELINE"
+    with respx.mock(assert_all_called=False) as router:
+        router.post(f"{BASE}/message/sendMedia/{INST}").respond(200, json={"ok": True})
+        router.post(f"{BASE}/message/sendText/{INST}").respond(200, json={"key": {"id": "X"}})
+        adapter = EvolutionAdapter(base_url=BASE, instance=INST, api_key="k")
+        ctx = ToolContext(
+            session=db_session, conversa=conv, cliente=cliente,
+            evolution=adapter, sgp_router=None, sgp_cache=cache,  # type: ignore[arg-type]
+        )
+        out = await enviar_boleto(ctx, mes="proximo")
+        await adapter.aclose()
+    assert out["vencimentos"] == ["2026-06-15"]
+
+
+async def test_mes_nome_pt_outubro(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        enviar_boleto_mod, "_today",
+        lambda: datetime(2026, 5, 16, tzinfo=UTC).date(),
+    )
+    titulos = [
+        Fatura(id="T_OUT", valor=99, vencimento="2026-10-10", status="aberto",
+               link_pdf="https://sgp/T_OUT.pdf", codigo_pix="PIX_OUT"),
+        Fatura(id="T_NOV", valor=99, vencimento="2026-11-10", status="aberto",
+               link_pdf="https://sgp/T_NOV.pdf", codigo_pix="PIX_NOV"),
+    ]
+    cliente, conv, cache = await _setup(db_session, titulos)
+    BASE, INST = "http://evo.test", "ONDELINE"
+    with respx.mock(assert_all_called=False) as router:
+        router.post(f"{BASE}/message/sendMedia/{INST}").respond(200, json={"ok": True})
+        router.post(f"{BASE}/message/sendText/{INST}").respond(200, json={"key": {"id": "X"}})
+        adapter = EvolutionAdapter(base_url=BASE, instance=INST, api_key="k")
+        ctx = ToolContext(
+            session=db_session, conversa=conv, cliente=cliente,
+            evolution=adapter, sgp_router=None, sgp_cache=cache,  # type: ignore[arg-type]
+        )
+        out = await enviar_boleto(ctx, mes="outubro")
+        await adapter.aclose()
+    assert out["vencimentos"] == ["2026-10-10"]
+
+
+async def test_mes_iso_yyyy_mm(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        enviar_boleto_mod, "_today",
+        lambda: datetime(2026, 5, 16, tzinfo=UTC).date(),
+    )
+    titulos = _faturas(atrasados=10, atual_y=2026, atual_m=5)
+    cliente, conv, cache = await _setup(db_session, titulos)
+    BASE, INST = "http://evo.test", "ONDELINE"
+    with respx.mock(assert_all_called=False) as router:
+        router.post(f"{BASE}/message/sendMedia/{INST}").respond(200, json={"ok": True})
+        router.post(f"{BASE}/message/sendText/{INST}").respond(200, json={"key": {"id": "X"}})
+        adapter = EvolutionAdapter(base_url=BASE, instance=INST, api_key="k")
+        ctx = ToolContext(
+            session=db_session, conversa=conv, cliente=cliente,
+            evolution=adapter, sgp_router=None, sgp_cache=cache,  # type: ignore[arg-type]
+        )
+        out = await enviar_boleto(ctx, mes="2026-04")
+        await adapter.aclose()
+    assert out["vencimentos"] == ["2026-04-15"]
+
+
+async def test_mes_inexistente_retorna_catalogo(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        enviar_boleto_mod, "_today",
+        lambda: datetime(2026, 5, 16, tzinfo=UTC).date(),
+    )
+    titulos = [
+        Fatura(id="T1", valor=99, vencimento="2026-05-15", status="aberto",
+               link_pdf="https://sgp/T1.pdf", codigo_pix="PIX1"),
+    ]
+    cliente, conv, cache = await _setup(db_session, titulos)
+    ctx = ToolContext(
+        session=db_session, conversa=conv, cliente=cliente,
+        evolution=None, sgp_router=None, sgp_cache=cache,  # type: ignore[arg-type]
+    )
+    out = await enviar_boleto(ctx, mes="janeiro")
+    assert out["enviados"] == 0
+    assert "meses_disponiveis" in out
+    assert out["meses_disponiveis"] == ["2026-05"]
+
+
+async def test_max_boletos_5_envia_todos(
+    db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Quando cliente pede 'todos os boletos', LLM passa max_boletos=5."""
+    monkeypatch.setattr(
+        enviar_boleto_mod, "_today",
+        lambda: datetime(2026, 5, 16, tzinfo=UTC).date(),
+    )
+    titulos = _faturas(atrasados=5, atual_y=2026, atual_m=5)
+    cliente, conv, cache = await _setup(db_session, titulos)
+    BASE, INST = "http://evo.test", "ONDELINE"
+    with respx.mock(assert_all_called=False) as router:
+        m = router.post(f"{BASE}/message/sendMedia/{INST}").respond(200, json={"ok": True})
+        router.post(f"{BASE}/message/sendText/{INST}").respond(200, json={"key": {"id": "X"}})
+        adapter = EvolutionAdapter(base_url=BASE, instance=INST, api_key="k")
+        ctx = ToolContext(
+            session=db_session, conversa=conv, cliente=cliente,
+            evolution=adapter, sgp_router=None, sgp_cache=cache,  # type: ignore[arg-type]
+        )
+        out = await enviar_boleto(ctx, max_boletos=5)
+        await adapter.aclose()
+    assert out["enviados"] == 3
+    assert m.call_count == 3
 
 
 async def test_sem_faturas_retorna_ok_zero(db_session: AsyncSession) -> None:
-    cli_sgp = ClienteSgp(
-        provider=SgpProviderEnum.ONDELINE,
-        sgp_id="9",
-        nome="Y",
-        cpf_cnpj="22233344455",
-        contratos=[Contrato(id="200", plano="P", status="ativo", cidade="SP")],
-        endereco=EnderecoSgp(cidade="SP"),
-        titulos=[],
-    )
-    cache = SgpCacheService(
-        redis=FakeRedis(decode_responses=False),
-        session=db_session,
-        router=SgpRouter(
-            primary=FakeSgpProvider(clientes={"22233344455": cli_sgp}),
-            secondary=FakeSgpProvider(),
-        ),
-        ttl_cliente=3600,
-        ttl_negativo=300,
-    )
-    cliente = Cliente(
-        cpf_cnpj_encrypted=encrypt_pii("22233344455"),
-        cpf_hash=hash_pii("22233344455"),
-        nome_encrypted=encrypt_pii("Y"),
-        whatsapp="5512@s",
-    )
-    conv = Conversa(
-        id=uuid4(), whatsapp="5512@s", estado=ConversaEstado.CLIENTE, status=ConversaStatus.BOT
-    )
-    db_session.add_all([cliente, conv])
-    await db_session.flush()
+    titulos: list[Fatura] = []
+    cliente, conv, cache = await _setup(db_session, titulos)
     ctx = ToolContext(
-        session=db_session,
-        conversa=conv,
-        cliente=cliente,
-        evolution=None,  # type: ignore[arg-type]
-        sgp_router=None,  # type: ignore[arg-type]
-        sgp_cache=cache,
+        session=db_session, conversa=conv, cliente=cliente,
+        evolution=None, sgp_router=None, sgp_cache=cache,  # type: ignore[arg-type]
     )
     out = await enviar_boleto(ctx)
     assert out == {"ok": True, "enviados": 0, "mensagem": "Sem faturas em aberto."}
@@ -147,17 +297,14 @@ async def test_sem_faturas_retorna_ok_zero(db_session: AsyncSession) -> None:
 
 async def test_sem_cliente_falha_grace(db_session: AsyncSession) -> None:
     conv = Conversa(
-        id=uuid4(), whatsapp="5511@s", estado=ConversaEstado.CLIENTE, status=ConversaStatus.BOT
+        id=uuid4(), whatsapp="5511@s",
+        estado=ConversaEstado.CLIENTE, status=ConversaStatus.BOT,
     )
     db_session.add(conv)
     await db_session.flush()
     ctx = ToolContext(
-        session=db_session,
-        conversa=conv,
-        cliente=None,
-        evolution=None,  # type: ignore[arg-type]
-        sgp_router=None,  # type: ignore[arg-type]
-        sgp_cache=None,  # type: ignore[arg-type]
+        session=db_session, conversa=conv, cliente=None,
+        evolution=None, sgp_router=None, sgp_cache=None,  # type: ignore[arg-type]
     )
     out = await enviar_boleto(ctx)
     assert out["ok"] is False
