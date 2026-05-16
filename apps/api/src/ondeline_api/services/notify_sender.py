@@ -74,10 +74,16 @@ def render_message(n: Notificacao, cliente_nome: str) -> str:
 
     if n.tipo is NotificacaoTipo.OS_CONCLUIDA:
         codigo = payload.get("codigo", "")
+        problema = payload.get("problema", "")
+        linha_problema = f"*Problema atendido:* {problema}\n" if problema else ""
         return (
-            f"Oi {nome}! 👋\n"
-            f"Sua OS {codigo} foi concluída há um tempo. Como foi o atendimento? "
-            "Responde de 1 a 5 (5 = excelente) que estamos ouvindo! 🌟"
+            f"Oi {nome}! 👋\n\n"
+            f"✅ *OS {codigo} concluída pelo técnico!*\n"
+            f"{linha_problema}"
+            "\nFicou tudo certo? Responde:\n"
+            "• *SIM* — ficou ok\n"
+            "• *NÃO* — ainda tem algum problema\n\n"
+            "Se ficou bom, aproveita e me dá uma nota de 1 a 5 (5 = excelente) 🌟"
         )
 
     if n.tipo is NotificacaoTipo.MANUTENCAO:

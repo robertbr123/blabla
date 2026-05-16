@@ -2,7 +2,7 @@
 
 Jobs:
 - planner_jobs (every 30min):  vencimentos + atrasos + pagamentos
-- followup_os_job (every 1h):  envia CSAT 24h apos OS concluida
+- followup_os_job (every 5min): envia CSAT 10 min apos OS concluida
 - manutencao_job (every 15min): broadcast manutencoes proximas
 - send_notifications (every 1min): processa fila Notificacao pendente
 - lgpd_purge_job (daily 03:00): deleta registros expirados (retention_until < now)
@@ -21,7 +21,7 @@ BEAT_SCHEDULE: dict[str, dict[str, Any]] = {
     },
     "follow-up-os": {
         "task": "ondeline_api.workers.notify_jobs.followup_os_job",
-        "schedule": crontab(minute=0),  # hourly
+        "schedule": crontab(minute="*/5"),  # a cada 5min — pega OSes concluidas ha >=10min
     },
     "manutencoes": {
         "task": "ondeline_api.workers.notify_jobs.manutencao_job",

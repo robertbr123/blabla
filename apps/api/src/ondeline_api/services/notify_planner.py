@@ -214,16 +214,16 @@ async def schedule_pagamentos(
     return count
 
 
-async def schedule_followup_os(session: AsyncSession) -> int:
-    """Schedule OS_CONCLUIDA notification for OSes finished >24h ago.
+async def schedule_followup_os(session: AsyncSession, *, minutes_after: int = 10) -> int:
+    """Schedule OS_CONCLUIDA notification for OSes finished >=`minutes_after` ago.
 
-    The Notificacao dedup ensures we only send once per OS even if this
-    runs multiple times.
+    Default 10 minutos — janela curta pra captar o cliente ainda com a
+    experiencia fresca na cabeca. Dedup do Notificacao garante 1 envio por OS.
     """
     from ondeline_api.db.models.business import OrdemServico, OsStatus
 
     now = datetime.now(tz=UTC)
-    cutoff = now - timedelta(hours=24)
+    cutoff = now - timedelta(minutes=minutes_after)
     repo = NotificacaoRepo(session)
     stmt = select(OrdemServico).where(
         and_(

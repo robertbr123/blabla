@@ -57,10 +57,17 @@ def test_render_pagamento() -> None:
 
 
 def test_render_os_concluida() -> None:
-    n = _notif(NotificacaoTipo.OS_CONCLUIDA, {"codigo": "OS-20260510-001"})
+    n = _notif(
+        NotificacaoTipo.OS_CONCLUIDA,
+        {"codigo": "OS-20260510-001", "problema": "Troca de senha Wi-Fi"},
+    )
     text = render_message(n, "Ana")
     assert "Ana" in text
     assert "OS-20260510-001" in text
+    assert "Troca de senha Wi-Fi" in text
+    assert "SIM" in text
+    assert "NÃO" in text
+    assert "nota" in text.lower()
 
 
 def test_render_manutencao() -> None:

@@ -65,14 +65,13 @@ async def test_followup_os_skip_recent(db_session: AsyncSession) -> None:
         problema="x",
         endereco="y",
         status=OsStatus.CONCLUIDA,
-        concluida_em=datetime.now(tz=UTC) - timedelta(hours=1),  # too recent
+        concluida_em=datetime.now(tz=UTC) - timedelta(minutes=2),  # < 10min cutoff
     )
     db_session.add(os_)
     await db_session.flush()
-    # First run: recent OS should NOT be scheduled (only old ones if any)
+    # First run: recent OS (<10min) should NOT be scheduled
     await schedule_followup_os(db_session)
     final_count = await schedule_followup_os(db_session)
-    # Second run should add 0 new (the recent one isn't due, dedup catches the rest)
     assert final_count == 0
 
 
