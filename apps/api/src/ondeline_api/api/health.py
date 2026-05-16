@@ -59,7 +59,8 @@ async def healthz(
     except Exception:
         celery = {}
 
-    critical_ok = all(v == "ok" for v in checks.values())
+    critical_checks = {k: v for k, v in checks.items() if k in ("db", "redis")}
+    critical_ok = all(v == "ok" for v in critical_checks.values())
     if not critical_ok:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
