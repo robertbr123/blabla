@@ -158,6 +158,23 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
           </div>
         )}
 
+        {/* Resumo do handoff (F1) — TL;DR gerado pelo bot ao transferir pro humano */}
+        {data.resumo_handoff && (
+          <div className="mb-3 rounded-md border border-blue-300 bg-blue-50 dark:bg-blue-950/20 p-3 text-sm">
+            <p className="mb-1 flex items-center gap-2 font-semibold text-blue-900 dark:text-blue-200">
+              <span>🤖 Resumo do bot</span>
+              {data.resumo_handoff_at && (
+                <span className="text-xs font-normal opacity-70">
+                  {new Date(data.resumo_handoff_at).toLocaleString('pt-BR')}
+                </span>
+              )}
+            </p>
+            <p className="whitespace-pre-line text-blue-900 dark:text-blue-100">
+              {data.resumo_handoff}
+            </p>
+          </div>
+        )}
+
         {/* Tab bar */}
         <div className="flex border-b mb-0">
           {TABS.map((t) => (

@@ -71,6 +71,7 @@ class _OutboundQueueProto(Protocol):
     def enqueue_send_outbound(self, jid: str, text: str, conversa_id: UUID) -> None: ...
     def enqueue_llm_turn(self, conversa_id: UUID) -> None: ...
     def enqueue_followup_os(self, conversa_id: UUID, resultado: str, resposta: str) -> None: ...
+    def enqueue_handoff_summary(self, conversa_id: UUID) -> None: ...
 
 
 @dataclass
@@ -392,6 +393,7 @@ async def process_inbound_message(
                 estado=ConversaEstado.AGUARDA_ATENDENTE,
                 status=ConversaStatus.AGUARDANDO,
             )
+            deps.outbound.enqueue_handoff_summary(conversa.id)
             return InboundResult(
                 conversa_id=conversa.id, persisted=True, duplicate=False, escalated=True
             )
@@ -444,6 +446,7 @@ async def process_inbound_message(
                     estado=ConversaEstado.AGUARDA_ATENDENTE,
                     status=ConversaStatus.AGUARDANDO,
                 )
+                deps.outbound.enqueue_handoff_summary(conversa.id)
             else:
                 # Abre OS de mudança via LLM
                 msg_ok = (
@@ -494,9 +497,15 @@ async def process_inbound_message(
         status=conversa.status,
         event=_to_fsm_event(evt.kind, evt.text),
     )
+    prev_status = conversa.status
     await deps.conversas.update_estado_status(
         conversa, estado=decision.new_estado, status=decision.new_status
     )
+    if (
+        decision.new_status is ConversaStatus.AGUARDANDO
+        and prev_status is not ConversaStatus.AGUARDANDO
+    ):
+        deps.outbound.enqueue_handoff_summary(conversa.id)
 
     escalated = False
     llm_turn_requested = False

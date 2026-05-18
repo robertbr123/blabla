@@ -114,6 +114,11 @@ class CeleryOutboundEnqueuer(_OutboundQueueProto):
 
         followup_os_task.delay(conversa_id=str(conversa_id), resultado=resultado, resposta=resposta)
 
+    def enqueue_handoff_summary(self, conversa_id: UUID) -> None:
+        from ondeline_api.workers.handoff_summary_task import handoff_summary_task
+
+        handoff_summary_task.delay(conversa_id=str(conversa_id))
+
 
 @dataclass
 class BufferedOutboundEnqueuer(_OutboundQueueProto):
@@ -126,6 +131,7 @@ class BufferedOutboundEnqueuer(_OutboundQueueProto):
     _pending_outbound: list[dict[str, Any]] = field(default_factory=list)
     _pending_llm_turns: list[UUID] = field(default_factory=list)
     _pending_followup: list[dict[str, Any]] = field(default_factory=list)
+    _pending_handoff_summary: list[UUID] = field(default_factory=list)
 
     def enqueue_send_outbound(self, jid: str, text: str, conversa_id: UUID) -> None:
         self._pending_outbound.append({"jid": jid, "text": text, "conversa_id": str(conversa_id)})
@@ -138,9 +144,13 @@ class BufferedOutboundEnqueuer(_OutboundQueueProto):
             "conversa_id": str(conversa_id), "resultado": resultado, "resposta": resposta
         })
 
+    def enqueue_handoff_summary(self, conversa_id: UUID) -> None:
+        self._pending_handoff_summary.append(conversa_id)
+
     def flush(self) -> None:
         """Dispara todas as tasks Celery pendentes. Chame APOS o commit da sessao."""
         from ondeline_api.workers.followup import followup_os_task
+        from ondeline_api.workers.handoff_summary_task import handoff_summary_task
         from ondeline_api.workers.llm_turn import llm_turn_task
         from ondeline_api.workers.outbound import send_outbound_task
 
@@ -150,6 +160,9 @@ class BufferedOutboundEnqueuer(_OutboundQueueProto):
             llm_turn_task.delay(conversa_id=str(cid))
         for item in self._pending_followup:
             followup_os_task.delay(**item)
+        for cid in self._pending_handoff_summary:
+            handoff_summary_task.delay(conversa_id=str(cid))
         self._pending_outbound.clear()
         self._pending_llm_turns.clear()
         self._pending_followup.clear()
+        self._pending_handoff_summary.clear()

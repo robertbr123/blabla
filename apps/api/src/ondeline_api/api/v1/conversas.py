@@ -87,6 +87,9 @@ async def get_conversa(
     msgs, _ = await repo.list_messages(c.id, limit=50)
     out = ConversaOut.model_validate(c)
     out.mensagens = [_to_msg_out(m) for m in msgs]
+    if c.resumo_handoff_encrypted:
+        out.resumo_handoff = decrypt_pii(c.resumo_handoff_encrypted)
+        out.resumo_handoff_at = c.resumo_handoff_at
 
     if c.cliente_id is not None:
         cliente_row = (

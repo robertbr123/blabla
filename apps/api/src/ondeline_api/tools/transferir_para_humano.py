@@ -30,9 +30,18 @@ SCHEMA: dict[str, Any] = {
     parameters=SCHEMA,
 )
 async def transferir_para_humano(ctx: ToolContext, *, motivo: str) -> dict[str, Any]:
+    prev_status = ctx.conversa.status
     ctx.conversa.estado = ConversaEstado.AGUARDA_ATENDENTE
     ctx.conversa.status = ConversaStatus.AGUARDANDO
     if ctx.conversa.transferred_at is None:
         ctx.conversa.transferred_at = datetime.now(tz=UTC)
     await ctx.session.flush()
+    # Enfileira resumo do handoff (F1) — best effort, nao bloqueia a tool.
+    if prev_status is not ConversaStatus.AGUARDANDO:
+        try:
+            from ondeline_api.workers.handoff_summary_task import handoff_summary_task
+
+            handoff_summary_task.delay(conversa_id=str(ctx.conversa.id))
+        except Exception:
+            pass
     return {"ok": True, "motivo": motivo}

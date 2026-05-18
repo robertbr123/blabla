@@ -92,6 +92,7 @@ class FakeMensagemRepo:
 class FakeOutboundQueue:
     sent: list[tuple[str, str, UUID]] = field(default_factory=list)
     llm_turns: list[UUID] = field(default_factory=list)
+    handoff_summaries: list[UUID] = field(default_factory=list)
 
     def enqueue_send_outbound(self, jid: str, text: str, conversa_id: UUID) -> None:
         self.sent.append((jid, text, conversa_id))
@@ -101,6 +102,9 @@ class FakeOutboundQueue:
 
     def enqueue_followup_os(self, conversa_id: UUID, resultado: str, resposta: str) -> None:
         pass
+
+    def enqueue_handoff_summary(self, conversa_id: UUID) -> None:
+        self.handoff_summaries.append(conversa_id)
 
 
 # ── FakeConfigSession ─────────────────────────────────────────

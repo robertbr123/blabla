@@ -35,6 +35,7 @@ def create_celery_app() -> Celery:
             "ondeline_api.workers.notify_sender",
             "ondeline_api.workers.partition_jobs",
             "ondeline_api.workers.followup",
+            "ondeline_api.workers.handoff_summary_task",
         ],
     )
     app.conf.update(
@@ -49,6 +50,9 @@ def create_celery_app() -> Celery:
             },
             "ondeline_api.workers.outbound.send_outbound_task": {"queue": "default"},
             "ondeline_api.workers.llm_turn.llm_turn_task": {"queue": "llm"},
+            "ondeline_api.workers.handoff_summary_task.handoff_summary_task": {
+                "queue": "llm"
+            },
             "ondeline_api.workers.notify_jobs.run_planner_jobs": {"queue": "notifications"},
             "ondeline_api.workers.notify_jobs.followup_os_job": {"queue": "notifications"},
             "ondeline_api.workers.notify_jobs.manutencao_job": {"queue": "notifications"},

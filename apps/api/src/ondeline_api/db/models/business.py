@@ -187,6 +187,10 @@ class Conversa(Base):
     tags: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     sla_minutes: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
     checklist_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    resumo_handoff_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resumo_handoff_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     __table_args__ = (
         Index(

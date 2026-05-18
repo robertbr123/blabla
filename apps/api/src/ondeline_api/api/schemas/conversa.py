@@ -39,6 +39,8 @@ class ConversaListItem(BaseModel):
 class ConversaOut(ConversaListItem):
     mensagens: list[MensagemOut] = Field(default_factory=list)
     cliente: ClienteEmbutido | None = None
+    resumo_handoff: str | None = None
+    resumo_handoff_at: datetime | None = None
 
 
 class ResponderIn(BaseModel):

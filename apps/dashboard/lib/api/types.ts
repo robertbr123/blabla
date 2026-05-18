@@ -42,6 +42,8 @@ export interface ClienteEmbutido {
 export interface ConversaDetail extends ConversaListItem {
   mensagens: MensagemOut[]
   cliente: ClienteEmbutido | null
+  resumo_handoff: string | null
+  resumo_handoff_at: string | null
 }
 
 export interface OsListItem {
