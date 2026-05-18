@@ -1,6 +1,7 @@
 """TecnicoRepo: roteamento por (cidade, rua) com prioridade."""
 from __future__ import annotations
 
+import re
 from typing import Any
 from uuid import UUID
 
@@ -8,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.db.models.business import Tecnico, TecnicoArea
+from ondeline_api.services.phone import br_local_digits
 
 
 class TecnicoRepo:
@@ -143,3 +145,23 @@ class TecnicoRepo:
                 best = tec
                 best_score = score
         return best
+
+    async def get_by_jid(self, jid: str) -> Tecnico | None:
+        """Lookup de técnico por JID do WhatsApp.
+
+        Normaliza o JID para os 8 dígitos locais BR e procura técnico ATIVO
+        cujo whatsapp normalizado coincida. Tolera variações de DDD/9° dígito
+        entre cadastro e JID que vem da Evolution API.
+        """
+        jid_local = br_local_digits(re.sub(r"\D", "", jid or ""))
+        if len(jid_local) != 8:
+            return None
+        stmt = select(Tecnico).where(
+            Tecnico.ativo.is_(True), Tecnico.whatsapp.isnot(None)
+        )
+        rows = list((await self._session.execute(stmt)).scalars().all())
+        for t in rows:
+            t_local = br_local_digits(re.sub(r"\D", "", t.whatsapp or ""))
+            if len(t_local) == 8 and t_local == jid_local:
+                return t
+        return None
