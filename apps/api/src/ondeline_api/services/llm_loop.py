@@ -213,6 +213,52 @@ def _msg_to_chat(m: Mensagem) -> ChatMessage:
     return ChatMessage(role=role, content=content)
 
 
+async def _resolve_system_prompt(ctx: ToolContext) -> str:
+    """Resolve qual system prompt usar pra essa conversa (F5).
+
+    - Se conversa ja tem `prompt_variant` setado: usa essa variante (imutavel).
+    - Senao: bucketa por hash(whatsapp), salva no Conversa.prompt_variant.
+    - Variante inexistente/inativa → usa o SYSTEM_PROMPT default e marca 'default'.
+    """
+    from sqlalchemy import select as _sa_select
+
+    from ondeline_api.db.models.business import PromptVariant
+    from ondeline_api.services.prompt_router import escolher_variante
+
+    conv = ctx.conversa
+    if conv.prompt_variant and conv.prompt_variant != "default":
+        # Carrega variante pinned.
+        stmt = _sa_select(PromptVariant).where(PromptVariant.nome == conv.prompt_variant)
+        v = (await ctx.session.execute(stmt)).scalar_one_or_none()
+        if v is not None and v.ativo:
+            return v.system_prompt
+        # Variante removida/desativada → cai pro default mas mantem pin (auditoria).
+        return SYSTEM_PROMPT
+
+    if conv.prompt_variant == "default":
+        return SYSTEM_PROMPT
+
+    # Primeira atribuicao: bucketa.
+    canal_slug: str | None = None
+    if conv.canal_id is not None:
+        from ondeline_api.db.models.business import Canal
+
+        canal = (
+            await ctx.session.execute(_sa_select(Canal).where(Canal.id == conv.canal_id))
+        ).scalar_one_or_none()
+        if canal is not None:
+            canal_slug = canal.slug
+
+    chosen = await escolher_variante(ctx.session, conv.whatsapp, canal_slug=canal_slug)
+    if chosen is None:
+        conv.prompt_variant = "default"
+        await ctx.session.flush()
+        return SYSTEM_PROMPT
+    conv.prompt_variant = chosen.nome
+    await ctx.session.flush()
+    return chosen.system_prompt
+
+
 async def run_turn(
     *,
     ctx: ToolContext,
@@ -228,11 +274,14 @@ async def run_turn(
     if budget is not None and await budget.is_over(str(ctx.conversa.id)):
         return await _force_escalate(ctx, motivo="orcamento de tokens diario excedido")
 
+    # F5 — resolve prompt variant (A/B test). Imutavel apos primeira atribuicao.
+    system_prompt = await _resolve_system_prompt(ctx)
+
     history = await MensagemRepo(ctx.session).list_history(
         ctx.conversa.id, limit=history_turns
     )
     messages: list[ChatMessage] = [
-        ChatMessage(role=Role.SYSTEM, content=SYSTEM_PROMPT),
+        ChatMessage(role=Role.SYSTEM, content=system_prompt),
         *(_msg_to_chat(m) for m in history),
     ]
 

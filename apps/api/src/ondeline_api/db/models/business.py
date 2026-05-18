@@ -233,6 +233,7 @@ class Conversa(Base):
     resumo_handoff_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    prompt_variant: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
     __table_args__ = (
         Index(
@@ -518,6 +519,34 @@ class Config(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+
+class PromptVariant(Base):
+    """F5 — Variante de prompt para A/B test.
+
+    `trafego_pct` (0-100) define quantos % do hash(whatsapp) % 100 caem nessa
+    variante. Soma das ativas ≤ 100. O restante usa o prompt 'default' (hardcoded).
+    Mesma whatsapp sempre cai na mesma variante (determinismo por hash).
+    """
+
+    __tablename__ = "prompt_variant"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    nome: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
+    system_prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    ativo: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    trafego_pct: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    canal_slug: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    created_by: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
 

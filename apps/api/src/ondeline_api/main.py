@@ -25,6 +25,7 @@ from ondeline_api.api.v1 import manutencoes as v1_manutencoes
 from ondeline_api.api.v1 import metricas as v1_metricas
 from ondeline_api.api.v1 import ordens_servico as v1_os
 from ondeline_api.api.v1 import planos as v1_planos
+from ondeline_api.api.v1 import prompts as v1_prompts
 from ondeline_api.api.v1 import tecnico_me as v1_tecnico_me
 from ondeline_api.api.v1 import tecnicos as v1_tecnicos
 from ondeline_api.api.webhook import limiter as webhook_limiter
@@ -121,6 +122,7 @@ def create_app() -> FastAPI:
     app.include_router(v1_metricas.router)
     app.include_router(v1_planos.router)
     app.include_router(v1_canais.router)
+    app.include_router(v1_prompts.router)
     return app
 
 
