@@ -1,8 +1,10 @@
 """ConversaRepo: get_or_create por whatsapp + update_estado_status."""
 from __future__ import annotations
 
+import uuid as _uuid
+
 import pytest
-from ondeline_api.db.crypto import encrypt_pii, hash_pii
+from ondeline_api.db.crypto import decrypt_pii, encrypt_pii, hash_pii
 from ondeline_api.db.models.business import (
     Cliente,
     ConversaEstado,
@@ -70,13 +72,11 @@ async def test_link_cliente(db_session) -> None:
 async def test_list_paginated_returns_nome_encrypted_when_cliente_linked(
     db_session,
 ) -> None:
-    """F0: lista de conversas devolve nome do cliente (Fernet) quando vinculado."""
-    from ondeline_api.db.crypto import decrypt_pii
+    """F0: lista de conversas devolve nome do cliente (Fernet) quando vinculado.
 
-    # JID unico (uuid) pra garantir isolamento do filtro `q` mesmo se o ambiente
-    # tiver outras conversas residuais.
-    import uuid as _uuid
-
+    JID unico (uuid) pra garantir isolamento do filtro `q` mesmo se o ambiente
+    tiver outras conversas residuais.
+    """
     jid_slug = _uuid.uuid4().hex[:10]
     jid = f"{jid_slug}@s.whatsapp.net"
 
@@ -105,8 +105,6 @@ async def test_list_paginated_returns_nome_encrypted_when_cliente_linked(
 
 async def test_list_paginated_returns_none_nome_when_no_cliente(db_session) -> None:
     """F0: conversa sem cliente vinculado devolve nome_encrypted=None."""
-    import uuid as _uuid
-
     jid_slug = _uuid.uuid4().hex[:10]
     jid = f"{jid_slug}@s.whatsapp.net"
 
