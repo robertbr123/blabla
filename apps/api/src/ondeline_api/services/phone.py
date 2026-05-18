@@ -12,13 +12,17 @@ _DIGITS_RE = re.compile(r"\D")
 
 
 def br_local_digits(digits: str) -> str:
-    """Normaliza dígitos de número BR para os 8 dígitos locais.
+    """Normaliza dígitos de número BR (MOBILE) para os 8 dígitos locais.
 
+    Assume número de celular — a heurística do 9° dígito não trata fixos.
     Tolera: com/sem código de país (55), com/sem DDD, com/sem nono dígito.
+
     Ex: "559784109856" → "84109856"
         "5597984109856" → "84109856"
         "97984109856" → "84109856"
-    Entrada deve ser só dígitos (caller usa _DIGITS_RE.sub se necessário).
+
+    Entrada deve ser só dígitos. Para strings com lixo, use `re.sub(r"\\D", "", s)`
+    no caller antes de passar.
     """
     if digits.startswith("55") and len(digits) in (12, 13):
         digits = digits[2:]

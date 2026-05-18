@@ -46,3 +46,8 @@ def test_format_br_phone_with_punctuation_input() -> None:
 def test_format_br_phone_empty_returns_empty() -> None:
     assert format_br_phone("") == ""
     assert format_br_phone(None) == ""
+
+
+def test_format_br_phone_ten_digits_legacy_no_ninth() -> None:
+    # Numero antigo com DDD mas sem 9o digito: (97) 8410-9856
+    assert format_br_phone("9784109856") == "(97) 8410-9856"
