@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { useConversas, useDeleteConversa, useEncerrar } from '@/lib/api/queries'
+import { useCanais, useConversas, useDeleteConversa, useEncerrar } from '@/lib/api/queries'
 import type { ConversaListItem } from '@/lib/api/types'
 import { DialogAbrirOsFromConversa } from './dialog-abrir-os-from-conversa'
 import { ConversaSlaTimer } from './conversa-sla-timer'
@@ -99,10 +99,14 @@ function truncate(s: string, max = 24): string {
 export function ConversaList() {
   const [status, setStatus] = useState('')
   const [q, setQ] = useState('')
+  const [canalId, setCanalId] = useState('')
   const [abrirOsConversaId, setAbrirOsConversaId] = useState<string | null>(null)
+  const { data: canais } = useCanais()
+  const canalById = new Map((canais ?? []).map((c) => [c.id, c]))
   const { data, isLoading, error } = useConversas({
     status: status || undefined,
     q: q || undefined,
+    canal_id: canalId || undefined,
   })
 
   return (
@@ -132,6 +136,18 @@ export function ConversaList() {
           <option value="bot">Bot</option>
           <option value="encerrada">Encerrada</option>
         </Select>
+        {canais && canais.length > 1 && (
+          <Select
+            value={canalId}
+            onChange={(e) => setCanalId(e.target.value)}
+            className="max-w-[200px]"
+          >
+            <option value="">Todos os canais</option>
+            {canais.map((c) => (
+              <option key={c.id} value={c.id}>{c.nome}</option>
+            ))}
+          </Select>
+        )}
       </div>
 
       {isLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
@@ -167,6 +183,7 @@ export function ConversaList() {
                 const tituloFull = c.cliente_nome ?? telefone
                 const titulo = truncate(tituloFull)
                 const subtitulo = c.cliente_nome ? telefone : null
+                const canal = c.canal_id ? canalById.get(c.canal_id) : null
                 return (
                 <tr key={c.id} className="border-b last:border-b-0 hover:bg-muted/50">
                   <td className="px-4 py-3">
@@ -179,6 +196,11 @@ export function ConversaList() {
                     </Link>
                     {subtitulo && (
                       <div className="text-xs text-muted-foreground">{subtitulo}</div>
+                    )}
+                    {canal && canais && canais.length > 1 && (
+                      <Badge variant="outline" className="mt-1 text-[10px]">
+                        {canal.nome}
+                      </Badge>
                     )}
                   </td>
                   <td className="px-4 py-3">

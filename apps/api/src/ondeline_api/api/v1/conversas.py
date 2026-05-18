@@ -54,11 +54,13 @@ async def list_conversas(
     limit: LimitParam = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
     q: Annotated[str | None, Query()] = None,
+    canal_id: Annotated[UUID | None, Query()] = None,
 ) -> CursorPage[ConversaListItem]:
     repo = ConversaRepo(session)
     rows, next_cur = await repo.list_paginated(
         status=status_filter,
         q=q,
+        canal_id=canal_id,
         cursor=parse_cursor(cursor),
         limit=parse_limit(limit),
     )

@@ -30,12 +30,15 @@ class FakeConversaRepo:
     def __init__(self) -> None:
         self.by_jid: dict[str, Conversa] = {}
 
-    async def get_or_create_by_whatsapp(self, whatsapp: str) -> Conversa:
+    async def get_or_create_by_whatsapp(
+        self, whatsapp: str, *, canal_id: UUID | None = None
+    ) -> Conversa:
         if whatsapp in self.by_jid:
             return self.by_jid[whatsapp]
         c = Conversa(
             id=uuid4(),
             whatsapp=whatsapp,
+            canal_id=canal_id,
             estado=ConversaEstado.INICIO,
             status=ConversaStatus.BOT,
         )

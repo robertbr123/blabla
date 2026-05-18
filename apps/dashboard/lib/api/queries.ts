@@ -41,17 +41,27 @@ import type {
 export interface ConversaListFilters {
   status?: string
   q?: string
+  canal_id?: string
 }
 
 export function useConversas(filters: ConversaListFilters = {}) {
   const params = new URLSearchParams()
   if (filters.status) params.set('status', filters.status)
   if (filters.q) params.set('q', filters.q)
+  if (filters.canal_id) params.set('canal_id', filters.canal_id)
   const qs = params.toString()
   return useQuery<CursorPage<ConversaListItem>>({
     queryKey: ['conversas', filters],
     queryFn: () => apiFetch(`/api/v1/conversas${qs ? `?${qs}` : ''}`),
     refetchInterval: 15_000,
+  })
+}
+
+export function useCanais() {
+  return useQuery<import('./types').CanalOut[]>({
+    queryKey: ['canais'],
+    queryFn: () => apiFetch('/api/v1/canais'),
+    staleTime: 60_000,
   })
 }
 

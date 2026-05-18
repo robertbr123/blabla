@@ -10,6 +10,7 @@ export interface ConversaListItem {
   status: string
   cliente_id: string | null
   cliente_nome: string | null
+  canal_id: string | null
   atendente_id: string | null
   created_at: string
   last_message_at: string | null
@@ -300,4 +301,18 @@ export interface PlanoIn {
 
 export interface PlanoOut extends PlanoIn {
   index: number
+}
+
+// Canais (F4)
+export interface CanalOut {
+  id: string
+  slug: string
+  nome: string
+  evolution_instance: string
+  prompt_variant: string
+  ativo: boolean
+  horario_inicio: string | null
+  horario_fim: string | null
+  msg_fora_horario: string | null
+  created_at: string
 }

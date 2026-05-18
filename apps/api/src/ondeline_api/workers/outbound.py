@@ -6,13 +6,17 @@ from uuid import UUID
 
 import structlog
 
-from ondeline_api.adapters.evolution import EvolutionAdapter, EvolutionError
+from ondeline_api.adapters.evolution import EvolutionError
 from ondeline_api.config import get_settings
 from ondeline_api.observability.metrics import (
     evolution_send_failure_total,
     evolution_send_total,
 )
 from ondeline_api.repositories.mensagem import MensagemRepo
+from ondeline_api.services.canal_evolution import (
+    evolution_for_instance,
+    resolver_instance,
+)
 from ondeline_api.workers.celery_app import celery_app
 from ondeline_api.workers.runtime import get_redis, run_task, task_session
 
@@ -21,22 +25,21 @@ log = structlog.get_logger(__name__)
 
 async def _run(jid: str, text: str, conversa_id: UUID) -> dict[str, str]:
     settings = get_settings()
-    adapter = EvolutionAdapter(
-        base_url=settings.evolution_url,
-        instance=settings.evolution_instance,
-        api_key=settings.evolution_key,
-    )
-    try:
-        result = await adapter.send_text(jid, text)
-        evolution_send_total.inc()
-    except EvolutionError as e:
-        evolution_send_failure_total.inc()
-        log.error("outbound.send_failed", jid=jid, error=str(e))
-        raise
-    finally:
-        await adapter.aclose()
-
     async with task_session() as session:
+        # F4: resolve a instance Evolution correta pra essa conversa.
+        instance = await resolver_instance(session, conversa_id, settings)
+        adapter = evolution_for_instance(instance, settings)
+        try:
+            result = await adapter.send_text(jid, text)
+            evolution_send_total.inc()
+        except EvolutionError as e:
+            evolution_send_failure_total.inc()
+            log.error(
+                "outbound.send_failed", jid=jid, error=str(e), instance=instance
+            )
+            raise
+        finally:
+            await adapter.aclose()
         await MensagemRepo(session).insert_bot_reply(conversa_id=conversa_id, text=text)
 
     redis = await get_redis()

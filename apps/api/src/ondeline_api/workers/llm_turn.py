@@ -15,13 +15,16 @@ import ondeline_api.tools.enviar_boleto
 
 # Importacoes que registram as 6 tools no registry global
 import ondeline_api.tools.transferir_para_humano  # noqa: F401
-from ondeline_api.adapters.evolution import EvolutionAdapter
 from ondeline_api.adapters.llm.hermes import HermesProvider
 from ondeline_api.adapters.sgp.linknetam import SgpLinkNetAMProvider
 from ondeline_api.adapters.sgp.ondeline import SgpOndelineProvider
 from ondeline_api.adapters.sgp.router import SgpRouter
 from ondeline_api.config import get_settings
 from ondeline_api.db.models.business import Cliente, Conversa
+from ondeline_api.services.canal_evolution import (
+    evolution_for_instance,
+    resolver_instance,
+)
 from ondeline_api.services.llm_loop import run_turn
 from ondeline_api.services.sgp_cache import SgpCacheService
 from ondeline_api.services.sgp_config import load_sgp_config
@@ -36,9 +39,6 @@ log = structlog.get_logger(__name__)
 async def _run(conversa_id: UUID) -> dict[str, Any]:
     s = get_settings()
     redis = await get_redis()
-    evolution = EvolutionAdapter(
-        base_url=s.evolution_url, instance=s.evolution_instance, api_key=s.evolution_key
-    )
     llm_url, llm_key, llm_model = s.effective_llm()
     provider = HermesProvider(
         base_url=llm_url,
@@ -48,9 +48,13 @@ async def _run(conversa_id: UUID) -> dict[str, Any]:
     )
     budget = TokensBudget(redis, daily_limit=s.llm_max_tokens_per_conversa_dia)
     router: SgpRouter | None = None
+    evolution = None
 
     try:
         async with task_session() as session:
+            # F4: resolve a instance Evolution dessa conversa.
+            instance = await resolver_instance(session, conversa_id, s)
+            evolution = evolution_for_instance(instance, s)
             sgp_ond = await load_sgp_config(session, "ondeline")
             sgp_lnk = await load_sgp_config(session, "linknetam")
             router = SgpRouter(
@@ -108,7 +112,8 @@ async def _run(conversa_id: UUID) -> dict[str, Any]:
         await provider.aclose()
         if router is not None:
             await router.aclose()
-        await evolution.aclose()
+        if evolution is not None:
+            await evolution.aclose()
 
 
 @celery_app.task(

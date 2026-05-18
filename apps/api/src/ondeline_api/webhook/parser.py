@@ -31,6 +31,7 @@ class InboundEvent:
     kind: InboundKind
     text: str | None
     from_me: bool
+    instance: str = ""  # F4 — Evolution instance ("canal" do payload). Vazio = canal default.
 
 
 def _truthy(v: Any) -> bool:
@@ -84,4 +85,5 @@ def parse_messages_upsert(payload: dict[str, Any]) -> InboundEvent:
         kind=kind,
         text=text,
         from_me=_truthy(key.get("fromMe")),
+        instance=str(payload.get("instance") or ""),
     )

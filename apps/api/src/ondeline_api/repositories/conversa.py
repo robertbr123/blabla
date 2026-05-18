@@ -20,21 +20,29 @@ class ConversaRepo:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def get_or_create_by_whatsapp(self, whatsapp: str) -> Conversa:
-        """Devolve a conversa aberta (deleted_at IS NULL) para esse whatsapp,
-        criando se nao existir. Faz flush imediato para garantir id presente.
+    async def get_or_create_by_whatsapp(
+        self, whatsapp: str, *, canal_id: UUID | None = None
+    ) -> Conversa:
+        """Devolve a conversa aberta para (whatsapp, canal_id), criando se faltar.
+
+        F4: conversas sao escopadas por canal — o mesmo cliente em 2 canais
+        diferentes gera 2 conversas independentes. ``canal_id=None`` casa
+        apenas com conversas legadas sem canal atribuido (compat backward).
         """
         stmt = (
             select(Conversa)
             .where(Conversa.whatsapp == whatsapp, Conversa.deleted_at.is_(None))
-            .order_by(Conversa.created_at.desc())
-            .limit(1)
         )
+        if canal_id is None:
+            stmt = stmt.where(Conversa.canal_id.is_(None))
+        else:
+            stmt = stmt.where(Conversa.canal_id == canal_id)
+        stmt = stmt.order_by(Conversa.created_at.desc()).limit(1)
         existing = (await self._session.execute(stmt)).scalar_one_or_none()
         if existing is not None:
             return existing
 
-        conversa = Conversa(whatsapp=whatsapp)
+        conversa = Conversa(whatsapp=whatsapp, canal_id=canal_id)
         self._session.add(conversa)
         await self._session.flush()
         return conversa
@@ -67,6 +75,7 @@ class ConversaRepo:
         status: str | None = None,
         cidade: str | None = None,
         q: str | None = None,
+        canal_id: UUID | None = None,
         cursor: datetime | None = None,
         limit: int = 50,
     ) -> tuple[list[tuple[Conversa, str | None]], datetime | None]:
@@ -84,6 +93,8 @@ class ConversaRepo:
             stmt = stmt.where(Conversa.status == status)
         if q:
             stmt = stmt.where(Conversa.whatsapp.ilike(f"%{q}%"))
+        if canal_id is not None:
+            stmt = stmt.where(Conversa.canal_id == canal_id)
         # cidade filter requires join with Cliente — skip for M6 v1 baseline
         order_col = case(
             (Conversa.last_message_at.is_(None), Conversa.created_at),

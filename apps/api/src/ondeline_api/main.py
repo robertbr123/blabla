@@ -1,6 +1,10 @@
 """FastAPI application factory."""
 from __future__ import annotations
 
+import contextlib
+from collections.abc import AsyncIterator
+
+import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -11,6 +15,7 @@ from ondeline_api import __version__
 from ondeline_api.api import auth, health
 from ondeline_api.api import metrics as metrics_router
 from ondeline_api.api import webhook as webhook_router
+from ondeline_api.api.v1 import canais as v1_canais
 from ondeline_api.api.v1 import clientes as v1_clientes
 from ondeline_api.api.v1 import config as v1_config
 from ondeline_api.api.v1 import conversas as v1_conversas
@@ -25,9 +30,34 @@ from ondeline_api.api.v1 import tecnicos as v1_tecnicos
 from ondeline_api.api.webhook import limiter as webhook_limiter
 from ondeline_api.auth.csrf import CSRFMiddleware
 from ondeline_api.config import get_settings
+from ondeline_api.db.engine import get_sessionmaker
+from ondeline_api.repositories.canal import CanalRepo
 from ondeline_api.services.logging_config import configure_logging
 from ondeline_api.services.otel_init import init_otel
 from ondeline_api.services.sentry_init import init_sentry
+
+_log = structlog.get_logger(__name__)
+
+
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Startup: garante canal default (F4) a partir de settings.evolution_instance."""
+    settings = get_settings()
+    try:
+        sm = get_sessionmaker()
+        async with sm() as session:
+            async with session.begin():
+                repo = CanalRepo(session)
+                await repo.ensure_default(
+                    slug="suporte",
+                    nome="Suporte",
+                    evolution_instance=settings.evolution_instance,
+                )
+        _log.info("startup.canal_default_ready", instance=settings.evolution_instance)
+    except Exception as e:
+        # Nao trava o startup se DB ainda nao estiver migrado — log apenas.
+        _log.warning("startup.canal_default_failed", error=str(e))
+    yield
 
 CSRF_EXEMPT_PATHS = [
     "/auth/login",
@@ -49,6 +79,7 @@ def create_app() -> FastAPI:
         title="Ondeline API",
         version=__version__,
         description="WhatsApp bot + admin API for Ondeline Telecom",
+        lifespan=lifespan,
     )
     init_otel(component="api", fastapi_app=app)
     app.add_middleware(CSRFMiddleware, exempt_paths=CSRF_EXEMPT_PATHS)
@@ -89,6 +120,7 @@ def create_app() -> FastAPI:
     app.include_router(v1_config.router)
     app.include_router(v1_metricas.router)
     app.include_router(v1_planos.router)
+    app.include_router(v1_canais.router)
     return app
 
 

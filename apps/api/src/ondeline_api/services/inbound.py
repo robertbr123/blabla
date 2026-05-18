@@ -44,7 +44,9 @@ log = structlog.get_logger(__name__)
 
 
 class _ConversaRepoProto(Protocol):
-    async def get_or_create_by_whatsapp(self, whatsapp: str) -> Conversa: ...
+    async def get_or_create_by_whatsapp(
+        self, whatsapp: str, *, canal_id: UUID | None = None
+    ) -> Conversa: ...
     async def update_estado_status(
         self, conversa: Conversa, *, estado: ConversaEstado, status: ConversaStatus
     ) -> None: ...
@@ -143,7 +145,21 @@ async def process_inbound_message(
             conversa_id=None, persisted=False, duplicate=False, escalated=False, skipped_reason="empty_text"
         )
 
-    conversa = await deps.conversas.get_or_create_by_whatsapp(evt.jid)
+    # F4 — resolve canal pelo `instance` do payload Evolution. Se nao encontrado,
+    # cai pro canal default (slug='suporte') OU ``None`` se nada estiver setup.
+    canal_id: UUID | None = None
+    if deps.session is not None and evt.instance:
+        from ondeline_api.repositories.canal import CanalRepo as _CanalRepo
+
+        canal_repo = _CanalRepo(deps.session)
+        canal = await canal_repo.get_by_evolution_instance(evt.instance)
+        if canal is None:
+            # fallback pro canal default
+            canal = await canal_repo.get_by_slug("suporte")
+        if canal is not None:
+            canal_id = canal.id
+
+    conversa = await deps.conversas.get_or_create_by_whatsapp(evt.jid, canal_id=canal_id)
 
     media_type = evt.kind.value if evt.kind in _MEDIA_KINDS else None
     msg = await deps.mensagens.insert_inbound_or_skip(

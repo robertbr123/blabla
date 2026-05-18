@@ -6,7 +6,7 @@ fica em __table_args__ para o autogenerate gerar a clausula PARTITION BY.
 """
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, time
 from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
@@ -24,6 +24,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    Time,
     UniqueConstraint,
     func,
 )
@@ -98,6 +99,36 @@ class SgpProvider(StrEnum):
 
 # ════════ Clientes (PII encrypted) ════════
 
+class Canal(Base):
+    """F4 — Canal de WhatsApp (Suporte, Comercial, etc).
+
+    Mapeia uma instância Evolution a um conjunto de regras (prompt, horários,
+    fila de atendentes). Conversas são escopadas por canal: mesmo cliente em
+    Suporte e Comercial gera 2 conversas independentes.
+    """
+
+    __tablename__ = "canal"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    slug: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
+    nome: Mapped[str] = mapped_column(String(80), nullable=False)
+    evolution_instance: Mapped[str] = mapped_column(
+        String(80), nullable=False, unique=True
+    )
+    prompt_variant: Mapped[str] = mapped_column(
+        String(40), nullable=False, default="default", server_default="default"
+    )
+    ativo: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    horario_inicio: Mapped[time | None] = mapped_column(Time, nullable=True)
+    horario_fim: Mapped[time | None] = mapped_column(Time, nullable=True)
+    msg_fora_horario: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class Cliente(Base):
     __tablename__ = "clientes"
 
@@ -156,6 +187,9 @@ class Conversa(Base):
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
     cliente_id: Mapped[UUID | None] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("clientes.id", ondelete="SET NULL"), nullable=True
+    )
+    canal_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("canal.id", ondelete="RESTRICT"), nullable=True
     )
     whatsapp: Mapped[str] = mapped_column(String(64), nullable=False)
     estado: Mapped[ConversaEstado] = mapped_column(
