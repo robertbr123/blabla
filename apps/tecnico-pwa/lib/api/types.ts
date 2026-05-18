@@ -68,3 +68,36 @@ export interface EstoqueSaldo {
   tecnico_id: string
   linhas: EstoqueSaldoLinha[]
 }
+
+// F6+ — Estoque (visão técnico)
+export interface EstoqueItemInfo {
+  id: string
+  sku: string
+  nome: string
+  categoria: string
+  serializado: boolean
+  ativo: boolean
+  created_at: string
+}
+
+export interface EstoqueMovimento {
+  id: string
+  item_id: string
+  tecnico_id: string | null
+  tipo: 'entrada' | 'saida' | 'recolhido' | 'devolucao' | 'perda' | 'ajuste_positivo' | 'ajuste_negativo'
+  quantidade: number
+  serial: string | null
+  ordem_servico_id: string | null
+  observacao: string | null
+  criado_por: string
+  criado_em: string
+}
+
+export interface TecMovimentoCreate {
+  item_id: string
+  tipo: 'saida' | 'recolhido'
+  quantidade: number
+  serial?: string | null
+  ordem_servico_id?: string | null
+  observacao?: string | null
+}

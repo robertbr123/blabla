@@ -15,7 +15,8 @@ import {
 
 const TIPOS: { value: string; label: string; sinal: string }[] = [
   { value: 'entrada', label: 'Entrada (almoxarifado → técnico)', sinal: '+' },
-  { value: 'saida', label: 'Saída (entrega ao cliente / consumo)', sinal: '-' },
+  { value: 'saida', label: 'Saída (instalou no cliente / consumiu)', sinal: '-' },
+  { value: 'recolhido', label: 'Recolhido (cliente → técnico, ex: troca)', sinal: '+' },
   { value: 'devolucao', label: 'Devolução (técnico → almoxarifado)', sinal: '-' },
   { value: 'perda', label: 'Perda (extravio / dano)', sinal: '-' },
   { value: 'ajuste_positivo', label: 'Ajuste positivo (correção +)', sinal: '+' },
@@ -28,6 +29,7 @@ const schema = z
     tipo: z.enum([
       'entrada',
       'saida',
+      'recolhido',
       'devolucao',
       'perda',
       'ajuste_positivo',
@@ -40,8 +42,10 @@ const schema = z
   })
   .refine(
     (v) =>
+      // Entrada pode ir ao almoxarifado (tecnico null). Todos os outros tipos
+      // (incluindo `recolhido`) precisam de tecnico.
       v.tipo === 'entrada' || (v.tecnico_id && v.tecnico_id.length > 0),
-    { message: 'Técnico obrigatório para saída/devolução/perda/ajuste', path: ['tecnico_id'] },
+    { message: 'Técnico obrigatório para este tipo', path: ['tecnico_id'] },
   )
 
 type FormValues = z.infer<typeof schema>

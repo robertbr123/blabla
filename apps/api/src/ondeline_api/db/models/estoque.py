@@ -33,12 +33,13 @@ class ItemCategoria(StrEnum):
 class MovimentoTipo(StrEnum):
     """Sinal aplicado ao saldo do técnico:
 
-    entrada / ajuste_positivo → +quantidade
+    entrada / recolhido / ajuste_positivo → +quantidade
     saida / devolucao / perda / ajuste_negativo → -quantidade
     """
 
     ENTRADA = "entrada"          # almoxarifado → técnico
-    SAIDA = "saida"              # técnico → cliente (baixa por OS)
+    SAIDA = "saida"              # técnico → cliente (instalação)
+    RECOLHIDO = "recolhido"      # cliente → técnico (troca / retirada)
     DEVOLUCAO = "devolucao"      # técnico → almoxarifado
     PERDA = "perda"              # baixa sem destino
     AJUSTE_POSITIVO = "ajuste_positivo"
@@ -47,7 +48,11 @@ class MovimentoTipo(StrEnum):
 
 # Tipos que aumentam o saldo do técnico (signal +1).
 TIPOS_POSITIVOS: frozenset[str] = frozenset(
-    {MovimentoTipo.ENTRADA.value, MovimentoTipo.AJUSTE_POSITIVO.value}
+    {
+        MovimentoTipo.ENTRADA.value,
+        MovimentoTipo.RECOLHIDO.value,
+        MovimentoTipo.AJUSTE_POSITIVO.value,
+    }
 )
 
 
@@ -102,7 +107,8 @@ class EstoqueMovimento(Base):
     __table_args__ = (
         CheckConstraint("quantidade > 0", name="ck_estoque_quantidade_positiva"),
         CheckConstraint(
-            "tipo IN ('entrada','saida','devolucao','perda','ajuste_positivo','ajuste_negativo')",
+            "tipo IN ('entrada','saida','devolucao','perda',"
+            "'ajuste_positivo','ajuste_negativo','recolhido')",
             name="ck_estoque_tipo_enum",
         ),
         Index("ix_estoque_mov_tecnico_item", "tecnico_id", "item_id"),

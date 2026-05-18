@@ -5,6 +5,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -204,6 +205,52 @@ async def list_movimentos_self(
 ) -> list[MovimentoOut]:
     rows = await MovimentoRepo(session).list_by_tecnico(tec.id, limit=limit)
     return [MovimentoOut.model_validate(r) for r in rows]
+
+
+# F6+ — Tecnico registra movimento do PROPRIO estoque.
+# Tipos permitidos: `saida` (instalou no cliente) e `recolhido` (trouxe do
+# cliente). Outros tipos (entrada/devolucao/perda/ajustes) sao admin-only —
+# tecnico nao pode entregar pra si proprio nem mexer em ajustes contabeis.
+class TecMovimentoIn(BaseModel):
+    item_id: UUID
+    tipo: str = Field(pattern="^(saida|recolhido)$")
+    quantidade: int = Field(gt=0)
+    serial: str | None = Field(default=None, max_length=120)
+    ordem_servico_id: UUID | None = None
+    observacao: str | None = None
+
+
+@_tec_router.post(
+    "/movimentos",
+    response_model=MovimentoOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_role(Role.TECNICO))],
+)
+async def create_movimento_self(
+    body: TecMovimentoIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    tec: Annotated[Tecnico, Depends(current_tecnico)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> MovimentoOut:
+    try:
+        mov = await registrar_movimento(
+            session,
+            item_id=body.item_id,
+            tipo=body.tipo,
+            quantidade=body.quantidade,
+            criado_por=user.id,
+            tecnico_id=tec.id,  # SEMPRE o proprio tecnico
+            serial=body.serial,
+            ordem_servico_id=body.ordem_servico_id,
+            observacao=body.observacao,
+        )
+    except SaldoInsuficiente as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    except (ItemNaoExiste, SerialDuplicado) as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except EstoqueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return MovimentoOut.model_validate(mov)
 
 
 # Exporta os dois routers; main.py registra ambos.

@@ -10,6 +10,7 @@ _CATEGORIAS = ("onu", "roteador", "cabo", "conector", "outro")
 _TIPOS = (
     "entrada",
     "saida",
+    "recolhido",
     "devolucao",
     "perda",
     "ajuste_positivo",
@@ -47,7 +48,7 @@ class ItemUpdate(BaseModel):
 class MovimentoCreate(BaseModel):
     item_id: UUID
     tipo: str = Field(
-        pattern="^(entrada|saida|devolucao|perda|ajuste_positivo|ajuste_negativo)$"
+        pattern="^(entrada|saida|recolhido|devolucao|perda|ajuste_positivo|ajuste_negativo)$"
     )
     quantidade: int = Field(gt=0)
     tecnico_id: UUID | None = None

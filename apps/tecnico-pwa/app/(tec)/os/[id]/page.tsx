@@ -2,9 +2,9 @@
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { OsActionBar } from '@/components/os-action-bar'
 import { OsDetailView } from '@/components/os-detail-view'
+import { OsEstoquePanel } from '@/components/os-estoque-panel'
 import { useMyOsDetail } from '@/lib/api/queries'
 
 export default function OsPage() {
@@ -31,6 +31,7 @@ export default function OsPage() {
       {data && (
         <>
           <OsDetailView os={data} />
+          <OsEstoquePanel osId={data.id} />
           <OsActionBar os={data} />
         </>
       )}

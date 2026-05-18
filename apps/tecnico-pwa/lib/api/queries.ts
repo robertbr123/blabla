@@ -104,3 +104,35 @@ export function useMyEstoqueSaldo() {
     staleTime: 30_000,
   })
 }
+
+// F6+ — Catálogo (read-only) + criar movimento próprio
+export function useEstoqueCatalogo() {
+  return useQuery<import('./types').EstoqueItemInfo[]>({
+    queryKey: ['estoque-catalogo'],
+    queryFn: () => apiFetch('/api/v1/estoque/itens?ativos_only=true'),
+    staleTime: 60_000,
+  })
+}
+
+export function useMyEstoqueMovimentos(osId?: string) {
+  const qs = osId ? `?ordem_servico_id=${osId}` : ''
+  return useQuery<import('./types').EstoqueMovimento[]>({
+    queryKey: ['me-estoque-movimentos', osId ?? ''],
+    queryFn: () => apiFetch(`/api/v1/tecnico/me/estoque/movimentos${qs}`),
+  })
+}
+
+export function useCreateMyMovimento() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: import('./types').TecMovimentoCreate) =>
+      apiFetch<import('./types').EstoqueMovimento>(
+        '/api/v1/tecnico/me/estoque/movimentos',
+        { method: 'POST', body: JSON.stringify(body) },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['me-estoque-saldo'] })
+      qc.invalidateQueries({ queryKey: ['me-estoque-movimentos'] })
+    },
+  })
+}

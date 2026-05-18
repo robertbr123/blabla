@@ -258,3 +258,65 @@ async def test_item_repo_get_by_sku(db_session) -> None:
     found = await ItemRepo(db_session).get_by_sku("ONU-XPON-ZTE")
     assert found is not None
     assert found.nome == "ONU XPON ZTE"
+
+
+async def test_recolhido_aumenta_saldo_do_tecnico(db_session) -> None:
+    """F6+: tipo `recolhido` (cliente → técnico) é positivo e não exige saldo prévio."""
+    onu, _c, tec, admin = await _setup_basics(db_session)
+    # Tecnico recolhe ONU velha do cliente — saldo era 0, vai pra 1.
+    mov = await registrar_movimento(
+        db_session,
+        item_id=onu.id,
+        tipo="recolhido",
+        quantidade=1,
+        tecnico_id=tec.id,
+        criado_por=admin.id,
+        serial="OLD-SN-999",
+    )
+    assert mov.tipo == "recolhido"
+    saldo = await MovimentoRepo(db_session).saldo_por_tecnico_item(tec.id, onu.id)
+    assert saldo == 1
+
+
+async def test_fluxo_troca_de_equipamento(db_session) -> None:
+    """F6+: cenário troca — técnico instala ONU nova (saida) e recolhe velha (recolhido).
+
+    Saldo final: ONU=0 (vendeu uma, ganhou outra de volta).
+    """
+    onu, _c, tec, admin = await _setup_basics(db_session)
+    # Entrada: técnico recebe 1 ONU nova do almoxarifado
+    await registrar_movimento(
+        db_session,
+        item_id=onu.id,
+        tipo="entrada",
+        quantidade=1,
+        tecnico_id=tec.id,
+        criado_por=admin.id,
+        serial="NEW-SN-001",
+    )
+    assert await MovimentoRepo(db_session).saldo_por_tecnico_item(tec.id, onu.id) == 1
+
+    # Instala a nova no cliente (saida) + recolhe a velha (recolhido)
+    await registrar_movimento(
+        db_session,
+        item_id=onu.id,
+        tipo="saida",
+        quantidade=1,
+        tecnico_id=tec.id,
+        criado_por=admin.id,
+        serial="NEW-SN-001",
+    )
+    await registrar_movimento(
+        db_session,
+        item_id=onu.id,
+        tipo="recolhido",
+        quantidade=1,
+        tecnico_id=tec.id,
+        criado_por=admin.id,
+        serial="OLD-SN-999",
+    )
+    # Saldo final: -1 (saida) + 1 (recolhido) + 1 (entrada inicial) = 1, mas
+    # subtraindo saida = 1 - 1 + 1 = 1. Wait let me redo: começo 0, +1 entrada,
+    # -1 saida, +1 recolhido = 1.
+    final = await MovimentoRepo(db_session).saldo_por_tecnico_item(tec.id, onu.id)
+    assert final == 1
