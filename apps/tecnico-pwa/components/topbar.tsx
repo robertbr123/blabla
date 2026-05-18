@@ -1,6 +1,7 @@
 'use client'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { LogOut, Wrench } from 'lucide-react'
+import { Boxes, LogOut, Wrench } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { logout } from '@/lib/auth'
 
@@ -15,12 +16,19 @@ export function Topbar({ name }: { name: string }) {
   }
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-card px-4">
-      <div className="flex items-center gap-2">
+      <Link href="/" className="flex items-center gap-2">
         <Wrench className="h-5 w-5" />
         <span className="font-semibold">BlaBla Téc</span>
-      </div>
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-muted-foreground truncate max-w-[120px]">{name}</span>
+      </Link>
+      <div className="flex items-center gap-2">
+        <Link
+          href="/estoque"
+          aria-label="Meu estoque"
+          className="rounded-md p-2 hover:bg-muted"
+        >
+          <Boxes className="h-4 w-4" />
+        </Link>
+        <span className="text-sm text-muted-foreground truncate max-w-[100px]">{name}</span>
         <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Sair">
           <LogOut className="h-4 w-4" />
         </Button>

@@ -316,3 +316,41 @@ export interface CanalOut {
   msg_fora_horario: string | null
   created_at: string
 }
+
+// Estoque (F6)
+export interface EstoqueItem {
+  id: string
+  sku: string
+  nome: string
+  categoria: 'onu' | 'roteador' | 'cabo' | 'conector' | 'outro'
+  serializado: boolean
+  ativo: boolean
+  created_at: string
+}
+
+export interface EstoqueMovimento {
+  id: string
+  item_id: string
+  tecnico_id: string | null
+  tipo: 'entrada' | 'saida' | 'devolucao' | 'perda' | 'ajuste_positivo' | 'ajuste_negativo'
+  quantidade: number
+  serial: string | null
+  ordem_servico_id: string | null
+  observacao: string | null
+  criado_por: string
+  criado_em: string
+}
+
+export interface EstoqueSaldoLinha {
+  item_id: string
+  sku: string
+  nome: string
+  categoria: string
+  serializado: boolean
+  saldo: number
+}
+
+export interface EstoqueSaldo {
+  tecnico_id: string
+  linhas: EstoqueSaldoLinha[]
+}

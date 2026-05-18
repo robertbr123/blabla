@@ -65,6 +65,23 @@ export function useCanais() {
   })
 }
 
+// F6 — Estoque
+export function useEstoqueItens(ativosOnly = false) {
+  return useQuery<import('./types').EstoqueItem[]>({
+    queryKey: ['estoque-itens', ativosOnly],
+    queryFn: () => apiFetch(`/api/v1/estoque/itens${ativosOnly ? '?ativos_only=true' : ''}`),
+    staleTime: 30_000,
+  })
+}
+
+export function useEstoqueSaldo(tecnicoId: string | null) {
+  return useQuery<import('./types').EstoqueSaldo>({
+    queryKey: ['estoque-saldo', tecnicoId],
+    queryFn: () => apiFetch(`/api/v1/estoque/saldo?tecnico_id=${tecnicoId}`),
+    enabled: !!tecnicoId,
+  })
+}
+
 export function useConversa(id: string) {
   return useQuery<ConversaDetail>({
     queryKey: ['conversa', id],

@@ -95,3 +95,12 @@ export function useUploadFotoMy(id: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['my-os-detail', id] }),
   })
 }
+
+// F6 — Meu estoque
+export function useMyEstoqueSaldo() {
+  return useQuery<import('./types').EstoqueSaldo>({
+    queryKey: ['me-estoque-saldo'],
+    queryFn: () => apiFetch('/api/v1/tecnico/me/estoque/saldo'),
+    staleTime: 30_000,
+  })
+}

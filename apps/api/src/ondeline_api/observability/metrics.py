@@ -62,6 +62,13 @@ pix_qr_source_total = _counter_labeled(
     ["fonte"],
 )
 
+# F6 — Estoque do técnico
+estoque_movimento_total = _counter_labeled(
+    "ondeline_estoque_movimento_total",
+    "Movimentos de estoque registrados, por tipo.",
+    ["tipo"],
+)
+
 # Default collectors (process_cpu_seconds_total, python_info, etc.).
 # Registrados uma unica vez no import do modulo (Python cacheia o import).
 ProcessCollector(registry=REGISTRY)

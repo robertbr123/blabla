@@ -18,6 +18,7 @@ from ondeline_api.api import webhook as webhook_router
 from ondeline_api.api.v1 import canais as v1_canais
 from ondeline_api.api.v1 import clientes as v1_clientes
 from ondeline_api.api.v1 import config as v1_config
+from ondeline_api.api.v1 import estoque as v1_estoque
 from ondeline_api.api.v1 import conversas as v1_conversas
 from ondeline_api.api.v1 import conversas_stream as v1_conversas_stream
 from ondeline_api.api.v1 import leads as v1_leads
@@ -123,6 +124,8 @@ def create_app() -> FastAPI:
     app.include_router(v1_planos.router)
     app.include_router(v1_canais.router)
     app.include_router(v1_prompts.router)
+    app.include_router(v1_estoque.router)
+    app.include_router(v1_estoque.tecnico_estoque_router)
     return app
 
 

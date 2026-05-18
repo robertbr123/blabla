@@ -53,3 +53,18 @@ export interface GpsUpdate {
   lat: number
   lng: number
 }
+
+// Estoque (F6)
+export interface EstoqueSaldoLinha {
+  item_id: string
+  sku: string
+  nome: string
+  categoria: string
+  serializado: boolean
+  saldo: number
+}
+
+export interface EstoqueSaldo {
+  tecnico_id: string
+  linhas: EstoqueSaldoLinha[]
+}
