@@ -158,6 +158,66 @@ async def process_inbound_message(
             conversa_id=conversa.id, persisted=False, duplicate=True, escalated=False
         )
 
+    # F2 — opt-out de cobrança via WhatsApp.
+    # Cliente responde "PARAR" / "SAIR" / "VOLTAR" / "RECEBER" pra
+    # desligar/religar lembretes. So funciona se a conversa ja esta vinculada
+    # a um Cliente identificado.
+    if (
+        evt.kind is InboundKind.TEXT
+        and evt.text
+        and deps.session is not None
+        and conversa.cliente_id is not None
+    ):
+        cmd = (evt.text or "").strip().upper()
+        if cmd in ("PARAR", "SAIR", "PARA", "STOP"):
+            from sqlalchemy import select as _sa_select
+
+            from ondeline_api.db.models.business import Cliente as _Cliente
+            from ondeline_api.observability.metrics import cobranca_optout_total
+
+            cli = (
+                await deps.session.execute(
+                    _sa_select(_Cliente).where(_Cliente.id == conversa.cliente_id)
+                )
+            ).scalar_one_or_none()
+            if cli is not None and not cli.cobranca_optout:
+                cli.cobranca_optout = True
+                cli.cobranca_optout_at = datetime.now(tz=UTC)
+                await deps.session.flush()
+                cobranca_optout_total.inc()
+            deps.outbound.enqueue_send_outbound(
+                evt.jid,
+                "Ok, não enviaremos mais lembretes de cobrança. "
+                "Para voltar a receber, responda *VOLTAR* a qualquer momento. "
+                "Se quiser falar com a gente, é só mandar mensagem aqui mesmo.",
+                conversa.id,
+            )
+            return InboundResult(
+                conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
+            )
+        if cmd in ("VOLTAR", "RECEBER", "ATIVAR"):
+            from sqlalchemy import select as _sa_select
+
+            from ondeline_api.db.models.business import Cliente as _Cliente
+
+            cli = (
+                await deps.session.execute(
+                    _sa_select(_Cliente).where(_Cliente.id == conversa.cliente_id)
+                )
+            ).scalar_one_or_none()
+            if cli is not None and cli.cobranca_optout:
+                cli.cobranca_optout = False
+                cli.cobranca_optout_at = None
+                await deps.session.flush()
+            deps.outbound.enqueue_send_outbound(
+                evt.jid,
+                "Pronto! Voltamos a enviar lembretes de cobrança. 👍",
+                conversa.id,
+            )
+            return InboundResult(
+                conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
+            )
+
     # Detecção de comando CONCLUIR OS-* (técnico finaliza OS via WhatsApp).
     # Roda antes da verificação de bot.ativo para que técnicos sempre consigam concluir.
     if (

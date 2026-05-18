@@ -39,4 +39,10 @@ BEAT_SCHEDULE: dict[str, dict[str, Any]] = {
         "task": "ondeline_api.workers.partition_jobs.ensure_future_mensagens_partitions",
         "schedule": crontab(hour=2, minute=30),
     },
+    # F2 — Régua de cobrança automática.
+    # Beat usa o timezone configurado no Celery (America/Sao_Paulo).
+    "cobranca-regua": {
+        "task": "ondeline_api.workers.cobranca_jobs.run_regua_cobranca",
+        "schedule": crontab(hour=9, minute=0),
+    },
 }

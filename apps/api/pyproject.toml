@@ -38,6 +38,7 @@ dependencies = [
     "opentelemetry-instrumentation-httpx>=0.50b0",
     "opentelemetry-instrumentation-sqlalchemy>=0.50b0",
     "opentelemetry-instrumentation-redis>=0.50b0",
+    "qrcode[pil]>=7.4.0",
 ]
 
 [project.optional-dependencies]
@@ -83,6 +84,10 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["weasyprint", "weasyprint.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["qrcode", "qrcode.*"]
 ignore_missing_imports = true
 
 [tool.pydantic-mypy]

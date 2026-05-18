@@ -6,13 +6,14 @@ fica em __table_args__ para o autogenerate gerar a clausula PARTITION BY.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     Enum,
     Float,
@@ -23,6 +24,7 @@ from sqlalchemy import (
     SmallInteger,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -122,6 +124,12 @@ class Cliente(Base):
         DateTime(timezone=True), nullable=True
     )
     deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    cobranca_optout: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    cobranca_optout_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 
@@ -476,4 +484,34 @@ class Config(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+
+class CobrancaLembrete(Base):
+    """F2 — Registro de lembrete de cobrança enviado.
+
+    UNIQUE(cliente_id, fatura_id, gatilho) garante idempotência: o mesmo
+    gatilho nunca dispara duas vezes para a mesma fatura.
+    """
+
+    __tablename__ = "cobranca_lembrete"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    cliente_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("clientes.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    fatura_id: Mapped[str] = mapped_column(String(80), nullable=False)
+    gatilho: Mapped[str] = mapped_column(String(8), nullable=False)
+    vencimento: Mapped[date] = mapped_column(Date, nullable=False)
+    enviado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "cliente_id", "fatura_id", "gatilho", name="uq_cobranca_lembrete"
+        ),
+        Index("ix_cobranca_lembrete_cliente", "cliente_id", "enviado_em"),
     )

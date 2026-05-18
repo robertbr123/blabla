@@ -219,8 +219,20 @@ async def enviar_boleto(
             )
             enviados += 1
             vencimentos.append(t.vencimento)
-        if t.codigo_pix:
-            await ctx.evolution.send_text(ctx.conversa.whatsapp, t.codigo_pix)
+        # F3 — envia QR Pix + copia-e-cola (best-effort).
+        # Usa codigo_pix do SGP se houver; senao gera BR Code proprio com chave Pix configurada.
+        # ToolContext nao expoe Redis hoje — QR roda sem cache (renderiza por chamada, ~50ms).
+        from ondeline_api.services.pix_qr import enviar_pix_qr_best_effort
+
+        await enviar_pix_qr_best_effort(
+            evolution=ctx.evolution,
+            redis=None,
+            jid=ctx.conversa.whatsapp,
+            codigo_pix_sgp=t.codigo_pix,
+            valor=t.valor,
+            fatura_id=t.id,
+            session=ctx.session,
+        )
 
     await ctx.sgp_cache.invalidate(cpf_clean)
     return {"ok": True, "enviados": enviados, "vencimentos": vencimentos}

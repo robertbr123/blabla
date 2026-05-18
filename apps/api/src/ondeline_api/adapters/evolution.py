@@ -66,6 +66,30 @@ class EvolutionAdapter:
         }
         return await self._post(f"/message/sendMedia/{self._instance}", payload)
 
+    async def send_media_bytes(
+        self,
+        jid: str,
+        *,
+        data: bytes,
+        mediatype: str,
+        mimetype: str,
+        file_name: str,
+        caption: str = "",
+    ) -> dict[str, Any]:
+        """Envia media inline (base64). Util pra QR Pix gerado localmente."""
+        import base64
+
+        b64 = base64.b64encode(data).decode("ascii")
+        payload = {
+            "number": jid,
+            "mediatype": mediatype,
+            "mimetype": mimetype,
+            "media": b64,
+            "fileName": file_name,
+            "caption": caption,
+        }
+        return await self._post(f"/message/sendMedia/{self._instance}", payload)
+
     # ── internal ──────────────────────────────────────────────
 
     async def _post(self, path: str, json: dict[str, Any]) -> dict[str, Any]:
