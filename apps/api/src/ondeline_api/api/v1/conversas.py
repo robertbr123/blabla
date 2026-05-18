@@ -62,7 +62,12 @@ async def list_conversas(
         cursor=parse_cursor(cursor),
         limit=parse_limit(limit),
     )
-    items = [ConversaListItem.model_validate(c) for c in rows]
+    items = []
+    for conversa, nome_encrypted in rows:
+        item = ConversaListItem.model_validate(conversa)
+        if nome_encrypted:
+            item.cliente_nome = decrypt_pii(nome_encrypted)
+        items.append(item)
     return CursorPage[ConversaListItem](
         items=items, next_cursor=encode_cursor(next_cur) if next_cur else None
     )

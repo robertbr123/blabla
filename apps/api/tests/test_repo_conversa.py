@@ -65,3 +65,41 @@ async def test_link_cliente(db_session) -> None:
     await repo.set_cliente(c, cliente.id)
     refetched = await repo.get_or_create_by_whatsapp("5511555@s.whatsapp.net")
     assert refetched.cliente_id == cliente.id
+
+
+async def test_list_paginated_returns_nome_encrypted_when_cliente_linked(
+    db_session,
+) -> None:
+    """F0: lista de conversas devolve nome do cliente (Fernet) quando vinculado."""
+    from ondeline_api.db.crypto import decrypt_pii
+
+    cliente = Cliente(
+        cpf_cnpj_encrypted=encrypt_pii("22233344455"),
+        cpf_hash=hash_pii("22233344455"),
+        nome_encrypted=encrypt_pii("João Silva"),
+        whatsapp="5511444@s.whatsapp.net",
+    )
+    db_session.add(cliente)
+    await db_session.flush()
+
+    repo = ConversaRepo(db_session)
+    c = await repo.get_or_create_by_whatsapp("5511444@s.whatsapp.net")
+    await repo.set_cliente(c, cliente.id)
+
+    rows, _ = await repo.list_paginated(q="5511444")
+    assert len(rows) == 1
+    conv, nome_enc = rows[0]
+    assert conv.id == c.id
+    assert nome_enc is not None
+    assert decrypt_pii(nome_enc) == "João Silva"
+
+
+async def test_list_paginated_returns_none_nome_when_no_cliente(db_session) -> None:
+    """F0: conversa sem cliente vinculado devolve nome_encrypted=None."""
+    repo = ConversaRepo(db_session)
+    await repo.get_or_create_by_whatsapp("5511333@s.whatsapp.net")
+
+    rows, _ = await repo.list_paginated(q="5511333")
+    assert len(rows) == 1
+    _conv, nome_enc = rows[0]
+    assert nome_enc is None

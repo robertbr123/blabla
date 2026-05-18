@@ -26,6 +26,7 @@ class ConversaListItem(BaseModel):
     estado: str
     status: str
     cliente_id: UUID | None
+    cliente_nome: str | None = None
     atendente_id: UUID | None
     created_at: datetime
     last_message_at: datetime | None

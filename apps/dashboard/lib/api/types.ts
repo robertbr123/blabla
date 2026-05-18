@@ -9,6 +9,7 @@ export interface ConversaListItem {
   estado: string
   status: string
   cliente_id: string | null
+  cliente_nome: string | null
   atendente_id: string | null
   created_at: string
   last_message_at: string | null

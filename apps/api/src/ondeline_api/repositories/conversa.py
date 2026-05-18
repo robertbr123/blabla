@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.db.models.business import (
+    Cliente,
     Conversa,
     ConversaEstado,
     ConversaStatus,
@@ -68,11 +69,19 @@ class ConversaRepo:
         q: str | None = None,
         cursor: datetime | None = None,
         limit: int = 50,
-    ) -> tuple[list[Conversa], datetime | None]:
-        """List open conversas, newest first by last_message_at (or created_at)."""
+    ) -> tuple[list[tuple[Conversa, str | None]], datetime | None]:
+        """List open conversas, newest first by last_message_at (or created_at).
+
+        Returns tuples ``(conversa, nome_encrypted)`` — the caller decrypts.
+        Single LEFT JOIN avoids N+1 when rendering the dashboard list.
+        """
         from sqlalchemy import case, desc
 
-        stmt = select(Conversa).where(Conversa.deleted_at.is_(None))
+        stmt = (
+            select(Conversa, Cliente.nome_encrypted)
+            .outerjoin(Cliente, Cliente.id == Conversa.cliente_id)
+            .where(Conversa.deleted_at.is_(None))
+        )
         if status:
             stmt = stmt.where(Conversa.status == status)
         if q:
@@ -85,14 +94,14 @@ class ConversaRepo:
         if cursor is not None:
             stmt = stmt.where(order_col < cursor)
         stmt = stmt.order_by(desc(order_col)).limit(limit + 1)
-        rows = list((await self._session.execute(stmt)).scalars().all())
+        rows = list((await self._session.execute(stmt)).all())
         if len(rows) > limit:
-            next_item = rows[limit]
+            next_item = rows[limit][0]
             next_cursor = next_item.last_message_at or next_item.created_at
             rows = rows[:limit]
         else:
             next_cursor = None
-        return rows, next_cursor
+        return [(row[0], row[1]) for row in rows], next_cursor
 
     async def get_by_id(self, conversa_id: UUID) -> Conversa | None:
         stmt = select(Conversa).where(

@@ -77,6 +77,25 @@ const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 
   encerrada: 'outline',
 }
 
+/** Formata "5511987654321@s.whatsapp.net" -> "(11) 9 8765-4321". */
+function formatWhatsappBr(jid: string): string {
+  const digits = jid.replace(/\D/g, '')
+  // tira código país BR (55) se presente
+  const local = digits.startsWith('55') && digits.length >= 12 ? digits.slice(2) : digits
+  if (local.length === 11) {
+    return `(${local.slice(0, 2)}) ${local.slice(2, 3)} ${local.slice(3, 7)}-${local.slice(7)}`
+  }
+  if (local.length === 10) {
+    return `(${local.slice(0, 2)}) ${local.slice(2, 6)}-${local.slice(6)}`
+  }
+  return jid
+}
+
+/** Trunca nome longo pra caber na lista. */
+function truncate(s: string, max = 24): string {
+  return s.length > max ? `${s.slice(0, max - 1)}…` : s
+}
+
 export function ConversaList() {
   const [status, setStatus] = useState('')
   const [q, setQ] = useState('')
@@ -127,7 +146,7 @@ export function ConversaList() {
           <table className="w-full text-sm">
             <thead className="border-b text-left text-xs uppercase text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">WhatsApp</th>
+                <th className="px-4 py-3">Cliente</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Estado</th>
                 <th className="px-4 py-3">Última msg</th>
@@ -143,12 +162,24 @@ export function ConversaList() {
                   </td>
                 </tr>
               )}
-              {data.items.map((c) => (
+              {data.items.map((c) => {
+                const telefone = formatWhatsappBr(c.whatsapp)
+                const tituloFull = c.cliente_nome ?? telefone
+                const titulo = truncate(tituloFull)
+                const subtitulo = c.cliente_nome ? telefone : null
+                return (
                 <tr key={c.id} className="border-b last:border-b-0 hover:bg-muted/50">
                   <td className="px-4 py-3">
-                    <Link href={`/conversas/${c.id}`} className="font-medium hover:underline">
-                      {c.whatsapp}
+                    <Link
+                      href={`/conversas/${c.id}`}
+                      className="font-medium hover:underline"
+                      title={tituloFull}
+                    >
+                      {titulo}
                     </Link>
+                    {subtitulo && (
+                      <div className="text-xs text-muted-foreground">{subtitulo}</div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant={STATUS_VARIANTS[c.status] ?? 'outline'}>
@@ -175,7 +206,8 @@ export function ConversaList() {
                     <ConversaRowActions c={c} onAbrirOs={setAbrirOsConversaId} />
                   </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>
