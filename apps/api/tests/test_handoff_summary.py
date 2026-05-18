@@ -110,7 +110,7 @@ async def test_gerar_resumo_llm_falha_nao_quebra(db_session) -> None:
     await _add_cliente_msg(db_session, c.id, "oi")
 
     class _BrokenProvider(FakeLLMProvider):
-        async def chat(self, req):  # type: ignore[override]
+        async def chat(self, req):
             raise RuntimeError("hermes offline")
 
     broken = _BrokenProvider([])
