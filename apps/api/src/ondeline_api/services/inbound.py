@@ -74,6 +74,13 @@ class _OutboundQueueProto(Protocol):
     def enqueue_llm_turn(self, conversa_id: UUID) -> None: ...
     def enqueue_followup_os(self, conversa_id: UUID, resultado: str, resposta: str) -> None: ...
     def enqueue_handoff_summary(self, conversa_id: UUID) -> None: ...
+    def enqueue_asr(
+        self,
+        *,
+        mensagem_id: UUID,
+        conversa_id: UUID,
+        message_key: dict[str, Any] | None = None,
+    ) -> None: ...
 
 
 @dataclass
@@ -127,6 +134,14 @@ def _to_fsm_event(kind: InboundKind, text: str | None) -> Event:
     if kind is InboundKind.TEXT:
         return Event(kind=EventKind.MSG_CLIENTE_TEXT, text=text)
     return Event(kind=EventKind.MSG_CLIENTE_MEDIA, text=text)
+
+
+def _extract_audio_seconds(evt: InboundEvent) -> int | None:
+    """Tenta extrair duracao do audioMessage. Hoje o parser nao expoe isso —
+    quando expusermos no InboundEvent, este helper passa a devolver o valor.
+    Por enquanto sempre None (sem limite no inbound; ASR worker valida tamanho)."""
+    # Atributo opcional no evento; ausente no schema atual → None.
+    return getattr(evt, "audio_seconds", None)
 
 
 async def process_inbound_message(
@@ -453,8 +468,83 @@ async def process_inbound_message(
             await deps.conversas.add_tag(conversa, tag)
 
         if category is MediaCategory.AUDIO:
-            # Nao escala — apenas avisa cliente e continua no estado atual
-            deps.outbound.enqueue_send_outbound(evt.jid, ack, conversa.id)
+            # F7 — transcricao via OpenAI Whisper.
+            # 1) Aviso LGPD na primeira vez que esse cliente manda audio.
+            # 2) ACK imediato ("ouvindo seu audio").
+            # 3) Enfileira task na fila `asr` que baixa o audio, transcreve,
+            #    persiste em mensagens.transcricao_* e dispara llm_turn.
+            from ondeline_api.config import get_settings as _gs
+
+            _settings = _gs()
+            if not _settings.openai_api_key:
+                # Sem chave configurada → fallback antigo (so ACK, sem transcricao).
+                deps.outbound.enqueue_send_outbound(evt.jid, ack, conversa.id)
+                return InboundResult(
+                    conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
+                )
+
+            # Limite de duração: audios > openai_asr_max_seconds são pulados.
+            # A Evolution payload normalmente traz `seconds` no audioMessage.
+            audio_seconds = _extract_audio_seconds(evt)
+            if (
+                audio_seconds is not None
+                and audio_seconds > _settings.openai_asr_max_seconds
+            ):
+                deps.outbound.enqueue_send_outbound(
+                    evt.jid,
+                    "Recebi seu áudio, mas ele é longo demais pra transcrição "
+                    "automática. Pode me resumir por texto? 🙏",
+                    conversa.id,
+                )
+                msg.transcricao_status = "skipped"
+                from ondeline_api.observability.metrics import (
+                    asr_skipped_total,
+                )
+
+                asr_skipped_total.labels(motivo="limite_duracao").inc()
+                return InboundResult(
+                    conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
+                )
+
+            # Aviso LGPD (1x por cliente identificado).
+            if (
+                conversa.cliente_id is not None
+                and deps.session is not None
+            ):
+                from sqlalchemy import select as _sel
+
+                from ondeline_api.db.models.business import Cliente as _Cli
+
+                cli = (
+                    await deps.session.execute(
+                        _sel(_Cli).where(_Cli.id == conversa.cliente_id)
+                    )
+                ).scalar_one_or_none()
+                if cli is not None and cli.asr_aviso_enviado_at is None:
+                    deps.outbound.enqueue_send_outbound(
+                        evt.jid,
+                        "_(Aviso: usamos transcrição automática pra te atender "
+                        "mais rápido. Seu áudio é processado pela OpenAI e "
+                        "descartado em seguida. Se preferir, escreva por texto.)_",
+                        conversa.id,
+                    )
+                    cli.asr_aviso_enviado_at = datetime.now(tz=UTC)
+                    await deps.session.flush()
+
+            # ACK imediato + marca mensagem como pending + enfileira ASR.
+            deps.outbound.enqueue_send_outbound(
+                evt.jid, "🎧 Recebi seu áudio, vou ouvir e já respondo.", conversa.id
+            )
+            msg.transcricao_status = "pending"
+            deps.outbound.enqueue_asr(
+                mensagem_id=msg.id,
+                conversa_id=conversa.id,
+                message_key={
+                    "id": evt.external_id,
+                    "remoteJid": evt.jid,
+                    "fromMe": False,
+                },
+            )
             return InboundResult(
                 conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
             )

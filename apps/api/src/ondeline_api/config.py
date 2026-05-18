@@ -85,6 +85,14 @@ class Settings(BaseSettings):
     llm_max_tokens_per_conversa_dia: int = 50_000
     llm_history_turns: int = 12  # ultimas N mensagens incluidas no prompt
 
+    # F7 — OpenAI Whisper API (ASR de audios entrantes).
+    openai_asr_url: str = "https://api.openai.com/v1/audio/transcriptions"
+    openai_asr_model: str = "whisper-1"
+    openai_asr_max_seconds: int = 120  # audios > este limite sao recusados
+    openai_asr_max_bytes: int = 25 * 1024 * 1024  # 25MB (limite OpenAI)
+    openai_asr_timeout_seconds: float = 30.0
+    openai_asr_language: str = "pt"
+
     # SGP cache TTL (segundos)
     sgp_cache_ttl_cliente: int = 3600
     sgp_cache_ttl_faturas: int = 300

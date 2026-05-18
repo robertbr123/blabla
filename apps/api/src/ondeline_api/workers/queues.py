@@ -15,5 +15,5 @@ The drift-catch test asserts the compose files' `-Q` CSV matches QUEUES.
 """
 from __future__ import annotations
 
-QUEUES: tuple[str, ...] = ("default", "llm", "sgp", "notifications")
+QUEUES: tuple[str, ...] = ("default", "llm", "sgp", "notifications", "asr")
 DEFAULT_QUEUE: str = "default"

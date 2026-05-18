@@ -69,6 +69,22 @@ estoque_movimento_total = _counter_labeled(
     ["tipo"],
 )
 
+# F7 — Bot por voz (OpenAI Whisper)
+asr_audio_total = _counter(
+    "ondeline_asr_audio_total",
+    "Audios transcritos com sucesso pela OpenAI Whisper API.",
+)
+asr_failure_total = _counter_labeled(
+    "ondeline_asr_failure_total",
+    "Falhas na transcricao por motivo (openai|evolution|limite|sem_key).",
+    ["motivo"],
+)
+asr_skipped_total = _counter_labeled(
+    "ondeline_asr_skipped_total",
+    "Audios pulados pelo pipeline (limite_duracao|sem_key|outro).",
+    ["motivo"],
+)
+
 # Default collectors (process_cpu_seconds_total, python_info, etc.).
 # Registrados uma unica vez no import do modulo (Python cacheia o import).
 ProcessCollector(registry=REGISTRY)

@@ -64,7 +64,7 @@ services:
       context: ../apps/api
       dockerfile: Dockerfile
     container_name: blabla-worker
-    command: ["celery", "-A", "ondeline_api.workers.celery_app:celery_app", "worker", "-Q", "default,llm,sgp,notifications", "--concurrency=4", "--loglevel=info"]
+    command: ["celery", "-A", "ondeline_api.workers.celery_app:celery_app", "worker", "-Q", "default,llm,sgp,notifications,asr", "--concurrency=4", "--loglevel=info"]
     environment:
       ENV: development
       LOG_LEVEL: INFO

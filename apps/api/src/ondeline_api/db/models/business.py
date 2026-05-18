@@ -163,6 +163,10 @@ class Cliente(Base):
     cobranca_optout_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # F7 — quando o aviso LGPD de transcricao de audio foi enviado a esse cliente.
+    asr_aviso_enviado_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     __table_args__ = (
         Index(
@@ -265,6 +269,9 @@ class Mensagem(Base):
     content_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
     media_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     media_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # F7 — transcricao de audio via OpenAI Whisper.
+    transcricao_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    transcricao_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
     llm_tokens_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
     llm_tools_called: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     extra_metadata: Mapped[dict[str, Any] | None] = mapped_column(

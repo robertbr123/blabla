@@ -57,7 +57,7 @@ services:
   worker:
     image: ghcr.io/${GHCR_OWNER}/blabla-api:latest
     container_name: blabla-worker
-    command: ["celery", "-A", "ondeline_api.workers.celery_app:celery_app", "worker", "-Q", "default,llm,sgp,notifications", "--concurrency=4", "--loglevel=info"]
+    command: ["celery", "-A", "ondeline_api.workers.celery_app:celery_app", "worker", "-Q", "default,llm,sgp,notifications,asr", "--concurrency=4", "--loglevel=info"]
     env_file:
       - .env
     depends_on:

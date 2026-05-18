@@ -90,6 +90,35 @@ class EvolutionAdapter:
         }
         return await self._post(f"/message/sendMedia/{self._instance}", payload)
 
+    async def get_media_base64(
+        self, *, message_key: dict[str, Any], convert_to_mp4: bool = False
+    ) -> tuple[bytes, str]:
+        """Busca o binario de uma mensagem (audio/imagem/video) na Evolution.
+
+        Endpoint: POST /chat/getBase64FromMediaMessage/{instance}
+        Body: {"message": {"key": {...}}, "convertToMp4": bool}
+
+        Retorna ``(bytes, mimetype)``. Levanta ``EvolutionError`` em falha.
+        """
+        import base64
+
+        body: dict[str, Any] = {
+            "message": {"key": message_key},
+            "convertToMp4": convert_to_mp4,
+        }
+        resp = await self._post(
+            f"/chat/getBase64FromMediaMessage/{self._instance}", body
+        )
+        b64 = resp.get("base64") or resp.get("data") or ""
+        mime = resp.get("mimetype") or resp.get("mediaType") or "audio/ogg"
+        if not b64 or not isinstance(b64, str):
+            raise EvolutionError("getBase64FromMediaMessage: campo 'base64' vazio")
+        try:
+            audio_bytes = base64.b64decode(b64)
+        except Exception as e:
+            raise EvolutionError(f"base64 decode falhou: {e}") from e
+        return audio_bytes, str(mime)
+
     # ── internal ──────────────────────────────────────────────
 
     async def _post(self, path: str, json: dict[str, Any]) -> dict[str, Any]:

@@ -37,6 +37,7 @@ def create_celery_app() -> Celery:
             "ondeline_api.workers.followup",
             "ondeline_api.workers.handoff_summary_task",
             "ondeline_api.workers.cobranca_jobs",
+            "ondeline_api.workers.asr_jobs",
         ],
     )
     app.conf.update(
@@ -56,6 +57,9 @@ def create_celery_app() -> Celery:
             },
             "ondeline_api.workers.cobranca_jobs.run_regua_cobranca": {
                 "queue": "notifications"
+            },
+            "ondeline_api.workers.asr_jobs.transcrever_audio_task": {
+                "queue": "asr"
             },
             "ondeline_api.workers.notify_jobs.run_planner_jobs": {"queue": "notifications"},
             "ondeline_api.workers.notify_jobs.followup_os_job": {"queue": "notifications"},
