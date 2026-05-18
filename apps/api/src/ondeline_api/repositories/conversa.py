@@ -73,15 +73,13 @@ class ConversaRepo:
         """List open conversas, newest first by last_message_at (or created_at).
 
         Returns tuples ``(conversa, nome_encrypted)`` — the caller decrypts.
-        Single LEFT JOIN avoids N+1 when rendering the dashboard list.
+        Implementado com 2 queries (conversas + clientes IN ids) ao inves de
+        JOIN para evitar ambiguidade de FROM no SQLAlchemy. O segundo SELECT
+        traz no maximo ``limit`` ids unicos, custo desprezivel.
         """
         from sqlalchemy import case, desc
 
-        stmt = (
-            select(Conversa, Cliente.nome_encrypted)
-            .outerjoin(Cliente, Cliente.id == Conversa.cliente_id)
-            .where(Conversa.deleted_at.is_(None))
-        )
+        stmt = select(Conversa).where(Conversa.deleted_at.is_(None))
         if status:
             stmt = stmt.where(Conversa.status == status)
         if q:
@@ -94,14 +92,27 @@ class ConversaRepo:
         if cursor is not None:
             stmt = stmt.where(order_col < cursor)
         stmt = stmt.order_by(desc(order_col)).limit(limit + 1)
-        rows = list((await self._session.execute(stmt)).all())
-        if len(rows) > limit:
-            next_item = rows[limit][0]
+        conversas = list((await self._session.execute(stmt)).scalars().all())
+        if len(conversas) > limit:
+            next_item = conversas[limit]
             next_cursor = next_item.last_message_at or next_item.created_at
-            rows = rows[:limit]
+            conversas = conversas[:limit]
         else:
             next_cursor = None
-        return [(row[0], row[1]) for row in rows], next_cursor
+
+        cliente_ids = {c.cliente_id for c in conversas if c.cliente_id is not None}
+        nomes: dict[UUID, str | None] = {}
+        if cliente_ids:
+            cstmt = select(Cliente.id, Cliente.nome_encrypted).where(
+                Cliente.id.in_(cliente_ids)
+            )
+            for cid, nome_enc in (await self._session.execute(cstmt)).all():
+                nomes[cid] = nome_enc
+
+        return [
+            (c, nomes.get(c.cliente_id) if c.cliente_id is not None else None)
+            for c in conversas
+        ], next_cursor
 
     async def get_by_id(self, conversa_id: UUID) -> Conversa | None:
         stmt = select(Conversa).where(
