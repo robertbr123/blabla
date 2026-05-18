@@ -54,10 +54,11 @@ cobranca_optout_total = _counter(
     "ondeline_cobranca_optout_total", "Clientes que optaram por nao receber lembretes"
 )
 
+
 # F3 — Pix QR Code
 pix_qr_source_total = _counter_labeled(
     "ondeline_pix_qr_source_total",
-    "Origem do BR Code usado pra gerar QR: 'sgp' | 'gerado' | 'indisponivel'",
+    "Origem do BR Code: 'sgp' (codigoPix da fatura) | 'indisponivel' (SGP nao retornou).",
     ["fonte"],
 )
 

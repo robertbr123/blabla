@@ -155,7 +155,9 @@ Cliente pode desativar lembretes respondendo "PARAR" → opt-out persistido. Con
 
 ### F3 — Pix dinâmico (QR Code BR Code) no boleto
 
-**Por quê.** Hoje `enviar_boleto` manda o `codigo_pix` em texto **se** o SGP entregar (campo `codigoPix`). Falta: (a) confirmar quais faturas o SGP entrega o código (Ondeline vs LinkNetAM podem divergir), (b) gerar BR Code próprio quando o SGP não entregar, (c) enviar imagem QR Code junto.
+**Por quê.** Hoje `enviar_boleto` manda o `codigo_pix` em texto **se** o SGP entregar (campo `codigoPix`). Falta: (a) confirmar quais faturas o SGP entrega o código (Ondeline vs LinkNetAM podem divergir), (b) enviar imagem QR Code junto.
+
+**Decisão atualizada (2026-05-18).** Gerar BR Code próprio **não funciona** porque o txid do Pix gerado pela gente não é reconciliado pelo SGP — cliente pagaria e o SGP não saberia atribuir. Portanto: usar SEMPRE o `codigoPix` do SGP. Faturas sem `codigoPix` são logadas com warning e o lembrete vai só com o PDF do boleto. O fix é configurar o Pix corretamente no painel SGP, não compensar no nosso lado.
 
 **Pré-investigação (tarefa 0 da feature).**
 - Auditar 1 semana de chamadas SGP em produção: quantas faturas vêm com `codigoPix` preenchido vs vazio.
