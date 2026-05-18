@@ -1,7 +1,6 @@
 """Testes de normalização e formatação de telefone BR."""
 from __future__ import annotations
 
-import pytest
 from ondeline_api.services.phone import br_local_digits, format_br_phone
 
 
