@@ -231,7 +231,7 @@ async def _concluir_os_e_baixar_estoque(
                         quantidade=int(m["quantidade"]),
                         criado_por=criado_por_id,
                         tecnico_id=_UUID(tecnico_id_str),
-                        serial=None,  # baixa por quantidade via WhatsApp
+                        serial=m.get("serial"),  # preenchido no step 45 pra serializados
                         ordem_servico_id=_UUID(os_id),
                         observacao=f"OS {codigo} concluída via WhatsApp",
                     )
@@ -299,7 +299,7 @@ async def _handle_checklist_step(
     text = (evt.text or "").strip()
 
     # Sanidade: step fora do range = reset.
-    if step not in (1, 2, 3, 4, 5):
+    if step not in (1, 2, 3, 4, 45, 5):
         conversa.checklist_metadata = None
         await deps.conversas.update_estado_status(
             conversa, estado=ConversaEstado.CLIENTE, status=ConversaStatus.BOT
@@ -475,7 +475,8 @@ async def _handle_checklist_step(
                 conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
             )
 
-        # Persiste matches em metadata pra confirmação.
+        # Persiste matches em metadata. Itens serializados ficam com serial=None
+        # e vão ser preenchidos no passo 45.
         matches_serializaveis = [
             {
                 "item_id": str(m.item_id),
@@ -483,6 +484,8 @@ async def _handle_checklist_step(
                 "nome": m.nome,
                 "quantidade": m.quantidade,
                 "saldo_atual": m.saldo_atual,
+                "serializado": m.serializado,
+                "serial": None,
             }
             for m in result.matches
         ]
@@ -510,6 +513,34 @@ async def _handle_checklist_step(
                 )
             avisos = "\n\n⚠️ " + "\n".join(avisos_partes)
 
+        # Se há itens serializados sem serial preenchido → step 45 (coleta).
+        serializados_pendentes = [
+            i for i, m in enumerate(matches_serializaveis) if m["serializado"]
+        ]
+        if serializados_pendentes:
+            idx = serializados_pendentes[0]
+            item_pendente = matches_serializaveis[idx]
+            conversa.checklist_metadata = {
+                **meta,
+                "step": 45,
+                "respostas": respostas,
+                "serial_idx": idx,
+            }
+            await deps.conversas.update_estado_status(
+                conversa, estado=ConversaEstado.CHECKLIST_OS, status=ConversaStatus.BOT
+            )
+            deps.outbound.enqueue_send_outbound(
+                evt.jid,
+                f"📝 Qual o *serial* do *{item_pendente['nome']}*?\n"
+                "_(digite o número de série; pra cancelar a baixa, mande PULAR)_"
+                + avisos,
+                conversa.id,
+            )
+            return InboundResult(
+                conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
+            )
+
+        # Sem serializados → direto pro step 5 de confirmação.
         conversa.checklist_metadata = {**meta, "step": 5, "respostas": respostas}
         await deps.conversas.update_estado_status(
             conversa, estado=ConversaEstado.CHECKLIST_OS, status=ConversaStatus.BOT
@@ -519,6 +550,99 @@ async def _handle_checklist_step(
             "5️⃣ *Vou baixar do seu estoque:*\n"
             + render_resumo_baixa(result.matches)
             + avisos
+            + "\n\nConfirma? Responda *SIM* ou *NÃO* (não vai baixar nada).",
+            conversa.id,
+        )
+        return InboundResult(
+            conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
+        )
+
+    # ── Step 45: coleta de serial pra item serializado ────────
+    if step == 45:
+        idx = meta.get("serial_idx", 0)
+        matches_list: list[dict[str, Any]] = respostas.get(
+            "materiais_confirmados", []
+        )
+        if idx >= len(matches_list):
+            # Inconsistência — pula pra confirmação.
+            conversa.checklist_metadata = {**meta, "step": 5}
+            deps.outbound.enqueue_send_outbound(
+                evt.jid,
+                "Vamos pra confirmação. Responda *SIM* pra baixar do estoque.",
+                conversa.id,
+            )
+            return InboundResult(
+                conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
+            )
+
+        item_atual = matches_list[idx]
+        serial_input = text.strip()
+
+        # Atalho: PULAR remove o item da baixa (técnico não quer registrar).
+        if serial_input.upper() == "PULAR":
+            matches_list.pop(idx)
+            respostas["materiais_confirmados"] = matches_list
+        else:
+            if not serial_input:
+                deps.outbound.enqueue_send_outbound(
+                    evt.jid,
+                    f"Serial não pode ser vazio. Qual o serial do *{item_atual['nome']}*? "
+                    "(ou mande PULAR pra não registrar este item)",
+                    conversa.id,
+                )
+                return InboundResult(
+                    conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
+                )
+            # Salva o serial. Não validamos duplicado aqui — o registrar_movimento
+            # vai validar de novo na hora da baixa.
+            matches_list[idx]["serial"] = serial_input
+            respostas["materiais_confirmados"] = matches_list
+
+        # Procura próximo serializado sem serial.
+        proximo_idx = next(
+            (
+                i
+                for i, m in enumerate(matches_list)
+                if m.get("serializado") and not m.get("serial")
+            ),
+            None,
+        )
+        if proximo_idx is not None:
+            item_pendente = matches_list[proximo_idx]
+            conversa.checklist_metadata = {
+                **meta,
+                "step": 45,
+                "respostas": respostas,
+                "serial_idx": proximo_idx,
+            }
+            deps.outbound.enqueue_send_outbound(
+                evt.jid,
+                f"📝 E o *serial* do *{item_pendente['nome']}*?\n"
+                "_(ou PULAR pra não registrar este item)_",
+                conversa.id,
+            )
+            return InboundResult(
+                conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
+            )
+
+        # Todos os seriais coletados → step 5.
+        if not matches_list:
+            # Caso o técnico tenha PULADO tudo.
+            respostas["materiais_confirmados"] = []
+            await _concluir_os_e_baixar_estoque(conversa, deps, meta, respostas)
+            return InboundResult(
+                conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
+            )
+        conversa.checklist_metadata = {**meta, "step": 5, "respostas": respostas}
+        await deps.conversas.update_estado_status(
+            conversa, estado=ConversaEstado.CHECKLIST_OS, status=ConversaStatus.BOT
+        )
+        from ondeline_api.services.material_concluir import render_resumo_baixa_dict
+
+        deps.outbound.enqueue_send_outbound(
+            evt.jid,
+            "5️⃣ *Vou baixar do seu estoque:*\n"
+            + render_resumo_baixa_dict(matches_list)
             + "\n\nConfirma? Responda *SIM* ou *NÃO* (não vai baixar nada).",
             conversa.id,
         )
@@ -754,13 +878,14 @@ async def process_inbound_message(
                     conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
                 )
 
-    # Intercepta CHECKLIST_OS — coleta sequencial de conclusão (5 passos).
+    # Intercepta CHECKLIST_OS — coleta sequencial de conclusão.
     # Passos:
     #   1) relatório textual
     #   2) houve visita presencial? SIM/NÃO
     #   3) houve gasto de material? SIM/NÃO (mostra estoque do técnico)
-    #   4) lista materiais (só se 3=SIM): "2 conector, 100m cabo"
-    #   5) confirmação do que vai baixar (só se 4 teve matches)
+    #   4) lista materiais: "2 conector, 100m cabo"
+    #   45) coleta seriais (só se 4 teve itens serializados)
+    #   5) confirmação do que vai baixar
     if conversa.estado is ConversaEstado.CHECKLIST_OS and deps.session is not None:
         return await _handle_checklist_step(evt, conversa, deps)
 

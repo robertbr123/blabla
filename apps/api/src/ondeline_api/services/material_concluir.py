@@ -26,7 +26,11 @@ from ondeline_api.repositories.estoque import MovimentoRepo
 
 @dataclass(frozen=True, slots=True)
 class MaterialMatch:
-    """Item casado no estoque do técnico, com quantidade e saldo disponível."""
+    """Item casado no estoque do técnico, com quantidade e saldo disponível.
+
+    `serial` é preenchido depois (passo de coleta de serial) só para itens
+    serializados. Para os demais, fica None.
+    """
 
     item_id: UUID
     sku: str
@@ -36,6 +40,7 @@ class MaterialMatch:
     quantidade: int
     saldo_atual: int  # snapshot pra mostrar antes de confirmar
     nome_digitado: str
+    serial: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,11 +153,12 @@ async def parse_e_casar_materiais(
         if qty > saldo:
             sem_saldo.append((nome_digitado, qty, saldo))
             continue
-        # Serializado por texto livre não funciona — exige serial explícito.
-        # Se item é serializado e qty>1, marca inválido pra técnico digitar 1 por vez.
+        # Itens serializados só aceitam qty=1 — bot perguntará o serial num
+        # passo separado. Se técnico digitar "3 onu", ele divide em 3 entradas
+        # ou marca como inválido pra ele corrigir.
         if item.serializado and qty != 1:
             invalidos.append(
-                f"{qty}x {item.nome} (serializado — registre 1 por vez no PWA)"
+                f"{qty}x {item.nome} (serializado — registre 1 por vez)"
             )
             continue
         matches.append(
@@ -190,4 +196,23 @@ def render_lista_estoque(catalogo_com_saldo: list[tuple[EstoqueItem, int]]) -> s
 def render_resumo_baixa(matches: list[MaterialMatch]) -> str:
     if not matches:
         return "_(nada a baixar)_"
-    return "\n".join(f"• {m.quantidade}x {m.nome}" for m in matches)
+    linhas = []
+    for m in matches:
+        linha = f"• {m.quantidade}x {m.nome}"
+        if m.serial:
+            linha += f" — serial `{m.serial}`"
+        linhas.append(linha)
+    return "\n".join(linhas)
+
+
+def render_resumo_baixa_dict(matches: list[dict]) -> str:
+    """Mesma função, mas pra lista de dicts (versão serializada do metadata)."""
+    if not matches:
+        return "_(nada a baixar)_"
+    linhas = []
+    for m in matches:
+        linha = f"• {m['quantidade']}x {m['nome']}"
+        if m.get("serial"):
+            linha += f" — serial `{m['serial']}`"
+        linhas.append(linha)
+    return "\n".join(linhas)

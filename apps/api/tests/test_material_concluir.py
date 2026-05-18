@@ -170,3 +170,42 @@ async def test_parse_aceita_onu_qty_1(db_session) -> None:
     assert len(res.matches) == 1
     assert res.matches[0].item_id == onu.id
     assert res.matches[0].quantidade == 1
+    # Serializado=True precisa ser exposto pra orquestrador pedir serial.
+    assert res.matches[0].serializado is True
+    assert res.matches[0].serial is None
+
+
+def test_render_resumo_baixa_inclui_serial() -> None:
+    from ondeline_api.services.material_concluir import (
+        MaterialMatch,
+        render_resumo_baixa,
+    )
+
+    from uuid import uuid4
+    m = MaterialMatch(
+        item_id=uuid4(),
+        sku="ONU-X",
+        nome="ONU XPON",
+        categoria="onu",
+        serializado=True,
+        quantidade=1,
+        saldo_atual=1,
+        nome_digitado="onu",
+        serial="SN-001",
+    )
+    out = render_resumo_baixa([m])
+    assert "1x ONU XPON" in out
+    assert "SN-001" in out
+
+
+def test_render_resumo_baixa_dict_inclui_serial() -> None:
+    from ondeline_api.services.material_concluir import render_resumo_baixa_dict
+
+    out = render_resumo_baixa_dict(
+        [
+            {"nome": "ONU XPON", "quantidade": 1, "serial": "SN-001"},
+            {"nome": "Conector", "quantidade": 2, "serial": None},
+        ]
+    )
+    assert "SN-001" in out
+    assert "Conector" in out
