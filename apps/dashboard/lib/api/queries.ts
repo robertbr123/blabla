@@ -82,6 +82,63 @@ export function useEstoqueSaldo(tecnicoId: string | null) {
   })
 }
 
+export interface EstoqueItemCreate {
+  sku: string
+  nome: string
+  categoria: 'onu' | 'roteador' | 'cabo' | 'conector' | 'outro'
+  serializado: boolean
+  ativo: boolean
+}
+
+export function useCreateEstoqueItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: EstoqueItemCreate) =>
+      apiFetch<import('./types').EstoqueItem>('/api/v1/estoque/itens', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['estoque-itens'] }),
+  })
+}
+
+export interface EstoqueMovimentoCreate {
+  item_id: string
+  tipo: 'entrada' | 'saida' | 'devolucao' | 'perda' | 'ajuste_positivo' | 'ajuste_negativo'
+  quantidade: number
+  tecnico_id?: string | null
+  serial?: string | null
+  ordem_servico_id?: string | null
+  observacao?: string | null
+}
+
+export function useCreateEstoqueMovimento() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: EstoqueMovimentoCreate) =>
+      apiFetch<import('./types').EstoqueMovimento>('/api/v1/estoque/movimentos', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['estoque-saldo'] })
+      qc.invalidateQueries({ queryKey: ['estoque-movimentos'] })
+    },
+  })
+}
+
+export function useEstoqueMovimentos(filters: { tecnico_id?: string; item_id?: string; limit?: number } = {}) {
+  const params = new URLSearchParams()
+  if (filters.tecnico_id) params.set('tecnico_id', filters.tecnico_id)
+  if (filters.item_id) params.set('item_id', filters.item_id)
+  if (filters.limit) params.set('limit', String(filters.limit))
+  const qs = params.toString()
+  return useQuery<import('./types').EstoqueMovimento[]>({
+    queryKey: ['estoque-movimentos', filters],
+    queryFn: () => apiFetch(`/api/v1/estoque/movimentos${qs ? `?${qs}` : ''}`),
+  })
+}
+
 export function useConversa(id: string) {
   return useQuery<ConversaDetail>({
     queryKey: ['conversa', id],
