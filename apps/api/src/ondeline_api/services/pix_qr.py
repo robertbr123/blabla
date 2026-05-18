@@ -71,9 +71,9 @@ async def enviar_pix_qr_best_effort(
     redis: Any,
     jid: str,
     codigo_pix_sgp: str | None,
-    valor: float,  # noqa: ARG001  — mantido na assinatura por compatibilidade
+    valor: float,  # mantido na assinatura por compatibilidade
     fatura_id: str,
-    session: Any = None,  # noqa: ARG001  — mantido na assinatura por compatibilidade
+    session: Any = None,  # mantido na assinatura por compatibilidade
 ) -> bool:
     """Envia QR PNG do BR Code do SGP + Pix copia-e-cola.
 
