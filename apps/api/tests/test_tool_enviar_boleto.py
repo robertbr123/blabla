@@ -141,8 +141,9 @@ async def test_default_envia_apenas_1_fatura_atrasada_quando_houver(
     assert out["ok"] is True
     assert out["enviados"] == 1
     assert out["vencimentos"] == [titulos[0].vencimento]  # T_ATRASADA
-    assert m.call_count == 1  # so 1 PDF
-    assert t.call_count == 1  # so 1 PIX
+    # F3: por fatura envia 1 PDF + 1 QR PNG (2x sendMedia) + 1 Pix texto.
+    assert m.call_count == 2  # 1 PDF + 1 QR
+    assert t.call_count == 1  # 1 Pix copia-e-cola
 
 
 async def test_default_envia_fatura_do_mes_corrente_quando_sem_atraso(
@@ -332,7 +333,8 @@ async def test_max_boletos_5_envia_todos(
         out = await enviar_boleto(ctx, max_boletos=5)
         await adapter.aclose()
     assert out["enviados"] == 3
-    assert m.call_count == 3
+    # F3: 3 faturas → 3 PDFs + 3 QR PNGs em sendMedia.
+    assert m.call_count == 6
 
 
 async def test_sem_faturas_retorna_ok_zero(db_session: AsyncSession) -> None:
