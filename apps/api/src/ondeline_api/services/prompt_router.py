@@ -19,7 +19,7 @@ from ondeline_api.db.models.business import PromptVariant
 
 
 def _bucket_for_jid(whatsapp: str) -> int:
-    """0–99 determinístico por whatsapp. SHA256 → primeiros 8 hex → mod 100."""
+    """0-99 deterministico por whatsapp. SHA256 -> primeiros 8 hex -> mod 100."""
     h = hashlib.sha256(whatsapp.encode("utf-8")).digest()
     return int.from_bytes(h[:4], "big") % 100
 

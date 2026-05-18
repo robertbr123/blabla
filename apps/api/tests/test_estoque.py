@@ -235,7 +235,7 @@ async def test_calcular_saldo_tecnico_lista_todos_itens(db_session) -> None:
     )
     linhas = await calcular_saldo_tecnico(db_session, tec.id)
     # 2 itens ativos cadastrados; conector tem saldo 12, ONU tem 0.
-    skus = {l["sku"]: l["saldo"] for l in linhas}
+    skus = {ln["sku"]: ln["saldo"] for ln in linhas}
     assert skus.get("CONECT-SC") == 12
     assert skus.get("ONU-XPON-ZTE") == 0
 

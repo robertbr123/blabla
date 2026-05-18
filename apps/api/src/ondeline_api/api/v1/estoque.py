@@ -46,7 +46,7 @@ _admin_atendente = Depends(require_role(Role.ADMIN, Role.ATENDENTE))
 @router.get("/itens", response_model=list[ItemOut], dependencies=[_admin_atendente])
 async def list_itens(
     session: Annotated[AsyncSession, Depends(get_db)],
-    ativos_only: bool = Query(False),
+    ativos_only: Annotated[bool, Query()] = False,
 ) -> list[ItemOut]:
     repo = ItemRepo(session)
     rows = await repo.list_all(ativos_only=ativos_only)
@@ -100,12 +100,14 @@ async def update_item(
 @router.get("/saldo", response_model=SaldoOut, dependencies=[_admin_atendente])
 async def saldo_admin(
     session: Annotated[AsyncSession, Depends(get_db)],
-    tecnico_id: UUID = Query(..., description="Técnico cujo saldo se quer ver"),
+    tecnico_id: Annotated[
+        UUID, Query(description="Técnico cujo saldo se quer ver")
+    ],
 ) -> SaldoOut:
     linhas = await calcular_saldo_tecnico(session, tecnico_id)
     return SaldoOut(
         tecnico_id=tecnico_id,
-        linhas=[SaldoLinha.model_validate(l) for l in linhas],
+        linhas=[SaldoLinha.model_validate(ln) for ln in linhas],
     )
 
 
@@ -125,7 +127,7 @@ async def saldo_self(
     linhas = await calcular_saldo_tecnico(session, tec.id)
     return SaldoOut(
         tecnico_id=tec.id,
-        linhas=[SaldoLinha.model_validate(l) for l in linhas],
+        linhas=[SaldoLinha.model_validate(ln) for ln in linhas],
     )
 
 
@@ -171,10 +173,10 @@ async def create_movimento(
 )
 async def list_movimentos(
     session: Annotated[AsyncSession, Depends(get_db)],
-    tecnico_id: UUID | None = Query(None),
-    item_id: UUID | None = Query(None),
-    ordem_servico_id: UUID | None = Query(None),
-    limit: int = Query(100, ge=1, le=500),
+    tecnico_id: Annotated[UUID | None, Query()] = None,
+    item_id: Annotated[UUID | None, Query()] = None,
+    ordem_servico_id: Annotated[UUID | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
 ) -> list[MovimentoOut]:
     repo = MovimentoRepo(session)
     if tecnico_id is None and item_id is None and ordem_servico_id is None:
@@ -198,7 +200,7 @@ async def list_movimentos(
 async def list_movimentos_self(
     session: Annotated[AsyncSession, Depends(get_db)],
     tec: Annotated[Tecnico, Depends(current_tecnico)],
-    limit: int = Query(50, ge=1, le=200),
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list[MovimentoOut]:
     rows = await MovimentoRepo(session).list_by_tecnico(tec.id, limit=limit)
     return [MovimentoOut.model_validate(r) for r in rows]
