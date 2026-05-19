@@ -1,6 +1,7 @@
 """Task Celery: atualiza OS e envia mensagem de resultado do follow-up."""
 from __future__ import annotations
 
+import re
 from typing import Any
 from uuid import UUID
 
@@ -11,6 +12,16 @@ from ondeline_api.workers.celery_app import celery_app
 from ondeline_api.workers.runtime import run_task, task_session
 
 log = structlog.get_logger(__name__)
+
+# Captura primeiro digito 1-5 isolado ou apos "nota". Ignora numeros >5 (datas, OS, etc).
+_CSAT_RE = re.compile(r"(?:^|\s|nota\s*)([1-5])(?:\s|$|\.|,|!|\?|🌟)")
+
+
+def _parse_csat(text: str | None) -> int | None:
+    if not text:
+        return None
+    m = _CSAT_RE.search(text.lower().strip())
+    return int(m.group(1)) if m else None
 
 _MSG_CONFIRMAR = (
     "Que bom que ficou tudo certo! 🎉\n\n"
@@ -56,6 +67,14 @@ async def _run_followup(conversa_id: UUID, resultado: str, resposta: str) -> Non
                     os_.follow_up_resultado = resultado
                     os_.follow_up_resposta = resposta
                     os_.follow_up_respondido_em = datetime.now(tz=UTC)
+                    csat = _parse_csat(resposta)
+                    if csat is not None and os_.csat is None:
+                        os_.csat = csat
+                        log.info(
+                            "followup.csat_extracted",
+                            os_id=str(os_.id),
+                            csat=csat,
+                        )
             conversa.followup_os_id = None
     finally:
         await evo.aclose()

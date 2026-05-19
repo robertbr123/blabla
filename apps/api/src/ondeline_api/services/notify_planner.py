@@ -244,6 +244,7 @@ async def schedule_followup_os(session: AsyncSession, *, minutes_after: int = 10
             payload={
                 "codigo": os_.codigo,
                 "problema": os_.problema,
+                "os_id": str(os_.id),
                 "csat_request": True,
             },
         )

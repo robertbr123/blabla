@@ -10,11 +10,15 @@ intents ('LLM_TURN', 'SEND_ACK') que o service traduz em chamadas concretas.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
 from ondeline_api.db.models.business import ConversaEstado, ConversaStatus
+
+# Nota CSAT 1-5 (isolada ou apos "nota"). Trata "5", "Nota 5", "Sim, 4" etc.
+_CSAT_RE = re.compile(r"(?:^|\s|nota\s*)([1-5])(?:\s|$|\.|,|!|\?|🌟)")
 
 
 class EventKind(StrEnum):
@@ -96,13 +100,19 @@ class Fsm:
         # aguarda confirmacao de follow-up: classifica deterministicamente antes de chamar LLM
         if estado is ConversaEstado.AGUARDA_FOLLOWUP_OS:
             text_norm = (event.text or "").lower().strip()
-            if any(p in text_norm for p in _PALAVRAS_OK):
+            # Nota CSAT isolada ("5", "nota 5") ou junto de SIM tambem confirma — extracao
+            # do score acontece no worker followup_os_task via _parse_csat(resposta).
+            m_csat = _CSAT_RE.search(f" {text_norm} ")
+            nota = int(m_csat.group(1)) if m_csat else None
+            tem_nota_baixa = nota in (1, 2)
+            tem_nota_alta = nota in (3, 4, 5)
+            if any(p in text_norm for p in _PALAVRAS_OK) or tem_nota_alta:
                 return FsmDecision(
                     new_estado=ConversaEstado.ENCERRADA,
                     new_status=ConversaStatus.ENCERRADA,
                     actions=[Action(kind=ActionKind.FOLLOWUP_OS_CONFIRMAR)],
                 )
-            if any(p in text_norm for p in _PALAVRAS_NOK):
+            if any(p in text_norm for p in _PALAVRAS_NOK) or tem_nota_baixa:
                 return FsmDecision(
                     new_estado=ConversaEstado.AGUARDA_ATENDENTE,
                     new_status=ConversaStatus.AGUARDANDO,

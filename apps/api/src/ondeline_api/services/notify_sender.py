@@ -10,13 +10,17 @@ from typing import Any
 
 import structlog
 
+from uuid import UUID
+
 from ondeline_api.adapters.evolution import EvolutionAdapter, EvolutionError
 from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.business import (
     Cliente,
+    ConversaEstado,
     Notificacao,
     NotificacaoTipo,
 )
+from ondeline_api.repositories.conversa import ConversaRepo
 from ondeline_api.repositories.notificacao import NotificacaoRepo
 
 log = structlog.get_logger(__name__)
@@ -137,4 +141,24 @@ async def send_one(
 
     await repo.mark_sent(notificacao)
     log.info("notify.sent", notif_id=str(notificacao.id), tipo=notificacao.tipo.value)
+
+    # OS_CONCLUIDA: prepara a conversa pra capturar CSAT na proxima resposta do cliente.
+    # Sem isso, o FSM nao sabe que estamos aguardando avaliacao e roteia pro LLM.
+    if notificacao.tipo is NotificacaoTipo.OS_CONCLUIDA:
+        os_id_raw = (notificacao.payload or {}).get("os_id")
+        if os_id_raw:
+            conversa = await ConversaRepo(session).find_active_by_cliente_id(cliente.id)
+            if conversa is not None:
+                try:
+                    conversa.followup_os_id = UUID(str(os_id_raw))
+                except ValueError:
+                    log.warning("notify.os_concluida.bad_os_id", os_id=str(os_id_raw))
+                else:
+                    conversa.estado = ConversaEstado.AGUARDA_FOLLOWUP_OS
+                    await session.flush()
+                    log.info(
+                        "notify.os_concluida.state_set",
+                        conversa_id=str(conversa.id),
+                        os_id=str(os_id_raw),
+                    )
     return True
