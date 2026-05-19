@@ -78,7 +78,7 @@ def test_fuzzy_match_sem_resultado() -> None:
 # ── Integração com DB ────────────────────────────────────
 
 
-async def _setup_tecnico_com_estoque(db_session):
+async def _setup_tecnico_com_estoque(db_session):  # type: ignore[no-untyped-def]
     from ondeline_api.db.crypto import hash_pii
     from ondeline_api.db.models.identity import Role, User
 

@@ -10,7 +10,7 @@ from ondeline_api.services.estoque import registrar_movimento
 pytestmark = pytest.mark.asyncio
 
 
-async def _setup(db_session):
+async def _setup(db_session):  # type: ignore[no-untyped-def]
     from ondeline_api.db.crypto import encrypt_pii, hash_pii
     from ondeline_api.db.models.identity import Role, User
 

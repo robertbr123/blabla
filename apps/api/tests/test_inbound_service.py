@@ -96,7 +96,7 @@ class FakeOutboundQueue:
     sent: list[tuple[str, str, UUID]] = field(default_factory=list)
     llm_turns: list[UUID] = field(default_factory=list)
     handoff_summaries: list[UUID] = field(default_factory=list)
-    asr_jobs: list[dict] = field(default_factory=list)
+    asr_jobs: list[dict[str, object]] = field(default_factory=list)
 
     def enqueue_send_outbound(self, jid: str, text: str, conversa_id: UUID) -> None:
         self.sent.append((jid, text, conversa_id))

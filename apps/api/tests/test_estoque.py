@@ -16,7 +16,7 @@ from ondeline_api.services.estoque import (
 pytestmark = pytest.mark.asyncio
 
 
-async def _setup_basics(db_session) -> tuple[EstoqueItem, EstoqueItem, Tecnico, object]:
+async def _setup_basics(db_session):  # type: ignore[no-untyped-def]
     from ondeline_api.db.crypto import hash_pii
     from ondeline_api.db.models.identity import Role, User
 

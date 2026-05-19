@@ -824,14 +824,14 @@ async def process_inbound_message(
             if numero_alvo_digits
             else "(número não configurado — admin precisa setar `indicacao.whatsapp_alvo` no /config)"
         )
-        msg = (
+        msg_txt = (
             "🎁 *Indique e ganhe!*\n\n"
             f"Seu código: *{ind.codigo}*\n\n"
             "Compartilhe este link com seus amigos:\n"
             f"{link}\n\n"
             "Quando o amigo fechar plano, vocês dois ganham desconto na próxima fatura. ✨"
         )
-        deps.outbound.enqueue_send_outbound(evt.jid, msg, conversa.id)
+        deps.outbound.enqueue_send_outbound(evt.jid, msg_txt, conversa.id)
         return InboundResult(
             conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
         )
@@ -848,8 +848,8 @@ async def process_inbound_message(
             codigo_ind = _m_ind.group(1).upper()
             from ondeline_api.repositories.indicacao import IndicacaoRepo
 
-            ind = await IndicacaoRepo(deps.session).get_by_codigo(codigo_ind)
-            if ind is not None:
+            ind_lead = await IndicacaoRepo(deps.session).get_by_codigo(codigo_ind)
+            if ind_lead is not None:
                 # Marca a conversa com a indicação (via tags pra audit).
                 try:
                     await deps.conversas.add_tag(conversa, f"indicado:{codigo_ind}")
@@ -863,12 +863,12 @@ async def process_inbound_message(
                     whatsapp=evt.jid,
                     interesse=f"Indicado por {codigo_ind}",
                     status=LeadStatus.NOVO,
-                    indicacao_id=ind.id,
+                    indicacao_id=ind_lead.id,
                 )
                 deps.session.add(lead)
                 await deps.session.flush()
                 await IndicacaoRepo(deps.session).registrar_uso(
-                    ind.id, lead_id=lead.id
+                    ind_lead.id, lead_id=lead.id
                 )
                 deps.outbound.enqueue_send_outbound(
                     evt.jid,
@@ -936,7 +936,7 @@ async def process_inbound_message(
             saldos = await _MovRepo(deps.session).saldo_full_por_tecnico(tec.id)
             com_saldo = [(it, s) for it, s in saldos if s > 0]
             if not com_saldo:
-                msg = (
+                msg_txt = (
                     f"📦 *Seu estoque, {tec.nome.split()[0] if tec.nome else 'tec'}*\n\n"
                     "_(vazio — sem itens em estoque)_\n\n"
                     "Pra dar entrada, peça pro admin no painel."
@@ -946,11 +946,11 @@ async def process_inbound_message(
                     f"• *{it.nome}*: {s}" + (" (serial)" if it.serializado else "")
                     for it, s in com_saldo
                 ]
-                msg = (
+                msg_txt = (
                     f"📦 *Seu estoque, {tec.nome.split()[0] if tec.nome else 'tec'}*\n\n"
                     + "\n".join(linhas)
                 )
-            deps.outbound.enqueue_send_outbound(evt.jid, msg, conversa.id)
+            deps.outbound.enqueue_send_outbound(evt.jid, msg_txt, conversa.id)
             return InboundResult(
                 conversa_id=conversa.id,
                 persisted=True,

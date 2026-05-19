@@ -4,7 +4,7 @@ from __future__ import annotations
 import csv
 import io
 from datetime import UTC, datetime, timedelta
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
@@ -227,12 +227,12 @@ async def _load_comissao_config(session: AsyncSession) -> dict[str, float]:
     )
     out = dict(_COMISSAO_KEYS)
     for row in rows:
-        v = row.value
+        v: Any = row.value
         # Aceita {"value": 30} ou 30 direto.
         if isinstance(v, dict) and "value" in v:
             v = v["value"]
         try:
-            out[row.key] = float(v)
+            out[row.key] = float(v)  # type: ignore[arg-type]
         except (TypeError, ValueError):
             pass
     return out
@@ -245,7 +245,7 @@ async def _load_comissao_config(session: AsyncSession) -> dict[str, float]:
 async def get_produtividade_tecnicos(
     session: Annotated[AsyncSession, Depends(get_db)],
     mes: Annotated[str | None, Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")] = None,
-):
+) -> "ProdutividadeResponse":
     """F9 — Ranking + cálculo de comissão por técnico.
 
     Comissao = (os_concluidas * valor_por_os) + (os_csat_5 * bonus_csat_5)

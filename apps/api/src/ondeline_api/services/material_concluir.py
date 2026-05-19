@@ -205,7 +205,7 @@ def render_resumo_baixa(matches: list[MaterialMatch]) -> str:
     return "\n".join(linhas)
 
 
-def render_resumo_baixa_dict(matches: list[dict]) -> str:
+def render_resumo_baixa_dict(matches: list[dict[str, Any]]) -> str:
     """Mesma função, mas pra lista de dicts (versão serializada do metadata)."""
     if not matches:
         return "_(nada a baixar)_"
