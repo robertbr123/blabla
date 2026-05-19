@@ -238,7 +238,7 @@ async def _load_comissao_config(session: AsyncSession) -> dict[str, float]:
         if isinstance(v, dict) and "value" in v:
             v = v["value"]
         try:
-            out[row.key] = float(v)  # type: ignore[arg-type]
+            out[row.key] = float(v)
         except (TypeError, ValueError):
             pass
     return out

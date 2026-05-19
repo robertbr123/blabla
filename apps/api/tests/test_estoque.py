@@ -1,6 +1,8 @@
 """F6 — Estoque: itens, movimentos, saldo."""
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from ondeline_api.db.models.business import Tecnico
 from ondeline_api.db.models.estoque import EstoqueItem
@@ -16,7 +18,7 @@ from ondeline_api.services.estoque import (
 pytestmark = pytest.mark.asyncio
 
 
-async def _setup_basics(db_session):  # type: ignore[no-untyped-def]
+async def _setup_basics(db_session: Any) -> tuple[Any, Any, Any, Any]:
     from ondeline_api.db.crypto import hash_pii
     from ondeline_api.db.models.identity import Role, User
 

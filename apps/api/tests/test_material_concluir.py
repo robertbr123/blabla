@@ -1,6 +1,8 @@
 """F6+ — Parser de materiais do CONCLUIR via WhatsApp."""
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from ondeline_api.db.models.business import Tecnico
 from ondeline_api.db.models.estoque import EstoqueItem
@@ -78,7 +80,7 @@ def test_fuzzy_match_sem_resultado() -> None:
 # ── Integração com DB ────────────────────────────────────
 
 
-async def _setup_tecnico_com_estoque(db_session):  # type: ignore[no-untyped-def]
+async def _setup_tecnico_com_estoque(db_session: Any) -> tuple[Any, Any, Any, Any, Any]:
     from ondeline_api.db.crypto import hash_pii
     from ondeline_api.db.models.identity import Role, User
 
