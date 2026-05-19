@@ -201,6 +201,21 @@ async def create_os(
         msg += f"\n_Para concluir via WhatsApp, envie:_ *CONCLUIR {codigo}*"
 
         await _send_whatsapp(tecnico.whatsapp, msg)
+
+    # FCM push pro app do tecnico (best-effort, nunca quebra criacao da OS).
+    try:
+        from ondeline_api.services.push import send_push_to_tecnico
+
+        await send_push_to_tecnico(
+            session,
+            tecnico.id,
+            title=f"Nova OS {codigo}",
+            body=(nome_cliente_str or "Cliente") + " · " + body.endereco[:80],
+            data={"os_id": str(os_.id), "kind": "os_atribuida"},
+        )
+    except Exception:
+        pass
+
     out = OsOut.model_validate(os_)
     out.nome_cliente = nome_cliente_str
     return out
@@ -303,6 +318,20 @@ async def reatribuir_os(
             msg_new += f"\n🔐 *PPPoE Senha:* {os_.pppoe_senha}"
         msg_new += f"\n\n_Para concluir via WhatsApp, envie:_ *CONCLUIR {os_.codigo}*"
         await _send_whatsapp(novo_tec.whatsapp, msg_new)
+
+    # FCM push pro novo tecnico (best-effort).
+    try:
+        from ondeline_api.services.push import send_push_to_tecnico
+
+        await send_push_to_tecnico(
+            session,
+            novo_tec.id,
+            title=f"OS {os_.codigo} atribuída a você",
+            body=(nome_cli or "Cliente") + " · " + os_.endereco[:80],
+            data={"os_id": str(os_.id), "kind": "os_reatribuida"},
+        )
+    except Exception:
+        pass
 
     out = OsOut.model_validate(os_)
     out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
@@ -450,6 +479,21 @@ async def reabrir_os(
         user_id=str(user.id),
         motivo=body.motivo,
     )
+
+    # FCM push pro tecnico responsavel.
+    if os_.tecnico_id:
+        try:
+            from ondeline_api.services.push import send_push_to_tecnico
+
+            await send_push_to_tecnico(
+                session,
+                os_.tecnico_id,
+                title=f"OS {os_.codigo} reaberta",
+                body=body.motivo[:140],
+                data={"os_id": str(os_.id), "kind": "os_reaberta"},
+            )
+        except Exception:
+            pass
 
     out = OsOut.model_validate(os_)
     out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp

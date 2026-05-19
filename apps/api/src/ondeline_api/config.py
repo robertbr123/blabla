@@ -126,6 +126,11 @@ class Settings(BaseSettings):
     otel_exporter_otlp_endpoint: str = ""  # ex: http://tempo:4318
     otel_service_name: str = "ondeline-api"
 
+    # Firebase Admin (FCM push). Service account JSON em base64 OU caminho
+    # absoluto pro arquivo. Vazio = push desligado.
+    firebase_credentials_b64: str = ""
+    firebase_credentials_path: str = ""
+
     def effective_celery_broker(self) -> str:
         return self.celery_broker_url or self.redis_url
 

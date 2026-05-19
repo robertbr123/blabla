@@ -1,14 +1,13 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/api/api_client.dart';
 import '../../core/auth/auth_repository.dart';
 import '../../core/push/fcm_service.dart';
+import 'os_data.dart';
 
-class OsListItem {
+class _OsItem {
   final String id;
   final String codigo;
   final String status;
@@ -17,7 +16,7 @@ class OsListItem {
   final String? nomeCliente;
   final DateTime? agendamentoAt;
 
-  OsListItem({
+  _OsItem({
     required this.id,
     required this.codigo,
     required this.status,
@@ -27,10 +26,10 @@ class OsListItem {
     required this.agendamentoAt,
   });
 
-  factory OsListItem.fromJson(Map<String, dynamic> j) => OsListItem(
+  factory _OsItem.fromJson(Map<String, dynamic> j) => _OsItem(
         id: j['id'] as String,
-        codigo: j['codigo'] as String,
-        status: j['status'] as String,
+        codigo: (j['codigo'] ?? '') as String,
+        status: (j['status'] ?? '') as String,
         problema: (j['problema'] ?? '') as String,
         endereco: (j['endereco'] ?? '') as String,
         nomeCliente: j['nome_cliente'] as String?,
@@ -40,46 +39,28 @@ class OsListItem {
       );
 }
 
-final _osListProvider = FutureProvider<List<OsListItem>>((ref) async {
-  final dio = ref.watch(apiClientProvider);
-  final r = await dio.get('/api/v1/tecnico/me/os');
-  final raw = r.data;
-  final List items;
-  if (raw is List) {
-    items = raw;
-  } else if (raw is Map && raw['items'] is List) {
-    items = raw['items'] as List;
-  } else {
-    items = const [];
-  }
-  return items
-      .cast<Map<String, dynamic>>()
-      .map(OsListItem.fromJson)
-      .toList();
-});
-
 class OsListScreen extends ConsumerWidget {
   const OsListScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(_osListProvider);
+    final async = ref.watch(osListStreamProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Minhas OS'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(_osListProvider),
+            onPressed: () => ref.invalidate(osListStreamProvider),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sair',
             onPressed: () async {
-              // Revoga token FCM antes de derrubar a sessao.
               try {
                 await ref.read(fcmServiceProvider).revoke();
               } catch (_) {}
+              await ref.read(osLocalRepoProvider).clear();
               await ref.read(authRepositoryProvider).logout();
               ref.invalidate(hasTokenProvider);
               if (context.mounted) context.go('/login');
@@ -88,19 +69,23 @@ class OsListScreen extends ConsumerWidget {
         ],
       ),
       body: async.when(
-        data: (items) => items.isEmpty
-            ? const Center(child: Text('Nenhuma OS atribuída.'))
-            : RefreshIndicator(
-                onRefresh: () async => ref.invalidate(_osListProvider),
-                child: ListView.separated(
-                  itemCount: items.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (_, i) => _OsTile(item: items[i]),
-                ),
-              ),
+        data: (rows) {
+          final items = rows.map(_OsItem.fromJson).toList();
+          if (items.isEmpty) {
+            return const Center(child: Text('Nenhuma OS atribuída.'));
+          }
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(osListStreamProvider),
+            child: ListView.separated(
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (_, i) => _OsTile(item: items[i]),
+            ),
+          );
+        },
         error: (e, _) => _ErrorView(
           error: e,
-          onRetry: () => ref.invalidate(_osListProvider),
+          onRetry: () => ref.invalidate(osListStreamProvider),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
       ),
@@ -109,7 +94,7 @@ class OsListScreen extends ConsumerWidget {
 }
 
 class _OsTile extends StatelessWidget {
-  final OsListItem item;
+  final _OsItem item;
   const _OsTile({required this.item});
 
   Color _statusColor(BuildContext ctx) {
@@ -181,9 +166,7 @@ class _ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final msg = error is DioException
-        ? (error as DioException).message ?? error.toString()
-        : error.toString();
+    final msg = error.toString();
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(

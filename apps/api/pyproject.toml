@@ -39,6 +39,7 @@ dependencies = [
     "opentelemetry-instrumentation-sqlalchemy>=0.50b0",
     "opentelemetry-instrumentation-redis>=0.50b0",
     "qrcode[pil]>=7.4.0",
+    "firebase-admin>=6.6.0",
 ]
 
 [project.optional-dependencies]

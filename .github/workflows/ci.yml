@@ -214,9 +214,93 @@ jobs:
       - name: Build APK (debug)
         run: flutter build apk --debug --dart-define=API_URL=http://10.0.2.2:8000
 
-      - name: Upload APK artifact
+      - name: Upload APK debug artifact
         uses: actions/upload-artifact@v4
         with:
           name: tecnico-mobile-debug-apk
           path: apps/tecnico-mobile/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 14
+
+      # ── Release signing (so roda em push pra main + se secrets configurados) ──
+      - name: Decode keystore
+        if: github.ref == 'refs/heads/main' && env.HAS_KEYSTORE == 'true'
+        env:
+          HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          mkdir -p android/app
+          echo "$KEYSTORE_B64" | base64 -d > android/app/release.keystore
+          cat > android/key.properties <<EOF
+          storeFile=release.keystore
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+
+      - name: Patch build.gradle pro signing config
+        if: github.ref == 'refs/heads/main' && env.HAS_KEYSTORE == 'true'
+        env:
+          HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
+        run: |
+          # Insere bloco signingConfigs.release + aponta release.signingConfig
+          # no app-level build.gradle gerado pelo `flutter create`.
+          GRADLE_FILE=android/app/build.gradle
+          if [ ! -f "$GRADLE_FILE" ]; then
+            GRADLE_FILE=android/app/build.gradle.kts
+          fi
+          python3 <<'PY'
+          import re, pathlib
+          for p in ['android/app/build.gradle', 'android/app/build.gradle.kts']:
+              path = pathlib.Path(p)
+              if not path.exists():
+                  continue
+              src = path.read_text()
+              # Carrega key.properties no topo (se ainda nao tem).
+              header = '''
+          def keystoreProperties = new Properties()
+          def keystorePropertiesFile = rootProject.file('key.properties')
+          if (keystorePropertiesFile.exists()) {
+              keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+          }
+          '''.strip()
+              if 'keystoreProperties' not in src:
+                  src = header + "\n" + src
+              # Adiciona signingConfigs antes de buildTypes.
+              if 'signingConfigs' not in src:
+                  signing = '''
+              signingConfigs {
+                  release {
+                      keyAlias keystoreProperties['keyAlias']
+                      keyPassword keystoreProperties['keyPassword']
+                      storeFile file(keystoreProperties['storeFile'])
+                      storePassword keystoreProperties['storePassword']
+                  }
+              }
+              '''.rstrip()
+                  src = re.sub(r'(\n\s*buildTypes\s*\{)', signing + r'\1', src, count=1)
+              # Aponta release.signingConfig = release
+              src = re.sub(
+                  r'release\s*\{\s*\n\s*signingConfig\s+signingConfigs\.debug',
+                  "release {\n            signingConfig signingConfigs.release",
+                  src,
+              )
+              path.write_text(src)
+              print('patched', p)
+          PY
+
+      - name: Build APK (release)
+        if: github.ref == 'refs/heads/main' && env.HAS_KEYSTORE == 'true'
+        env:
+          HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
+          API_URL: ${{ secrets.MOBILE_API_URL || 'https://api.ondeline.dev' }}
+        run: flutter build apk --release --dart-define=API_URL=$API_URL
+
+      - name: Upload APK release artifact
+        if: github.ref == 'refs/heads/main' && env.HAS_KEYSTORE == 'true'
+        env:
+          HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: tecnico-mobile-release-apk
+          path: apps/tecnico-mobile/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30

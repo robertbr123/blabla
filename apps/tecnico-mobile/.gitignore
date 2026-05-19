@@ -5,6 +5,7 @@
 .packages
 .pub-cache/
 .pub/
+pubspec.lock
 build/
 .idea/
 .vscode/

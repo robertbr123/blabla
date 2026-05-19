@@ -9,13 +9,7 @@ import '../../core/api/api_client.dart';
 import '../../core/location/location_service.dart';
 import '../../core/sync/outbox_repo.dart';
 import '../../core/sync/sync_service.dart';
-
-final _osDetailProvider =
-    FutureProvider.family<Map<String, dynamic>, String>((ref, id) async {
-  final dio = ref.watch(apiClientProvider);
-  final r = await dio.get('/api/v1/tecnico/me/os/$id');
-  return (r.data as Map<String, dynamic>);
-});
+import 'os_data.dart';
 
 class OsDetailScreen extends ConsumerWidget {
   final String id;
@@ -23,20 +17,20 @@ class OsDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(_osDetailProvider(id));
+    final async = ref.watch(osDetailProvider(id));
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detalhe da OS'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(_osDetailProvider(id)),
+            onPressed: () => ref.invalidate(osDetailProvider(id)),
           ),
         ],
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => _Erro(e: e, onRetry: () => ref.invalidate(_osDetailProvider(id))),
+        error: (e, _) => _Erro(e: e, onRetry: () => ref.invalidate(osDetailProvider(id))),
         data: (os) => _Body(osId: id, os: os),
       ),
     );
@@ -130,7 +124,7 @@ class _Body extends ConsumerWidget {
               '/api/v1/tecnico/me/os/$osId/iniciar',
               data: body,
             );
-        ref.invalidate(_osDetailProvider(osId));
+        ref.invalidate(osDetailProvider(osId));
         _showSnack(context, 'OS iniciada ✅');
       } else {
         await svc.enqueue(
@@ -171,7 +165,7 @@ class _Body extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       builder: (_) => _ConcluirSheet(osId: osId, onDone: () {
-        ref.invalidate(_osDetailProvider(osId));
+        ref.invalidate(osDetailProvider(osId));
       }),
     );
   }
