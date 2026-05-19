@@ -127,6 +127,111 @@ export function useCreateEstoqueMovimento() {
   })
 }
 
+// ── Depósito (estoque central) ─────────────────────────────────
+
+export interface SaldoLinha {
+  item_id: string
+  sku: string
+  nome: string
+  categoria: string
+  serializado: boolean
+  saldo: number
+}
+
+export function useDepositoSaldo() {
+  return useQuery<{ linhas: SaldoLinha[] }>({
+    queryKey: ['estoque-deposito-saldo'],
+    queryFn: () => apiFetch('/api/v1/estoque/deposito/saldo'),
+  })
+}
+
+export interface DepositoEntradaIn {
+  item_id: string
+  quantidade: number
+  serial?: string | null
+  observacao?: string | null
+}
+
+export function useDepositoEntrada() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: DepositoEntradaIn) =>
+      apiFetch('/api/v1/estoque/deposito/entrada', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['estoque-deposito-saldo'] })
+      qc.invalidateQueries({ queryKey: ['estoque-movimentos'] })
+    },
+  })
+}
+
+export interface DepositoBaixaIn {
+  item_id: string
+  quantidade: number
+  tipo: 'perda' | 'ajuste_negativo'
+  serial?: string | null
+  observacao?: string | null
+}
+
+export function useDepositoBaixa() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: DepositoBaixaIn) =>
+      apiFetch('/api/v1/estoque/deposito/baixa', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['estoque-deposito-saldo'] })
+      qc.invalidateQueries({ queryKey: ['estoque-movimentos'] })
+    },
+  })
+}
+
+export interface TransferirIn {
+  item_id: string
+  tecnico_id: string
+  quantidade: number
+  serial?: string | null
+  observacao?: string | null
+}
+
+export function useTransferir() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: TransferirIn) =>
+      apiFetch('/api/v1/estoque/deposito/transferir', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['estoque-deposito-saldo'] })
+      qc.invalidateQueries({ queryKey: ['estoque-tecnicos-saldos'] })
+      qc.invalidateQueries({ queryKey: ['estoque-saldo'] })
+      qc.invalidateQueries({ queryKey: ['estoque-movimentos'] })
+    },
+  })
+}
+
+export interface TecnicoSaldoResumo {
+  tecnico_id: string
+  tecnico_nome: string
+  item_id: string
+  sku: string
+  nome: string
+  categoria: string
+  saldo: number
+}
+
+export function useTecnicosSaldos() {
+  return useQuery<{ linhas: TecnicoSaldoResumo[] }>({
+    queryKey: ['estoque-tecnicos-saldos'],
+    queryFn: () => apiFetch('/api/v1/estoque/tecnicos/saldos'),
+  })
+}
+
 export function useEstoqueMovimentos(filters: { tecnico_id?: string; item_id?: string; limit?: number } = {}) {
   const params = new URLSearchParams()
   if (filters.tecnico_id) params.set('tecnico_id', filters.tecnico_id)
