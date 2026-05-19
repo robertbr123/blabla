@@ -307,6 +307,11 @@ class Lead(Base):
         PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     notas: Mapped[str | None] = mapped_column(Text, nullable=True)
+    indicacao_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("indicacao.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -585,3 +590,66 @@ class CobrancaLembrete(Base):
         ),
         Index("ix_cobranca_lembrete_cliente", "cliente_id", "enviado_em"),
     )
+
+
+class Indicacao(Base):
+    """F10 — Código de indicação gerado por cliente ativo."""
+
+    __tablename__ = "indicacao"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    codigo: Mapped[str] = mapped_column(String(16), nullable=False, unique=True)
+    cliente_indicador_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("clientes.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    criado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    expira_em: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    usos: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    ativo: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+
+    __table_args__ = (Index("ix_indicacao_cliente", "cliente_indicador_id"),)
+
+
+class IndicacaoUso(Base):
+    """F10 — Cada vez que uma indicação foi usada."""
+
+    __tablename__ = "indicacao_uso"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    indicacao_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("indicacao.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    lead_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("leads.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    cliente_indicado_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("clientes.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    criado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    convertido_em: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    credito_aplicado_em: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    observacao: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (Index("ix_indicacao_uso_indicacao", "indicacao_id"),)

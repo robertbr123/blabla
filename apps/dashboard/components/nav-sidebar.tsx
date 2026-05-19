@@ -14,6 +14,7 @@ import {
   Package,
   Radio,
   Boxes,
+  Gift,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -30,6 +31,7 @@ const ITEMS: ReadonlyArray<NavItem> = [
   { href: '/conversas', label: 'Conversas', icon: MessageSquare, roles: ['admin', 'atendente'] },
   { href: '/os', label: 'Ordens de serviço', icon: ClipboardList, roles: ['admin', 'atendente'] },
   { href: '/leads', label: 'Leads', icon: UserPlus, roles: ['admin', 'atendente'] },
+  { href: '/indicacoes', label: 'Indicações', icon: Gift, roles: ['admin', 'atendente'] },
   { href: '/clientes', label: 'Clientes', icon: Users, roles: ['admin', 'atendente'] },
   { href: '/tecnicos', label: 'Técnicos', icon: Wrench, roles: ['admin'], exact: true },
   { href: '/tecnicos/ranking', label: 'Ranking Técnicos', icon: Trophy, roles: ['admin'] },

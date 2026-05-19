@@ -681,3 +681,52 @@ export function useProdutividade(mes?: string) {
     queryFn: () => apiFetch(`/api/v1/metricas/tecnicos/produtividade${qs}`),
   })
 }
+
+// F10 — Indicacoes
+export function useIndicacoes() {
+  return useQuery<import('./types').IndicacaoOut[]>({
+    queryKey: ['indicacoes'],
+    queryFn: () => apiFetch('/api/v1/indicacoes'),
+  })
+}
+
+export function useIndicacaoUsos() {
+  return useQuery<import('./types').IndicacaoUsoOut[]>({
+    queryKey: ['indicacao-usos'],
+    queryFn: () => apiFetch('/api/v1/indicacoes/usos'),
+  })
+}
+
+export function useRankingIndicadores() {
+  return useQuery<import('./types').RankingIndicadorOut[]>({
+    queryKey: ['ranking-indicadores'],
+    queryFn: () => apiFetch('/api/v1/indicacoes/ranking'),
+  })
+}
+
+export function useMarcarConvertido() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ usoId, observacao, cliente_indicado_id }: { usoId: string; observacao?: string; cliente_indicado_id?: string }) =>
+      apiFetch<import('./types').IndicacaoUsoOut>(`/api/v1/indicacoes/usos/${usoId}/converter`, {
+        method: 'POST',
+        body: JSON.stringify({ observacao, cliente_indicado_id }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['indicacao-usos'] })
+      qc.invalidateQueries({ queryKey: ['ranking-indicadores'] })
+    },
+  })
+}
+
+export function useMarcarCredito() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ usoId, observacao }: { usoId: string; observacao?: string }) =>
+      apiFetch<import('./types').IndicacaoUsoOut>(`/api/v1/indicacoes/usos/${usoId}/credito`, {
+        method: 'POST',
+        body: JSON.stringify({ observacao }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['indicacao-usos'] }),
+  })
+}

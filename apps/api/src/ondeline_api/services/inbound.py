@@ -111,6 +111,10 @@ _MEDIA_KINDS = {
 
 
 _CMD_CONCLUIR_RE = re.compile(r"^conclu[ií]r\s+(OS-[\w-]+)\b", re.IGNORECASE)
+# F10 — detecta "Indicado por XXXXX" como inicio de mensagem.
+_CMD_INDICADO_RE = re.compile(
+    r"^indicad[oa]\s+por\s+([A-Z0-9]{4,16})\b", re.IGNORECASE
+)
 
 
 def _br_local_digits(digits: str) -> str:
@@ -785,6 +789,120 @@ async def process_inbound_message(
             return InboundResult(
                 conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
             )
+
+    # F10 — comando INDICAR (cliente identificado pede link de indicação).
+    if (
+        evt.kind is InboundKind.TEXT
+        and evt.text
+        and deps.session is not None
+        and conversa.cliente_id is not None
+        and evt.text.strip().upper() in ("INDICAR", "INDICACAO", "INDICAÇÃO", "INDICAR AMIGO")
+    ):
+        from ondeline_api.config import get_settings as _gs2
+        from ondeline_api.repositories.indicacao import IndicacaoRepo
+
+        repo_ind = IndicacaoRepo(deps.session)
+        ind = await repo_ind.get_or_create_para_cliente(conversa.cliente_id)
+        # Monta link wa.me apontando pra mesma instancia.
+        settings_ind = _gs2()
+        numero_alvo = settings_ind.evolution_instance  # fallback
+        # Permite override via config 'indicacao.whatsapp_alvo' (admin pode
+        # configurar o numero E.164 sem '+').
+        from sqlalchemy import select as _sel2
+
+        from ondeline_api.db.models.business import Config as _CfgModel
+
+        cfg_row = (
+            await deps.session.execute(
+                _sel2(_CfgModel).where(_CfgModel.key == "indicacao.whatsapp_alvo")
+            )
+        ).scalar_one_or_none()
+        if cfg_row is not None:
+            v = cfg_row.value
+            if isinstance(v, dict) and "value" in v:
+                v = v["value"]
+            if isinstance(v, str) and v.strip():
+                numero_alvo = v.strip()
+        # Sanitiza
+        numero_alvo_digits = "".join(c for c in numero_alvo if c.isdigit())
+        texto_pre = f"Indicado por {ind.codigo} — quero contratar"
+        from urllib.parse import quote
+
+        link = (
+            f"https://wa.me/{numero_alvo_digits}?text={quote(texto_pre)}"
+            if numero_alvo_digits
+            else "(número não configurado — admin precisa setar `indicacao.whatsapp_alvo` no /config)"
+        )
+        msg = (
+            "🎁 *Indique e ganhe!*\n\n"
+            f"Seu código: *{ind.codigo}*\n\n"
+            "Compartilhe este link com seus amigos:\n"
+            f"{link}\n\n"
+            "Quando o amigo fechar plano, vocês dois ganham desconto na próxima fatura. ✨"
+        )
+        deps.outbound.enqueue_send_outbound(evt.jid, msg, conversa.id)
+        return InboundResult(
+            conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
+        )
+
+    # F10 — detecta "Indicado por XXXXXX" no texto da primeira mensagem do lead.
+    if (
+        evt.kind is InboundKind.TEXT
+        and evt.text
+        and deps.session is not None
+        and conversa.cliente_id is None  # só leads / não identificados
+    ):
+        _m_ind = _CMD_INDICADO_RE.match((evt.text or "").strip())
+        if _m_ind:
+            codigo_ind = _m_ind.group(1).upper()
+            from ondeline_api.repositories.indicacao import IndicacaoRepo
+
+            ind = await IndicacaoRepo(deps.session).get_by_codigo(codigo_ind)
+            if ind is not None:
+                # Marca a conversa com a indicação (via tags pra audit).
+                try:
+                    await deps.conversas.add_tag(conversa, f"indicado:{codigo_ind}")
+                except Exception:
+                    pass
+                # Cria Lead vinculado e registra uso.
+                from ondeline_api.db.models.business import Lead, LeadStatus
+
+                lead = Lead(
+                    nome=evt.push_name or "Lead via indicação",
+                    whatsapp=evt.jid,
+                    interesse=f"Indicado por {codigo_ind}",
+                    status=LeadStatus.NOVO,
+                    indicacao_id=ind.id,
+                )
+                deps.session.add(lead)
+                await deps.session.flush()
+                await IndicacaoRepo(deps.session).registrar_uso(
+                    ind.id, lead_id=lead.id
+                )
+                deps.outbound.enqueue_send_outbound(
+                    evt.jid,
+                    "🎁 Bem-vindo(a)! Você foi indicado por um cliente nosso. "
+                    "Em instantes um atendente vai falar com você sobre os planos disponíveis. "
+                    "Quando fechar, vocês dois ganham desconto. ✨",
+                    conversa.id,
+                )
+                # Escala pra humano (comercial).
+                from datetime import UTC as _UTC2
+                from datetime import datetime as _dt2
+
+                if conversa.transferred_at is None:
+                    conversa.transferred_at = _dt2.now(tz=_UTC2)
+                await deps.conversas.update_estado_status(
+                    conversa,
+                    estado=ConversaEstado.AGUARDA_ATENDENTE,
+                    status=ConversaStatus.AGUARDANDO,
+                )
+                return InboundResult(
+                    conversa_id=conversa.id,
+                    persisted=True,
+                    duplicate=False,
+                    escalated=True,
+                )
 
     # Detecção de comando CONCLUIR OS-* (técnico finaliza OS via WhatsApp).
     # Roda antes da verificação de bot.ativo para que técnicos sempre consigam concluir.

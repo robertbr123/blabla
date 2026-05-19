@@ -401,3 +401,36 @@ export interface ProdutividadeResponse {
   config: ComissaoConfigOut
   tecnicos: ProdutividadeTecnicoOut[]
 }
+
+// F10 — Indicacao
+export interface IndicacaoOut {
+  id: string
+  codigo: string
+  cliente_indicador_id: string
+  cliente_indicador_nome: string | null
+  criado_em: string
+  expira_em: string | null
+  usos: number
+  ativo: boolean
+}
+
+export interface IndicacaoUsoOut {
+  id: string
+  indicacao_id: string
+  indicacao_codigo: string | null
+  lead_id: string | null
+  lead_nome: string | null
+  cliente_indicado_id: string | null
+  cliente_indicado_nome: string | null
+  criado_em: string
+  convertido_em: string | null
+  credito_aplicado_em: string | null
+  observacao: string | null
+}
+
+export interface RankingIndicadorOut {
+  cliente_id: string
+  cliente_nome: string
+  usos: number
+  convertidos: number
+}
