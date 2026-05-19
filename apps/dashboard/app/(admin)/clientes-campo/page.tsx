@@ -3,7 +3,7 @@ import { useState } from 'react'
 import {
   CloudOff,
   CloudUpload,
-  CloudDone,
+  CheckCircle2,
   Download,
   MapPin,
   Trash2,
@@ -100,7 +100,7 @@ export default function ClientesCampoPage() {
         <Kpi
           label="Sincronizados c/ SGP"
           value={synced}
-          icon={CloudDone}
+          icon={CheckCircle2}
           color="text-emerald-700"
         />
         <Kpi
@@ -194,7 +194,7 @@ export default function ClientesCampoPage() {
                   <td className="px-4 py-3">
                     {c.sgp_synced_at ? (
                       <Badge className="gap-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                        <CloudDone className="h-3 w-3" />
+                        <CheckCircle2 className="h-3 w-3" />
                         {c.sgp_id ?? 'sync'}
                       </Badge>
                     ) : (

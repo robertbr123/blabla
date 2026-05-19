@@ -1,5 +1,5 @@
 'use client'
-import { CloudDone, CloudOff, MapPin, X } from 'lucide-react'
+import { CheckCircle2, CloudOff, MapPin, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useClienteCampoDetail } from '@/lib/api/queries'
 
@@ -42,7 +42,7 @@ export function DialogClienteCampoDetail({ id, onClose }: Props) {
             <div className="flex items-center gap-2">
               {c.sgp_synced_at ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
-                  <CloudDone className="h-3.5 w-3.5" />
+                  <CheckCircle2 className="h-3.5 w-3.5" />
                   Sincronizado SGP{c.sgp_id ? ` · ${c.sgp_id}` : ''}
                 </span>
               ) : (
