@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../clientes/clientes_list_screen.dart';
 import '../estoque/estoque_screen.dart';
 import '../os/os_list_screen.dart';
 import '../perfil/perfil_screen.dart';
 
-/// Shell com BottomNavigationBar pra trocar entre OS e Estoque.
-/// Detalhe da OS abre por cima do shell (push em vez de tab).
+/// Shell com BottomNavigationBar — 4 tabs: OS / Estoque / Clientes / Perfil.
+/// Detalhes (OS, Cliente, etc) abrem por cima do shell (push).
 class MainShell extends ConsumerStatefulWidget {
   final int initialTab;
   const MainShell({super.key, this.initialTab = 0});
@@ -22,8 +23,11 @@ class _MainShellState extends ConsumerState<MainShell> {
   static const _telas = [
     OsListScreen(),
     EstoqueScreen(),
+    ClientesListScreen(),
     PerfilScreen(),
   ];
+
+  static const _rotas = ['/os', '/estoque', '/clientes', '/perfil'];
 
   @override
   void initState() {
@@ -39,7 +43,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         selectedIndex: _index,
         onDestinationSelected: (i) {
           setState(() => _index = i);
-          context.go(['/os', '/estoque', '/perfil'][i]);
+          context.go(_rotas[i]);
         },
         destinations: const [
           NavigationDestination(
@@ -51,6 +55,11 @@ class _MainShellState extends ConsumerState<MainShell> {
             icon: Icon(Icons.inventory_2_outlined),
             selectedIcon: Icon(Icons.inventory_2),
             label: 'Estoque',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.people_outline),
+            selectedIcon: Icon(Icons.people),
+            label: 'Clientes',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),

@@ -7,6 +7,7 @@ import 'package:tecnico_mobile/core/db/estoque_repo.dart';
 import 'package:tecnico_mobile/core/db/perfil_repo.dart';
 import 'package:tecnico_mobile/core/api/api_client.dart';
 import 'package:tecnico_mobile/features/estoque/estoque_data.dart';
+import 'package:tecnico_mobile/features/perfil/perfil_data.dart';
 
 AppDatabase testDatabase() => AppDatabase.forTesting(NativeDatabase.memory());
 
@@ -246,6 +247,88 @@ void main() {
 
     await expectLater(
       container.read(estoqueSaldoProvider.future),
+      throwsA(
+        isA<DioException>().having(
+          (e) => e.response?.statusCode,
+          'statusCode',
+          401,
+        ),
+      ),
+    );
+  });
+
+  test(
+    'perfil provider serves cached snapshot for current auth user when offline',
+    () async {
+      final db = testDatabase();
+      addTearDown(db.close);
+
+      final repo = PerfilLocalRepo(db);
+      await repo.save({
+        'user_id': 'u1',
+        'email': 'u1@acme.com',
+        'nome': 'Tecnico U1',
+        'estatisticas': {
+          'os_pendentes': 1,
+          'os_em_andamento': 0,
+          'os_concluidas_mes': 2,
+        },
+      });
+      await repo.save({
+        'user_id': 'u2',
+        'email': 'u2@acme.com',
+        'nome': 'Tecnico Teste',
+        'estatisticas': {
+          'os_pendentes': 4,
+          'os_em_andamento': 1,
+          'os_concluidas_mes': 6,
+        },
+      });
+
+      final container = ProviderContainer(
+        overrides: [
+          dbProvider.overrideWith((ref) => db),
+          apiClientProvider.overrideWith((ref) => _offlineDio()),
+          perfilReadUserIdProvider.overrideWith((ref) => () async => 'u2'),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final perfil = await container.read(perfilProvider.future);
+
+      expect(perfil.userId, 'u2');
+      expect(perfil.nome, 'Tecnico Teste');
+      expect(perfil.email, 'u2@acme.com');
+    },
+  );
+
+  test('perfil provider does not use cache on 401 response', () async {
+    final db = testDatabase();
+    addTearDown(db.close);
+
+    final repo = PerfilLocalRepo(db);
+    await repo.save({
+      'user_id': 'u2',
+      'email': 'u2@acme.com',
+      'nome': 'Tecnico Teste',
+      'estatisticas': {
+        'os_pendentes': 4,
+        'os_em_andamento': 1,
+        'os_concluidas_mes': 6,
+      },
+    });
+
+    final container = ProviderContainer(
+      overrides: [
+        dbProvider.overrideWith((ref) => db),
+        apiClientProvider.overrideWith((ref) => _unauthorizedDio()),
+        perfilReadUserIdProvider.overrideWith((ref) => () async => 'u2'),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container.read(perfilProvider.future),
       throwsA(
         isA<DioException>().having(
           (e) => e.response?.statusCode,

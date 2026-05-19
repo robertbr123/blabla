@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import 'core/auth/auth_repository.dart';
 import 'features/auth/login_screen.dart';
+import 'features/clientes/cliente_detail_screen.dart';
+import 'features/clientes/cliente_novo_screen.dart';
 import 'features/os/os_detail_screen.dart';
 import 'features/shell/main_shell.dart';
 import 'features/splash/splash_screen.dart';
@@ -33,12 +35,25 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const MainShell(initialTab: 1),
       ),
       GoRoute(
-        path: '/perfil',
+        path: '/clientes',
         builder: (_, __) => const MainShell(initialTab: 2),
+      ),
+      GoRoute(
+        path: '/perfil',
+        builder: (_, __) => const MainShell(initialTab: 3),
       ),
       GoRoute(
         path: '/os/:id',
         builder: (_, st) => OsDetailScreen(id: st.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/clientes/novo',
+        builder: (_, __) => const ClienteNovoScreen(),
+      ),
+      GoRoute(
+        path: '/clientes/:id',
+        builder: (_, st) =>
+            ClienteDetailScreen(id: st.pathParameters['id']!),
       ),
     ],
     errorBuilder: (_, st) => Scaffold(
