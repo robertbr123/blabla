@@ -8,7 +8,6 @@ Estrategia:
 - `mark_as_synced=True` (default): seta sgp_synced_at = registration_date
   porque clientes do site antigo ja estavam no SGP.
 """
-
 from __future__ import annotations
 
 from datetime import UTC, datetime, time as _time
