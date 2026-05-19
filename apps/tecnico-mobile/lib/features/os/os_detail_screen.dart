@@ -30,7 +30,8 @@ class OsDetailScreen extends ConsumerWidget {
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => _Erro(e: e, onRetry: () => ref.invalidate(osDetailProvider(id))),
+        error: (e, _) =>
+            _Erro(e: e, onRetry: () => ref.invalidate(osDetailProvider(id))),
         data: (os) => _Body(osId: id, os: os),
       ),
     );
@@ -143,16 +144,20 @@ class _Body extends ConsumerWidget {
         ref.invalidate(osDetailProvider(osId));
         _showSnack(context, 'OS iniciada ✅');
       } else {
+        await ref.read(osLocalRepoProvider).markStartedOptimistic(osId);
         await svc.enqueue(
           osId: osId,
           kind: OutboxKind.iniciar,
           payload: body,
         );
+        ref.invalidate(osDetailProvider(osId));
         _showSnack(context, 'Sem conexão — enfileirado pra envio depois.');
       }
     } catch (e) {
       // Falha online → cai pra fila pra retry
+      await ref.read(osLocalRepoProvider).markStartedOptimistic(osId);
       await svc.enqueue(osId: osId, kind: OutboxKind.iniciar, payload: body);
+      ref.invalidate(osDetailProvider(osId));
       _showSnack(context, 'Falha online: enfileirado pra retry. ($e)');
     }
   }
@@ -180,9 +185,11 @@ class _Body extends ConsumerWidget {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _ConcluirSheet(osId: osId, onDone: () {
-        ref.invalidate(osDetailProvider(osId));
-      }),
+      builder: (_) => _ConcluirSheet(
+          osId: osId,
+          onDone: () {
+            ref.invalidate(osDetailProvider(osId));
+          }),
     );
   }
 
@@ -236,6 +243,7 @@ class _ConcluirSheetState extends ConsumerState<_ConcluirSheet> {
       };
       final online = await _Body._isOnline();
       final svc = ref.read(syncServiceProvider);
+      var completionMessage = 'OS concluída.';
       if (online) {
         try {
           await ref.read(apiClientProvider).post(
@@ -243,23 +251,32 @@ class _ConcluirSheetState extends ConsumerState<_ConcluirSheet> {
                 data: body,
               );
         } catch (_) {
+          await ref
+              .read(osLocalRepoProvider)
+              .markConcludedOptimistic(widget.osId, body);
           await svc.enqueue(
             osId: widget.osId,
             kind: OutboxKind.concluir,
             payload: body,
           );
+          completionMessage = 'Falha online — conclusão enfileirada pra retry.';
         }
       } else {
+        await ref
+            .read(osLocalRepoProvider)
+            .markConcludedOptimistic(widget.osId, body);
         await svc.enqueue(
           osId: widget.osId,
           kind: OutboxKind.concluir,
           payload: body,
         );
+        completionMessage =
+            'Sem conexão — conclusão enfileirada pra envio depois.';
       }
       widget.onDone();
       if (mounted) {
         Navigator.of(context).pop();
-        _Body._showSnack(context, 'OS concluída.');
+        _Body._showSnack(context, completionMessage);
       }
     } finally {
       if (mounted) setState(() => _enviando = false);
@@ -430,11 +447,13 @@ class _Header extends StatelessWidget {
           if (os['agendamento_at'] != null)
             Row(
               children: [
-                Icon(Icons.event,
-                    size: 14, color: scheme.onSurfaceVariant),
+                Icon(Icons.event, size: 14, color: scheme.onSurfaceVariant),
                 const SizedBox(width: 5),
                 Text(
-                  os['agendamento_at'].toString().substring(0, 16).replaceAll('T', ' às '),
+                  os['agendamento_at']
+                      .toString()
+                      .substring(0, 16)
+                      .replaceAll('T', ' às '),
                   style: TextStyle(
                     fontSize: 12,
                     color: scheme.onSurfaceVariant,
@@ -450,15 +469,35 @@ class _Header extends StatelessWidget {
   static ({String label, Color color, IconData icon}) _statusInfo(String s) {
     switch (s) {
       case 'pendente':
-        return (label: 'Pendente', color: const Color(0xFFf59e0b), icon: Icons.hourglass_top);
+        return (
+          label: 'Pendente',
+          color: const Color(0xFFf59e0b),
+          icon: Icons.hourglass_top
+        );
       case 'em_andamento':
-        return (label: 'Em andamento', color: const Color(0xFF2563eb), icon: Icons.directions_run);
+        return (
+          label: 'Em andamento',
+          color: const Color(0xFF2563eb),
+          icon: Icons.directions_run
+        );
       case 'concluida':
-        return (label: 'Concluída', color: const Color(0xFF16a34a), icon: Icons.check_circle);
+        return (
+          label: 'Concluída',
+          color: const Color(0xFF16a34a),
+          icon: Icons.check_circle
+        );
       case 'cancelada':
-        return (label: 'Cancelada', color: const Color(0xFF6b7280), icon: Icons.cancel);
+        return (
+          label: 'Cancelada',
+          color: const Color(0xFF6b7280),
+          icon: Icons.cancel
+        );
       default:
-        return (label: s, color: const Color(0xFF6b7280), icon: Icons.help_outline);
+        return (
+          label: s,
+          color: const Color(0xFF6b7280),
+          icon: Icons.help_outline
+        );
     }
   }
 }
@@ -611,4 +650,3 @@ class _Erro extends StatelessWidget {
     );
   }
 }
-
