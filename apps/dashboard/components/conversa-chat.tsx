@@ -1,6 +1,15 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronUp, Search, Send, Trash2, UserCheck, X } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronUp,
+  Paperclip,
+  Search,
+  Send,
+  Trash2,
+  UserCheck,
+  X,
+} from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,6 +23,7 @@ import {
   useCreateOs,
   useDeleteConversa,
   useEncerrar,
+  useEnviarMidia,
   useOsList,
   useResponder,
   useTecnicos,
@@ -47,6 +57,7 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
   const responder = useResponder(conversaId)
   const atender = useAtender(conversaId)
   const encerrar = useEncerrar(conversaId)
+  const enviarMidia = useEnviarMidia(conversaId)
   const deleteConversa = useDeleteConversa(conversaId)
   const createOs = useCreateOs()
   const { data: tecnicos } = useTecnicos({ ativo: true })
@@ -165,6 +176,16 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
     await responder.mutateAsync(trimmed)
     setText('')
     void refetch()
+  }
+
+  async function handleUploadMedia(file: File) {
+    try {
+      await enviarMidia.mutateAsync({ file, caption: text.trim() })
+      setText('')
+      void refetch()
+    } catch (e) {
+      alert(`Falha ao enviar: ${e instanceof Error ? e.message : 'erro'}`)
+    }
   }
 
   async function handleAbrirOs() {
@@ -347,7 +368,16 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
                 )
               })}
             </div>
-            {data.status !== 'encerrada' && <ResponderBox text={text} setText={setText} handleSend={handleSend} pending={responder.isPending} />}
+            {data.status !== 'encerrada' && (
+              <ResponderBox
+                text={text}
+                setText={setText}
+                handleSend={handleSend}
+                pending={responder.isPending}
+                onUploadMedia={handleUploadMedia}
+                uploading={enviarMidia.isPending}
+              />
+            )}
           </div>
         )}
 
@@ -567,6 +597,8 @@ interface ResponderBoxProps {
   setText: (v: string) => void
   handleSend: () => Promise<void> | void
   pending: boolean
+  onUploadMedia: (file: File) => Promise<void>
+  uploading: boolean
 }
 
 function escapeRegex(s: string): string {
@@ -659,8 +691,28 @@ function VincularClienteBox({
   )
 }
 
-function ResponderBox({ text, setText, handleSend, pending }: ResponderBoxProps) {
+function ResponderBox({
+  text,
+  setText,
+  handleSend,
+  pending,
+  onUploadMedia,
+  uploading,
+}: ResponderBoxProps) {
   const qr = useQuickRepliesKeyHandler(text, setText)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    e.target.value = ''
+    if (!f) return
+    if (f.size > 10 * 1024 * 1024) {
+      alert('Arquivo excede 10MB')
+      return
+    }
+    void onUploadMedia(f)
+  }
+
   return (
     <div className="relative rounded-md border bg-card p-3">
       <QuickRepliesMenu text={text} onSelect={setText} position="above" />
@@ -676,16 +728,39 @@ function ResponderBox({ text, setText, handleSend, pending }: ResponderBoxProps)
           }
         }}
       />
-      <div className="mt-2 flex items-center justify-between">
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*,application/pdf,audio/*,video/*"
+        onChange={handleFilePick}
+        className="hidden"
+      />
+      <div className="mt-2 flex items-center justify-between gap-2">
         <span className="text-xs text-muted-foreground">
-          Ctrl/Cmd + Enter · use <code className="font-mono">/</code> pra respostas rápidas
+          Ctrl/Cmd + Enter · <code className="font-mono">/</code> respostas rápidas · 📎 anexo (max 10MB, vira legenda)
         </span>
-        <Button
-          onClick={() => void handleSend()}
-          disabled={pending || !text.trim()}
-        >
-          <Send className="h-4 w-4" /> Enviar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading || pending}
+            title="Anexar imagem, PDF, áudio ou vídeo"
+          >
+            {uploading ? (
+              <span className="text-xs">…</span>
+            ) : (
+              <Paperclip className="h-4 w-4" />
+            )}
+          </Button>
+          <Button
+            onClick={() => void handleSend()}
+            disabled={pending || uploading || !text.trim()}
+          >
+            <Send className="h-4 w-4" /> Enviar
+          </Button>
+        </div>
       </div>
     </div>
   )

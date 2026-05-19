@@ -1,10 +1,11 @@
 """GET/POST /api/v1/conversas* — atendimento de conversas."""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated
-from uuid import UUID
+from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.api.deps_v1 import CursorParam, LimitParam, parse_cursor, parse_limit
@@ -267,6 +268,150 @@ async def vincular_cliente_endpoint(
         endereco=decrypt_pii(cliente_db.endereco_encrypted) if cliente_db.endereco_encrypted else None,
     )
     return out
+
+
+_MEDIA_DIR = Path("/tmp/ondeline_conversa_media")
+_MAX_MEDIA_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+def _classify_media(content_type: str) -> str | None:
+    """Mapeia mimetype -> mediatype da Evolution. None se nao permitido."""
+    ct = content_type.lower()
+    if ct.startswith("image/"):
+        return "image"
+    if ct == "application/pdf" or ct.startswith("application/"):
+        return "document"
+    if ct.startswith("audio/"):
+        return "audio"
+    if ct.startswith("video/"):
+        return "video"
+    return None
+
+
+@router.post(
+    "/{conversa_id}/enviar-midia",
+    response_model=MensagemOut,
+    dependencies=[_role_dep],
+)
+async def enviar_midia_endpoint(
+    conversa_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+    file: Annotated[UploadFile, File()],
+    caption: Annotated[str, Form()] = "",
+) -> MensagemOut:
+    """Atendente envia midia (imagem, PDF, audio, video) para a conversa.
+
+    Limites: 10MB. Tipos: image/*, application/pdf, audio/*, video/*.
+    Salva localmente em /tmp/ondeline_conversa_media/{conversa_id}/<uuid>.<ext>
+    e envia inline via Evolution. Registra Mensagem(role=atendente).
+    """
+    from datetime import UTC, datetime
+
+    import structlog
+
+    from ondeline_api.adapters.evolution import EvolutionAdapter, EvolutionError
+    from ondeline_api.config import get_settings
+    from ondeline_api.db.crypto import encrypt_pii
+    from ondeline_api.db.models.business import MensagemRole
+    from ondeline_api.services.conversa_events import publish as publish_event
+
+    log = structlog.get_logger(__name__)
+
+    repo = ConversaRepo(session)
+    conversa = await repo.get_by_id(conversa_id)
+    if conversa is None:
+        raise HTTPException(status_code=404, detail="conversa not found")
+
+    if not file.content_type:
+        raise HTTPException(status_code=400, detail="content-type ausente")
+
+    mediatype = _classify_media(file.content_type)
+    if mediatype is None:
+        raise HTTPException(
+            status_code=400, detail=f"tipo nao suportado: {file.content_type}"
+        )
+
+    contents = await file.read()
+    if len(contents) == 0:
+        raise HTTPException(status_code=400, detail="arquivo vazio")
+    if len(contents) > _MAX_MEDIA_BYTES:
+        raise HTTPException(status_code=413, detail="arquivo excede 10MB")
+
+    target_dir = _MEDIA_DIR / str(conversa_id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    suffix = Path(file.filename or "").suffix or ""
+    fname = f"{uuid4().hex}{suffix}"
+    fpath = target_dir / fname
+    fpath.write_bytes(contents)
+    fpath.chmod(0o600)
+
+    s = get_settings()
+    evolution = EvolutionAdapter(
+        base_url=s.evolution_url,
+        instance=s.evolution_instance,
+        api_key=s.evolution_key,
+    )
+    try:
+        await evolution.send_media_bytes(
+            conversa.whatsapp,
+            data=contents,
+            mediatype=mediatype,
+            mimetype=file.content_type,
+            file_name=file.filename or fname,
+            caption=caption or "",
+        )
+    except EvolutionError as exc:
+        log.warning(
+            "conversa.enviar_midia.evolution_failed",
+            conversa_id=str(conversa_id),
+            error=str(exc),
+        )
+        raise HTTPException(status_code=502, detail=f"Evolution: {exc}") from exc
+    finally:
+        await evolution.aclose()
+
+    # Registra mensagem (apos envio ok).
+    if conversa.first_response_at is None:
+        conversa.first_response_at = datetime.now(tz=UTC)
+
+    msg = Mensagem(
+        conversa_id=conversa.id,
+        external_id=None,
+        role=MensagemRole.ATENDENTE,
+        content_encrypted=encrypt_pii(caption) if caption else None,
+        media_type=file.content_type,
+        media_url=str(fpath),
+    )
+    session.add(msg)
+    await session.flush()
+
+    log.info(
+        "conversa.enviar_midia.ok",
+        conversa_id=str(conversa_id),
+        atendente_id=str(user.id),
+        mediatype=mediatype,
+        size=len(contents),
+    )
+
+    # SSE
+    try:
+        redis = await get_redis()
+        await publish_event(
+            redis,
+            conversa.id,
+            {
+                "type": "msg",
+                "id": str(msg.id),
+                "role": "atendente",
+                "text": caption or f"[{mediatype}]",
+                "ts": msg.created_at.isoformat() if msg.created_at else None,
+            },
+        )
+    except Exception:
+        pass
+
+    return _to_msg_out(msg)
 
 
 @router.post(

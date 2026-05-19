@@ -183,6 +183,30 @@ export function useEncerrar(conversaId: string) {
   })
 }
 
+export function useEnviarMidia(conversaId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ file, caption }: { file: File; caption: string }) => {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('caption', caption)
+      const token = getAccessToken()
+      const res = await fetch(`/api/v1/conversas/${conversaId}/enviar-midia`, {
+        method: 'POST',
+        body: fd,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '')
+        throw new Error(txt || `HTTP ${res.status}`)
+      }
+      return res.json()
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['conversa', conversaId] }),
+  })
+}
+
 export function useVincularCliente(conversaId: string) {
   const qc = useQueryClient()
   return useMutation({
