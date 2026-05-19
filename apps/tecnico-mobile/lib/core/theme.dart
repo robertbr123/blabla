@@ -1,22 +1,28 @@
 import 'package:flutter/material.dart';
 
-// Brand colors — referenciadas em outros lugares do app via import.
-const brandBlue = Color(0xFF2563eb);
-const brandCyan = Color(0xFF06b6d4);
-const brandBlueDark = Color(0xFF60a5fa);
-const brandCyanDark = Color(0xFF22d3ee);
+// Brand colors — derivadas do logo BlaBla (balões verdes + ink navy).
+const brandGreen = Color(0xFF16a34a);      // verde principal (balão escuro)
+const brandGreenLight = Color(0xFF22c55e); // verde claro (balão da frente)
+const brandInk = Color(0xFF0E1729);        // navy do icone
+const brandCream = Color(0xFFF8F5EE);      // cream do bg light
+
+// Compat com nomes antigos (alguns widgets ainda referenciam).
+const brandBlue = brandGreen;
+const brandCyan = brandGreenLight;
+const brandBlueDark = Color(0xFF4ade80);
+const brandCyanDark = Color(0xFF34d399);
 
 ThemeData buildLightTheme() {
   const scheme = ColorScheme(
     brightness: Brightness.light,
-    primary: brandBlue,
+    primary: brandGreen,
     onPrimary: Colors.white,
-    primaryContainer: Color(0xFFdbeafe),
-    onPrimaryContainer: Color(0xFF1e3a8a),
-    secondary: brandCyan,
+    primaryContainer: Color(0xFFdcfce7),
+    onPrimaryContainer: Color(0xFF14532d),
+    secondary: brandGreenLight,
     onSecondary: Colors.white,
-    secondaryContainer: Color(0xFFcffafe),
-    onSecondaryContainer: Color(0xFF155e75),
+    secondaryContainer: Color(0xFFd1fae5),
+    onSecondaryContainer: Color(0xFF065f46),
     tertiary: Color(0xFF8b5cf6),
     onTertiary: Colors.white,
     error: Color(0xFFdc2626),
@@ -43,26 +49,26 @@ ThemeData buildLightTheme() {
 }
 
 ThemeData buildDarkTheme() {
-  // Paleta slate-tinted (não preto puro — sutilmente azulado, mais agradável).
+  // Paleta navy-tinted (espelha o brandInk do icone do app).
   const scheme = ColorScheme(
     brightness: Brightness.dark,
     primary: brandBlueDark,
-    onPrimary: Color(0xFF0c1e3a),
-    primaryContainer: Color(0xFF1e3a8a),
-    onPrimaryContainer: Color(0xFFdbeafe),
+    onPrimary: Color(0xFF052e16),
+    primaryContainer: Color(0xFF14532d),
+    onPrimaryContainer: Color(0xFFdcfce7),
     secondary: brandCyanDark,
-    onSecondary: Color(0xFF0a3338),
-    secondaryContainer: Color(0xFF155e75),
-    onSecondaryContainer: Color(0xFFcffafe),
+    onSecondary: Color(0xFF064e3b),
+    secondaryContainer: Color(0xFF065f46),
+    onSecondaryContainer: Color(0xFFd1fae5),
     tertiary: Color(0xFFa78bfa),
     onTertiary: Color(0xFF2e1065),
     error: Color(0xFFf87171),
     onError: Color(0xFF450a0a),
     errorContainer: Color(0xFF7f1d1d),
     onErrorContainer: Color(0xFFfecaca),
-    surface: Color(0xFF0f172a),
+    surface: brandInk,
     onSurface: Color(0xFFf1f5f9),
-    surfaceContainerLowest: Color(0xFF020617),
+    surfaceContainerLowest: Color(0xFF070d18),
     surfaceContainerLow: Color(0xFF0c1424),
     surfaceContainer: Color(0xFF1e293b),
     surfaceContainerHigh: Color(0xFF293548),

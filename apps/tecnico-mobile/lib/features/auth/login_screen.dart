@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_repository.dart';
-import '../../core/branding/blabla_logo.dart';
 import '../../core/push/fcm_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -77,17 +76,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Logo
+                    // Logo BlaBla — usa versao dark/light conforme tema
                     const SizedBox(height: 24),
-                    const Center(child: BlaBlaLogo.full(size: 64)),
+                    Center(
+                      child: Image.asset(
+                        Theme.of(context).brightness == Brightness.dark
+                            ? 'assets/branding/logo_horizontal_dark.png'
+                            : 'assets/branding/logo_horizontal_light.png',
+                        height: 80,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Center(
                       child: Text(
-                        'Técnico',
+                        'TÉCNICO',
                         style: TextStyle(
-                          fontSize: 14,
-                          letterSpacing: 4,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                          letterSpacing: 6,
+                          fontWeight: FontWeight.w600,
                           color: scheme.onSurfaceVariant,
                         ),
                       ),

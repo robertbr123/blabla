@@ -217,6 +217,26 @@ Baixa um JSON. Esse arquivo vai pro backend como env var (próximo PR fará isso
 
 ---
 
+## 5.5 App icon (BlaBla Twin Ink)
+
+Os assets já estão em `assets/branding/`:
+
+- `app_icon.png` — ícone do app (squircle dark com 2 balões verdes)
+- `logo_horizontal_light.png` — wordmark "BlaBla" sobre cream (tela de login modo claro)
+- `logo_horizontal_dark.png` — só balões sobre navy (modo escuro)
+
+Pra gerar os ícones nativos Android + iOS a partir do `app_icon.png`:
+
+```bash
+cd apps/tecnico-mobile
+flutter pub get
+dart run flutter_launcher_icons
+```
+
+O pacote já está configurado no `pubspec.yaml` (seção `flutter_launcher_icons`). Roda uma vez, depois sempre que mudar `app_icon.png`. Gera os ícones nativos em `android/app/src/main/res/mipmap-*/` e `ios/Runner/Assets.xcassets/AppIcon.appiconset/`.
+
+---
+
 ## 6. Comandos do dia-a-dia
 
 ```bash
