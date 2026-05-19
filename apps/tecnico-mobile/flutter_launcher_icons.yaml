@@ -1,8 +1,7 @@
-flutter_launcher_icons:
-  android: launcher_icon
-  ios: true
-  image_path: assets/branding/app_icon.png
-  remove_alpha_ios: true
-  min_sdk_android: 21
-  adaptive_icon_background: "#0E1729"
-  adaptive_icon_foreground: assets/branding/app_icon.png
+android: launcher_icon
+ios: true
+image_path: assets/branding/app_icon.png
+remove_alpha_ios: true
+min_sdk_android: 21
+adaptive_icon_background: "#0E1729"
+adaptive_icon_foreground: assets/branding/app_icon.png
