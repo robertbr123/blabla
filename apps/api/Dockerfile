@@ -36,7 +36,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # precisamos usar `uv pip install`, não `pip` diretamente.
 RUN --mount=type=cache,target=/root/.cache/uv \
     VIRTUAL_ENV=/app/.venv uv pip install "qrcode[pil]>=7.4.0" \
-    && /app/.venv/bin/python -c "import qrcode; print('qrcode', qrcode.__version__, 'ok')"
+    && /app/.venv/bin/python -c "from qrcode import QRCode; print('qrcode import ok')"
 
 # Layer 2: copia o código e instala o pacote (rápido — só o pacote, deps já estão no cache)
 COPY --chown=app:app src /app/src
