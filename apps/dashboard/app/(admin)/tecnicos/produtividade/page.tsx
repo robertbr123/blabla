@@ -1,6 +1,8 @@
 'use client'
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { DollarSign, Trophy } from 'lucide-react'
+import { ComissaoConfigEditor } from '@/components/comissao-config-editor'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,6 +24,7 @@ function fmtR(v: number): string {
 export default function ProdutividadePage() {
   const [mes, setMes] = useState(currentMonthStr())
   const { data, isLoading, error } = useProdutividade(mes)
+  const qc = useQueryClient()
 
   return (
     <div className="space-y-6">
@@ -45,22 +48,16 @@ export default function ProdutividadePage() {
         </div>
       </div>
 
+      <ComissaoConfigEditor
+        onSaved={() => qc.invalidateQueries({ queryKey: ['produtividade'] })}
+      />
+
       {data && (
         <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
-          <strong>Regras de comissão deste mês:</strong>{' '}
+          <strong>Aplicado neste relatório:</strong>{' '}
           {fmtR(data.config.valor_por_os)} por OS · bônus CSAT 5:{' '}
           {fmtR(data.config.bonus_csat_5)} · bônus CSAT 4:{' '}
           {fmtR(data.config.bonus_csat_4)}
-          {data.config.valor_por_os === 0 &&
-            data.config.bonus_csat_5 === 0 &&
-            data.config.bonus_csat_4 === 0 && (
-              <div className="mt-1 text-amber-700">
-                ⚠️ Comissão zerada — configure em /api/v1/config:
-                <code className="font-mono"> comissao.valor_por_os</code>,{' '}
-                <code className="font-mono">comissao.bonus_csat_5</code>,{' '}
-                <code className="font-mono">comissao.bonus_csat_4</code>
-              </div>
-            )}
         </div>
       )}
 
