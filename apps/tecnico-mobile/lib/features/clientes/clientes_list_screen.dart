@@ -57,11 +57,6 @@ class _ClientesListScreenState extends ConsumerState<ClientesListScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/clientes/novo'),
-        icon: const Icon(Icons.person_add),
-        label: const Text('Novo'),
-      ),
       body: Column(
         children: [
           // Barra de busca

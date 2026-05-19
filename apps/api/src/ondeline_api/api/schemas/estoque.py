@@ -117,7 +117,7 @@ class TransferirIn(BaseModel):
 
 
 class TecnicoSaldoResumo(BaseModel):
-    """Linha da visao admin: saldo por tecnico × item."""
+    """Linha da visao admin: saldo por tecnico x item."""
     tecnico_id: UUID
     tecnico_nome: str
     item_id: UUID
@@ -128,5 +128,5 @@ class TecnicoSaldoResumo(BaseModel):
 
 
 class TecnicoSaldoOut(BaseModel):
-    """Saldo de todos os tecnicos × itens (admin visualiza distribuicao)."""
+    """Saldo de todos os tecnicos x itens (admin visualiza distribuicao)."""
     linhas: list[TecnicoSaldoResumo]

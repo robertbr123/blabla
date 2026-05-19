@@ -448,10 +448,10 @@ async def saldos_tecnicos(
     from sqlalchemy import case, func, select
 
     from ondeline_api.db.models.business import Tecnico as TecnicoModel
-    from ondeline_api.db.models.estoque import EstoqueMovimento
     from ondeline_api.db.models.estoque import (
         TIPOS_POSITIVOS as _POS,
     )
+    from ondeline_api.db.models.estoque import EstoqueMovimento
 
     sign = case(
         (EstoqueMovimento.tipo.in_(list(_POS)), EstoqueMovimento.quantidade),

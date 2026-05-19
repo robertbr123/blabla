@@ -26,6 +26,7 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.responses import FileResponse
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -329,7 +330,6 @@ async def create_cliente_campo(
     - Item serializado dispara hook que cruza com Cliente SGP e cria
       ClienteEquipamento (via cpf_hash).
     """
-    from ondeline_api.db.models.business import MensagemRole as _  # type: ignore[unused-ignore]  # noqa: F401
     from ondeline_api.repositories.tecnico import TecnicoRepo
     from ondeline_api.services.estoque import (
         EstoqueError,
@@ -593,11 +593,9 @@ async def get_foto_cliente_campo(
     foto_idx: int,
     session: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
-) -> "object":
+) -> FileResponse:
     """Retorna o binario da foto N. URL pra exibir em <Image>."""
     from pathlib import Path
-
-    from fastapi.responses import FileResponse
 
     cliente = await ClienteCadastroRepo(session).get_by_id(cliente_id)
     if cliente is None:

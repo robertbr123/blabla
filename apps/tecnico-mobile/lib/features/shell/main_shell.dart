@@ -39,6 +39,13 @@ class _MainShellState extends ConsumerState<MainShell> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(index: _index, children: _telas),
+      floatingActionButton: _index == 2
+          ? FloatingActionButton.extended(
+              onPressed: () => context.push('/clientes/novo'),
+              icon: const Icon(Icons.person_add),
+              label: const Text('Novo'),
+            )
+          : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) {

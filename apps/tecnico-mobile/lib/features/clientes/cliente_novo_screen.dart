@@ -223,18 +223,11 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
           ),
         ],
       ),
-      body: Theme(
-        // Customiza cor do step pra brand
-        data: Theme.of(context).copyWith(
-          colorScheme: Theme.of(context).colorScheme.copyWith(
-                primary: Theme.of(context).colorScheme.primary,
-              ),
-        ),
+      body: SafeArea(
         child: Stepper(
-          type: StepperType.horizontal,
+          physics: const ClampingScrollPhysics(),
           currentStep: _step,
           onStepTapped: (i) {
-            // Só permite voltar; pra avançar usa o botão Continuar
             if (i < _step) setState(() => _step = i);
           },
           controlsBuilder: (ctx, details) {
@@ -264,10 +257,12 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
                       child: const Text('Continuar'),
                     ),
                   if (_step == 2)
-                    FilledButton.icon(
-                      icon: const Icon(Icons.check),
-                      onPressed: _enviando ? null : _enviar,
-                      label: Text(_enviando ? 'Salvando…' : 'Salvar cliente'),
+                    Expanded(
+                      child: FilledButton.icon(
+                        icon: const Icon(Icons.check),
+                        onPressed: _enviando ? null : _enviar,
+                        label: Text(_enviando ? 'Salvando…' : 'Salvar cliente'),
+                      ),
                     ),
                 ],
               ),

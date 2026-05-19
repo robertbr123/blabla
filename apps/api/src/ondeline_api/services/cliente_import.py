@@ -8,9 +8,10 @@ Estrategia:
 - `mark_as_synced=True` (default): seta sgp_synced_at = registration_date
   porque clientes do site antigo ja estavam no SGP.
 """
+
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, time as _time
 from typing import Any
 
 import structlog
@@ -78,8 +79,6 @@ async def import_rows(
             sgp_synced_at: datetime | None = None
             if mark_as_synced:
                 # naive datetime no fuso local — converte pra UTC com Z
-                from datetime import UTC, time as _time
-
                 sgp_synced_at = datetime.combine(
                     row.registration_date, _time(12, 0), tzinfo=UTC
                 )
@@ -202,26 +201,26 @@ def parse_csv(content: bytes) -> list[ImportClienteRow]:
     text = content.decode("utf-8-sig", errors="replace")
     reader = _csv.DictReader(io.StringIO(text))
     rows: list[ImportClienteRow] = []
+    def _f_or_none(d: dict[str, Any], key: str) -> float | None:
+        v = d.get(key)
+        if v in (None, "", "NULL"):
+            return None
+        return float(str(v).replace(",", "."))
+
+    def _to_date(d: dict[str, Any], key: str) -> _date:
+        v = d.get(key)
+        if not v:
+            raise ValueError(f"{key} vazio")
+        return _date.fromisoformat(str(v).split(" ")[0])
+
     for raw in reader:
         # Normaliza
         d: dict[str, Any] = {k.strip().lower(): (v.strip() if v else None) for k, v in raw.items()}
 
-        def f_or_none(key: str) -> float | None:
-            v = d.get(key)
-            if v in (None, "", "NULL"):
-                return None
-            return float(str(v).replace(",", "."))
-
-        def to_date(key: str) -> _date:
-            v = d.get(key)
-            if not v:
-                raise ValueError(f"{key} vazio")
-            return _date.fromisoformat(str(v).split(" ")[0])
-
         row = ImportClienteRow(
             cpf=str(d.get("cpf", "")),
             name=str(d.get("name", "")),
-            dob=to_date("dob"),
+            dob=_to_date(d, "dob"),
             phone=str(d.get("phone", "")),
             cep=d.get("cep") or None,
             address=str(d.get("address", "")),
@@ -239,10 +238,10 @@ def parse_csv(content: bytes) -> list[ImportClienteRow]:
             serial=d.get("serial") or None,
             contrato=d.get("contrato") or None,
             observation=d.get("observation") or None,
-            latitude=f_or_none("latitude"),
-            longitude=f_or_none("longitude"),
-            location_accuracy=f_or_none("location_accuracy"),
-            registration_date=to_date("registration_date"),
+            latitude=_f_or_none(d, "latitude"),
+            longitude=_f_or_none(d, "longitude"),
+            location_accuracy=_f_or_none(d, "location_accuracy"),
+            registration_date=_to_date(d, "registration_date"),
         )
         rows.append(row)
     return rows
