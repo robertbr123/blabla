@@ -33,6 +33,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const MainShell(initialTab: 1),
       ),
       GoRoute(
+        path: '/perfil',
+        builder: (_, __) => const MainShell(initialTab: 2),
+      ),
+      GoRoute(
         path: '/os/:id',
         builder: (_, st) => OsDetailScreen(id: st.pathParameters['id']!),
       ),

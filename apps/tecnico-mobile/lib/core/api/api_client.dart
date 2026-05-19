@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth/auth_storage.dart';
 
-/// URL base — passa via --dart-define=API_URL=https://...
+/// URL base — override via --dart-define=API_URL=https://... se precisar.
 const apiBaseUrl = String.fromEnvironment(
   'API_URL',
-  defaultValue: 'http://10.0.2.2:8000', // Android emulator -> host
+  defaultValue: 'https://apiblabla.robertbr.dev',
 );
 
 final apiClientProvider = Provider<Dio>((ref) {
