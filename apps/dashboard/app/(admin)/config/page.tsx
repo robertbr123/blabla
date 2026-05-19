@@ -1,6 +1,7 @@
 import { BotToggle } from '@/components/bot-toggle'
 import { ConfigEditor } from '@/components/config-editor'
 import { EvolutionStatus } from '@/components/evolution-status'
+import { IndicacaoConfigEditor } from '@/components/indicacao-config-editor'
 import { SgpConfigEditor } from '@/components/sgp-config-editor'
 
 export default function ConfigPage() {
@@ -15,6 +16,7 @@ export default function ConfigPage() {
       <EvolutionStatus />
       <BotToggle />
       <SgpConfigEditor />
+      <IndicacaoConfigEditor />
       <div>
         <h2 className="text-lg font-semibold">Editor genérico (k/v)</h2>
         <p className="text-sm text-muted-foreground mb-3">
