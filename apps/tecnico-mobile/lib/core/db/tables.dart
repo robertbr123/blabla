@@ -27,6 +27,7 @@ class OutboxItem extends Table {
   TextColumn get filePath => text().nullable()(); // pra foto
   IntColumn get attempts => integer().withDefault(const Constant(0))();
   TextColumn get lastError => text().nullable()();
+  DateTimeColumn get lastAttemptAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get sentAt => dateTime().nullable()();
 }

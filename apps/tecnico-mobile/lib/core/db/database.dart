@@ -13,9 +13,19 @@ part 'database.g.dart';
 @DriftDatabase(tables: [OsLocal, OutboxItem])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_open());
+  AppDatabase.forTesting(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(outboxItem, outboxItem.lastAttemptAt);
+          }
+        },
+      );
 }
 
 LazyDatabase _open() {

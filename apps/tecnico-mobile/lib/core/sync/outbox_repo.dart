@@ -51,6 +51,7 @@ class OutboxRepo {
       OutboxItemCompanion(
         attempts: Value(row.attempts + 1),
         lastError: Value(error),
+        lastAttemptAt: Value(DateTime.now()),
       ),
     );
   }
