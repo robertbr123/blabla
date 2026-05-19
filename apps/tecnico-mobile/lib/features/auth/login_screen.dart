@@ -65,7 +65,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const Icon(Icons.engineering, size: 72),
                 const SizedBox(height: 16),
                 Text(
-                  'Técnico Ondeline',
+                  'BlaBla Técnico',
                   style: Theme.of(context).textTheme.headlineSmall,
                   textAlign: TextAlign.center,
                 ),

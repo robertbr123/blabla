@@ -58,7 +58,7 @@ class _TecnicoAppState extends ConsumerState<TecnicoApp> {
   Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
-      title: 'Técnico Ondeline',
+      title: 'BlaBla Técnico',
       theme: buildLightTheme(),
       darkTheme: buildDarkTheme(),
       routerConfig: router,
