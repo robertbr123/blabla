@@ -151,6 +151,29 @@ class ClienteFormActions {
     );
     return (r.data as Map)['id'] as String;
   }
+
+  /// Upload de foto. `tipo`: serial | instalacao | speedtest | outro.
+  Future<void> uploadFoto({
+    required String clienteId,
+    required String filePath,
+    required String tipo,
+  }) async {
+    final form = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath, filename: 'foto.jpg'),
+      'tipo': tipo,
+    });
+    await _dio.post(
+      '/api/v1/clientes-campo/$clienteId/fotos',
+      data: form,
+    );
+  }
+
+  Future<void> removerFoto({
+    required String clienteId,
+    required int idx,
+  }) async {
+    await _dio.delete('/api/v1/clientes-campo/$clienteId/fotos/$idx');
+  }
 }
 
 final clienteFormActionsProvider = Provider<ClienteFormActions>(

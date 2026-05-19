@@ -533,6 +533,45 @@ async def upload_foto_cliente_campo(
     return _to_out(cliente)
 
 
+@router.get(
+    "/{cliente_id}/foto/{foto_idx}",
+    dependencies=[_role_any],
+)
+async def get_foto_cliente_campo(
+    cliente_id: UUID,
+    foto_idx: int,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> "object":
+    """Retorna o binario da foto N. URL pra exibir em <Image>."""
+    from pathlib import Path
+
+    from fastapi.responses import FileResponse
+
+    cliente = await ClienteCadastroRepo(session).get_by_id(cliente_id)
+    if cliente is None:
+        raise HTTPException(status_code=404, detail="cliente nao encontrado")
+    # Tecnico so ve foto de cliente que ele cadastrou
+    if user.role == Role.TECNICO and cliente.installer_user_id != user.id:
+        raise HTTPException(status_code=403, detail="acesso negado")
+
+    fotos = cliente.fotos or []
+    if foto_idx < 0 or foto_idx >= len(fotos):
+        raise HTTPException(status_code=404, detail="foto nao encontrada")
+    f = fotos[foto_idx]
+    url = f.get("url")
+    if not isinstance(url, str):
+        raise HTTPException(status_code=404, detail="foto sem path valido")
+    path = Path(url)
+    if not path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="arquivo da foto nao existe no disco (container reiniciou?)",
+        )
+    mime = str(f.get("mime") or "image/jpeg")
+    return FileResponse(path, media_type=mime)
+
+
 @router.delete(
     "/{cliente_id}/fotos/{foto_idx}",
     response_model=ClienteCampoOut,

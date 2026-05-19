@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart' show launchUrl;
 
 import 'cliente_data.dart';
+import 'widgets/cliente_fotos.dart';
 
 class ClienteDetailScreen extends ConsumerWidget {
   final String id;
@@ -60,6 +61,7 @@ class _Body extends ConsumerWidget {
             titulo: 'Observação',
             conteudo: cliente.observation!,
           ),
+        ClienteFotosSection(cliente: cliente),
         const SizedBox(height: 12),
         const _SecaoTitulo('Histórico de OS'),
         osAsync.when(
