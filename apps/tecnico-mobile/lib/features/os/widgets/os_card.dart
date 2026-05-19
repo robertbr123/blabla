@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'cliente_avatar.dart';
+
 /// Card rico de OS — usado na lista. Mostra:
 /// - faixa lateral colorida por status (visual rápido)
 /// - código + status badge
@@ -54,9 +56,14 @@ class OsCard extends StatelessWidget {
             children: [
               // Faixa lateral colorida (4dp).
               Container(width: 4, color: c.color),
+              // Avatar circular
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 14, 0, 12),
+                child: ClienteAvatar(nome: nomeCliente, size: 44),
+              ),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
