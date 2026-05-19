@@ -83,3 +83,50 @@ class SaldoLinha(BaseModel):
 class SaldoOut(BaseModel):
     tecnico_id: UUID
     linhas: list[SaldoLinha]
+
+
+class DepositoSaldoOut(BaseModel):
+    """Saldo do deposito central (tecnico_id IS NULL)."""
+    linhas: list[SaldoLinha]
+
+
+class DepositoEntradaIn(BaseModel):
+    """Lancamento de entrada no deposito (compra, recebimento de fornecedor)."""
+    item_id: UUID
+    quantidade: int = Field(gt=0)
+    serial: str | None = Field(default=None, max_length=120)
+    observacao: str | None = Field(default=None, max_length=500)
+
+
+class DepositoBaixaIn(BaseModel):
+    """Baixa direta do deposito (perda, ajuste). Nao vai pra tecnico."""
+    item_id: UUID
+    quantidade: int = Field(gt=0)
+    tipo: str = Field(pattern="^(perda|ajuste_negativo)$")
+    serial: str | None = Field(default=None, max_length=120)
+    observacao: str | None = Field(default=None, max_length=500)
+
+
+class TransferirIn(BaseModel):
+    """Transferencia deposito -> tecnico (atomica: saida + entrada)."""
+    item_id: UUID
+    tecnico_id: UUID
+    quantidade: int = Field(gt=0)
+    serial: str | None = Field(default=None, max_length=120)
+    observacao: str | None = Field(default=None, max_length=500)
+
+
+class TecnicoSaldoResumo(BaseModel):
+    """Linha da visao admin: saldo por tecnico × item."""
+    tecnico_id: UUID
+    tecnico_nome: str
+    item_id: UUID
+    sku: str
+    nome: str
+    categoria: str
+    saldo: int
+
+
+class TecnicoSaldoOut(BaseModel):
+    """Saldo de todos os tecnicos × itens (admin visualiza distribuicao)."""
+    linhas: list[TecnicoSaldoResumo]

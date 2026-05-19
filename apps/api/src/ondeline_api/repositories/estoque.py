@@ -82,6 +82,42 @@ class MovimentoRepo:
         )
         return int((await self._s.execute(stmt)).scalar_one())
 
+    async def saldo_por_local_item(
+        self, tecnico_id: UUID | None, item_id: UUID
+    ) -> int:
+        """Saldo no LOCAL: deposito (tecnico_id=None) ou tecnico X."""
+        sign = case(
+            (EstoqueMovimento.tipo.in_(list(TIPOS_POSITIVOS)), EstoqueMovimento.quantidade),
+            else_=-EstoqueMovimento.quantidade,
+        )
+        stmt = select(func.coalesce(func.sum(sign), 0)).where(
+            EstoqueMovimento.item_id == item_id
+        )
+        if tecnico_id is None:
+            stmt = stmt.where(EstoqueMovimento.tecnico_id.is_(None))
+        else:
+            stmt = stmt.where(EstoqueMovimento.tecnico_id == tecnico_id)
+        return int((await self._s.execute(stmt)).scalar_one())
+
+    async def saldo_full_deposito(self) -> list[tuple[EstoqueItem, int]]:
+        """Saldo de cada item ativo no DEPOSITO (tecnico_id IS NULL)."""
+        sign = case(
+            (EstoqueMovimento.tipo.in_(list(TIPOS_POSITIVOS)), EstoqueMovimento.quantidade),
+            else_=-EstoqueMovimento.quantidade,
+        )
+        stmt = (
+            select(EstoqueItem, func.coalesce(func.sum(sign), 0).label("saldo"))
+            .outerjoin(
+                EstoqueMovimento,
+                (EstoqueMovimento.item_id == EstoqueItem.id)
+                & (EstoqueMovimento.tecnico_id.is_(None)),
+            )
+            .where(EstoqueItem.ativo.is_(True))
+            .group_by(EstoqueItem.id)
+            .order_by(EstoqueItem.nome)
+        )
+        return [(item, int(saldo)) for item, saldo in (await self._s.execute(stmt)).all()]
+
     async def saldo_full_por_tecnico(
         self, tecnico_id: UUID
     ) -> list[tuple[EstoqueItem, int]]:

@@ -1,15 +1,21 @@
 """F6 — Serviço de estoque: regras de movimentação.
 
+Modelo: `tecnico_id` em EstoqueMovimento eh nullable.
+- `tecnico_id IS NULL` -> movimento eh do DEPOSITO central
+- `tecnico_id = X`     -> movimento eh do estoque pessoal do tecnico X
+
 Regras (validadas por `registrar_movimento`):
   - Item deve existir e estar ativo.
   - Quantidade > 0 (CHECK constraint reforça no banco).
   - Itens serializados exigem `serial` informado; um serial não pode ter
-    saldo > 1 no mesmo técnico ao mesmo tempo (caso usuario tente entrada
-    duplicada do mesmo serial).
+    saldo > 1 no mesmo "local" (deposito OU mesmo tecnico).
   - Tipos negativos (saida/devolucao/perda/ajuste_negativo) exigem saldo
-    suficiente — senão erro `SaldoInsuficiente`.
-  - `tecnico_id` é obrigatório para tipos negativos (não pode dar baixa
-    de "almoxarifado") — admin reflete movimento sempre por técnico.
+    suficiente no local de origem — senão erro `SaldoInsuficiente`.
+
+Operações de alto nível:
+  - `registrar_movimento(...)` — primitiva (1 movimento)
+  - `transferir_deposito_para_tecnico(...)` — atomico: 2 movimentos
+    (saida do deposito + entrada no tecnico)
 """
 from __future__ import annotations
 
@@ -81,21 +87,16 @@ async def registrar_movimento(
         if quantidade != 1:
             raise EstoqueError("item serializado exige quantidade=1")
 
-    if tipo in _TIPOS_NEGATIVOS:
-        if tecnico_id is None:
-            raise EstoqueError(
-                "tipos saida/devolucao/perda/ajuste_negativo exigem tecnico_id"
-            )
-
     movrepo = MovimentoRepo(session)
 
-    # Para tipos negativos, valida saldo do técnico.
+    # Para tipos negativos, valida saldo no local de origem (deposito ou
+    # tecnico — `tecnico_id=None` significa o deposito central).
     if tipo in _TIPOS_NEGATIVOS:
-        assert tecnico_id is not None  # narrow pra typer
-        saldo = await movrepo.saldo_por_tecnico_item(tecnico_id, item_id)
+        saldo = await movrepo.saldo_por_local_item(tecnico_id, item_id)
         if saldo < quantidade:
+            local = "deposito" if tecnico_id is None else "tecnico"
             raise SaldoInsuficiente(
-                f"saldo insuficiente: tem {saldo}, precisa {quantidade}"
+                f"saldo insuficiente no {local}: tem {saldo}, precisa {quantidade}"
             )
 
     # Para tipos positivos com serial, verifica se o serial AINDA esta em
@@ -148,6 +149,51 @@ async def registrar_movimento(
         os_id=str(ordem_servico_id) if ordem_servico_id else None,
     )
     return mov
+
+
+async def transferir_deposito_para_tecnico(
+    session: AsyncSession,
+    *,
+    item_id: UUID,
+    tecnico_id: UUID,
+    quantidade: int,
+    criado_por: UUID,
+    serial: str | None = None,
+    observacao: str | None = None,
+) -> tuple[EstoqueMovimento, EstoqueMovimento]:
+    """Transferência atômica: depósito -> técnico.
+
+    Cria 2 movimentos no mesmo flush:
+    1. (tecnico_id=NULL, tipo=saida)    — sai do depósito
+    2. (tecnico_id=X,    tipo=entrada)  — entra no técnico
+
+    Se saldo do depósito for insuficiente, levanta SaldoInsuficiente
+    antes de gravar qualquer coisa.
+    """
+    obs_suffix = f"transferencia → tecnico {tecnico_id}"
+    obs_in = obs_suffix if not observacao else f"{observacao} | {obs_suffix}"
+
+    saida = await registrar_movimento(
+        session,
+        item_id=item_id,
+        tipo=MovimentoTipo.SAIDA.value,
+        quantidade=quantidade,
+        criado_por=criado_por,
+        tecnico_id=None,
+        serial=serial,
+        observacao=obs_in,
+    )
+    entrada = await registrar_movimento(
+        session,
+        item_id=item_id,
+        tipo=MovimentoTipo.ENTRADA.value,
+        quantidade=quantidade,
+        criado_por=criado_por,
+        tecnico_id=tecnico_id,
+        serial=serial,
+        observacao=obs_in,
+    )
+    return saida, entrada
 
 
 async def calcular_saldo_tecnico(

@@ -10,6 +10,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.api.schemas.estoque import (
+    DepositoBaixaIn,
+    DepositoEntradaIn,
+    DepositoSaldoOut,
     ItemCreate,
     ItemOut,
     ItemUpdate,
@@ -17,6 +20,9 @@ from ondeline_api.api.schemas.estoque import (
     MovimentoOut,
     SaldoLinha,
     SaldoOut,
+    TecnicoSaldoOut,
+    TecnicoSaldoResumo,
+    TransferirIn,
 )
 from ondeline_api.api.v1.tecnico_me import current_tecnico
 from ondeline_api.auth.deps import get_current_user
@@ -33,6 +39,7 @@ from ondeline_api.services.estoque import (
     SerialDuplicado,
     calcular_saldo_tecnico,
     registrar_movimento,
+    transferir_deposito_para_tecnico,
 )
 
 router = APIRouter(prefix="/api/v1/estoque", tags=["estoque"])
@@ -251,6 +258,199 @@ async def create_movimento_self(
     except EstoqueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return MovimentoOut.model_validate(mov)
+
+
+# ── Depósito (estoque central) ─────────────────────────────────
+#
+# Convencao: `tecnico_id IS NULL` em estoque_movimento = movimento do
+# deposito central. Endpoints aqui sao operacoes do admin/atendente:
+#   - GET  /api/v1/estoque/deposito/saldo     -> o que tem no deposito
+#   - POST /api/v1/estoque/deposito/entrada   -> recebimento (fornecedor)
+#   - POST /api/v1/estoque/deposito/baixa     -> perda/ajuste sem destino
+#   - POST /api/v1/estoque/deposito/transferir-> deposito -> tecnico (atomic)
+#   - GET  /api/v1/estoque/tecnicos/saldos    -> visao agregada por tecnico
+
+
+@router.get(
+    "/deposito/saldo",
+    response_model=DepositoSaldoOut,
+    dependencies=[_admin_atendente],
+)
+async def saldo_deposito(
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> DepositoSaldoOut:
+    rows = await MovimentoRepo(session).saldo_full_deposito()
+    linhas = [
+        SaldoLinha(
+            item_id=str(item.id),
+            sku=item.sku,
+            nome=item.nome,
+            categoria=item.categoria,
+            serializado=item.serializado,
+            saldo=saldo,
+        )
+        for item, saldo in rows
+    ]
+    return DepositoSaldoOut(linhas=linhas)
+
+
+@router.post(
+    "/deposito/entrada",
+    response_model=MovimentoOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[_admin_atendente],
+)
+async def entrada_deposito(
+    body: DepositoEntradaIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> MovimentoOut:
+    """Lancamento de entrada no deposito (compra, recebimento de fornecedor).
+    Movimento (tecnico_id=NULL, tipo=entrada).
+    """
+    try:
+        mov = await registrar_movimento(
+            session,
+            item_id=body.item_id,
+            tipo="entrada",
+            quantidade=body.quantidade,
+            criado_por=user.id,
+            tecnico_id=None,
+            serial=body.serial,
+            observacao=body.observacao,
+        )
+    except (ItemNaoExiste, SerialDuplicado) as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except EstoqueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return MovimentoOut.model_validate(mov)
+
+
+@router.post(
+    "/deposito/baixa",
+    response_model=MovimentoOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[_admin],
+)
+async def baixa_deposito(
+    body: DepositoBaixaIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> MovimentoOut:
+    """Baixa direta no deposito (perda, ajuste negativo). Nao envia pra tecnico."""
+    try:
+        mov = await registrar_movimento(
+            session,
+            item_id=body.item_id,
+            tipo=body.tipo,
+            quantidade=body.quantidade,
+            criado_por=user.id,
+            tecnico_id=None,
+            serial=body.serial,
+            observacao=body.observacao,
+        )
+    except SaldoInsuficiente as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    except (ItemNaoExiste, SerialDuplicado) as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except EstoqueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return MovimentoOut.model_validate(mov)
+
+
+@router.post(
+    "/deposito/transferir",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[_admin_atendente],
+)
+async def transferir_deposito(
+    body: TransferirIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> dict[str, str]:
+    """Transferencia atomica deposito -> tecnico (saida + entrada)."""
+    try:
+        saida, entrada = await transferir_deposito_para_tecnico(
+            session,
+            item_id=body.item_id,
+            tecnico_id=body.tecnico_id,
+            quantidade=body.quantidade,
+            criado_por=user.id,
+            serial=body.serial,
+            observacao=body.observacao,
+        )
+    except SaldoInsuficiente as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    except (ItemNaoExiste, SerialDuplicado) as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except EstoqueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"saida_id": str(saida.id), "entrada_id": str(entrada.id)}
+
+
+@router.get(
+    "/tecnicos/saldos",
+    response_model=TecnicoSaldoOut,
+    dependencies=[_admin_atendente],
+)
+async def saldos_tecnicos(
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> TecnicoSaldoOut:
+    """Visao admin: saldo por tecnico x item (apenas linhas com saldo > 0).
+
+    Permite ao admin ver o que cada tecnico tem em maos.
+    """
+    from sqlalchemy import case, func, select
+
+    from ondeline_api.db.models.business import Tecnico as TecnicoModel
+    from ondeline_api.db.models.estoque import EstoqueMovimento
+    from ondeline_api.db.models.estoque import (
+        TIPOS_POSITIVOS as _POS,
+    )
+
+    sign = case(
+        (EstoqueMovimento.tipo.in_(list(_POS)), EstoqueMovimento.quantidade),
+        else_=-EstoqueMovimento.quantidade,
+    )
+    stmt = (
+        select(
+            TecnicoModel.id.label("tec_id"),
+            TecnicoModel.nome.label("tec_nome"),
+            EstoqueItem.id.label("item_id"),
+            EstoqueItem.sku,
+            EstoqueItem.nome.label("item_nome"),
+            EstoqueItem.categoria,
+            func.coalesce(func.sum(sign), 0).label("saldo"),
+        )
+        .select_from(EstoqueMovimento)
+        .join(TecnicoModel, TecnicoModel.id == EstoqueMovimento.tecnico_id)
+        .join(EstoqueItem, EstoqueItem.id == EstoqueMovimento.item_id)
+        .where(EstoqueItem.ativo.is_(True))
+        .group_by(
+            TecnicoModel.id,
+            TecnicoModel.nome,
+            EstoqueItem.id,
+            EstoqueItem.sku,
+            EstoqueItem.nome,
+            EstoqueItem.categoria,
+        )
+        .having(func.coalesce(func.sum(sign), 0) > 0)
+        .order_by(TecnicoModel.nome, EstoqueItem.nome)
+    )
+    rows = (await session.execute(stmt)).all()
+    linhas = [
+        TecnicoSaldoResumo(
+            tecnico_id=r.tec_id,
+            tecnico_nome=r.tec_nome,
+            item_id=r.item_id,
+            sku=r.sku,
+            nome=r.item_nome,
+            categoria=r.categoria,
+            saldo=int(r.saldo),
+        )
+        for r in rows
+    ]
+    return TecnicoSaldoOut(linhas=linhas)
 
 
 # Exporta os dois routers; main.py registra ambos.
