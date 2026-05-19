@@ -21,3 +21,34 @@ class RankingTecnicoOut(BaseModel):
     csat_avg: float | None
     tempo_medio_min: int | None
     ultima_os_em: str | None
+
+
+class ComissaoConfigOut(BaseModel):
+    """Config de cálculo de comissão (lida da tabela `config`)."""
+
+    valor_por_os: float
+    bonus_csat_5: float
+    bonus_csat_4: float
+
+
+class ProdutividadeTecnicoOut(BaseModel):
+    """F9 — Ranking + métricas de produtividade + comissão calculada."""
+
+    tecnico_id: str
+    nome: str
+    os_concluidas: int
+    os_csat_5: int  # OSes com CSAT = 5 (excelente)
+    os_csat_4: int  # OSes com CSAT = 4 (bom)
+    os_sem_csat: int
+    csat_avg: float | None
+    tempo_medio_min: int | None
+    ultima_os_em: str | None
+    comissao_base: float       # os_concluidas * valor_por_os
+    comissao_bonus: float      # bonus_csat_5 + bonus_csat_4
+    comissao_total: float
+
+
+class ProdutividadeResponse(BaseModel):
+    mes: str  # "YYYY-MM"
+    config: ComissaoConfigOut
+    tecnicos: list[ProdutividadeTecnicoOut]

@@ -373,3 +373,31 @@ export interface ClienteEquipamentoOut {
   removido_em_os_id: string | null
   removido_em_os_codigo: string | null
 }
+
+// F9 — Produtividade
+export interface ComissaoConfigOut {
+  valor_por_os: number
+  bonus_csat_5: number
+  bonus_csat_4: number
+}
+
+export interface ProdutividadeTecnicoOut {
+  tecnico_id: string
+  nome: string
+  os_concluidas: number
+  os_csat_5: number
+  os_csat_4: number
+  os_sem_csat: number
+  csat_avg: number | null
+  tempo_medio_min: number | null
+  ultima_os_em: string | null
+  comissao_base: number
+  comissao_bonus: number
+  comissao_total: number
+}
+
+export interface ProdutividadeResponse {
+  mes: string
+  config: ComissaoConfigOut
+  tecnicos: ProdutividadeTecnicoOut[]
+}

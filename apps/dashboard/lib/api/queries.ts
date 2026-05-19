@@ -672,3 +672,12 @@ export function useClienteEquipamentos(clienteId: string, ativosOnly = false) {
     enabled: !!clienteId,
   })
 }
+
+// F9 — Produtividade
+export function useProdutividade(mes?: string) {
+  const qs = mes ? `?mes=${mes}` : ''
+  return useQuery<import('./types').ProdutividadeResponse>({
+    queryKey: ['produtividade', mes ?? 'current'],
+    queryFn: () => apiFetch(`/api/v1/metricas/tecnicos/produtividade${qs}`),
+  })
+}

@@ -8,7 +8,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import StreamingResponse
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.api.schemas.metrica import MetricasOut, RankingTecnicoOut
@@ -197,4 +197,171 @@ async def export_ranking_tecnicos_csv(
         iter([output.getvalue()]),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# ── F9 — Produtividade + comissão ──────────────────────────────────
+
+
+_COMISSAO_KEYS = {
+    "comissao.valor_por_os": 0.0,
+    "comissao.bonus_csat_5": 0.0,
+    "comissao.bonus_csat_4": 0.0,
+}
+
+
+async def _load_comissao_config(session: AsyncSession) -> dict[str, float]:
+    """Carrega config de comissão (tabela `config`). Defaults se faltar."""
+    from sqlalchemy import select as _sel
+
+    from ondeline_api.db.models.business import Config as _Config
+
+    rows = list(
+        (
+            await session.execute(
+                _sel(_Config).where(_Config.key.in_(list(_COMISSAO_KEYS.keys())))
+            )
+        )
+        .scalars()
+        .all()
+    )
+    out = dict(_COMISSAO_KEYS)
+    for row in rows:
+        v = row.value
+        # Aceita {"value": 30} ou 30 direto.
+        if isinstance(v, dict) and "value" in v:
+            v = v["value"]
+        try:
+            out[row.key] = float(v)
+        except (TypeError, ValueError):
+            pass
+    return out
+
+
+@router.get(
+    "/tecnicos/produtividade",
+    dependencies=[_role_dep],
+)
+async def get_produtividade_tecnicos(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    mes: Annotated[str | None, Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")] = None,
+):
+    """F9 — Ranking + cálculo de comissão por técnico.
+
+    Comissão = (os_concluidas × valor_por_os) + (os_csat_5 × bonus_csat_5)
+             + (os_csat_4 × bonus_csat_4)
+
+    Configurar via tabela `config`:
+      - comissao.valor_por_os
+      - comissao.bonus_csat_5
+      - comissao.bonus_csat_4
+    """
+    from ondeline_api.api.schemas.metrica import (
+        ComissaoConfigOut,
+        ProdutividadeResponse,
+        ProdutividadeTecnicoOut,
+    )
+
+    now = datetime.now(tz=UTC)
+    if mes:
+        year, month = int(mes.split("-")[0]), int(mes.split("-")[1])
+    else:
+        year, month = now.year, now.month
+
+    inicio = datetime(year, month, 1, tzinfo=UTC)
+    if month == 12:
+        fim = datetime(year + 1, 1, 1, tzinfo=UTC)
+    else:
+        fim = datetime(year, month + 1, 1, tzinfo=UTC)
+
+    cfg = await _load_comissao_config(session)
+    valor_por_os = cfg["comissao.valor_por_os"]
+    bonus_5 = cfg["comissao.bonus_csat_5"]
+    bonus_4 = cfg["comissao.bonus_csat_4"]
+
+    csat5_expr = func.sum(
+        case((OrdemServico.csat == 5, 1), else_=0)
+    ).label("os_csat_5")
+    csat4_expr = func.sum(
+        case((OrdemServico.csat == 4, 1), else_=0)
+    ).label("os_csat_4")
+    sem_csat_expr = func.sum(
+        case((OrdemServico.csat.is_(None), 1), else_=0)
+    ).label("os_sem_csat")
+
+    rows = (
+        await session.execute(
+            select(
+                Tecnico.id,
+                Tecnico.nome,
+                func.count(OrdemServico.id).label("os_concluidas"),
+                csat5_expr,
+                csat4_expr,
+                sem_csat_expr,
+                func.avg(OrdemServico.csat).label("csat_avg"),
+                func.avg(
+                    func.extract(
+                        "epoch", OrdemServico.concluida_em - OrdemServico.criada_em
+                    )
+                    / 60
+                ).label("tempo_medio_min"),
+                func.max(OrdemServico.concluida_em).label("ultima_os_em"),
+            )
+            .outerjoin(
+                OrdemServico,
+                (OrdemServico.tecnico_id == Tecnico.id)
+                & (OrdemServico.status == OsStatus.CONCLUIDA)
+                & (OrdemServico.concluida_em >= inicio)
+                & (OrdemServico.concluida_em < fim),
+            )
+            .where(Tecnico.ativo.is_(True))
+            .group_by(Tecnico.id, Tecnico.nome)
+            .order_by(func.count(OrdemServico.id).desc())
+        )
+    ).all()
+
+    tecnicos_out: list[ProdutividadeTecnicoOut] = []
+    for row in rows:
+        os_conc = int(row.os_concluidas or 0)
+        os_5 = int(row.os_csat_5 or 0)
+        os_4 = int(row.os_csat_4 or 0)
+        os_sem = int(row.os_sem_csat or 0)
+        comissao_base = round(os_conc * valor_por_os, 2)
+        comissao_bonus = round(os_5 * bonus_5 + os_4 * bonus_4, 2)
+        comissao_total = round(comissao_base + comissao_bonus, 2)
+        tecnicos_out.append(
+            ProdutividadeTecnicoOut(
+                tecnico_id=str(row.id),
+                nome=row.nome,
+                os_concluidas=os_conc,
+                os_csat_5=os_5,
+                os_csat_4=os_4,
+                os_sem_csat=os_sem,
+                csat_avg=(
+                    round(float(row.csat_avg), 2)
+                    if row.csat_avg is not None
+                    else None
+                ),
+                tempo_medio_min=(
+                    round(float(row.tempo_medio_min))
+                    if row.tempo_medio_min is not None
+                    else None
+                ),
+                ultima_os_em=(
+                    row.ultima_os_em.isoformat() if row.ultima_os_em else None
+                ),
+                comissao_base=comissao_base,
+                comissao_bonus=comissao_bonus,
+                comissao_total=comissao_total,
+            )
+        )
+
+    return ProdutividadeResponse(
+        mes=f"{year:04d}-{month:02d}",
+        config=ComissaoConfigOut(
+            valor_por_os=valor_por_os,
+            bonus_csat_5=bonus_5,
+            bonus_csat_4=bonus_4,
+        ),
+        tecnicos=tecnicos_out,
     )

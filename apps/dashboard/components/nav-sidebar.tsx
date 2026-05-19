@@ -33,6 +33,7 @@ const ITEMS: ReadonlyArray<NavItem> = [
   { href: '/clientes', label: 'Clientes', icon: Users, roles: ['admin', 'atendente'] },
   { href: '/tecnicos', label: 'Técnicos', icon: Wrench, roles: ['admin'], exact: true },
   { href: '/tecnicos/ranking', label: 'Ranking Técnicos', icon: Trophy, roles: ['admin'] },
+  { href: '/tecnicos/produtividade', label: 'Comissão / Produtividade', icon: Trophy, roles: ['admin'] },
   { href: '/manutencoes', label: 'Manutenções', icon: CalendarClock, roles: ['admin'] },
   { href: '/planos', label: 'Planos', icon: Package, roles: ['admin'] },
   { href: '/estoque', label: 'Estoque', icon: Boxes, roles: ['admin', 'atendente'] },
