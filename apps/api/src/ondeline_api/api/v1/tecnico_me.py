@@ -16,6 +16,9 @@ from ondeline_api.api.schemas.tecnico_me import (
     FcmTokenRevokeIn,
     GpsUpdate,
     IniciarIn,
+    MudarSenhaIn,
+    PerfilEstatisticas,
+    PerfilOut,
 )
 from ondeline_api.api.v1.ordens_servico import _fetch_nome_cliente
 from ondeline_api.auth.deps import get_current_user
@@ -247,3 +250,171 @@ async def revoke_fcm_token(
     if existing is not None:
         existing.revoked_at = datetime.now(tz=UTC)
         await session.flush()
+
+
+# ── Perfil + foto + senha ─────────────────────────────────────────
+
+
+def _processar_foto(raw: bytes) -> str:
+    """Redimensiona pra 256x256, JPEG quality 85, retorna base64 puro
+    (sem data URL prefix). Levanta ValueError se nao for imagem valida.
+    """
+    import base64
+    import io
+
+    from PIL import Image  # type: ignore[import-not-found]
+
+    img = Image.open(io.BytesIO(raw))
+    if img.mode in ("RGBA", "LA", "P"):
+        bg = Image.new("RGB", img.size, (255, 255, 255))
+        bg.paste(img, mask=img.split()[-1] if "A" in img.mode else None)
+        img = bg
+    elif img.mode != "RGB":
+        img = img.convert("RGB")
+    img.thumbnail((256, 256), Image.LANCZOS)
+    out = io.BytesIO()
+    img.save(out, format="JPEG", quality=85, optimize=True)
+    return base64.b64encode(out.getvalue()).decode("ascii")
+
+
+@router.get("/perfil", response_model=PerfilOut, dependencies=[_role_dep])
+async def get_perfil(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+    tec: Annotated[Tecnico, Depends(current_tecnico)],
+) -> PerfilOut:
+    """Retorna perfil completo do tecnico: dados + estatisticas do mes."""
+    from datetime import timedelta
+
+    from sqlalchemy import func, select
+
+    from ondeline_api.db.models.business import OrdemServico, OsStatus
+
+    now = datetime.now(tz=UTC)
+    inicio_mes = datetime(now.year, now.month, 1, tzinfo=UTC)
+
+    pendentes = (
+        await session.execute(
+            select(func.count(OrdemServico.id)).where(
+                OrdemServico.tecnico_id == tec.id,
+                OrdemServico.status == OsStatus.PENDENTE,
+            )
+        )
+    ).scalar_one()
+
+    em_andamento = (
+        await session.execute(
+            select(func.count(OrdemServico.id)).where(
+                OrdemServico.tecnico_id == tec.id,
+                OrdemServico.status == OsStatus.EM_ANDAMENTO,
+            )
+        )
+    ).scalar_one()
+
+    concluidas_mes = (
+        await session.execute(
+            select(func.count(OrdemServico.id)).where(
+                OrdemServico.tecnico_id == tec.id,
+                OrdemServico.status == OsStatus.CONCLUIDA,
+                OrdemServico.concluida_em >= inicio_mes,
+            )
+        )
+    ).scalar_one()
+
+    csat_avg = (
+        await session.execute(
+            select(func.avg(OrdemServico.csat)).where(
+                OrdemServico.tecnico_id == tec.id,
+                OrdemServico.csat.isnot(None),
+                OrdemServico.concluida_em >= inicio_mes,
+            )
+        )
+    ).scalar_one()
+
+    _ = timedelta  # silence unused
+
+    return PerfilOut(
+        user_id=str(user.id),
+        email=user.email,
+        nome=tec.nome or user.name,
+        whatsapp=tec.whatsapp or user.whatsapp,
+        role=user.role.value,
+        foto_b64=user.foto_b64,
+        ativo=tec.ativo,
+        last_gps_ts=tec.gps_ts.isoformat() if tec.gps_ts else None,
+        estatisticas=PerfilEstatisticas(
+            os_pendentes=int(pendentes or 0),
+            os_em_andamento=int(em_andamento or 0),
+            os_concluidas_mes=int(concluidas_mes or 0),
+            csat_avg_mes=round(float(csat_avg), 2) if csat_avg is not None else None,
+        ),
+    )
+
+
+@router.post(
+    "/foto",
+    response_model=PerfilOut,
+    dependencies=[_role_dep],
+)
+async def upload_foto_perfil(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+    tec: Annotated[Tecnico, Depends(current_tecnico)],
+    file: Annotated[UploadFile, File()],
+) -> PerfilOut:
+    """Upload foto de perfil. Max 5MB no upload, redimensiona pra 256x256."""
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="arquivo deve ser imagem")
+    raw = await file.read()
+    if len(raw) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="imagem excede 5MB")
+    try:
+        b64 = _processar_foto(raw)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, detail=f"imagem invalida: {e}"
+        ) from e
+    user.foto_b64 = b64
+    await session.flush()
+    return await get_perfil(session=session, user=user, tec=tec)
+
+
+@router.delete(
+    "/foto",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[_role_dep],
+)
+async def remover_foto_perfil(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> None:
+    user.foto_b64 = None
+    await session.flush()
+
+
+@router.post(
+    "/senha",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[_role_dep],
+)
+async def mudar_senha(
+    body: MudarSenhaIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> None:
+    """Tecnico muda a propria senha. Exige senha atual valida."""
+    import structlog
+
+    from ondeline_api.auth.passwords import hash_password, verify_password
+
+    log = structlog.get_logger(__name__)
+    if not verify_password(body.senha_atual, user.password_hash):
+        log.warning("user.mudar_senha.atual_invalida", user_id=str(user.id))
+        raise HTTPException(status_code=401, detail="senha atual incorreta")
+    if body.senha_nova == body.senha_atual:
+        raise HTTPException(
+            status_code=422, detail="senha nova deve ser diferente da atual"
+        )
+    user.password_hash = hash_password(body.senha_nova)
+    await session.flush()
+    log.info("user.mudar_senha.ok", user_id=str(user.id))

@@ -31,3 +31,27 @@ class FcmTokenIn(BaseModel):
 
 class FcmTokenRevokeIn(BaseModel):
     token: str = Field(min_length=20, max_length=512)
+
+
+class MudarSenhaIn(BaseModel):
+    senha_atual: str = Field(min_length=1, max_length=200)
+    senha_nova: str = Field(min_length=8, max_length=200)
+
+
+class PerfilEstatisticas(BaseModel):
+    os_pendentes: int
+    os_em_andamento: int
+    os_concluidas_mes: int
+    csat_avg_mes: float | None
+
+
+class PerfilOut(BaseModel):
+    user_id: str
+    email: str
+    nome: str
+    whatsapp: str | None
+    role: str
+    foto_b64: str | None
+    ativo: bool
+    last_gps_ts: str | None
+    estatisticas: PerfilEstatisticas
