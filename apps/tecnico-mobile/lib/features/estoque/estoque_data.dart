@@ -37,14 +37,15 @@ final estoqueLocalRepoProvider = Provider<EstoqueLocalRepo>((ref) {
   return EstoqueLocalRepo(ref.watch(dbProvider));
 });
 
-final estoqueAuthUserIdProvider = FutureProvider<String?>((ref) {
-  return readUserId();
+final estoqueReadUserIdProvider = Provider<Future<String?> Function()>((ref) {
+  return readUserId;
 });
 
 /// Saldo do estoque do tecnico logado.
 final estoqueSaldoProvider = FutureProvider<List<EstoqueLinha>>((ref) async {
   final repo = ref.watch(estoqueLocalRepoProvider);
-  final userId = await ref.watch(estoqueAuthUserIdProvider.future);
+  final readCurrentUserId = ref.watch(estoqueReadUserIdProvider);
+  final userId = await readCurrentUserId();
   final cached = await _loadCachedRows(repo: repo, userId: userId);
 
   try {
@@ -56,11 +57,11 @@ final estoqueSaldoProvider = FutureProvider<List<EstoqueLinha>>((ref) async {
       await repo.replaceAll(userId: userId, rows: linhas);
     }
     return linhas.map(EstoqueLinha.fromJson).toList();
-  } on DioException {
-    if (cached.isNotEmpty) {
+  } on DioException catch (e) {
+    if (_shouldUseCachedSnapshot(e) && cached.isNotEmpty) {
       return cached.map(EstoqueLinha.fromJson).toList();
     }
-    rethrow;
+    throw e;
   }
 });
 
@@ -80,4 +81,11 @@ List<Map<String, dynamic>> _decodeRows(Map<String, dynamic> raw) {
       .map((row) => row.cast<String, dynamic>())
       .toList();
   return linhas;
+}
+
+bool _shouldUseCachedSnapshot(DioException error) {
+  return error.type == DioExceptionType.connectionError ||
+      error.type == DioExceptionType.connectionTimeout ||
+      error.type == DioExceptionType.sendTimeout ||
+      error.type == DioExceptionType.receiveTimeout;
 }
