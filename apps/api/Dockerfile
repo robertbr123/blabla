@@ -29,21 +29,23 @@ COPY --chown=app:app pyproject.toml uv.lock /app/
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project
 
-# Layer 1.5: garante deps adicionadas ao pyproject mas ainda não no uv.lock
-# (uv lock precisa rodar localmente pra atualizar; até lá instalamos aqui).
-# VIRTUAL_ENV faz `uv pip install` cair direto na venv já criada pelo sync.
-# A venv do uv NÃO tem pip instalado (uv usa seu próprio resolver) então
-# precisamos usar `uv pip install`, não `pip` diretamente.
-RUN --mount=type=cache,target=/root/.cache/uv \
-    VIRTUAL_ENV=/app/.venv uv pip install "qrcode[pil]>=7.4.0" \
-    && /app/.venv/bin/python -c "from qrcode import QRCode; print('qrcode import ok')"
-
 # Layer 2: copia o código e instala o pacote (rápido — só o pacote, deps já estão no cache)
 COPY --chown=app:app src /app/src
 COPY --chown=app:app alembic /app/alembic
 COPY --chown=app:app alembic.ini /app/alembic.ini
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen
+
+# Layer 2.5: instala qrcode DEPOIS do `uv sync --frozen` porque o sync com
+# --frozen remove qualquer pacote que nao esteja no uv.lock. qrcode esta no
+# pyproject.toml mas ainda nao foi adicionado ao lockfile (precisa rodar
+# `uv lock` localmente). Ate la, instalamos aqui no final.
+# VIRTUAL_ENV faz `uv pip install` cair direto na venv ja criada pelo sync.
+# A venv do uv NAO tem pip instalado (uv usa seu proprio resolver) entao
+# precisamos usar `uv pip install`, nao `pip` diretamente.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    VIRTUAL_ENV=/app/.venv uv pip install "qrcode[pil]>=7.4.0" \
+    && /app/.venv/bin/python -c "from qrcode import QRCode; print('qrcode import ok')"
 
 COPY --chown=app:app entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
