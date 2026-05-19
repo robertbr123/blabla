@@ -1,6 +1,6 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
-import { Send, UserCheck, X, Trash2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ChevronDown, ChevronUp, Search, Send, Trash2, UserCheck, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -57,7 +57,11 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
   const [osProblema, setOsProblema] = useState('')
   const [osEndereco, setOsEndereco] = useState('')
   const [osTecnicoId, setOsTecnicoId] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [currentMatch, setCurrentMatch] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const msgRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   const clienteId = data?.cliente_id ?? undefined
   // F13b: so buscamos OSs quando temos cliente_id. Sem isso, useOsList({})
@@ -106,6 +110,54 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [allMsgs.length])
+
+  // Indices de mensagens que casam com a busca (case-insensitive).
+  const matchedIds = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return [] as string[]
+    return allMsgs
+      .filter((m) => (m.content ?? '').toLowerCase().includes(q))
+      .map((m) => m.id)
+  }, [searchQuery, allMsgs])
+
+  // Reset cursor quando busca muda.
+  useEffect(() => {
+    setCurrentMatch(0)
+  }, [searchQuery])
+
+  // Scroll automatico pra match atual.
+  useEffect(() => {
+    if (matchedIds.length === 0) return
+    const idx = Math.min(currentMatch, matchedIds.length - 1)
+    const id = matchedIds[idx]
+    const el = msgRefs.current.get(id)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [currentMatch, matchedIds])
+
+  // Atalho Cmd/Ctrl+F abre busca.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault()
+        setSearchOpen(true)
+      }
+      if (e.key === 'Escape' && searchOpen) {
+        setSearchOpen(false)
+        setSearchQuery('')
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [searchOpen])
+
+  function nextMatch() {
+    if (matchedIds.length === 0) return
+    setCurrentMatch((c) => (c + 1) % matchedIds.length)
+  }
+  function prevMatch() {
+    if (matchedIds.length === 0) return
+    setCurrentMatch((c) => (c - 1 + matchedIds.length) % matchedIds.length)
+  }
 
   async function handleSend() {
     const trimmed = text.trim()
@@ -200,6 +252,61 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
         {/* Tab: Mensagens */}
         {tab === 'mensagens' && (
           <div className="flex flex-1 flex-col gap-3 pt-3 min-h-0">
+            {/* Barra de busca (toggle pelo botao ou Cmd+F) */}
+            {searchOpen && (
+              <div className="flex items-center gap-2 rounded-md border bg-card px-3 py-2">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <Input
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar nesta conversa…"
+                  className="h-8 border-0 px-0 shadow-none focus-visible:ring-0"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      if (e.shiftKey) prevMatch()
+                      else nextMatch()
+                    }
+                  }}
+                />
+                <span className="whitespace-nowrap text-xs text-muted-foreground">
+                  {matchedIds.length === 0
+                    ? searchQuery ? '0' : ''
+                    : `${currentMatch + 1}/${matchedIds.length}`}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0"
+                  onClick={prevMatch}
+                  disabled={matchedIds.length === 0}
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0"
+                  onClick={nextMatch}
+                  disabled={matchedIds.length === 0}
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0"
+                  onClick={() => {
+                    setSearchOpen(false)
+                    setSearchQuery('')
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
             <div
               ref={scrollRef}
               className="flex-1 space-y-3 overflow-y-auto rounded-md border bg-card p-4"
@@ -207,27 +314,38 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
               {allMsgs.length === 0 && (
                 <p className="text-center text-sm text-muted-foreground">Sem mensagens</p>
               )}
-              {allMsgs.map((m) => (
-                <div
-                  key={m.id}
-                  className={cn(
-                    'max-w-[70%] rounded-lg px-3 py-2 text-sm',
-                    m.role === 'cliente'
-                      ? 'bg-muted'
-                      : m.role === 'bot'
-                      ? 'ml-auto bg-secondary text-secondary-foreground'
-                      : 'ml-auto bg-primary text-primary-foreground',
-                  )}
-                >
-                  <div className="mb-1 flex items-center gap-2 text-xs opacity-70">
-                    <Badge variant="outline" className="capitalize">
-                      {ROLE_LABEL[m.role] ?? m.role}
-                    </Badge>
-                    <span>{new Date(m.created_at).toLocaleTimeString('pt-BR')}</span>
+              {allMsgs.map((m) => {
+                const isMatch = matchedIds.includes(m.id)
+                const isCurrent = isMatch && matchedIds[currentMatch] === m.id
+                return (
+                  <div
+                    key={m.id}
+                    ref={(el) => {
+                      if (el) msgRefs.current.set(m.id, el)
+                      else msgRefs.current.delete(m.id)
+                    }}
+                    className={cn(
+                      'max-w-[70%] rounded-lg px-3 py-2 text-sm',
+                      m.role === 'cliente'
+                        ? 'bg-muted'
+                        : m.role === 'bot'
+                        ? 'ml-auto bg-secondary text-secondary-foreground'
+                        : 'ml-auto bg-primary text-primary-foreground',
+                      isCurrent && 'ring-2 ring-yellow-400 ring-offset-1',
+                    )}
+                  >
+                    <div className="mb-1 flex items-center gap-2 text-xs opacity-70">
+                      <Badge variant="outline" className="capitalize">
+                        {ROLE_LABEL[m.role] ?? m.role}
+                      </Badge>
+                      <span>{new Date(m.created_at).toLocaleTimeString('pt-BR')}</span>
+                    </div>
+                    <div className="whitespace-pre-wrap">
+                      {highlightMatches(m.content ?? '', searchQuery)}
+                    </div>
                   </div>
-                  <div className="whitespace-pre-wrap">{m.content}</div>
-                </div>
-              ))}
+                )
+              })}
             </div>
             {data.status !== 'encerrada' && <ResponderBox text={text} setText={setText} handleSend={handleSend} pending={responder.isPending} />}
           </div>
@@ -377,6 +495,15 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
       <div className="flex w-44 shrink-0 flex-col gap-3">
         <p className="text-xs font-medium uppercase text-muted-foreground">Ações</p>
 
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setSearchOpen((v) => !v)}
+          className="w-full"
+        >
+          <Search className="h-4 w-4" /> Buscar
+        </Button>
+
         {/* Botão Assumir: aguardando (bot escalou) ou bot (atendente quer
             intervir mesmo sem escalação). Esconde quando já estou atendendo. */}
         {(data.status === 'aguardando' || data.status === 'bot') && (
@@ -440,6 +567,27 @@ interface ResponderBoxProps {
   setText: (v: string) => void
   handleSend: () => Promise<void> | void
   pending: boolean
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function highlightMatches(content: string, query: string): React.ReactNode {
+  const q = query.trim()
+  if (!q) return content
+  const re = new RegExp(`(${escapeRegex(q)})`, 'gi')
+  const parts = content.split(re)
+  const qLower = q.toLowerCase()
+  return parts.map((part, i) =>
+    part.toLowerCase() === qLower ? (
+      <mark key={i} className="rounded bg-yellow-300/70 px-0.5 text-foreground">
+        {part}
+      </mark>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
+  )
 }
 
 function VincularClienteBox({
