@@ -29,6 +29,11 @@ COPY --chown=app:app pyproject.toml uv.lock /app/
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project
 
+# Layer 1.5: garante deps adicionadas ao pyproject mas ainda não no uv.lock
+# (uv lock precisa rodar localmente pra atualizar; até lá instalamos aqui).
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --python /app/.venv/bin/python "qrcode[pil]>=7.4.0"
+
 # Layer 2: copia o código e instala o pacote (rápido — só o pacote, deps já estão no cache)
 COPY --chown=app:app src /app/src
 COPY --chown=app:app alembic /app/alembic
