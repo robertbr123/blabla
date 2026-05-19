@@ -208,7 +208,9 @@ async def test_responder_enqueues_outbound(
     assert r.status_code == 204
     assert len(captured) == 1
     assert captured[0][0] == c.whatsapp
-    assert captured[0][1] == "Olá, posso ajudar?"
+    # F11: atendente humano envia com prefixo *SUPORTE:* + 2 quebras de linha
+    # pra cliente identificar que eh humano, nao bot.
+    assert captured[0][1] == "*SUPORTE:*\n\nOlá, posso ajudar?"
 
 
 @pytest.mark.asyncio
@@ -225,7 +227,10 @@ async def test_responder_empty_text_rejected(app_and_token: Any) -> None:
 
 
 @pytest.mark.asyncio
-async def test_encerrar_sets_status_encerrada(app_and_token: Any) -> None:
+async def test_encerrar_devolve_pro_bot(app_and_token: Any) -> None:
+    """F11: ao encerrar atendimento humano, conversa volta pro bot pra que ele
+    continue respondendo se cliente mandar nova mensagem (sem precisar deletar
+    a conversa pra reativar o bot)."""
     client, token, _admin, db_session = app_and_token
     c = await _make_conversa(db_session)
 
@@ -233,8 +238,9 @@ async def test_encerrar_sets_status_encerrada(app_and_token: Any) -> None:
     assert r.status_code == 204
 
     await db_session.refresh(c)
-    assert c.status == ConversaStatus.ENCERRADA
-    assert c.estado == ConversaEstado.ENCERRADA
+    assert c.status == ConversaStatus.BOT
+    assert c.estado == ConversaEstado.CLIENTE
+    assert c.atendente_id is None
 
 
 @pytest.mark.asyncio

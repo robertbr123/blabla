@@ -151,16 +151,17 @@ async def parse_e_casar_materiais(
             nao_encontrados.append(f"{qty}x {nome_digitado}")
             continue
         item, saldo = cand
-        if qty > saldo:
-            sem_saldo.append((nome_digitado, qty, saldo))
-            continue
-        # Itens serializados só aceitam qty=1 — bot perguntará o serial num
-        # passo separado. Se técnico digitar "3 onu", ele divide em 3 entradas
-        # ou marca como inválido pra ele corrigir.
+        # Check serializado ANTES de saldo: qty>1 em serializado eh sempre
+        # invalido conceitualmente (cada serial eh unico), independente do
+        # saldo. Caso contrario o tecnico ficaria so vendo "sem saldo" sem
+        # entender que precisa registrar 1 por vez.
         if item.serializado and qty != 1:
             invalidos.append(
                 f"{qty}x {item.nome} (serializado — registre 1 por vez)"
             )
+            continue
+        if qty > saldo:
+            sem_saldo.append((nome_digitado, qty, saldo))
             continue
         matches.append(
             MaterialMatch(

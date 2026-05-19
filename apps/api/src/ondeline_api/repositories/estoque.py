@@ -122,6 +122,28 @@ class MovimentoRepo:
         )
         return (await self._s.execute(stmt)).scalar_one_or_none()
 
+    async def saldo_do_serial(self, item_id: UUID, serial: str) -> int:
+        """Soma com sinal (+1 pra positivos, -1 pra negativos) dos movimentos
+        desse serial. Saldo > 0 = serial atualmente em estoque (por qualquer tecnico).
+
+        Imune a problemas de timestamp identico — eh aritmetica pura sobre tipo.
+        """
+        sign = case(
+            (
+                EstoqueMovimento.tipo.in_(list(TIPOS_POSITIVOS)),
+                EstoqueMovimento.quantidade,
+            ),
+            else_=-EstoqueMovimento.quantidade,
+        )
+        stmt = (
+            select(func.coalesce(func.sum(sign), 0))
+            .where(
+                EstoqueMovimento.item_id == item_id,
+                EstoqueMovimento.serial == serial,
+            )
+        )
+        return int((await self._s.execute(stmt)).scalar_one())
+
     async def list_recentes_por_os(
         self, os_id: UUID
     ) -> list[EstoqueMovimento]:

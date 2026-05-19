@@ -98,12 +98,14 @@ async def registrar_movimento(
                 f"saldo insuficiente: tem {saldo}, precisa {quantidade}"
             )
 
-    # Para tipos positivos com serial, verifica se ja nao tem +saldo desse serial.
+    # Para tipos positivos com serial, verifica se o serial AINDA esta em
+    # estoque. Soma com sinal sobre movimentos do serial — imune a ambiguidade
+    # de timestamp identico entre movimentos.
     if item.serializado and serial and tipo in TIPOS_POSITIVOS:
-        ultimo = await movrepo.ultimo_movimento_serial(item_id, serial)
-        if ultimo is not None and ultimo.tipo in TIPOS_POSITIVOS:
+        saldo_serial = await movrepo.saldo_do_serial(item_id, serial)
+        if saldo_serial > 0:
             raise SerialDuplicado(
-                f"serial {serial} ja em estoque (movimento {ultimo.id})"
+                f"serial {serial} ja em estoque (saldo {saldo_serial})"
             )
 
     mov = EstoqueMovimento(

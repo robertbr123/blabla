@@ -14,5 +14,5 @@ async def test_healthz_includes_celery_queues() -> None:
         r = await client.get("/healthz")
     body = r.json()
     assert "celery" in body
-    assert set(body["celery"].keys()) == {"default", "llm", "sgp", "notifications"}
+    assert set(body["celery"].keys()) == {"default", "llm", "sgp", "notifications", "asr"}
     assert all(isinstance(v, int) for v in body["celery"].values())

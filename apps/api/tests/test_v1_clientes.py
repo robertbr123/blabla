@@ -147,8 +147,9 @@ async def test_list_returns_list_items_without_pii(app_and_admin: Any) -> None:
     assert "whatsapp" in first
     assert "cidade" in first
     assert "plano" in first
-    # PII fields must NOT be present
-    assert "nome" not in first
+    # F11: nome agora aparece na lista (admin/atendente ja tem acesso).
+    # Mas cpf_cnpj e endereco continuam protegidos (so no detail).
+    assert "nome" in first  # decifrado server-side pra UI
     assert "cpf_cnpj" not in first
     assert "endereco" not in first
 
