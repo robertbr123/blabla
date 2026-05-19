@@ -7,10 +7,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 import structlog
-
-from uuid import UUID
 
 from ondeline_api.adapters.evolution import EvolutionAdapter, EvolutionError
 from ondeline_api.db.crypto import decrypt_pii

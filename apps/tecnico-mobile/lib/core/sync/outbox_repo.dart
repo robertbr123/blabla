@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:drift/drift.dart';
 
 import '../db/database.dart';
-import '../db/tables.dart';
 import 'outbox_kind.dart';
 
 export 'outbox_kind.dart';
