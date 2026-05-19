@@ -129,7 +129,7 @@ flutter run --dart-define=API_URL=http://localhost:8000 # iOS simulator
 `.github/workflows/ci.yml` tem um job `mobile` que:
 
 1. Faz checkout
-2. Instala Java 17 + Flutter 3.24.5 stable
+2. Instala Java 17 + Flutter 3.27.4 stable
 3. Roda `flutter create .` (gera android/ na hora — não versionado)
 4. `flutter pub get`
 5. `dart run build_runner build` (drift codegen)

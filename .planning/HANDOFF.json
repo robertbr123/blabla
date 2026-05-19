@@ -1,0 +1,50 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-05-19T17:51:29.566Z",
+  "source": "auto-postool",
+  "partial": false,
+  "phase": null,
+  "phase_name": null,
+  "phase_dir": null,
+  "plan": null,
+  "task": null,
+  "total_tasks": null,
+  "status": "auto-checkpoint",
+  "completed_tasks": [],
+  "remaining_tasks": [],
+  "blockers": [],
+  "human_actions_pending": [],
+  "decisions": [],
+  "uncommitted_files": [
+    {
+      "status": "M",
+      "path": ".github/workflows/ci.yml"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/pyproject.toml"
+    },
+    {
+      "status": "M",
+      "path": "apps/tecnico-mobile/README.md"
+    },
+    {
+      "status": "M",
+      "path": "apps/tecnico-mobile/SETUP.md"
+    },
+    {
+      "status": "M",
+      "path": "apps/tecnico-mobile/pubspec.yaml"
+    },
+    {
+      "status": "??",
+      "path": ".planning/"
+    },
+    {
+      "status": "??",
+      "path": "apps/tecnico-mobile/.metadata"
+    }
+  ],
+  "next_action": null,
+  "context_notes": "Recent commits:\n9937f91 feat: FCM dispatch backend + cache OS offline + APK release signing + setup doc\naf40ec0 fix(ci): ruff imports + flutter analyze (withOpacity, widget_test default)\nf96cb88 feat(tecnico-mobile): sync offline + Iniciar/Concluir GPS + camera + FCM + CI\n904ccf0 feat(api): endpoint /tecnico/me/fcm-token pra registrar dispositivo (FCM/APNs)\nbfec333 feat(tecnico-mobile): scaffold inicial do app Flutter"
+}

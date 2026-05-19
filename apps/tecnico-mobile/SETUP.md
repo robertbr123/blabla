@@ -25,13 +25,13 @@ brew install fvm
 
 # Dentro do projeto:
 cd apps/tecnico-mobile
-fvm install 3.24.5
-fvm use 3.24.5
+fvm install 3.27.4
+fvm use 3.27.4
 
 # Pro `flutter` no PATH apontar pra versão do fvm:
 echo 'export PATH="$HOME/fvm/default/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
-flutter --version   # → Flutter 3.24.5
+flutter --version   # → Flutter 3.27.4
 ```
 
 Alternativa direta (sem fvm):

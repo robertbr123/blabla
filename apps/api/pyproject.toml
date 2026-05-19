@@ -91,6 +91,10 @@ ignore_missing_imports = true
 module = ["qrcode", "qrcode.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = ["firebase_admin", "firebase_admin.*"]
+ignore_missing_imports = true
+
 [tool.pydantic-mypy]
 init_forbid_extra = true
 init_typed = true
