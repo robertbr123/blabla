@@ -3,6 +3,12 @@
 .env.*
 !.env.example
 
+# GSD workspace
+.planning/
+
+# Flutter
+**/.metadata
+
 # Python
 __pycache__/
 *.py[cod]
