@@ -269,8 +269,25 @@ async def create_cliente_campo(
     session: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ) -> ClienteCampoOut:
-    """Cria cliente_cadastro. installer_user_id/nome = user logado.
-    Materiais e fotos virao em endpoints separados (Fase 4)."""
+    """Cria cliente_cadastro com materiais consumidos (atomico).
+
+    - installer_user_id/nome = user logado
+    - Se `materiais` foi enviado: faz saida do estoque do tecnico pra cada
+      item, no mesmo flush. Se algum item nao tem saldo, levanta 409 e
+      NADA e gravado (transacao SQLAlchemy desfaz tudo).
+    - Item serializado dispara hook que cruza com Cliente SGP e cria
+      ClienteEquipamento (via cpf_hash).
+    """
+    from ondeline_api.db.models.business import MensagemRole as _  # type: ignore[unused-ignore]  # noqa: F401
+    from ondeline_api.repositories.tecnico import TecnicoRepo
+    from ondeline_api.services.estoque import (
+        EstoqueError,
+        ItemNaoExiste,
+        SaldoInsuficiente,
+        SerialDuplicado,
+        registrar_movimento,
+    )
+
     cpf_digits = _only_digits(body.cpf)
     if len(cpf_digits) not in (11, 14):
         raise HTTPException(status_code=400, detail="CPF/CNPJ invalido")
@@ -285,6 +302,17 @@ async def create_cliente_campo(
             status_code=409,
             detail="ja existe um cliente cadastrado com esse CPF",
         )
+
+    # Se vai dar baixa de material, precisa do tecnico_id (FK estoque).
+    tecnico_id = None
+    if body.materiais:
+        tec = await TecnicoRepo(session).get_by_user_id(user.id)
+        if tec is None:
+            raise HTTPException(
+                status_code=403,
+                detail="apenas tecnicos podem dar baixa de material (user atual nao tem Tecnico associado)",
+            )
+        tecnico_id = tec.id
 
     cliente = ClienteCadastro(
         cpf_hash=cpf_hash,
@@ -318,6 +346,27 @@ async def create_cliente_campo(
         await repo.create(cliente)
     except IntegrityError as exc:
         raise HTTPException(status_code=409, detail="conflito de CPF") from exc
+
+    # Baixa de material (transacao implicita — se falhar, FastAPI faz rollback)
+    if body.materiais and tecnico_id is not None:
+        for m in body.materiais:
+            try:
+                await registrar_movimento(
+                    session,
+                    item_id=m.item_id,
+                    tipo="saida",
+                    quantidade=m.quantidade,
+                    criado_por=user.id,
+                    tecnico_id=tecnico_id,
+                    serial=m.serial,
+                    cliente_cadastro_id=cliente.id,
+                    observacao=f"instalacao cliente {cliente.id}",
+                )
+            except SaldoInsuficiente as e:
+                raise HTTPException(status_code=409, detail=str(e)) from e
+            except (ItemNaoExiste, SerialDuplicado, EstoqueError) as e:
+                raise HTTPException(status_code=400, detail=str(e)) from e
+
     return _to_out(cliente)
 
 
@@ -409,6 +458,117 @@ async def marcar_sincronizado_sgp(
     if cliente is None:
         raise HTTPException(status_code=404, detail="cliente nao encontrado")
     await repo.marcar_sincronizado(cliente, body.sgp_id.strip())
+    return _to_out(cliente)
+
+
+# ── Fotos da instalacao ─────────────────────────────────────
+
+
+FOTOS_DIR = __import__("pathlib").Path("/tmp/ondeline_cliente_fotos")
+_MAX_FOTO_BYTES = 8 * 1024 * 1024  # 8 MB
+_TIPOS_FOTO_VALIDOS = {"serial", "instalacao", "speedtest", "outro"}
+
+
+@router.post(
+    "/{cliente_id}/fotos",
+    response_model=ClienteCampoOut,
+    dependencies=[_role_any],
+)
+async def upload_foto_cliente_campo(
+    cliente_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+    file: Annotated[UploadFile, File()],
+    tipo: Annotated[str, Form()] = "outro",
+) -> ClienteCampoOut:
+    """Upload de foto da instalacao. Max 8MB. Tipos: serial|instalacao|speedtest|outro.
+
+    Tecnico so anexa em cliente que ele cadastrou. Atendente/admin: qualquer.
+    """
+    from uuid import uuid4
+
+    if tipo not in _TIPOS_FOTO_VALIDOS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"tipo invalido. Use: {sorted(_TIPOS_FOTO_VALIDOS)}",
+        )
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="arquivo deve ser imagem")
+
+    repo = ClienteCadastroRepo(session)
+    cliente = await repo.get_by_id(cliente_id)
+    if cliente is None:
+        raise HTTPException(status_code=404, detail="cliente nao encontrado")
+    if user.role == Role.TECNICO and cliente.installer_user_id != user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="tecnico so adiciona foto em cliente que ele cadastrou",
+        )
+
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="arquivo vazio")
+    if len(contents) > _MAX_FOTO_BYTES:
+        raise HTTPException(status_code=413, detail="foto excede 8MB")
+
+    from pathlib import Path
+
+    target_dir = FOTOS_DIR / str(cliente_id)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    suffix = Path(file.filename or "").suffix or ".jpg"
+    fname = f"{uuid4().hex}{suffix}"
+    fpath = target_dir / fname
+    fpath.write_bytes(contents)
+    fpath.chmod(0o600)
+
+    foto = {
+        "url": str(fpath),
+        "ts": datetime.now(tz=UTC).isoformat(),
+        "size": len(contents),
+        "mime": file.content_type,
+        "tipo": tipo,
+        "uploaded_by": str(user.id),
+    }
+    await repo.add_foto(cliente, foto)
+    return _to_out(cliente)
+
+
+@router.delete(
+    "/{cliente_id}/fotos/{foto_idx}",
+    response_model=ClienteCampoOut,
+    dependencies=[_role_any],
+)
+async def delete_foto_cliente_campo(
+    cliente_id: UUID,
+    foto_idx: int,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> ClienteCampoOut:
+    """Remove uma foto da lista (por indice). Apaga o arquivo do disco."""
+    from pathlib import Path
+
+    repo = ClienteCadastroRepo(session)
+    cliente = await repo.get_by_id(cliente_id)
+    if cliente is None:
+        raise HTTPException(status_code=404, detail="cliente nao encontrado")
+    if user.role == Role.TECNICO and cliente.installer_user_id != user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="tecnico so remove foto de cliente que ele cadastrou",
+        )
+
+    removed = await repo.remove_foto(cliente, foto_idx)
+    if removed is None:
+        raise HTTPException(status_code=404, detail="foto nao encontrada")
+    # Best-effort: apaga arquivo
+    try:
+        path = removed.get("url")
+        if isinstance(path, str):
+            f = Path(path)
+            if f.exists():
+                f.unlink()
+    except Exception:
+        pass
     return _to_out(cliente)
 
 

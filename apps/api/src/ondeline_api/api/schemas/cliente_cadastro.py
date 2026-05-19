@@ -11,6 +11,14 @@ from pydantic import BaseModel, ConfigDict, Field
 # ── Input ────────────────────────────────────────────────────
 
 
+class MaterialUsado(BaseModel):
+    """Item do estoque do tecnico consumido na instalacao."""
+
+    item_id: UUID
+    quantidade: int = Field(gt=0)
+    serial: str | None = Field(default=None, max_length=120)
+
+
 class ClienteCampoIn(BaseModel):
     """Body do POST /clientes-campo. Plain text — backend encripta PII."""
 
@@ -40,6 +48,8 @@ class ClienteCampoIn(BaseModel):
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
     location_accuracy: float | None = Field(default=None, ge=0)
+    # Materiais consumidos na instalacao (opcional — pode ficar vazio)
+    materiais: list[MaterialUsado] = Field(default_factory=list)
 
 
 class ClienteCampoPatch(BaseModel):
