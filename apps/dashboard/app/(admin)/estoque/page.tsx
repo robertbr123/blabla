@@ -5,7 +5,9 @@ import {
   Boxes,
   Minus,
   Package,
+  Pencil,
   Plus,
+  Trash2,
   Users,
   Warehouse,
 } from 'lucide-react'
@@ -14,16 +16,20 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { DialogNovoItemEstoque } from '@/components/dialog-novo-item-estoque'
+import { DialogEditarItemEstoque } from '@/components/dialog-editar-item-estoque'
 import { DialogEntradaDeposito } from '@/components/dialog-entrada-deposito'
 import { DialogBaixaDeposito } from '@/components/dialog-baixa-deposito'
 import { DialogTransferir } from '@/components/dialog-transferir'
 import {
+  useDeleteEstoqueItem,
   useDepositoSaldo,
   useEstoqueItens,
   useEstoqueMovimentos,
   useTecnicos,
   useTecnicosSaldos,
+  useUpdateEstoqueItem,
 } from '@/lib/api/queries'
+import type { EstoqueItem } from '@/lib/api/types'
 import { cn } from '@/lib/utils'
 
 type Aba = 'deposito' | 'tecnicos' | 'itens'
@@ -44,13 +50,47 @@ export default function EstoquePage() {
   const [showEntrada, setShowEntrada] = useState(false)
   const [showBaixa, setShowBaixa] = useState(false)
   const [showTransfer, setShowTransfer] = useState(false)
+  const [itemEditando, setItemEditando] = useState<EstoqueItem | null>(null)
   const [busca, setBusca] = useState('')
+  const updateItem = useUpdateEstoqueItem()
+  const deleteItem = useDeleteEstoqueItem()
 
   const { data: deposito } = useDepositoSaldo()
   const { data: tecnicos } = useTecnicos({ ativo: true })
   const { data: tecSaldos } = useTecnicosSaldos()
   const { data: itens } = useEstoqueItens(false)
   const { data: movimentos } = useEstoqueMovimentos({ limit: 30 })
+
+  async function handleExcluir(item: EstoqueItem) {
+    const ok = confirm(
+      `Excluir o item "${item.nome}" (${item.sku})?\n\n` +
+        'Se já tem movimentos, vou sugerir desativar (preserva histórico).',
+    )
+    if (!ok) return
+    try {
+      await deleteItem.mutateAsync(item.id)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : ''
+      if (/movimento|409/i.test(msg)) {
+        const desativar = confirm(
+          'Não dá pra apagar — esse item tem movimentos registrados.\n\n' +
+            'Quer desativar? Ele some dos selects novos mas o histórico fica.',
+        )
+        if (desativar) {
+          try {
+            await updateItem.mutateAsync({
+              id: item.id,
+              body: { ativo: false },
+            })
+          } catch (e2) {
+            alert(e2 instanceof Error ? e2.message : 'Erro ao desativar')
+          }
+        }
+      } else {
+        alert(msg || 'Erro ao excluir')
+      }
+    }
+  }
 
   const itemById = useMemo(
     () => new Map((itens ?? []).map((i) => [i.id, i])),
@@ -87,6 +127,12 @@ export default function EstoquePage() {
       )}
       {showTransfer && (
         <DialogTransferir onClose={() => setShowTransfer(false)} />
+      )}
+      {itemEditando && (
+        <DialogEditarItemEstoque
+          item={itemEditando}
+          onClose={() => setItemEditando(null)}
+        />
       )}
 
       {/* Header */}
@@ -241,6 +287,7 @@ export default function EstoquePage() {
                   <th className="px-4 py-3">Categoria</th>
                   <th className="px-4 py-3">Serial?</th>
                   <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -269,11 +316,33 @@ export default function EstoquePage() {
                           {it.ativo ? 'Ativo' : 'Inativo'}
                         </Badge>
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="inline-flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setItemEditando(it)}
+                            title="Editar"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => void handleExcluir(it)}
+                            title="Excluir"
+                            disabled={deleteItem.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 {!itens?.length && (
                   <tr>
-                    <td colSpan={5} className="p-6 text-center text-muted-foreground">
+                    <td colSpan={6} className="p-6 text-center text-muted-foreground">
                       Nenhum item. Clique em <strong>Novo item</strong>.
                     </td>
                   </tr>

@@ -102,6 +102,33 @@ export function useCreateEstoqueItem() {
   })
 }
 
+export interface EstoqueItemUpdate {
+  nome?: string
+  categoria?: 'onu' | 'roteador' | 'cabo' | 'conector' | 'outro'
+  ativo?: boolean
+}
+
+export function useUpdateEstoqueItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: EstoqueItemUpdate }) =>
+      apiFetch<import('./types').EstoqueItem>(`/api/v1/estoque/itens/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['estoque-itens'] }),
+  })
+}
+
+export function useDeleteEstoqueItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<void>(`/api/v1/estoque/itens/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['estoque-itens'] }),
+  })
+}
+
 export interface EstoqueMovimentoCreate {
   item_id: string
   tipo: 'entrada' | 'saida' | 'recolhido' | 'devolucao' | 'perda' | 'ajuste_positivo' | 'ajuste_negativo'

@@ -102,6 +102,51 @@ async def update_item(
     return ItemOut.model_validate(item)
 
 
+@router.delete(
+    "/itens/{item_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[_admin],
+)
+async def delete_item(
+    item_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """Exclui um item do catalogo.
+
+    - Se nao tem nenhum movimento, faz hard delete.
+    - Se tem movimentos (mesmo zerados), retorna 409 sugerindo desativar
+      via PATCH (preserva historico).
+    """
+    from sqlalchemy import func, select
+
+    from ondeline_api.db.models.estoque import EstoqueMovimento
+
+    repo = ItemRepo(session)
+    item = await repo.get_by_id(item_id)
+    if item is None:
+        raise HTTPException(status_code=404, detail="item not found")
+
+    n_movs = (
+        await session.execute(
+            select(func.count(EstoqueMovimento.id)).where(
+                EstoqueMovimento.item_id == item_id
+            )
+        )
+    ).scalar_one()
+    if n_movs and n_movs > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"item tem {n_movs} movimento(s) registrado(s) — nao da pra "
+                "apagar (perderia historico). Desative em vez disso "
+                "(PATCH /itens/{id} com ativo=false)."
+            ),
+        )
+
+    await session.delete(item)
+    await session.flush()
+
+
 # ── Saldo ────────────────────────────────────────────────
 
 
