@@ -245,6 +245,60 @@ final clienteDetailProvider =
   return ClienteCampo.fromJson((r.data as Map).cast<String, dynamic>());
 });
 
+class MaterialUsado {
+  final String movimentoId;
+  final String itemId;
+  final String sku;
+  final String nome;
+  final String categoria;
+  final bool serializado;
+  final int quantidade;
+  final String? serial;
+  final DateTime criadoEm;
+  final String? observacao;
+
+  MaterialUsado({
+    required this.movimentoId,
+    required this.itemId,
+    required this.sku,
+    required this.nome,
+    required this.categoria,
+    required this.serializado,
+    required this.quantidade,
+    required this.serial,
+    required this.criadoEm,
+    required this.observacao,
+  });
+
+  factory MaterialUsado.fromJson(Map<String, dynamic> j) => MaterialUsado(
+        movimentoId: j['movimento_id'] as String,
+        itemId: j['item_id'] as String,
+        sku: (j['sku'] ?? '') as String,
+        nome: (j['nome'] ?? '') as String,
+        categoria: (j['categoria'] ?? '') as String,
+        serializado: (j['serializado'] ?? false) as bool,
+        quantidade: (j['quantidade'] as num).toInt(),
+        serial: j['serial'] as String?,
+        criadoEm: DateTime.parse(j['criado_em'] as String),
+        observacao: j['observacao'] as String?,
+      );
+}
+
+final clienteMateriaisProvider = FutureProvider.autoDispose
+    .family<List<MaterialUsado>, String>((ref, id) async {
+  final dio = ref.watch(apiClientProvider);
+  try {
+    final r = await dio.get('/api/v1/clientes-campo/$id/materiais');
+    final raw = r.data as List? ?? const [];
+    return raw
+        .cast<Map>()
+        .map((m) => MaterialUsado.fromJson(m.cast<String, dynamic>()))
+        .toList();
+  } on DioException {
+    return const <MaterialUsado>[];
+  }
+});
+
 /// Histórico de OS por CPF (cruza com Cliente SGP no backend).
 final clienteOsHistoricoProvider = FutureProvider.autoDispose
     .family<List<ClienteOsHistorico>, String>((ref, id) async {

@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart' show launchUrl;
 
 import 'cliente_data.dart';
 import 'widgets/cliente_fotos.dart';
+import 'widgets/cliente_materiais.dart';
 
 class ClienteDetailScreen extends ConsumerWidget {
   final String id;
@@ -55,6 +56,7 @@ class _Body extends ConsumerWidget {
         _SecaoEndereco(cliente: cliente),
         _SecaoConexao(cliente: cliente),
         _SecaoInstalacao(cliente: cliente),
+        ClienteMateriaisSection(clienteId: cliente.id),
         if (cliente.observation != null && cliente.observation!.isNotEmpty)
           _SecaoSimples(
             icone: Icons.notes,

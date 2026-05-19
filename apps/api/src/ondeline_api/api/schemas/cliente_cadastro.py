@@ -209,3 +209,22 @@ class SgpPlano(BaseModel):
 class SgpPlanosOut(BaseModel):
     provider: str
     planos: list[SgpPlano]
+
+
+# ── Materiais usados ────────────────────────────────────────
+
+
+class MaterialUsadoOut(BaseModel):
+    """Item consumido na instalacao (vista de um cliente_cadastro)."""
+
+    movimento_id: UUID
+    item_id: UUID
+    sku: str
+    nome: str
+    categoria: str
+    serializado: bool
+    quantidade: int
+    serial: str | None
+    criado_em: datetime
+    criado_por: UUID
+    observacao: str | None

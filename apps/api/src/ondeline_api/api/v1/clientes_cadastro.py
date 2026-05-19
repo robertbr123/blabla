@@ -37,6 +37,7 @@ from ondeline_api.api.schemas.cliente_cadastro import (
     ClienteCampoPatch,
     ImportBatchIn,
     ImportResult,
+    MaterialUsadoOut,
     SgpPlano,
     SgpPlanosOut,
     SyncSgpIn,
@@ -203,6 +204,56 @@ async def get_cliente_campo(
     if c is None:
         raise HTTPException(status_code=404, detail="cliente nao encontrado")
     return _to_out(c)
+
+
+@router.get(
+    "/{cliente_id}/materiais",
+    response_model=list[MaterialUsadoOut],
+    dependencies=[_role_any],
+)
+async def list_materiais_usados(
+    cliente_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> list[MaterialUsadoOut]:
+    """Lista os materiais consumidos na instalacao desse cliente.
+
+    Cruza `estoque_movimento` filtrando por cliente_cadastro_id e tipo=saida.
+    Junta com EstoqueItem pra trazer sku/nome/categoria.
+    """
+    from sqlalchemy import select
+
+    from ondeline_api.db.models.estoque import EstoqueItem, EstoqueMovimento
+
+    cliente = await ClienteCadastroRepo(session).get_by_id(cliente_id)
+    if cliente is None:
+        raise HTTPException(status_code=404, detail="cliente nao encontrado")
+
+    stmt = (
+        select(EstoqueMovimento, EstoqueItem)
+        .join(EstoqueItem, EstoqueItem.id == EstoqueMovimento.item_id)
+        .where(
+            EstoqueMovimento.cliente_cadastro_id == cliente_id,
+            EstoqueMovimento.tipo == "saida",
+        )
+        .order_by(EstoqueMovimento.criado_em.asc())
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        MaterialUsadoOut(
+            movimento_id=mov.id,
+            item_id=item.id,
+            sku=item.sku,
+            nome=item.nome,
+            categoria=item.categoria,
+            serializado=item.serializado,
+            quantidade=mov.quantidade,
+            serial=mov.serial,
+            criado_em=mov.criado_em,
+            criado_por=mov.criado_por,
+            observacao=mov.observacao,
+        )
+        for mov, item in rows
+    ]
 
 
 @router.get(
