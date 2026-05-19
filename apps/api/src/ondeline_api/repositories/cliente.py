@@ -24,7 +24,7 @@ def _primary_cidade(c: ClienteSgp) -> str:
 def _format_endereco(c: ClienteSgp) -> str:
     e = c.endereco
     parts = [e.logradouro, e.numero, e.bairro, e.cidade, e.uf, e.cep]
-    return ", ".join(p for p in parts if p)
+    return ", ".join(str(p) for p in parts if p)
 
 
 class ClienteRepo:

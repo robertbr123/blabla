@@ -25,16 +25,21 @@ def _clean_cpf(cpf: str) -> str:
     return _DIGITS_RE.sub("", cpf or "")
 
 
+def _s(v: Any) -> str:
+    # SGP as vezes manda numero/cep como int. Tudo no EnderecoSgp e str.
+    return "" if v is None else str(v)
+
+
 def _build_endereco(raw: dict[str, Any] | None) -> EnderecoSgp:
     raw = raw or {}
     return EnderecoSgp(
-        logradouro=raw.get("logradouro", "") or "",
-        numero=raw.get("numero", "") or "",
-        bairro=raw.get("bairro", "") or "",
-        cidade=raw.get("cidade", "") or "",
-        uf=raw.get("uf", "") or "",
-        cep=raw.get("cep", "") or "",
-        complemento=raw.get("complemento", "") or "",
+        logradouro=_s(raw.get("logradouro")),
+        numero=_s(raw.get("numero")),
+        bairro=_s(raw.get("bairro")),
+        cidade=_s(raw.get("cidade")),
+        uf=_s(raw.get("uf")),
+        cep=_s(raw.get("cep")),
+        complemento=_s(raw.get("complemento")),
     )
 
 
