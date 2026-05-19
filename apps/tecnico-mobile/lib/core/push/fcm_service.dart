@@ -56,7 +56,7 @@ class FcmService {
         const NotificationDetails(
           android: AndroidNotificationDetails(
             'ondeline_default',
-            'Notificações Ondeline',
+            'Notificações Linket',
             importance: Importance.high,
             priority: Priority.high,
           ),

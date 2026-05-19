@@ -83,7 +83,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         Theme.of(context).brightness == Brightness.dark
                             ? 'assets/branding/logo_horizontal_dark.png'
                             : 'assets/branding/logo_horizontal_light.png',
-                        height: 80,
+                        height: 140,
                         fit: BoxFit.contain,
                       ),
                     ),
@@ -224,7 +224,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 24),
                     Center(
                       child: Text(
-                        'Ondeline Telecom · v0.1.0',
+                        'Linket · v0.1.0',
                         style: TextStyle(
                           fontSize: 11,
                           color: scheme.onSurfaceVariant

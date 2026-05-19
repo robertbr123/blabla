@@ -70,7 +70,7 @@ class PerfilScreen extends ConsumerWidget {
                 _ItemInfo(
                   icone: Icons.business,
                   label: 'Empresa',
-                  value: 'Ondeline Telecom',
+                  value: 'Linket',
                 ),
               ]),
             ],
