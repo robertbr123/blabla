@@ -5,7 +5,8 @@ recebem tudo via `ctx`. Isso facilita teste (passar fakes) e swap de provider.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,3 +24,7 @@ class ToolContext:
     evolution: EvolutionAdapter
     sgp_router: SgpRouter
     sgp_cache: SgpCacheService
+    # F11 — redis opcional pra rate-limit/cache de tools (ex: nao reenviar
+    # boleto da mesma fatura por 20min). Tools chamam getattr(ctx, 'redis', None)
+    # pra ser tolerante quando rodam em contexto sem Redis (testes).
+    redis: Any = field(default=None)

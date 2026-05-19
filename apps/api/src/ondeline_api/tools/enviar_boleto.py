@@ -204,10 +204,46 @@ async def enviar_boleto(
             ),
         }
 
+    # F11 — Rate-limit: nao reenvia a mesma fatura nas ultimas 20 minutos.
+    # Chave Redis: 'boleto:enviado:{conversa_id}:{fatura_id}', TTL 1200s.
+    redis = getattr(ctx, "redis", None)
+    ja_enviados_recentemente: list[dict[str, Any]] = []
+    escolhidos_para_enviar = []
+    for t in escolhidos:
+        key = f"boleto:enviado:{ctx.conversa.id}:{t.id}"
+        if redis is not None:
+            try:
+                existe = await redis.exists(key)
+            except Exception:
+                existe = 0
+        else:
+            existe = 0
+        if existe:
+            ja_enviados_recentemente.append(
+                {"fatura_id": t.id, "vencimento": t.vencimento, "valor": t.valor}
+            )
+        else:
+            escolhidos_para_enviar.append(t)
+
+    # Se TUDO o que ele pediu ja foi enviado recentemente, avisa o LLM.
+    if ja_enviados_recentemente and not escolhidos_para_enviar:
+        return {
+            "ok": True,
+            "enviados": 0,
+            "ja_enviadas_nas_ultimas_20min": ja_enviados_recentemente,
+            "motivo": (
+                "Voce ja enviou essa(s) fatura(s) ao cliente nas ultimas 20 minutos. "
+                "Avise ele com gentileza: 'Ja te mandei essa fatura ha pouco — "
+                "role pra cima no nosso chat que ela esta la. Se for outra, me "
+                "diz qual mes ou periodo voce quer.' NAO chame essa tool novamente "
+                "pra mesma fatura nos proximos minutos."
+            ),
+        }
+
     enviados = 0
     vencimentos: list[str] = []
-    n = len(escolhidos)
-    for i, t in enumerate(escolhidos):
+    n = len(escolhidos_para_enviar)
+    for i, t in enumerate(escolhidos_para_enviar):
         if t.link_pdf:
             await ctx.evolution.send_media(
                 ctx.conversa.whatsapp,
@@ -220,13 +256,11 @@ async def enviar_boleto(
             enviados += 1
             vencimentos.append(t.vencimento)
         # F3 — envia QR Pix + copia-e-cola (best-effort).
-        # Usa codigo_pix do SGP se houver; senao gera BR Code proprio com chave Pix configurada.
-        # ToolContext nao expoe Redis hoje — QR roda sem cache (renderiza por chamada, ~50ms).
         from ondeline_api.services.pix_qr import enviar_pix_qr_best_effort
 
         await enviar_pix_qr_best_effort(
             evolution=ctx.evolution,
-            redis=None,
+            redis=redis,
             jid=ctx.conversa.whatsapp,
             codigo_pix_sgp=t.codigo_pix,
             valor=t.valor,
@@ -234,5 +268,19 @@ async def enviar_boleto(
             session=ctx.session,
         )
 
+        # Marca como enviado por 20min.
+        if redis is not None:
+            try:
+                await redis.set(
+                    f"boleto:enviado:{ctx.conversa.id}:{t.id}", "1", ex=1200
+                )
+            except Exception:
+                pass
+
     await ctx.sgp_cache.invalidate(cpf_clean)
-    return {"ok": True, "enviados": enviados, "vencimentos": vencimentos}
+    return {
+        "ok": True,
+        "enviados": enviados,
+        "vencimentos": vencimentos,
+        "ja_enviadas_nas_ultimas_20min": ja_enviados_recentemente or None,
+    }

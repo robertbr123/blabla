@@ -85,6 +85,7 @@ async def _run(conversa_id: UUID) -> dict[str, Any]:
                 evolution=evolution,
                 sgp_router=router,
                 sgp_cache=cache,
+                redis=redis,
             )
             outcome = await run_turn(
                 ctx=ctx,
