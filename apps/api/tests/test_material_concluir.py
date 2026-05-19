@@ -176,12 +176,13 @@ async def test_parse_aceita_onu_qty_1(db_session) -> None:
 
 
 def test_render_resumo_baixa_inclui_serial() -> None:
+    from uuid import uuid4
+
     from ondeline_api.services.material_concluir import (
         MaterialMatch,
         render_resumo_baixa,
     )
 
-    from uuid import uuid4
     m = MaterialMatch(
         item_id=uuid4(),
         sku="ONU-X",

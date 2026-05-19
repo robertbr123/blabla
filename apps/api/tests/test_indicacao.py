@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import pytest
-from ondeline_api.db.models.business import Cliente, Indicacao, IndicacaoUso
+from ondeline_api.db.models.business import Cliente
 from ondeline_api.repositories.indicacao import IndicacaoRepo
 
 pytestmark = pytest.mark.asyncio

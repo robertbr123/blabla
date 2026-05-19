@@ -248,8 +248,8 @@ async def get_produtividade_tecnicos(
 ):
     """F9 — Ranking + cálculo de comissão por técnico.
 
-    Comissão = (os_concluidas × valor_por_os) + (os_csat_5 × bonus_csat_5)
-             + (os_csat_4 × bonus_csat_4)
+    Comissao = (os_concluidas * valor_por_os) + (os_csat_5 * bonus_csat_5)
+             + (os_csat_4 * bonus_csat_4)
 
     Configurar via tabela `config`:
       - comissao.valor_por_os

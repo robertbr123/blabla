@@ -300,7 +300,7 @@ async def list_cliente_equipamentos(
     só os que estão com o cliente agora (sem `removido_em`).
     """
     from ondeline_api.db.models.business import OrdemServico, Tecnico
-    from ondeline_api.db.models.estoque import ClienteEquipamento, EstoqueItem
+    from ondeline_api.db.models.estoque import EstoqueItem
     from ondeline_api.repositories.cliente_equipamento import (
         ClienteEquipamentoRepo,
     )
