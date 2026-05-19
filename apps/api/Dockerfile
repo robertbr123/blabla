@@ -30,9 +30,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project
 
 # Layer 1.5: garante deps adicionadas ao pyproject mas ainda não no uv.lock
-# (uv lock precisa rodar localmente pra atualizar; até lá instalamos aqui
-# usando o pip do venv diretamente — mais previsível que `uv pip --python`).
-RUN /app/.venv/bin/pip install --no-cache-dir "qrcode[pil]>=7.4.0" \
+# (uv lock precisa rodar localmente pra atualizar; até lá instalamos aqui).
+# VIRTUAL_ENV faz `uv pip install` cair direto na venv já criada pelo sync.
+# A venv do uv NÃO tem pip instalado (uv usa seu próprio resolver) então
+# precisamos usar `uv pip install`, não `pip` diretamente.
+RUN --mount=type=cache,target=/root/.cache/uv \
+    VIRTUAL_ENV=/app/.venv uv pip install "qrcode[pil]>=7.4.0" \
     && /app/.venv/bin/python -c "import qrcode; print('qrcode', qrcode.__version__, 'ok')"
 
 # Layer 2: copia o código e instala o pacote (rápido — só o pacote, deps já estão no cache)
