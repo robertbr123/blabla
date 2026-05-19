@@ -67,9 +67,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+            child: Align(
+              alignment: Alignment.topCenter,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 420),
                 child: Column(
@@ -77,7 +78,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Logo BlaBla — usa versao dark/light conforme tema
-                    const SizedBox(height: 24),
                     Center(
                       child: Image.asset(
                         Theme.of(context).brightness == Brightness.dark
@@ -87,7 +87,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         fit: BoxFit.contain,
                       ),
                     ),
-                    const SizedBox(height: 8),
                     Center(
                       child: Text(
                         'TÉCNICO',
@@ -99,7 +98,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 20),
 
                     // Card de login
                     Container(
