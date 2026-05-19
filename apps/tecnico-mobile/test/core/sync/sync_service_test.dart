@@ -52,4 +52,34 @@ void main() {
 
     expect(next, createdAt.add(const Duration(seconds: 8)));
   });
+
+  test('shouldAttempt waits until retry window after last attempt', () {
+    final now = DateTime(2026, 5, 19, 12, 0, 10);
+    final item = OutboxItemData(
+      id: 1,
+      osId: 'os-1',
+      kind: OutboxKind.iniciar.wire,
+      payloadJson: '{}',
+      attempts: 2,
+      lastAttemptAt: DateTime(2026, 5, 19, 12, 0, 8),
+      createdAt: DateTime(2026, 5, 19, 11),
+    );
+
+    expect(shouldAttemptAt(item, now), isFalse);
+  });
+
+  test('shouldAttempt allows retry exactly at next retry instant', () {
+    final now = DateTime(2026, 5, 19, 12, 0, 12);
+    final item = OutboxItemData(
+      id: 1,
+      osId: 'os-1',
+      kind: OutboxKind.iniciar.wire,
+      payloadJson: '{}',
+      attempts: 2,
+      lastAttemptAt: DateTime(2026, 5, 19, 12, 0, 8),
+      createdAt: DateTime(2026, 5, 19, 11),
+    );
+
+    expect(shouldAttemptAt(item, now), isTrue);
+  });
 }

@@ -20,6 +20,16 @@ DateTime computeNextRetryAt({
   return base.add(Duration(seconds: waitSec));
 }
 
+bool shouldAttemptAt(OutboxItemData item, DateTime now) {
+  if (item.attempts == 0) return true;
+  final nextRetryAt = computeNextRetryAt(
+    attempts: item.attempts,
+    createdAt: item.createdAt,
+    lastAttemptAt: item.lastAttemptAt,
+  );
+  return !now.isBefore(nextRetryAt);
+}
+
 /// Processa a fila offline (OutboxItem) em FIFO com backoff exponencial.
 ///
 /// - Conectividade: usa connectivity_plus pra disparar flush quando rede volta
@@ -99,10 +109,7 @@ class SyncService {
   }
 
   bool _shouldAttempt(OutboxItemData item) {
-    if (item.attempts == 0) return true;
-    final waitSec = (1 << item.attempts.clamp(0, 8)).clamp(2, 300);
-    final next = item.createdAt.add(Duration(seconds: waitSec));
-    return DateTime.now().isAfter(next);
+    return shouldAttemptAt(item, DateTime.now());
   }
 
   /// Retorna `false` se erro foi de rede (devemos parar o flush).
