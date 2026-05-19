@@ -22,3 +22,12 @@ class ConcluirIn(BaseModel):
     materiais: str | None = Field(default=None, max_length=2000)
     lat: float | None = Field(default=None, ge=-90, le=90)
     lng: float | None = Field(default=None, ge=-180, le=180)
+
+
+class FcmTokenIn(BaseModel):
+    token: str = Field(min_length=20, max_length=512)
+    platform: str = Field(pattern=r"^(android|ios)$")
+
+
+class FcmTokenRevokeIn(BaseModel):
+    token: str = Field(min_length=20, max_length=512)

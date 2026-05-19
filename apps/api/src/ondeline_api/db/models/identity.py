@@ -60,6 +60,38 @@ class User(Base):
     __table_args__ = (Index("ix_users_email", "email", unique=True),)
 
 
+class DeviceToken(Base):
+    """FCM/APNs device token de um usuario (tecnico em campo).
+
+    Um user pode ter varios tokens (multiplos dispositivos). Token e UNIQUE
+    globalmente — se o mesmo dispositivo for usado por outro user, transfere.
+    Revoked_at marca tokens explicitamente desligados (logout).
+    """
+
+    __tablename__ = "device_tokens"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    token: Mapped[str] = mapped_column(String(512), nullable=False)
+    platform: Mapped[str] = mapped_column(String(16), nullable=False)  # 'android' | 'ios'
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        Index("ix_device_tokens_token", "token", unique=True),
+        Index("ix_device_tokens_user_id", "user_id"),
+    )
+
+
 class Session(Base):
     """Refresh-token session. Revogavel via revoked_at."""
 

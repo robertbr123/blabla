@@ -10,7 +10,13 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.api.schemas.os import OsListItem, OsOut
-from ondeline_api.api.schemas.tecnico_me import ConcluirIn, GpsUpdate, IniciarIn
+from ondeline_api.api.schemas.tecnico_me import (
+    ConcluirIn,
+    FcmTokenIn,
+    FcmTokenRevokeIn,
+    GpsUpdate,
+    IniciarIn,
+)
 from ondeline_api.api.v1.ordens_servico import _fetch_nome_cliente
 from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.rbac import require_role
@@ -169,3 +175,75 @@ async def upload_foto_my_os(
     out = OsOut.model_validate(os_)
     out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
     return out
+
+
+# ── FCM device tokens ──────────────────────────────────────────────
+
+
+@router.post(
+    "/fcm-token",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[_role_dep],
+)
+async def register_fcm_token(
+    body: FcmTokenIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> None:
+    """Registra (ou atualiza) o FCM/APNs token do dispositivo do tecnico.
+
+    Idempotente: se o token ja existe globalmente, transfere pro user atual e
+    atualiza last_seen_at. Limpa revoked_at se estava revogado.
+    """
+    from sqlalchemy import select
+
+    from ondeline_api.db.models.identity import DeviceToken
+
+    now = datetime.now(tz=UTC)
+    existing = (
+        await session.execute(
+            select(DeviceToken).where(DeviceToken.token == body.token)
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        existing.user_id = user.id
+        existing.platform = body.platform
+        existing.last_seen_at = now
+        existing.revoked_at = None
+    else:
+        session.add(
+            DeviceToken(
+                user_id=user.id,
+                token=body.token,
+                platform=body.platform,
+                last_seen_at=now,
+            )
+        )
+    await session.flush()
+
+
+@router.post(
+    "/fcm-token/revoke",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[_role_dep],
+)
+async def revoke_fcm_token(
+    body: FcmTokenRevokeIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> None:
+    """Marca o token como revogado (logout). Nao deleta — preserva audit."""
+    from sqlalchemy import select
+
+    from ondeline_api.db.models.identity import DeviceToken
+
+    existing = (
+        await session.execute(
+            select(DeviceToken).where(
+                DeviceToken.token == body.token, DeviceToken.user_id == user.id
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        existing.revoked_at = datetime.now(tz=UTC)
+        await session.flush()
