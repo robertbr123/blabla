@@ -302,6 +302,44 @@ void main() {
     },
   );
 
+  test(
+    'perfil provider saves online snapshot under current auth user id',
+    () async {
+      final db = testDatabase();
+      addTearDown(db.close);
+
+      final repo = PerfilLocalRepo(db);
+      final container = ProviderContainer(
+        overrides: [
+          dbProvider.overrideWith((ref) => db),
+          apiClientProvider.overrideWith(
+            (ref) => _successfulPerfilDio({
+              'email': 'api@acme.com',
+              'nome': 'Perfil API',
+              'user_id': 'wrong-user',
+              'estatisticas': {
+                'os_pendentes': 2,
+                'os_em_andamento': 1,
+                'os_concluidas_mes': 9,
+              },
+            }),
+          ),
+          perfilReadUserIdProvider.overrideWith((ref) => () async => 'u-current'),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final perfil = await container.read(perfilProvider.future);
+      final cached = await repo.get(userId: 'u-current');
+
+      expect(perfil.userId, 'u-current');
+      expect(perfil.nome, 'Perfil API');
+      expect(cached, isNotNull);
+      expect(cached?['user_id'], 'u-current');
+      expect(await repo.get(userId: 'wrong-user'), isNull);
+    },
+  );
+
   test('perfil provider does not use cache on 401 response', () async {
     final db = testDatabase();
     addTearDown(db.close);
@@ -350,6 +388,24 @@ Dio _offlineDio() {
             requestOptions: options,
             type: DioExceptionType.connectionError,
             error: 'offline',
+          ),
+        );
+      },
+    ),
+  );
+  return dio;
+}
+
+Dio _successfulPerfilDio(Map<String, dynamic> payload) {
+  final dio = Dio();
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) {
+        handler.resolve(
+          Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: payload,
           ),
         );
       },

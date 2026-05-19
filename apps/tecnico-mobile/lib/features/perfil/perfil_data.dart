@@ -82,7 +82,9 @@ final perfilProvider = FutureProvider<Perfil>((ref) async {
     final r = await dio.get('/api/v1/tecnico/me/perfil');
     final raw = (r.data as Map).cast<String, dynamic>();
     if (userId != null && userId.isNotEmpty) {
-      await repo.save(raw);
+      final normalized = _normalizePerfilPayload(raw, userId);
+      await repo.save(normalized);
+      return Perfil.fromJson(normalized);
     }
     return Perfil.fromJson(raw);
   } on DioException catch (e) {
@@ -108,6 +110,13 @@ bool _shouldUseCachedSnapshot(DioException error) {
       error.type == DioExceptionType.connectionTimeout ||
       error.type == DioExceptionType.sendTimeout ||
       error.type == DioExceptionType.receiveTimeout;
+}
+
+Map<String, dynamic> _normalizePerfilPayload(
+  Map<String, dynamic> payload,
+  String userId,
+) {
+  return <String, dynamic>{...payload, 'user_id': userId};
 }
 
 class PerfilActions {
