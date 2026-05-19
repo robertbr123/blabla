@@ -1,7 +1,7 @@
 # Plano — Cadastro de Clientes em Campo (Flutter + Postgres)
 
 **Data:** 2026-05-19
-**Status:** ⏳ aguardando revisão e GO do Robert
+**Status:** ✅ Aprovado — pronto pra começar Fase 1
 
 ## Contexto
 
@@ -9,36 +9,47 @@ Roberto tem hoje um **site separado em MySQL** onde técnicos cadastram
 clientes durante a instalação. O fluxo atual:
 
 1. Técnico instala internet na casa do cliente
-2. Abre o site (browser) e cadastra os dados (nome, CPF, endereço, plano,
-   PPPoE, GPS, etc)
-3. Esses dados depois vão pro SGP (separadamente)
+2. Abre o site (browser) e cadastra os dados
+3. Esses dados depois vão pro SGP (separadamente, manual)
 
 **Objetivo:** trazer esse cadastro pra dentro do app BlaBla Técnico
 (Flutter) + Postgres do BlaBla, aposentando o site MySQL.
 
-## Decisões já tomadas
+## Decisões consolidadas
 
 | Decisão | Escolha |
 |---|---|
 | Site MySQL antigo | Aposentar (migração definitiva) |
-| Tabela no Postgres | **Separada** da `clientes` (do SGP/bot) |
-| Cruzamento entre as duas | Por `cpf_hash` quando o bot identificar via WhatsApp |
-| `installer` | Auto-preenchido com o técnico logado (FK pra users + nome cacheado) |
-| Lista de planos | Vem do SGP via `/api/ura/consultaplano/` (mesmo app+token de `/api/ura/clientes/`) |
-| PII | Padrão do projeto: encrypted (Fernet) + hash (HMAC pepper) |
-| Escopo Flutter | Buscar + Cadastrar + Ver OS do cliente |
+| Tabela no Postgres | **Separada** (`clientes_cadastro`) da `clientes` (SGP/bot) |
+| Cruzamento com `clientes` SGP | Por `cpf_hash` |
+| `installer` | Auto-preenchido com técnico logado (FK + nome) |
+| `plan_id` | Vem do SGP (`/api/ura/consultaplano/`) com cache Redis 1h |
+| PII | Encrypted (Fernet) + hash (HMAC pepper) |
+| Material consumido | **Lista do estoque do técnico** — marca itens + quantidades → baixa automática |
+| Fotos | **Mín. 1** — sem 4 slots fixos. Lista flexível, qualquer foto |
+| Sub-página dashboard | `/clientes/sgp` — listagem com badge "sincronizado / pendente" |
+| Importação MySQL | Botão admin na `/clientes/sgp` (upload CSV/JSON) |
+| Volume | ~1000 clientes (batch único, simples) |
+| ViaCEP | Sim, autofill de endereço via API pública |
+| Tabs no Flutter | 4 — OS / Estoque / Clientes / Perfil |
 
-## Por que tabela separada?
+## Schema dos planos (confirmado)
 
-A tabela `clientes` existente é um **cache do SGP** — espelha o que está lá.
-Já a tabela `clientes_cadastro` é **fonte primária da instalação** — gravada
-pelo técnico em campo, com dados que o SGP não tem (lat/lng exata da
-instalação, installer, observação de campo).
-
-Quando o cliente entra em contato via WhatsApp e o bot identifica pelo CPF,
-o sistema **cruza** `clientes_cadastro.cpf_hash` com `clientes.cpf_hash` e
-mostra histórico unificado. Ambas as tabelas podem ter o mesmo CPF — não
-são exclusivas.
+```json
+{
+  "planos": [
+    {
+      "id": 15,
+      "grupo": "fibra",
+      "descricao": "NOVO PLANO 40MB 2026",
+      "preco": 150.0,
+      "download": 46080,   // Kbps
+      "upload": 7168,      // Kbps
+      "qtd_servicos": 14   // quantos clientes nesse plano
+    }
+  ]
+}
+```
 
 ---
 
@@ -64,11 +75,11 @@ op.create_table(
     sa.Column("city", sa.String(100), nullable=False),
     sa.Column("state", sa.String(2), nullable=True),
     # Plano + conexão
-    sa.Column("plan_id", sa.String(40), nullable=True),  # ID do plano no SGP
+    sa.Column("plan_id", sa.Integer(), nullable=True),   # ID do plano no SGP
     sa.Column("plan_nome", sa.String(255), nullable=False),
     sa.Column("pppoe_user_encrypted", sa.Text(), nullable=True),
     sa.Column("pppoe_pass_encrypted", sa.Text(), nullable=True),
-    sa.Column("due_date", sa.Integer(), nullable=False),  # 1-28 (dia do vencimento)
+    sa.Column("due_date", sa.Integer(), nullable=False),  # 1-28
     # Quem instalou
     sa.Column(
         "installer_user_id",
@@ -76,7 +87,7 @@ op.create_table(
         sa.ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     ),
-    sa.Column("installer_nome", sa.String(255), nullable=False),  # cache
+    sa.Column("installer_nome", sa.String(255), nullable=False),
     # Equipamento + contrato
     sa.Column("serial", sa.String(100), nullable=True),
     sa.Column("contrato", sa.String(20), nullable=True),
@@ -85,10 +96,12 @@ op.create_table(
     sa.Column("latitude", sa.Numeric(10, 8), nullable=True),
     sa.Column("longitude", sa.Numeric(11, 8), nullable=True),
     sa.Column("location_accuracy", sa.Numeric(10, 2), nullable=True),
+    # Fotos (JSONB array de paths/metadata)
+    sa.Column("fotos", postgresql.JSONB(), nullable=True),
     # Audit + sync
     sa.Column("registration_date", sa.Date(), nullable=False),
     sa.Column("sgp_synced_at", sa.DateTime(timezone=True), nullable=True),
-    sa.Column("sgp_id", sa.String(40), nullable=True),  # ID retornado pelo SGP após sync
+    sa.Column("sgp_id", sa.String(40), nullable=True),
     sa.Column(
         "created_at",
         sa.DateTime(timezone=True),
@@ -101,300 +114,350 @@ op.create_table(
         nullable=False,
         server_default=sa.func.now(),
     ),
+    sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
 )
-op.create_index(
-    "ix_clientes_cadastro_cpf_hash", "clientes_cadastro",
-    ["cpf_hash"], unique=True,
-)
+op.create_index("ix_clientes_cadastro_cpf_hash", "clientes_cadastro", ["cpf_hash"], unique=True)
 op.create_index("ix_clientes_cadastro_city", "clientes_cadastro", ["city"])
+op.create_index("ix_clientes_cadastro_serial", "clientes_cadastro", ["serial"])
+op.create_index("ix_clientes_cadastro_location", "clientes_cadastro", ["latitude", "longitude"])
+op.create_index("ix_clientes_cadastro_installer", "clientes_cadastro", ["installer_user_id"])
 op.create_index(
-    "ix_clientes_cadastro_city_name", "clientes_cadastro",
-    ["city", "nome_encrypted"],
-)
-op.create_index(
-    "ix_clientes_cadastro_serial", "clientes_cadastro", ["serial"]
-)
-op.create_index(
-    "ix_clientes_cadastro_location", "clientes_cadastro",
-    ["latitude", "longitude"],
-)
-op.create_index(
-    "ix_clientes_cadastro_installer", "clientes_cadastro",
-    ["installer_user_id"],
+    "ix_clientes_cadastro_sync", "clientes_cadastro",
+    ["sgp_synced_at"],  # filtros "pendente" usam IS NULL
 )
 ```
 
-**Diferenças vs schema MySQL antigo:**
-- CPF não é mais PK (UUID interno é) — `cpf_hash` UNIQUE faz o papel funcional
-- CPF, nome, telefone, PPPoE encriptados (LGPD)
+### Link com estoque: `estoque_movimento.cliente_cadastro_id`
+
+Adicionar coluna nullable em `estoque_movimento`:
+
+```python
+op.add_column(
+    "estoque_movimento",
+    sa.Column(
+        "cliente_cadastro_id",
+        postgresql.UUID(as_uuid=True),
+        sa.ForeignKey("clientes_cadastro.id", ondelete="SET NULL"),
+        nullable=True,
+    ),
+)
+op.create_index(
+    "ix_estoque_mov_cliente_cadastro",
+    "estoque_movimento", ["cliente_cadastro_id"],
+)
+```
+
+Assim cada baixa de material vinculada a uma instalação fica rastreável.
+
+### Diferenças vs schema MySQL antigo
+
+- CPF deixa de ser PK (UUID interno é) — `cpf_hash` UNIQUE faz papel funcional
+- PII encriptado (CPF, nome, telefone, PPPoE)
 - `installer` virou FK + nome cacheado
 - `plan_id` separado de `plan_nome` (link com SGP)
 - `sgp_synced_at` + `sgp_id` pra rastrear sync
+- `fotos` JSONB (lista de paths)
+- `deleted_at` (soft delete)
 
 ---
 
 ## 2. Backend — Endpoints
 
-### Catálogo + busca
+### Catálogo + busca (técnicos + atendentes + admin)
 
 ```
 GET  /api/v1/clientes-campo
-     Query: q (busca por nome/CPF/serial), city, limit, cursor
+     Query: q (nome/CPF/serial), city, sgp_status (synced|pending|all),
+            installer_user_id, limit, cursor
      Roles: TECNICO, ATENDENTE, ADMIN
-     Returns: lista paginada (cursor) com campos descriptografados
+     Returns: lista paginada com campos descriptografados
 
 GET  /api/v1/clientes-campo/{id}
-     Roles: TECNICO, ATENDENTE, ADMIN
-     Returns: detalhe completo
+     Returns: detalhe completo + lista de fotos + materiais usados
 
 GET  /api/v1/clientes-campo/by-cpf/{cpf}
-     Atalho pra busca por CPF (hash internamente)
+     Atalho — internamente hashea o cpf
 
 GET  /api/v1/clientes-campo/{id}/ordens-servico
-     JOIN com `ordens_servico` via cpf_hash → clientes.cpf_hash
-     Retorna histórico de OS do mesmo CPF (se houver Cliente SGP)
+     JOIN com `ordens_servico` via cpf_hash → clientes
+     Returns: lista de OS do mesmo CPF (se houver Cliente SGP)
 ```
 
 ### CRUD
 
 ```
 POST /api/v1/clientes-campo
-     Body: ClienteCadastroIn (sem installer — pego do user logado)
-     Roles: TECNICO, ATENDENTE, ADMIN
+     Body: ClienteCadastroIn (sem installer) + materiais opcional
+       {
+         cpf, nome, dob, telefone, cep, address, ..., plan_id, plan_nome,
+         pppoe_user, pppoe_pass, due_date, serial, contrato, observation,
+         latitude, longitude, location_accuracy,
+         materiais: [{item_id, quantidade, serial?}, ...]  // opcional
+       }
      - installer_user_id = current_user.id
-     - installer_nome = current_user.name (cache)
+     - installer_nome = current_user.name
      - registration_date = today
-     - Validações: CPF válido, due_date 1-28, plan_id existe no SGP
+     - Materiais: faz baixa atômica do estoque do técnico (saida com
+       cliente_cadastro_id = novo cliente_id). Se saldo insuficiente,
+       rollback total e 409.
+     - Valida: CPF DV, due_date 1-28
+     Roles: TECNICO, ATENDENTE, ADMIN
 
 PATCH /api/v1/clientes-campo/{id}
-     Body: campos editáveis (técnico não pode mudar CPF nem installer)
-     - Tecnico edita: telefone, endereço, observação, lat/lng
-     - Admin edita: tudo, exceto cpf_hash (precisa criar novo registro)
+     Body: campos editáveis
+     - Tecnico edita: telefone, endereço, observação, lat/lng, fotos
+     - Admin edita: tudo (exceto cpf_hash — pra trocar CPF cria novo)
 
 DELETE /api/v1/clientes-campo/{id}
-     Roles: ADMIN only
-     Soft delete (deleted_at column — adicionar na migration)
+     Soft delete (deleted_at)
+     Roles: ADMIN
 ```
 
-### Integração SGP
+### Fotos
 
 ```
-GET  /api/v1/sgp/planos
-     Proxy pro `/api/ura/consultaplano/` do SGP Ondeline (e/ou LinkNetAM)
-     Cache Redis 1h (planos mudam pouco)
-     Returns: [{id, nome, velocidade, preco}, ...]
-     Roles: TECNICO, ATENDENTE, ADMIN
+POST /api/v1/clientes-campo/{id}/fotos
+     Multipart upload (imagem)
+     Body: file + tipo (opcional: "serial" | "instalacao" | "speedtest" | "outro")
+     Salva em /tmp/ondeline_cliente_fotos/{cliente_id}/<uuid>.jpg
+     Append em clientes_cadastro.fotos
+     Returns: ClienteCadastroOut atualizado
 
-POST /api/v1/clientes-campo/{id}/sync-sgp     [futuro, fora desse PR]
-     Envia o cliente pro SGP (Ondeline), pega sgp_id, grava sgp_synced_at
+DELETE /api/v1/clientes-campo/{id}/fotos/{foto_idx}
+     Remove foto da lista + arquivo
+     Roles: TECNICO (só as próprias), ATENDENTE, ADMIN
 ```
 
-### Importação
+### Status SGP (admin)
+
+```
+POST /api/v1/clientes-campo/{id}/sync-sgp
+     Marca como sincronizado. Body: { sgp_id: string }
+     Grava sgp_synced_at = now, sgp_id = body.sgp_id
+     Roles: ADMIN
+     (Sync automático via API SGP fica pra outro PR)
+```
+
+### Importação MySQL
 
 ```
 POST /api/v1/clientes-campo/import
-     Multipart upload de CSV ou JSON
+     Multipart upload de CSV/JSON
+     Body: arquivo + dry_run (bool)
      Roles: ADMIN
-     Body: arquivo + dry_run (bool — mostra o que vai importar sem gravar)
-     Returns: {ok: N, skipped: N, errors: [...]}
-     - Dedup por cpf_hash (se já existe, faz UPDATE)
+     - Dedup por cpf_hash (UPDATE se existe)
      - installer match: tenta achar user pelo nome, senão deixa só texto
+     - Marca todos como sgp_synced_at = registration_date (vieram do MySQL,
+       já estavam no SGP de alguma forma)
      - Encripta PII na inserção
+     Returns: { ok: N, skipped: N, errors: [...] }
 ```
 
-Alternativamente: **script Python standalone** que Robert roda localmente:
-```bash
-python scripts/import_clientes_mysql.py \
-  --mysql-url mysql://user:pass@host/db \
-  --dry-run
+### Integração SGP — Planos
+
 ```
-Conecta no MySQL via pymysql, lê tudo, faz POST no endpoint
-`/import` da API. Vantagem: credenciais MySQL nunca saem da máquina de
-Robert.
+GET  /api/v1/sgp/planos
+     Query: provider (ondeline | linknetam, default ondeline)
+     Cache Redis 1h
+     Returns: { planos: [{id, descricao, preco, download, upload, ...}] }
+     Roles: TECNICO, ATENDENTE, ADMIN
 
----
-
-## 3. Service: SGP planos
-
-```python
-# services/sgp_planos.py
-
-async def listar_planos_sgp(
-    session: AsyncSession,
-    redis: Redis,
-    provider: str = "ondeline",
-) -> list[dict]:
-    """Consulta /api/ura/consultaplano/ do SGP. Cache Redis 1h."""
+Implementação:
+async def listar_planos_sgp(session, redis, provider="ondeline"):
     cache_key = f"sgp:planos:{provider}"
     cached = await redis.get(cache_key)
     if cached:
         return json.loads(cached)
-
     cfg = await load_sgp_config(session, provider)
-    async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.post(
-            f"{cfg['base_url']}/api/ura/consultaplano/",
-            data={"app": cfg["app"], "token": cfg["token"]},
-        )
-        r.raise_for_status()
-        planos = r.json()
-
+    r = await httpx.AsyncClient().post(
+        f"{cfg['base_url']}/api/ura/consultaplano/",
+        data={"app": cfg["app"], "token": cfg["token"]},
+    )
+    planos = r.json()["planos"]
     await redis.setex(cache_key, 3600, json.dumps(planos))
     return planos
 ```
 
 ---
 
-## 4. Flutter — Nova aba "Clientes"
+## 3. Flutter — Nova aba "Clientes" (3ª no bottom nav)
 
-### Nav
+### Bottom nav final
 
-Bottom nav agora com **4 tabs**: `OS / Estoque / Clientes / Perfil`
-(perfil vira o 4º). Ou: substituir Perfil por Clientes e mover Perfil pra
-um botão no AppBar. **Recomendação: 4 tabs.**
+`OS / Estoque / Clientes / Perfil`
 
 ### Telas
 
 **`/clientes` (lista)**
-- Campo de busca no topo (nome, CPF, cidade)
-- Lista paginada com cards: nome + endereço + plano + cidade + badge
-  "instalei eu" se installer_user_id == user atual
-- Botão FAB "+" → `/clientes/novo`
-- Pull to refresh + cache Drift
+- Busca no topo (nome / CPF / cidade)
+- Lista cards: nome + endereço + plano + cidade + badge "instalei eu" se
+  installer_user_id == user atual
+- FAB "+" → `/clientes/novo`
+- Pull-to-refresh + cache Drift local
 
 **`/clientes/:id` (detalhe)**
-- Header card: nome + CPF + foto (avatar de iniciais)
-- Endereço completo (com botão "abrir no Maps")
+- Header: nome + CPF + foto (avatar de iniciais)
+- Endereço com botão "Abrir no Maps"
 - Plano + PPPoE (login/senha copiáveis)
-- Status SGP: badge (verde "ativo" / amarelo "suspenso" / cinza "não está
-  no SGP") — consulta `clientes` por cpf_hash em background
-- Histórico de OS: lista com link pra detalhe da OS
-- Botão "Editar" (técnico vê só campos editáveis)
+- Status SGP: badge (verde "ativo" / amarelo "suspenso" / cinza "não no
+  SGP") — consulta `clientes` por cpf_hash
+- Materiais usados (lista, somente leitura)
+- Galeria de fotos (tap pra fullscreen)
+- Histórico de OS (lista clicável)
+- Botão Editar
 
-**`/clientes/novo` (form)**
-- Campos:
-  - CPF (validação live com dígitos verificadores)
-  - Nome
-  - Data de nascimento (date picker)
-  - Telefone (com máscara)
-  - CEP → auto-busca endereço via ViaCEP (opcional, brasileiro)
-  - Endereço, número, complemento, bairro, cidade, estado
-  - Plano (dropdown carregado do SGP via `GET /api/v1/sgp/planos`)
-  - PPPoE user/pass (auto-gerados ou manual)
-  - Vencimento (dia, 1-28)
-  - Serial do equipamento
-  - Contrato
-  - Observação
-- GPS capturado **em background** ao abrir a tela; mostra ícone "GPS
-  capturado ✓" quando pronto
-- **Installer pré-preenchido** com user logado (read-only)
-- Botão Salvar → POST → volta pra `/clientes/:id`
-- Funciona offline: enfileira na outbox se sem conexão
+**`/clientes/novo` (form em 3 steps)**
 
-### Cache Drift
+*Step 1 — Dados pessoais:*
+- CPF (validação live com DV)
+- Nome
+- Data nascimento (date picker)
+- Telefone (máscara BR)
 
-Nova tabela local `clientes_cadastro_local` espelhando os campos. Same
-padrão do `OsLocal`.
+*Step 2 — Endereço + plano:*
+- CEP → autofill via ViaCEP (https://viacep.com.br/ws/{cep}/json/)
+- Endereço, número, complemento, bairro, cidade, estado
+- Plano (dropdown carregado de `GET /api/v1/sgp/planos`)
+  - Mostra: "PLANO 40MB · R$ 150 · 46 Mbps"
+- PPPoE user/pass (gerados auto a partir do CPF, editáveis)
+- Vencimento (1-28)
+
+*Step 3 — Instalação:*
+- Serial do equipamento (com scanner QR/code-bar — `mobile_scanner`?)
+- Contrato (texto)
+- Observação (textarea)
+- **Materiais consumidos:** lista do estoque do técnico, com toggle
+  on/off + quantidade. Pra item serializado, dropdown de seriais do
+  estoque dele.
+- **Fotos:** botão "+ Foto" abre câmera. Lista de thumbnails. Mín. 1.
+- GPS capturado em background ao abrir step 3, mostra "GPS pronto ✓"
+- Installer mostrado read-only (user logado)
+- Botão Salvar
+
+**Offline:** se sem conexão, enfileira na outbox como `kind: cliente_cadastro`.
+Sync service envia depois (junto com fotos).
 
 ---
 
-## 5. Importação do MySQL → Postgres
+## 4. Dashboard — Páginas novas
 
-### Script `scripts/import_clientes_mysql.py`
+### `/clientes` (admin/atendente)
 
-```python
-# Pseudocódigo
-import asyncio, pymysql, httpx, sys
+Página de gestão geral. Tabs:
 
-def main():
-    args = parse()
-    mysql_conn = pymysql.connect(args.mysql_url)
-    rows = mysql_conn.cursor.execute("SELECT * FROM clients").fetchall()
+- **Em campo** — lista de `clientes_cadastro` (cadastrados pelo Flutter)
+- **SGP** — sub-página `/clientes/sgp` (próximo bloco)
 
-    api = httpx.Client(base_url=args.api_url, headers={"Authorization": f"Bearer {args.admin_token}"})
-    success, skipped, errors = 0, 0, []
-    for row in rows:
-        payload = {
-            "cpf": row["cpf"],
-            "nome": row["name"],
-            "dob": str(row["dob"]),
-            "telefone": row["phone"],
-            "cep": row["cep"],
-            "address": row["address"],
-            "number": row["number"],
-            "complement": row["complement"],
-            "neighborhood": row["neighborhood"],
-            "city": row["city"],
-            "state": row["state"],
-            "plan_nome": row["plan"],
-            "pppoe_user": row["pppoe_user"],
-            "pppoe_pass": row["pppoe_pass"],
-            "due_date": row["due_date"],
-            "installer_nome": row["installer"],  # texto livre
-            "serial": row["serial"],
-            "contrato": row["contrato"],
-            "observation": row["observation"],
-            "latitude": row["latitude"],
-            "longitude": row["longitude"],
-            "location_accuracy": row["location_accuracy"],
-            "registration_date": str(row["registration_date"]),
-        }
-        if args.dry_run:
-            print(f"would import: {row['cpf']} - {row['name']}")
-            continue
-        try:
-            r = api.post("/api/v1/clientes-campo/import-one", json=payload)
-            r.raise_for_status()
-            success += 1
-        except Exception as e:
-            errors.append(f"{row['cpf']}: {e}")
-    print(f"OK: {success}, skipped: {skipped}, errors: {len(errors)}")
+**Em campo:**
+- Filtros: cidade, técnico instalador, período
+- Tabela: CPF parcial / nome / endereço / plano / instalado por / data
+- Clica em linha → detalhe (mesmo dialog ou nova página)
+- Editar (admin) / Excluir (admin)
+
+### `/clientes/sgp` (admin) — NOVA
+
+**Listagem com status:**
+- Tabela igual à de "Em campo" + coluna **Status SGP**:
+  - 🟢 Sincronizado (tem `sgp_id` + `sgp_synced_at`)
+  - 🟡 Pendente (sem `sgp_synced_at`)
+- Filtro `?status=pending|synced|all`
+- Ação por linha (admin): **"Marcar como sincronizado"** → modal pede
+  `sgp_id`, grava `sgp_synced_at=now()`
+
+**Botão "Importar do MySQL"** (canto superior direito):
+- Modal com:
+  - Upload de CSV (do `mysqldump --tab` ou export do site)
+  - Botão "Dry run" (mostra o que vai importar sem gravar)
+  - Botão "Importar de verdade"
+- Chama `POST /clientes-campo/import` com dry_run
+- Mostra resumo: N inseridos / N atualizados / N pulados / erros
+
+---
+
+## 5. Script de importação standalone (alternativa)
+
+Pra Robert que tem credenciais MySQL na máquina:
+
+```bash
+python scripts/import_clientes_mysql.py \
+  --mysql-url mysql://user:pass@host/db \
+  --api-url https://apiblabla.robertbr.dev \
+  --admin-token <token> \
+  --dry-run
 ```
 
-Backend complementa com endpoint `POST /clientes-campo/import-one` (admin)
-que aceita o payload em plain text e faz encryption + upsert.
+Conecta no MySQL, lê tudo, manda pra API em batches de 100. Vantagem:
+credenciais MySQL nunca saem da sua máquina.
 
 ---
 
-## 6. Roadmap de execução
+## 6. Material consumido — detalhes
 
-| Fase | Entrega | PRs |
+### Fluxo
+
+1. Técnico no step 3 do form vê: lista do estoque dele (consome
+   `GET /api/v1/tecnico/me/estoque/saldo` que já existe)
+2. Marca itens: 1× ONU XPON serial ABC123, 50m cabo, 4 conectores
+3. Ao salvar:
+   - Backend cria o cliente_cadastro
+   - Em sequência (mesmo flush/transação), pra cada material:
+     - `registrar_movimento(item_id, tipo=saida, quantidade, tecnico_id,
+        cliente_cadastro_id, serial?, observacao="instalação cliente X")`
+   - Se saldo insuficiente: 409 e **nada é gravado** (transação rollback)
+
+### Item serializado (ONU/roteador)
+
+- Dropdown mostra seriais que o técnico tem no estoque
+  (consulta `/estoque/movimentos?tecnico_id=X&item_id=Y&serializado=true`)
+- O serial selecionado vai também pro `clientes_cadastro.serial`
+- O movimento de saída amarra: cliente_equipamento criada (já existe
+  esse hook em `_atualizar_cliente_equipamento`) — mas hoje só dispara
+  com `ordem_servico_id`. Vou estender pra disparar também com
+  `cliente_cadastro_id`.
+
+---
+
+## 7. Roadmap de execução
+
+| Fase | Entrega | Estimativa |
 |---|---|---|
-| 1 | Migration + modelo + repo Postgres | 1 commit |
-| 2 | Endpoints CRUD + busca + sgp/planos | 1 commit |
-| 3 | Tela Flutter de Clientes (lista + detalhe + busca) | 1 commit |
-| 4 | Tela de cadastro com GPS + ViaCEP + planos SGP | 1 commit |
-| 5 | Cache offline Drift + outbox | 1 commit |
-| 6 | Script de importação MySQL | 1 commit |
-| 7 | (Futuro) Sync pro SGP via API | separado |
+| 1 | Migration 0023 + modelo + repo Postgres | 2h |
+| 2 | Endpoints CRUD básicos + sgp/planos | 3h |
+| 3 | Endpoint `/import` + script Python | 2h |
+| 4 | Endpoint de fotos + materiais (com baixa estoque atômica) | 3h |
+| 5 | Tela Flutter de Clientes — lista + detalhe + busca | 3h |
+| 6 | Tela de cadastro novo — form 3 steps + GPS + ViaCEP + planos SGP | 4h |
+| 7 | Fotos no app (câmera + galeria, mín 1) | 2h |
+| 8 | Materiais no app (lista do estoque + seleção) | 2h |
+| 9 | Cache offline Drift + outbox para clientes_cadastro | 3h |
+| 10 | Dashboard: páginas `/clientes` e `/clientes/sgp` + import UI | 4h |
+| 11 | (Futuro PR) Sync automático pro SGP via API | separado |
+
+**Total estimado:** ~28h de trabalho. Divido em 9-10 commits independentes.
 
 ---
 
-## 7. Riscos e perguntas em aberto
+## 8. Dependências/Riscos
 
-- ⚠️ **`/api/ura/consultaplano/` retorna o quê exatamente?** Preciso ver um
-  exemplo de resposta (JSON) pra mapear o schema do dropdown. Robert
-  consegue rodar uma vez e mandar o JSON?
-- ⚠️ **CPF duplicado na importação**: hoje o MySQL tem CPF como PK, então
-  não há duplicatas. Mas e se na hora de importar o CPF colide com um
-  registro **da tabela `clientes` (do SGP)**? Resposta: tabelas são
-  separadas, não há conflito. Só dentro de `clientes_cadastro` mesmo.
-- ⚠️ **Volume de dados**: quantos clientes tem hoje no MySQL? Se for
-  poucos milhares, importação roda em <30s. Se for >100k, vale fazer em
-  batches.
-- ⚠️ **Sync pro SGP**: fora do escopo desse PR, mas precisa definir
-  depois — POST manual no SGP? API automática? Job assíncrono?
+- ✅ `/api/ura/consultaplano/` confirmado funcionando (JSON dado)
+- ⚠️ ViaCEP API pública sem chave — pode rate-limit em pico mas raríssimo
+- ⚠️ `mobile_scanner` pra ler serial QR — adicionar dep (Flutter)
+- ⚠️ Volume de 1000 clientes na import — vou fazer em batches de 50
+  pra não estourar timeout
 
 ---
 
-## 8. Confirmações que preciso do Robert
+## 9. Aprovação final
 
-Antes de começar a codar:
+Confirmações de Robert recebidas:
 
-1. ✅ Plano OK em geral?
-2. ❓ Pode rodar `curl` no `/api/ura/consultaplano/` e mandar o JSON de
-   resposta?
-3. ❓ Quantos clientes no MySQL atual? (`SELECT COUNT(*) FROM clients`)
-4. ❓ Tem certeza que quer 4 tabs no Flutter (Clientes vira 3º, Perfil
-   vira 4º)? Ou prefere outra disposição?
-5. ❓ ViaCEP pra autofill — pode usar (API pública grátis) ou pula?
+- ✅ Plano OK em geral
+- ✅ Schema dos planos SGP (JSON)
+- ✅ ~1000 clientes no MySQL
+- ✅ 4 tabs no Flutter
+- ✅ ViaCEP pode usar
+- ✅ Material = lista do estoque do técnico (baixa automática)
+- ✅ Fotos = mín 1 (não 4 obrigatórias)
+- ✅ Sub-página `/clientes/sgp` com filtro de status
+
+**Pronto pra começar Fase 1.**

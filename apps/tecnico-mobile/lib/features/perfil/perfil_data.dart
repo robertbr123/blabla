@@ -2,6 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/auth/auth_storage.dart';
+import '../../core/db/database.dart';
+import '../../core/db/perfil_repo.dart';
 
 class PerfilEstatisticas {
   final int osPendentes;
@@ -60,11 +63,52 @@ class Perfil {
       );
 }
 
-final perfilProvider = FutureProvider<Perfil>((ref) async {
-  final dio = ref.watch(apiClientProvider);
-  final r = await dio.get('/api/v1/tecnico/me/perfil');
-  return Perfil.fromJson(r.data as Map<String, dynamic>);
+final perfilLocalRepoProvider = Provider<PerfilLocalRepo>((ref) {
+  return PerfilLocalRepo(ref.watch(dbProvider));
 });
+
+final perfilReadUserIdProvider = Provider<Future<String?> Function()>((ref) {
+  return readUserId;
+});
+
+final perfilProvider = FutureProvider<Perfil>((ref) async {
+  final repo = ref.watch(perfilLocalRepoProvider);
+  final readCurrentUserId = ref.watch(perfilReadUserIdProvider);
+  final userId = await readCurrentUserId();
+  final cached = await _loadCachedPerfil(repo: repo, userId: userId);
+
+  try {
+    final dio = ref.watch(apiClientProvider);
+    final r = await dio.get('/api/v1/tecnico/me/perfil');
+    final raw = (r.data as Map).cast<String, dynamic>();
+    if (userId != null && userId.isNotEmpty) {
+      await repo.save(raw);
+    }
+    return Perfil.fromJson(raw);
+  } on DioException catch (e) {
+    if (_shouldUseCachedSnapshot(e) && cached != null) {
+      return Perfil.fromJson(cached);
+    }
+    throw e;
+  }
+});
+
+Future<Map<String, dynamic>?> _loadCachedPerfil({
+  required PerfilLocalRepo repo,
+  required String? userId,
+}) {
+  if (userId == null || userId.isEmpty) {
+    return Future.value(null);
+  }
+  return repo.get(userId: userId);
+}
+
+bool _shouldUseCachedSnapshot(DioException error) {
+  return error.type == DioExceptionType.connectionError ||
+      error.type == DioExceptionType.connectionTimeout ||
+      error.type == DioExceptionType.sendTimeout ||
+      error.type == DioExceptionType.receiveTimeout;
+}
 
 class PerfilActions {
   final Dio _dio;
