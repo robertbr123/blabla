@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ClienteEquipamentos } from '@/components/cliente-equipamentos'
+import { ClienteResumoSgp } from '@/components/cliente-resumo-sgp'
 import { exportClienteUrl, useCliente, useDeleteCliente } from '@/lib/api/queries'
 
 export function ClienteDetail({ id }: { id: string }) {
@@ -105,6 +106,7 @@ export function ClienteDetail({ id }: { id: string }) {
         </CardContent>
       </Card>
 
+      <ClienteResumoSgp clienteId={id} cpf={data.cpf_cnpj} />
       <ClienteEquipamentos clienteId={id} />
       </div>
 

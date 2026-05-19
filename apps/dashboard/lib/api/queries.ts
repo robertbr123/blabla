@@ -730,3 +730,15 @@ export function useMarcarCredito() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['indicacao-usos'] }),
   })
 }
+
+// F11 — Cliente: dados frescos do SGP (plano, valor próxima fatura, atraso)
+export function useClienteSgpInfo(cpf: string | null) {
+  return useQuery<SgpClienteOut>({
+    queryKey: ['cliente-sgp-info', cpf],
+    queryFn: () =>
+      apiFetch<SgpClienteOut>(`/api/v1/clientes/sgp?cpf=${encodeURIComponent(cpf ?? '')}`),
+    enabled: !!cpf,
+    staleTime: 60_000,
+    retry: false,
+  })
+}

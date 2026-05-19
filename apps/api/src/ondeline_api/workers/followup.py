@@ -12,9 +12,13 @@ from ondeline_api.workers.runtime import run_task, task_session
 
 log = structlog.get_logger(__name__)
 
-_MSG_CONFIRMAR = "Fico feliz que tenha resolvido! 😊 Qualquer dúvida estamos aqui."
+_MSG_CONFIRMAR = (
+    "Que bom que ficou tudo certo! 🎉\n\n"
+    "Sua avaliação ajuda muito a melhorar — se ainda não mandou, "
+    "responde com uma nota de *1 a 5* (5 = excelente atendimento). 🌟"
+)
 _MSG_ESCALAR = (
-    "Entendido, vou acionar nossa equipe para verificar o que aconteceu. "
+    "Entendido, vou acionar nossa equipe agora pra resolver o que ficou pendente. "
     "Em breve um atendente entrará em contato. 🙏"
 )
 

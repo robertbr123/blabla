@@ -46,6 +46,10 @@ class SgpClienteOut(_BaseModel):
     cliente_id: str | None  # UUID do cliente no nosso DB, se já existir
     pppoe_login: str
     pppoe_senha: str
+    proxima_fatura_valor: float | None = None
+    proxima_fatura_vencimento: str | None = None  # YYYY-MM-DD
+    faturas_em_aberto: int = 0
+    faturas_em_atraso: int = 0
 
 
 def _to_list_item(c: Cliente) -> ClienteListItem:
@@ -151,6 +155,30 @@ async def sgp_lookup(
         )
     ).scalar_one_or_none()
 
+    # Próxima fatura: titulo em aberto mais próximo do vencimento.
+    abertos = [t for t in cli.titulos if t.status == "aberto"]
+    proxima = None
+    if abertos:
+        abertos_sorted = sorted(
+            abertos, key=lambda t: t.vencimento or "9999-12-31"
+        )
+        proxima = abertos_sorted[0]
+    from datetime import UTC as _UTC, date as _date, datetime as _dt
+
+    hoje = _dt.now(tz=_UTC).date()
+
+    def _venc_to_date(s: str | None) -> _date | None:
+        try:
+            return _dt.fromisoformat(s).date() if s else None
+        except (ValueError, TypeError):
+            return None
+
+    em_atraso = sum(
+        1
+        for t in abertos
+        if (v := _venc_to_date(t.vencimento)) is not None and v < hoje
+    )
+
     return SgpClienteOut(
         nome=cli.nome,
         cpf_cnpj=cpf_digits,
@@ -161,6 +189,10 @@ async def sgp_lookup(
         cliente_id=str(db_cli.id) if db_cli else None,
         pppoe_login=pppoe_login,
         pppoe_senha=pppoe_senha,
+        proxima_fatura_valor=proxima.valor if proxima else None,
+        proxima_fatura_vencimento=proxima.vencimento if proxima else None,
+        faturas_em_aberto=len(abertos),
+        faturas_em_atraso=em_atraso,
     )
 
 

@@ -170,8 +170,18 @@ class ConversaRepo:
         await self._session.flush()
 
     async def encerrar(self, conversa: Conversa) -> None:
-        conversa.status = ConversaStatus.ENCERRADA
-        conversa.estado = ConversaEstado.ENCERRADA
+        """Encerra o atendimento humano e DEVOLVE o controle pro bot.
+
+        Em vez de marcar como ENCERRADA (que bloqueava o bot de responder
+        próximas mensagens, forçando o cliente a apagar a conversa pra reativar),
+        a conversa volta pro estado neutro CLIENTE/BOT. Histórico é preservado
+        (não há soft-delete). Atendente é desassociado.
+        """
+        conversa.status = ConversaStatus.BOT
+        conversa.estado = ConversaEstado.CLIENTE
+        conversa.atendente_id = None
+        conversa.transferred_at = None
+        conversa.first_response_at = None
         await self._session.flush()
 
     async def find_active_by_cliente_id(self, cliente_id: UUID) -> Conversa | None:

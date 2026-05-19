@@ -47,7 +47,14 @@ async def responder(
     )
     session.add(msg)
     await session.flush()
-    enqueuer.enqueue_send_outbound(c.whatsapp, text, c.id)
+    # Prefixa mensagem enviada com *SUPORTE:* pra o cliente saber que eh humano
+    # (e nao mais o bot). No dashboard exibe sem o prefixo — eh adicionado so
+    # no envio outbound. Idempotente: se atendente ja digitou prefixo, nao duplica.
+    if text.lstrip().startswith("*SUPORTE:*") or text.lstrip().startswith("*Suporte:*"):
+        text_outbound = text
+    else:
+        text_outbound = f"*SUPORTE:* {text}"
+    enqueuer.enqueue_send_outbound(c.whatsapp, text_outbound, c.id)
 
     if redis is not None:
         try:

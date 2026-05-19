@@ -173,8 +173,6 @@ async def _concluir_os_e_baixar_estoque(
 
     from sqlalchemy import select as sa_select
 
-    from ondeline_api.db.models.business import Conversa as ConversaModel
-    from ondeline_api.db.models.business import ConversaEstado as CE
     from ondeline_api.services.estoque import registrar_movimento
 
     assert deps.session is not None
@@ -257,23 +255,12 @@ async def _concluir_os_e_baixar_estoque(
     msg_final += " Obrigado! 🙏"
     deps.outbound.enqueue_send_outbound(conversa.whatsapp, msg_final, conversa.id)
 
-    # Follow-up pro cliente
-    if cliente_id_para_followup is not None:
-        cli_conversa = (
-            await deps.session.execute(
-                sa_select(ConversaModel)
-                .where(
-                    ConversaModel.cliente_id == cliente_id_para_followup,
-                    ConversaModel.estado.notin_([CE.ENCERRADA]),
-                )
-                .order_by(ConversaModel.created_at.desc())
-                .limit(1)
-            )
-        ).scalar_one_or_none()
-        if cli_conversa:
-            deps.outbound.enqueue_followup_os(
-                cli_conversa.id, resultado="ok", resposta=""
-            )
+    # Follow-up estruturado pro cliente: cuidado pelo Beat schedule_followup_os.
+    # NÃO chamamos enqueue_followup_os direto aqui — antes isso enviava só
+    # "Fico feliz que tenha resolvido" (genérico) pulando a pergunta inicial.
+    # Agora deixamos o Beat agendar a Notificacao OS_CONCLUIDA estruturada
+    # 10min após a conclusão (com código, problema, e pedido de CSAT 1-5).
+    _ = cliente_id_para_followup  # mantido pra futura integração
 
 
 async def _handle_checklist_step(

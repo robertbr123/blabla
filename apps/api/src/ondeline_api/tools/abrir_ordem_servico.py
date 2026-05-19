@@ -124,6 +124,48 @@ async def abrir_ordem_servico(
     if ctx.cliente is None:
         return {"ok": False, "motivo": "cliente nao vinculado"}
 
+    # Cooldown 12h: evita abrir OS duplicada quando bot oscila / cliente insiste.
+    # Se ja existe OS aberta ou criada nas ultimas 12h pra esse cliente,
+    # devolve a existente em vez de criar nova. Tecnico ja vai resolver tudo
+    # na mesma visita; multiplas OS confundem o roteiro.
+    from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import select
+
+    from ondeline_api.db.models.business import OrdemServico, OsStatus
+
+    cutoff = datetime.now(tz=UTC) - timedelta(hours=12)
+    stmt = (
+        select(OrdemServico)
+        .where(
+            OrdemServico.cliente_id == ctx.cliente.id,
+            OrdemServico.criada_em >= cutoff,
+            OrdemServico.status.in_(
+                [OsStatus.PENDENTE, OsStatus.EM_ANDAMENTO]
+            ),
+        )
+        .order_by(OrdemServico.criada_em.desc())
+        .limit(1)
+    )
+    os_recente = (await ctx.session.execute(stmt)).scalar_one_or_none()
+    if os_recente is not None:
+        log.info(
+            "abrir_os.cooldown_hit",
+            cliente_id=str(ctx.cliente.id),
+            os_existente=os_recente.codigo,
+        )
+        return {
+            "ok": True,
+            "ja_existe": True,
+            "codigo": os_recente.codigo,
+            "problema_anterior": os_recente.problema,
+            "motivo": (
+                f"Ja existe OS aberta nas ultimas 12h ({os_recente.codigo}). "
+                "O tecnico vai resolver tudo na mesma visita. "
+                "Avise o cliente e atualize o problema se necessario."
+            ),
+        }
+
     if endereco:
         endereco_final = endereco
         rua, cidade = _split_endereco(endereco)

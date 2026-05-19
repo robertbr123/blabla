@@ -277,6 +277,10 @@ export interface SgpClienteOut {
   cliente_id: string | null
   pppoe_login: string
   pppoe_senha: string
+  proxima_fatura_valor: number | null
+  proxima_fatura_vencimento: string | null
+  faturas_em_aberto: number
+  faturas_em_atraso: number
 }
 
 export interface RankingTecnicoOut {
