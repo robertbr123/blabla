@@ -1,8 +1,12 @@
+import 'dart:async';
+
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_repository.dart';
+import '../../core/push/fcm_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -34,6 +38,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .read(authRepositoryProvider)
           .login(_email.text.trim(), _senha.text);
       ref.invalidate(hasTokenProvider);
+      // Registra device pro FCM (se Firebase inicializou).
+      if (Firebase.apps.isNotEmpty) {
+        unawaited(ref.read(fcmServiceProvider).init());
+      }
       if (!mounted) return;
       context.go('/os');
     } catch (e) {

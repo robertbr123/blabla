@@ -126,4 +126,24 @@ flutter run --dart-define=API_URL=http://localhost:8000 # iOS simulator
 
 ## CI
 
-CI Flutter NÃO está no `.github/workflows/ci.yml` ainda — adicionar quando estável.
+`.github/workflows/ci.yml` tem um job `mobile` que:
+
+1. Faz checkout
+2. Instala Java 17 + Flutter 3.24.5 stable
+3. Roda `flutter create .` (gera android/ na hora — não versionado)
+4. `flutter pub get`
+5. `dart run build_runner build` (drift codegen)
+6. `flutter analyze --no-fatal-infos`
+7. `flutter test`
+8. `flutter build apk --debug` + sobe artifact `tecnico-mobile-debug-apk` (retenção 14 dias)
+
+APK release virá num PR futuro quando configurarmos signing key como secret.
+
+## Rodar testes localmente
+
+```bash
+cd apps/tecnico-mobile
+flutter pub get
+dart run build_runner build --delete-conflicting-outputs
+flutter test
+```

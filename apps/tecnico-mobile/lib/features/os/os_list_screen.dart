@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_repository.dart';
+import '../../core/push/fcm_service.dart';
 
 class OsListItem {
   final String id;
@@ -75,6 +76,10 @@ class OsListScreen extends ConsumerWidget {
             icon: const Icon(Icons.logout),
             tooltip: 'Sair',
             onPressed: () async {
+              // Revoga token FCM antes de derrubar a sessao.
+              try {
+                await ref.read(fcmServiceProvider).revoke();
+              } catch (_) {}
               await ref.read(authRepositoryProvider).logout();
               ref.invalidate(hasTokenProvider);
               if (context.mounted) context.go('/login');
