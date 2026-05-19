@@ -4,6 +4,7 @@ import { Download, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ClienteEquipamentos } from '@/components/cliente-equipamentos'
 import { exportClienteUrl, useCliente, useDeleteCliente } from '@/lib/api/queries'
 
 export function ClienteDetail({ id }: { id: string }) {
@@ -34,7 +35,8 @@ export function ClienteDetail({ id }: { id: string }) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      <Card className="lg:col-span-2">
+      <div className="space-y-6 lg:col-span-2">
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>{data.nome}</CardTitle>
@@ -102,6 +104,9 @@ export function ClienteDetail({ id }: { id: string }) {
           )}
         </CardContent>
       </Card>
+
+      <ClienteEquipamentos clienteId={id} />
+      </div>
 
       <div className="space-y-4">
         <Card>

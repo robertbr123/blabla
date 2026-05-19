@@ -74,6 +74,57 @@ class EstoqueItem(Base):
     )
 
 
+class ClienteEquipamento(Base):
+    """F8 — Rastreio de equipamento serializado instalado em cliente.
+
+    Linha criada quando técnico faz `saida` com `ordem_servico_id` (item
+    serializado, com serial). Fechada (removido_em preenchido) quando o mesmo
+    serial é registrado como `recolhido`.
+    """
+
+    __tablename__ = "cliente_equipamento"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    cliente_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("clientes.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    item_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("estoque_item.id", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    serial: Mapped[str] = mapped_column(String(120), nullable=False)
+    instalado_em_os_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("ordens_servico.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    instalado_por_tecnico_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("tecnicos.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    instalado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    removido_em: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    removido_em_os_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("ordens_servico.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
+    __table_args__ = (
+        Index(
+            "ix_cliente_equipamento_cliente", "cliente_id", "instalado_em"
+        ),
+    )
+
+
 class EstoqueMovimento(Base):
     __tablename__ = "estoque_movimento"
 

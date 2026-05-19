@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.api.deps_v1 import CursorParam, LimitParam, parse_cursor, parse_limit
 from ondeline_api.api.schemas.cliente import ClienteDetail, ClienteListItem
+from ondeline_api.api.schemas.cliente_equipamento import ClienteEquipamentoOut
 from ondeline_api.api.schemas.pagination import CursorPage, encode_cursor
 from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.rbac import require_role
@@ -281,3 +282,101 @@ async def delete_cliente(
     if c is None:
         raise HTTPException(status_code=404, detail="cliente not found")
     await repo.soft_delete(c)
+
+
+@router.get(
+    "/{cliente_id}/equipamentos",
+    response_model=list[ClienteEquipamentoOut],
+    dependencies=[_attendant_dep],
+)
+async def list_cliente_equipamentos(
+    cliente_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    ativos_only: Annotated[bool, Query()] = False,
+) -> list[ClienteEquipamentoOut]:
+    """F8 — histórico de equipamentos instalados nesse cliente.
+
+    Por padrão devolve todos (instalados + removidos). `ativos_only=true` filtra
+    só os que estão com o cliente agora (sem `removido_em`).
+    """
+    from ondeline_api.db.models.business import OrdemServico, Tecnico
+    from ondeline_api.db.models.estoque import ClienteEquipamento, EstoqueItem
+    from ondeline_api.repositories.cliente_equipamento import (
+        ClienteEquipamentoRepo,
+    )
+
+    rows = await ClienteEquipamentoRepo(session).list_by_cliente(
+        cliente_id, ativos_only=ativos_only
+    )
+    if not rows:
+        return []
+
+    # JOINs leves pra preencher os nomes (1 query cada, no máximo 3 dicts pequenos).
+    item_ids = {r.item_id for r in rows}
+    tec_ids = {r.instalado_por_tecnico_id for r in rows if r.instalado_por_tecnico_id}
+    os_ids = {
+        oid
+        for r in rows
+        for oid in (r.instalado_em_os_id, r.removido_em_os_id)
+        if oid is not None
+    }
+
+    itens_map: dict[UUID, EstoqueItem] = {
+        it.id: it
+        for it in (
+            await session.execute(select(EstoqueItem).where(EstoqueItem.id.in_(item_ids)))
+        ).scalars().all()
+    }
+    tec_map: dict[UUID, Tecnico] = {}
+    if tec_ids:
+        tec_map = {
+            t.id: t
+            for t in (
+                await session.execute(select(Tecnico).where(Tecnico.id.in_(tec_ids)))
+            ).scalars().all()
+        }
+    os_map: dict[UUID, OrdemServico] = {}
+    if os_ids:
+        os_map = {
+            o.id: o
+            for o in (
+                await session.execute(
+                    select(OrdemServico).where(OrdemServico.id.in_(os_ids))
+                )
+            ).scalars().all()
+        }
+
+    out: list[ClienteEquipamentoOut] = []
+    for r in rows:
+        it = itens_map.get(r.item_id)
+        tec = (
+            tec_map.get(r.instalado_por_tecnico_id)
+            if r.instalado_por_tecnico_id
+            else None
+        )
+        os_inst = (
+            os_map.get(r.instalado_em_os_id) if r.instalado_em_os_id else None
+        )
+        os_rem = (
+            os_map.get(r.removido_em_os_id) if r.removido_em_os_id else None
+        )
+        out.append(
+            ClienteEquipamentoOut(
+                id=r.id,
+                cliente_id=r.cliente_id,
+                item_id=r.item_id,
+                item_sku=it.sku if it else "—",
+                item_nome=it.nome if it else "—",
+                item_categoria=it.categoria if it else "—",
+                serial=r.serial,
+                instalado_em_os_id=r.instalado_em_os_id,
+                instalado_em_os_codigo=os_inst.codigo if os_inst else None,
+                instalado_por_tecnico_id=r.instalado_por_tecnico_id,
+                instalado_por_tecnico_nome=tec.nome if tec else None,
+                instalado_em=r.instalado_em,
+                removido_em=r.removido_em,
+                removido_em_os_id=r.removido_em_os_id,
+                removido_em_os_codigo=os_rem.codigo if os_rem else None,
+            )
+        )
+    return out

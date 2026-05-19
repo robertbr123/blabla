@@ -662,3 +662,13 @@ export function useDeletePlano() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['planos'] }),
   })
 }
+
+// F8 — Equipamentos do cliente
+export function useClienteEquipamentos(clienteId: string, ativosOnly = false) {
+  const qs = ativosOnly ? '?ativos_only=true' : ''
+  return useQuery<import('./types').ClienteEquipamentoOut[]>({
+    queryKey: ['cliente-equipamentos', clienteId, ativosOnly],
+    queryFn: () => apiFetch(`/api/v1/clientes/${clienteId}/equipamentos${qs}`),
+    enabled: !!clienteId,
+  })
+}

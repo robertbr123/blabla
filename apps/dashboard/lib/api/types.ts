@@ -354,3 +354,22 @@ export interface EstoqueSaldo {
   tecnico_id: string
   linhas: EstoqueSaldoLinha[]
 }
+
+// F8 — Histórico de equipamentos por cliente
+export interface ClienteEquipamentoOut {
+  id: string
+  cliente_id: string
+  item_id: string
+  item_sku: string
+  item_nome: string
+  item_categoria: string
+  serial: string
+  instalado_em_os_id: string | null
+  instalado_em_os_codigo: string | null
+  instalado_por_tecnico_id: string | null
+  instalado_por_tecnico_nome: string | null
+  instalado_em: string
+  removido_em: string | null
+  removido_em_os_id: string | null
+  removido_em_os_codigo: string | null
+}

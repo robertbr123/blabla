@@ -118,6 +118,19 @@ async def registrar_movimento(
     )
     await movrepo.insert(mov)
 
+    # F8 — Histórico de equipamentos do cliente.
+    # Saída com serial + OS = cliente recebeu o equipamento → cria registro.
+    # Recolhido com serial = cliente devolveu → fecha o registro ativo.
+    if item.serializado and serial:
+        await _atualizar_cliente_equipamento(
+            session,
+            tipo=tipo,
+            item_id=item_id,
+            serial=serial,
+            ordem_servico_id=ordem_servico_id,
+            tecnico_id=tecnico_id,
+        )
+
     from ondeline_api.observability.metrics import (
         estoque_movimento_total,
     )
@@ -165,3 +178,81 @@ def upsert_item(
     return EstoqueItem(
         sku=sku, nome=nome, categoria=categoria, serializado=serializado
     )
+
+
+async def _atualizar_cliente_equipamento(
+    session: AsyncSession,
+    *,
+    tipo: str,
+    item_id: UUID,
+    serial: str,
+    ordem_servico_id: UUID | None,
+    tecnico_id: UUID | None,
+) -> None:
+    """Hook do F8: mantém cliente_equipamento sincronizado com os movimentos.
+
+    - saida com ordem_servico_id → cria registro (descobre cliente via OS).
+    - recolhido → fecha registro ATIVO daquele item+serial (se houver).
+    - outros tipos → ignora.
+
+    Falha silenciosa (log warning) — não derruba o registro do movimento.
+    """
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select
+
+    from ondeline_api.db.models.business import OrdemServico
+    from ondeline_api.db.models.estoque import ClienteEquipamento
+    from ondeline_api.repositories.cliente_equipamento import (
+        ClienteEquipamentoRepo,
+    )
+
+    repo = ClienteEquipamentoRepo(session)
+
+    if tipo == "saida" and ordem_servico_id is not None:
+        os_row = (
+            await session.execute(
+                select(OrdemServico).where(OrdemServico.id == ordem_servico_id)
+            )
+        ).scalar_one_or_none()
+        if os_row is None or os_row.cliente_id is None:
+            log.info(
+                "cliente_equipamento.skip_sem_cliente_na_os",
+                ordem_servico_id=str(ordem_servico_id),
+            )
+            return
+        # Evita duplicar — se já tem ativo pra esse serial, fecha antes.
+        existente = await repo.find_ativo_por_serial(item_id, serial)
+        if existente is not None:
+            existente.removido_em = datetime.now(tz=UTC)
+            existente.removido_em_os_id = ordem_servico_id
+            await session.flush()
+        novo = ClienteEquipamento(
+            cliente_id=os_row.cliente_id,
+            item_id=item_id,
+            serial=serial,
+            instalado_em_os_id=ordem_servico_id,
+            instalado_por_tecnico_id=tecnico_id,
+        )
+        session.add(novo)
+        try:
+            await session.flush()
+        except Exception as e:
+            log.warning(
+                "cliente_equipamento.insert_falhou",
+                serial=serial,
+                error=str(e),
+            )
+        return
+
+    if tipo == "recolhido":
+        existente = await repo.find_ativo_por_serial(item_id, serial)
+        if existente is None:
+            log.info(
+                "cliente_equipamento.recolhido_sem_registro_ativo",
+                serial=serial,
+            )
+            return
+        existente.removido_em = datetime.now(tz=UTC)
+        existente.removido_em_os_id = ordem_servico_id
+        await session.flush()
