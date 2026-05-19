@@ -16,7 +16,16 @@ from typing import Annotated
 from uuid import UUID
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +35,8 @@ from ondeline_api.api.schemas.cliente_cadastro import (
     ClienteCampoListItem,
     ClienteCampoOut,
     ClienteCampoPatch,
+    ImportBatchIn,
+    ImportResult,
     SgpPlano,
     SgpPlanosOut,
     SyncSgpIn,
@@ -399,6 +410,82 @@ async def marcar_sincronizado_sgp(
         raise HTTPException(status_code=404, detail="cliente nao encontrado")
     await repo.marcar_sincronizado(cliente, body.sgp_id.strip())
     return _to_out(cliente)
+
+
+# ── Importacao MySQL ────────────────────────────────────────
+
+
+@router.post(
+    "/import",
+    response_model=ImportResult,
+    dependencies=[_role_admin],
+)
+async def import_batch_json(
+    body: ImportBatchIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ImportResult:
+    """Importa lote de clientes (JSON). Admin only.
+
+    Body: rows[] no formato compativel com MySQL antigo (cpf, name, dob,
+    phone, address, ..., installer texto livre, registration_date).
+
+    - dedup por cpf_hash (UPDATE se ja existe)
+    - dry_run: nao grava nada, so reporta o que faria
+    - mark_as_synced: marca sgp_synced_at = registration_date (default true,
+      porque clientes do MySQL antigo ja estao no SGP)
+    """
+    from ondeline_api.services.cliente_import import import_rows
+
+    return await import_rows(
+        session,
+        body.rows,
+        dry_run=body.dry_run,
+        mark_as_synced=body.mark_as_synced,
+    )
+
+
+@router.post(
+    "/import/csv",
+    response_model=ImportResult,
+    dependencies=[_role_admin],
+)
+async def import_batch_csv(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    file: Annotated[UploadFile, File()],
+    dry_run: Annotated[bool, Form()] = False,
+    mark_as_synced: Annotated[bool, Form()] = True,
+) -> ImportResult:
+    """Importa CSV com header. Admin only.
+
+    Colunas esperadas (mesmas do MySQL antigo): cpf, name, dob, phone,
+    cep, address, number, complement, neighborhood, city, state, plan,
+    pppoe_user, pppoe_pass, due_date, installer, serial, contrato,
+    observation, latitude, longitude, location_accuracy, registration_date.
+
+    Limite: 10 MB.
+    """
+    from ondeline_api.services.cliente_import import import_rows, parse_csv
+
+    if not file.content_type or not file.content_type.startswith(
+        ("text/csv", "application/csv", "application/vnd.ms-excel", "text/plain")
+    ):
+        # Aceita mesmo assim — alguns clientes mandam octet-stream.
+        pass
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="CSV excede 10MB")
+    try:
+        rows = parse_csv(content)
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, detail=f"erro parseando CSV: {e}"
+        ) from e
+    return await import_rows(
+        session,
+        rows,
+        dry_run=dry_run,
+        mark_as_synced=mark_as_synced,
+    )
 
 
 # ════════════════════════════════════════════════════════════

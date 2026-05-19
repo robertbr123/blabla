@@ -71,6 +71,57 @@ class SyncSgpIn(BaseModel):
     sgp_id: str = Field(min_length=1, max_length=40)
 
 
+class ImportClienteRow(BaseModel):
+    """Linha de import — formato compativel com o site MySQL antigo.
+
+    `installer` aqui e texto livre (nome do tecnico no MySQL). Backend
+    tenta match com `users.name` na importacao; se nao bater, deixa so o
+    texto cacheado em installer_nome (installer_user_id fica NULL).
+    """
+
+    cpf: str = Field(min_length=11, max_length=14)
+    name: str = Field(min_length=1, max_length=255)
+    dob: date
+    phone: str = Field(min_length=10, max_length=15)
+    cep: str | None = Field(default=None, max_length=10)
+    address: str = Field(min_length=1, max_length=255)
+    number: str = Field(min_length=1, max_length=10)
+    complement: str | None = Field(default=None, max_length=255)
+    neighborhood: str | None = Field(default=None, max_length=100)
+    city: str = Field(min_length=1, max_length=100)
+    state: str | None = Field(default=None, min_length=2, max_length=2)
+    plan: str = Field(min_length=1, max_length=255)
+    plan_id: int | None = None
+    pppoe_user: str | None = Field(default=None, max_length=100)
+    pppoe_pass: str | None = Field(default=None, max_length=100)
+    due_date: int = Field(ge=1, le=28)
+    installer: str = Field(min_length=1, max_length=255)
+    serial: str | None = Field(default=None, max_length=100)
+    contrato: str | None = Field(default=None, max_length=20)
+    observation: str | None = None
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    location_accuracy: float | None = Field(default=None, ge=0)
+    registration_date: date
+
+
+class ImportResult(BaseModel):
+    """Resumo da importacao em batch."""
+
+    inserted: int
+    updated: int
+    skipped: int
+    errors: list[str]
+
+
+class ImportBatchIn(BaseModel):
+    """Body do POST /clientes-campo/import (JSON com lista)."""
+
+    rows: list[ImportClienteRow]
+    dry_run: bool = False
+    mark_as_synced: bool = True  # vindo do MySQL, ja estao no SGP
+
+
 # ── Output ──────────────────────────────────────────────────
 
 
