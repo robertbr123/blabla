@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { QuickRepliesMenu, useQuickRepliesKeyHandler } from '@/components/quick-replies'
 import {
   useAtender,
   useConversa,
@@ -225,30 +226,7 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
                 </div>
               ))}
             </div>
-            {data.status !== 'encerrada' && (
-              <div className="rounded-md border bg-card p-3">
-                <Textarea
-                  placeholder="Digite sua resposta…"
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                      e.preventDefault()
-                      void handleSend()
-                    }
-                  }}
-                />
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Ctrl/Cmd + Enter</span>
-                  <Button
-                    onClick={() => void handleSend()}
-                    disabled={responder.isPending || !text.trim()}
-                  >
-                    <Send className="h-4 w-4" /> Enviar
-                  </Button>
-                </div>
-              </div>
-            )}
+            {data.status !== 'encerrada' && <ResponderBox text={text} setText={setText} handleSend={handleSend} pending={responder.isPending} />}
           </div>
         )}
 
@@ -448,6 +426,46 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
             <p className="text-xs text-green-600 dark:text-green-400">✓ Atendente atribuído</p>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+
+interface ResponderBoxProps {
+  text: string
+  setText: (v: string) => void
+  handleSend: () => Promise<void> | void
+  pending: boolean
+}
+
+function ResponderBox({ text, setText, handleSend, pending }: ResponderBoxProps) {
+  const qr = useQuickRepliesKeyHandler(text, setText)
+  return (
+    <div className="relative rounded-md border bg-card p-3">
+      <QuickRepliesMenu text={text} onSelect={setText} position="above" />
+      <Textarea
+        placeholder="Digite sua resposta… (ou /  pra respostas rápidas)"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (qr.onKeyDown(e)) return
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault()
+            void handleSend()
+          }
+        }}
+      />
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">
+          Ctrl/Cmd + Enter · use <code className="font-mono">/</code> pra respostas rápidas
+        </span>
+        <Button
+          onClick={() => void handleSend()}
+          disabled={pending || !text.trim()}
+        >
+          <Send className="h-4 w-4" /> Enviar
+        </Button>
       </div>
     </div>
   )

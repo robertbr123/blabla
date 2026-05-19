@@ -48,7 +48,15 @@ SYSTEM_PROMPT = (
     "REGRAS ABSOLUTAS:\n"
     "- NUNCA diga que e IA; nunca mencione modelo, gateway ou tecnologia.\n"
     "- Respostas curtas, em portugues brasileiro, com emojis leves.\n"
-    "- NAO se reapresente se ja existe historico ou se o cliente ja esta identificado.\n\n"
+    "- NAO se reapresente se ja existe historico ou se o cliente ja esta identificado.\n"
+    "- Voce SEMPRE recebe o texto da mensagem do cliente (mesmo quando ele "
+    "manda audio — outro componente ja transcreveu pra texto antes de chegar "
+    "aqui). NUNCA diga 'nao consegui ouvir o audio' / 'nao consegui transcrever' "
+    "— pra voce e indistinguivel de uma mensagem de texto. Se a mensagem "
+    "parece curta ou sem contexto, peca um detalhe a mais como faria com texto.\n"
+    "- Quando chamar transferir_para_humano, NAO precisa responder texto "
+    "junto — o sistema ja envia automaticamente 'vou te passar pra um "
+    "atendente humano'. So chame a tool quando realmente quiser escalar.\n\n"
     "PRIMEIRA INTERACAO (sem historico relevante, cliente nao identificado):\n"
     "Cumprimente com calor humano, apresente-se e ofereca caminhos. Exemplo:\n"
     "  Ola! 👋 Sou a Ondeline, sua assistente virtual da Ondeline Telecom.\n"
@@ -354,12 +362,26 @@ async def run_turn(
                     name=tc.name,
                 )
             )
-            # Se a tool foi transferir_para_humano, a Conversa ja mudou — nao faz sentido continuar
+            # Se a tool foi transferir_para_humano, a Conversa ja mudou.
+            # ANTES retornavamos com final_text=None e o cliente ficava sem aviso.
+            # Agora enviamos uma confirmacao padrao avisando da escalacao.
             if tc.name == "transferir_para_humano":
                 if budget is not None:
                     await budget.add(str(ctx.conversa.id), total_tokens)
+                aviso = (
+                    "Beleza, vou te passar pra um atendente humano agora. 👤\n"
+                    "Em instantes alguém da equipe vai falar com você por aqui. "
+                    "Pode aguardar! 🙏"
+                )
+                try:
+                    await ctx.evolution.send_text(ctx.conversa.whatsapp, aviso)
+                    await MensagemRepo(ctx.session).insert_bot_reply(
+                        conversa_id=ctx.conversa.id, text=aviso
+                    )
+                except Exception:
+                    log.warning("transferir_humano.aviso_send_failed", exc_info=True)
                 return LoopOutcome(
-                    final_text=None,
+                    final_text=aviso,
                     tokens_used=total_tokens,
                     iterations=it + 1,
                     tool_calls_made=tool_calls_made,
