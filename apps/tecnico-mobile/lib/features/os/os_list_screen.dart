@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/auth/auth_repository.dart';
 import '../../core/push/fcm_service.dart';
+import '../../core/sync/sync_service.dart';
 import 'os_data.dart';
+import 'widgets/os_card.dart';
 
 class _OsItem {
   final String id;
@@ -15,6 +16,7 @@ class _OsItem {
   final String endereco;
   final String? nomeCliente;
   final DateTime? agendamentoAt;
+  final DateTime? criadaEm;
 
   _OsItem({
     required this.id,
@@ -24,6 +26,7 @@ class _OsItem {
     required this.endereco,
     required this.nomeCliente,
     required this.agendamentoAt,
+    required this.criadaEm,
   });
 
   factory _OsItem.fromJson(Map<String, dynamic> j) => _OsItem(
@@ -36,149 +39,451 @@ class _OsItem {
         agendamentoAt: j['agendamento_at'] != null
             ? DateTime.tryParse(j['agendamento_at'] as String)
             : null,
+        criadaEm: j['criada_em'] != null
+            ? DateTime.tryParse(j['criada_em'] as String)
+            : null,
       );
 }
 
-class OsListScreen extends ConsumerWidget {
+enum _Aba { todas, pendente, andamento, concluida, cancelada }
+
+extension _AbaLabel on _Aba {
+  String get label {
+    switch (this) {
+      case _Aba.todas:
+        return 'Todas';
+      case _Aba.pendente:
+        return 'Pendentes';
+      case _Aba.andamento:
+        return 'Andamento';
+      case _Aba.concluida:
+        return 'Concluídas';
+      case _Aba.cancelada:
+        return 'Canceladas';
+    }
+  }
+
+  bool matches(String s) {
+    switch (this) {
+      case _Aba.todas:
+        return true;
+      case _Aba.pendente:
+        return s == 'pendente';
+      case _Aba.andamento:
+        return s == 'em_andamento';
+      case _Aba.concluida:
+        return s == 'concluida';
+      case _Aba.cancelada:
+        return s == 'cancelada';
+    }
+  }
+}
+
+class OsListScreen extends ConsumerStatefulWidget {
   const OsListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OsListScreen> createState() => _OsListScreenState();
+}
+
+class _OsListScreenState extends ConsumerState<OsListScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tab;
+  static const _abas = _Aba.values;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: _abas.length, vsync: this);
+    // Default abre em "Pendentes" — onde técnico mais opera.
+    _tab.index = _Aba.pendente.index;
+    _tab.addListener(() => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final async = ref.watch(osListStreamProvider);
+    final pendingSync = ref.watch(pendingCountProvider);
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: scheme.surfaceContainerLowest,
       appBar: AppBar(
         title: const Text('Minhas OS'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
+            tooltip: 'Atualizar',
             onPressed: () => ref.invalidate(osListStreamProvider),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sair',
-            onPressed: () async {
-              try {
-                await ref.read(fcmServiceProvider).revoke();
-              } catch (_) {}
-              await ref.read(osLocalRepoProvider).clear();
-              await ref.read(authRepositoryProvider).logout();
-              ref.invalidate(hasTokenProvider);
-              if (context.mounted) context.go('/login');
-            },
+            onPressed: _logout,
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: TabBar(
+            controller: _tab,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            tabs: _abas.map((a) => Tab(text: a.label)).toList(),
+          ),
+        ),
       ),
       body: async.when(
-        data: (rows) {
-          final items = rows.map(_OsItem.fromJson).toList();
-          if (items.isEmpty) {
-            return const Center(child: Text('Nenhuma OS atribuída.'));
-          }
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(osListStreamProvider),
-            child: ListView.separated(
-              itemCount: items.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (_, i) => _OsTile(item: items[i]),
-            ),
-          );
-        },
-        error: (e, _) => _ErrorView(
-          error: e,
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => _Erro(
+          e: e,
           onRetry: () => ref.invalidate(osListStreamProvider),
         ),
-        loading: () => const Center(child: CircularProgressIndicator()),
+        data: (rows) {
+          final items = rows.map(_OsItem.fromJson).toList()
+            ..sort((a, b) => _sortKey(a).compareTo(_sortKey(b)));
+          return Column(
+            children: [
+              pendingSync.when(
+                data: (n) => n > 0
+                    ? _OfflineQueueBanner(count: n)
+                    : const SizedBox.shrink(),
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+              _SummaryStrip(
+                counts: _countByStatus(items),
+                onTap: (aba) => _tab.animateTo(aba.index),
+                selected: _abas[_tab.index],
+              ),
+              const SizedBox(height: 4),
+              Expanded(
+                child: TabBarView(
+                  controller: _tab,
+                  children: _abas.map((aba) {
+                    final filtered =
+                        items.where((i) => aba.matches(i.status)).toList();
+                    if (filtered.isEmpty) {
+                      return _EstadoVazio(
+                        aba: aba,
+                        onRefresh: () =>
+                            ref.invalidate(osListStreamProvider),
+                      );
+                    }
+                    return RefreshIndicator(
+                      onRefresh: () async =>
+                          ref.invalidate(osListStreamProvider),
+                      child: ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.only(top: 4, bottom: 16),
+                        itemCount: filtered.length,
+                        itemBuilder: (_, i) {
+                          final it = filtered[i];
+                          return OsCard(
+                            id: it.id,
+                            codigo: it.codigo,
+                            status: it.status,
+                            problema: it.problema,
+                            endereco: it.endereco,
+                            nomeCliente: it.nomeCliente,
+                            agendamentoAt: it.agendamentoAt,
+                            onTap: () => context.push('/os/${it.id}'),
+                          );
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
+
+  // Ordena: atrasadas/agendamento mais próximo primeiro; sem agendamento
+  // por criada_em mais recente.
+  int _sortKey(_OsItem i) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (i.agendamentoAt != null) {
+      return i.agendamentoAt!.millisecondsSinceEpoch;
+    }
+    if (i.criadaEm != null) {
+      // OS sem agendamento, mas com data de criação, vai depois das agendadas,
+      // mais recente primeiro
+      return now + (now - i.criadaEm!.millisecondsSinceEpoch);
+    }
+    return now * 2;
+  }
+
+  Map<String, int> _countByStatus(List<_OsItem> items) {
+    final m = <String, int>{};
+    for (final it in items) {
+      m[it.status] = (m[it.status] ?? 0) + 1;
+    }
+    return m;
+  }
+
+  Future<void> _logout() async {
+    try {
+      await ref.read(fcmServiceProvider).revoke();
+    } catch (_) {}
+    await ref.read(osLocalRepoProvider).clear();
+    await ref.read(authRepositoryProvider).logout();
+    ref.invalidate(hasTokenProvider);
+    if (mounted) context.go('/login');
+  }
 }
 
-class _OsTile extends StatelessWidget {
-  final _OsItem item;
-  const _OsTile({required this.item});
-
-  Color _statusColor(BuildContext ctx) {
-    switch (item.status) {
-      case 'pendente':
-        return Colors.orange;
-      case 'em_andamento':
-        return Theme.of(ctx).colorScheme.primary;
-      case 'concluida':
-        return Colors.green;
-      case 'cancelada':
-        return Colors.grey;
-      default:
-        return Colors.grey;
-    }
-  }
+class _SummaryStrip extends StatelessWidget {
+  final Map<String, int> counts;
+  final void Function(_Aba) onTap;
+  final _Aba selected;
+  const _SummaryStrip({
+    required this.counts,
+    required this.onTap,
+    required this.selected,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final agend = item.agendamentoAt;
-    return ListTile(
-      onTap: () => context.push('/os/${item.id}'),
-      title: Text(
-        '${item.codigo} · ${item.nomeCliente ?? "—"}',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    final pend = counts['pendente'] ?? 0;
+    final and = counts['em_andamento'] ?? 0;
+    final conc = counts['concluida'] ?? 0;
+    final canc = counts['cancelada'] ?? 0;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      child: Row(
         children: [
-          Text(item.problema, maxLines: 2, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 4),
-          Text(
-            item.endereco,
-            style: Theme.of(context).textTheme.bodySmall,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          _Kpi(
+            label: 'Pendentes',
+            value: pend,
+            color: const Color(0xFFf59e0b),
+            icon: Icons.hourglass_top,
+            selected: selected == _Aba.pendente,
+            onTap: () => onTap(_Aba.pendente),
           ),
-          if (agend != null)
-            Text(
-              '📅 ${DateFormat('dd/MM HH:mm').format(agend.toLocal())}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+          const SizedBox(width: 8),
+          _Kpi(
+            label: 'Em andamento',
+            value: and,
+            color: const Color(0xFF2563eb),
+            icon: Icons.directions_run,
+            selected: selected == _Aba.andamento,
+            onTap: () => onTap(_Aba.andamento),
+          ),
+          const SizedBox(width: 8),
+          _Kpi(
+            label: 'Concluídas',
+            value: conc,
+            color: const Color(0xFF16a34a),
+            icon: Icons.check_circle,
+            selected: selected == _Aba.concluida,
+            onTap: () => onTap(_Aba.concluida),
+          ),
+          const SizedBox(width: 8),
+          _Kpi(
+            label: 'Canceladas',
+            value: canc,
+            color: const Color(0xFF6b7280),
+            icon: Icons.cancel,
+            selected: selected == _Aba.cancelada,
+            onTap: () => onTap(_Aba.cancelada),
+          ),
         ],
       ),
-      trailing: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    );
+  }
+}
+
+class _Kpi extends StatelessWidget {
+  final String label;
+  final int value;
+  final Color color;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+  const _Kpi({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 120,
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         decoration: BoxDecoration(
-          color: _statusColor(context).withOpacity(0.15),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          item.status,
-          style: TextStyle(
-            color: _statusColor(context),
-            fontWeight: FontWeight.w600,
-            fontSize: 11,
+          color: selected
+              ? color.withValues(alpha: 0.15)
+              : scheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? color : scheme.outlineVariant,
+            width: selected ? 1.5 : 1,
           ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 14, color: color),
+                const Spacer(),
+                Text(
+                  '$value',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: scheme.onSurface,
+                    height: 1,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _ErrorView extends StatelessWidget {
-  final Object error;
-  final VoidCallback onRetry;
-  const _ErrorView({required this.error, required this.onRetry});
+class _OfflineQueueBanner extends StatelessWidget {
+  final int count;
+  const _OfflineQueueBanner({required this.count});
 
   @override
   Widget build(BuildContext context) {
-    final msg = error.toString();
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFf59e0b).withValues(alpha: 0.13),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: const Color(0xFFf59e0b).withValues(alpha: 0.35),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_upload, size: 16, color: Color(0xFFd97706)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '$count ${count == 1 ? "item" : "itens"} aguardando upload',
+              style: const TextStyle(
+                color: Color(0xFFb45309),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EstadoVazio extends StatelessWidget {
+  final _Aba aba;
+  final VoidCallback onRefresh;
+  const _EstadoVazio({required this.aba, required this.onRefresh});
+
+  @override
+  Widget build(BuildContext context) {
+    String texto;
+    IconData icone;
+    switch (aba) {
+      case _Aba.todas:
+        texto = 'Nenhuma OS atribuída a você.';
+        icone = Icons.inbox_outlined;
+        break;
+      case _Aba.pendente:
+        texto = 'Nenhuma OS pendente. 🎉';
+        icone = Icons.check_circle_outline;
+        break;
+      case _Aba.andamento:
+        texto = 'Nenhuma OS em andamento.';
+        icone = Icons.directions_run;
+        break;
+      case _Aba.concluida:
+        texto = 'Nenhuma OS concluída ainda.';
+        icone = Icons.check_circle_outline;
+        break;
+      case _Aba.cancelada:
+        texto = 'Nenhuma OS cancelada.';
+        icone = Icons.cancel_outlined;
+        break;
+    }
+    return RefreshIndicator(
+      onRefresh: () async => onRefresh(),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 80),
+          Icon(
+            icone,
+            size: 56,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            texto,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Erro extends StatelessWidget {
+  final Object e;
+  final VoidCallback onRetry;
+  const _Erro({required this.e, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 56),
-          const SizedBox(height: 12),
-          Text(msg, textAlign: TextAlign.center),
-          const SizedBox(height: 16),
-          FilledButton(onPressed: onRetry, child: const Text('Tentar de novo')),
-        ],
-      ),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        const Icon(Icons.error_outline, size: 56),
+        const SizedBox(height: 12),
+        Text(e.toString(), textAlign: TextAlign.center),
+        const SizedBox(height: 12),
+        FilledButton(onPressed: onRetry, child: const Text('Tentar de novo')),
+      ]),
     );
   }
 }

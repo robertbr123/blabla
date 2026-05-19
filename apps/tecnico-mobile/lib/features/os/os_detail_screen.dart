@@ -52,39 +52,55 @@ class _Body extends ConsumerWidget {
     final podeIniciar = isPendente;
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       children: [
-        // Badge pendentes na fila
         pendingAsync.when(
           data: (n) => n > 0
               ? Container(
                   margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.15),
+                    color: Colors.orange.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.orange.withValues(alpha: 0.35),
+                    ),
                   ),
                   child: Row(children: [
-                    const Icon(Icons.cloud_upload, size: 18, color: Colors.orange),
+                    const Icon(Icons.cloud_upload,
+                        size: 18, color: Color(0xFFd97706)),
                     const SizedBox(width: 6),
                     Text('$n item(ns) aguardando upload',
-                        style: const TextStyle(color: Colors.orange)),
+                        style: const TextStyle(
+                          color: Color(0xFFb45309),
+                          fontWeight: FontWeight.w600,
+                        )),
                   ]),
                 )
               : const SizedBox.shrink(),
           loading: () => const SizedBox.shrink(),
           error: (_, __) => const SizedBox.shrink(),
         ),
-        _Linha('Código', os['codigo']?.toString() ?? '—'),
-        _Linha('Status', status),
-        _Linha('Cliente', os['nome_cliente']?.toString() ?? '—'),
-        _Linha('Problema', os['problema']?.toString() ?? '—'),
-        _Linha('Endereço', os['endereco']?.toString() ?? '—'),
-        if (os['plano'] != null) _Linha('Plano', os['plano'].toString()),
-        if (os['pppoe_login'] != null)
-          _Linha('PPPoE login', os['pppoe_login'].toString()),
-        if (os['pppoe_senha'] != null)
-          _Linha('PPPoE senha', os['pppoe_senha'].toString()),
+        _Header(os: os),
+        const SizedBox(height: 12),
+        _Secao(
+          icone: Icons.place_outlined,
+          titulo: 'Endereço',
+          conteudo: os['endereco']?.toString() ?? '—',
+        ),
+        _Secao(
+          icone: Icons.report_problem_outlined,
+          titulo: 'Problema relatado',
+          conteudo: os['problema']?.toString() ?? '—',
+        ),
+        if (os['plano'] != null ||
+            os['pppoe_login'] != null ||
+            os['pppoe_senha'] != null)
+          _PppoeCard(
+            plano: os['plano'] as String?,
+            login: os['pppoe_login'] as String?,
+            senha: os['pppoe_senha'] as String?,
+          ),
         const SizedBox(height: 24),
         if (podeIniciar)
           FilledButton.icon(
@@ -334,22 +350,243 @@ class _ConcluirSheetState extends ConsumerState<_ConcluirSheet> {
   }
 }
 
-class _Linha extends StatelessWidget {
-  final String label;
-  final String value;
-  const _Linha(this.label, this.value);
+class _Header extends StatelessWidget {
+  final Map<String, dynamic> os;
+  const _Header({required this.os});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+    final scheme = Theme.of(context).colorScheme;
+    final status = (os['status'] ?? '') as String;
+    final c = _statusInfo(status);
+    final nome = (os['nome_cliente'] as String?) ?? 'Cliente —';
+    final codigo = (os['codigo'] ?? '') as String;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            c.color.withValues(alpha: 0.12),
+            c.color.withValues(alpha: 0.04),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: c.color.withValues(alpha: 0.25)),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label.toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall),
-          const SizedBox(height: 2),
-          Text(value, style: Theme.of(context).textTheme.bodyMedium),
+          Row(
+            children: [
+              Text(
+                codigo,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: c.color.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: c.color.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(c.icon, size: 13, color: c.color),
+                    const SizedBox(width: 5),
+                    Text(
+                      c.label,
+                      style: TextStyle(
+                        color: c.color,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            nome,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: scheme.onSurface,
+              height: 1.15,
+            ),
+          ),
+          const SizedBox(height: 4),
+          if (os['agendamento_at'] != null)
+            Row(
+              children: [
+                Icon(Icons.event,
+                    size: 14, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 5),
+                Text(
+                  os['agendamento_at'].toString().substring(0, 16).replaceAll('T', ' às '),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  static ({String label, Color color, IconData icon}) _statusInfo(String s) {
+    switch (s) {
+      case 'pendente':
+        return (label: 'Pendente', color: const Color(0xFFf59e0b), icon: Icons.hourglass_top);
+      case 'em_andamento':
+        return (label: 'Em andamento', color: const Color(0xFF2563eb), icon: Icons.directions_run);
+      case 'concluida':
+        return (label: 'Concluída', color: const Color(0xFF16a34a), icon: Icons.check_circle);
+      case 'cancelada':
+        return (label: 'Cancelada', color: const Color(0xFF6b7280), icon: Icons.cancel);
+      default:
+        return (label: s, color: const Color(0xFF6b7280), icon: Icons.help_outline);
+    }
+  }
+}
+
+class _Secao extends StatelessWidget {
+  final IconData icone;
+  final String titulo;
+  final String conteudo;
+  const _Secao({
+    required this.icone,
+    required this.titulo,
+    required this.conteudo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icone, size: 16, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text(
+                  titulo.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 11,
+                    letterSpacing: 0.5,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              conteudo,
+              style: const TextStyle(fontSize: 14.5, height: 1.4),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PppoeCard extends StatelessWidget {
+  final String? plano;
+  final String? login;
+  final String? senha;
+  const _PppoeCard({this.plano, this.login, this.senha});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.router, size: 16, color: scheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text(
+                  'CONEXÃO',
+                  style: TextStyle(
+                    fontSize: 11,
+                    letterSpacing: 0.5,
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (plano != null) _kv(context, 'Plano', plano!),
+            if (login != null) _kv(context, 'Login', login!, mono: true),
+            if (senha != null) _kv(context, 'Senha', senha!, mono: true),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _kv(BuildContext context, String k, String v, {bool mono = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 70,
+            child: Text(
+              k,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Expanded(
+            child: SelectableText(
+              v,
+              style: TextStyle(
+                fontSize: 14,
+                fontFamily: mono ? 'monospace' : null,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ],
       ),
     );
