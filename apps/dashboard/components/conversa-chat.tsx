@@ -59,10 +59,12 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const clienteId = data?.cliente_id ?? undefined
-  const { data: osAberta } = useOsList(clienteId ? { cliente_id: clienteId } : {})
-  const osAbertas = (osAberta?.items ?? []).filter((o) =>
-    OS_STATUS_ABERTA.includes(o.status)
-  )
+  // F13b: so buscamos OSs quando temos cliente_id. Sem isso, useOsList({})
+  // devolveria TODAS as OS e o alerta apareceria em qualquer conversa.
+  const { data: osAberta } = useOsList({ cliente_id: clienteId })
+  const osAbertas = clienteId
+    ? (osAberta?.items ?? []).filter((o) => OS_STATUS_ABERTA.includes(o.status))
+    : []
 
   // Init OS form with client address
   useEffect(() => {

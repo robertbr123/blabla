@@ -207,6 +207,7 @@ export interface OsListFilters {
   status?: string
   tecnico?: string
   cliente_id?: string
+  enabled?: boolean
 }
 
 export function useOsList(filters: OsListFilters = {}) {
@@ -215,11 +216,21 @@ export function useOsList(filters: OsListFilters = {}) {
   if (filters.tecnico) params.set('tecnico', filters.tecnico)
   if (filters.cliente_id) params.set('cliente_id', filters.cliente_id)
   const qs = params.toString()
+  // Quando cliente_id eh passado como undefined/null explicitamente
+  // (ex.: conversa sem cliente vinculado), tratamos como "nao buscar".
+  // `enabled: false` permite override manual.
+  const hasClienteFilter = 'cliente_id' in filters
+  const enabled =
+    filters.enabled === false
+      ? false
+      : hasClienteFilter
+        ? Boolean(filters.cliente_id)
+        : true
   return useQuery<CursorPage<OsListItem>>({
     queryKey: ['os', filters],
     queryFn: () => apiFetch(`/api/v1/os${qs ? `?${qs}` : ''}`),
     refetchInterval: 30_000,
-    enabled: filters.cliente_id !== undefined ? Boolean(filters.cliente_id) : true,
+    enabled,
   })
 }
 

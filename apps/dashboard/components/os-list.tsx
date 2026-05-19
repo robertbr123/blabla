@@ -6,7 +6,7 @@ import { Plus, Trash2, UserCog } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
-import { useDeleteOs, useOsList } from '@/lib/api/queries'
+import { useDeleteOs, useOsList, useTecnicos } from '@/lib/api/queries'
 import { DialogReatribuirTecnico } from './dialog-reatribuir-tecnico'
 import type { OsListItem } from '@/lib/api/types'
 
@@ -41,6 +41,10 @@ export function OsList({ onNovaOs }: { onNovaOs?: () => void } = {}) {
   const [status, setStatus] = useState('')
   const [reatribuirOsId, setReatribuirOsId] = useState<string | null>(null)
   const { data, isLoading, error } = useOsList({ status: status || undefined })
+  const { data: tecnicosData } = useTecnicos({})
+  const tecnicoNomePorId = new Map(
+    (tecnicosData?.items ?? []).map((t) => [t.id, t.nome])
+  )
 
   return (
     <div className="space-y-4">
@@ -83,6 +87,7 @@ export function OsList({ onNovaOs }: { onNovaOs?: () => void } = {}) {
               <tr>
                 <th className="px-4 py-3">Código</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Técnico</th>
                 <th className="px-4 py-3">Problema</th>
                 <th className="px-4 py-3">Endereço</th>
                 <th className="px-4 py-3">Criada</th>
@@ -92,7 +97,7 @@ export function OsList({ onNovaOs }: { onNovaOs?: () => void } = {}) {
             <tbody>
               {data.items.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-muted-foreground">
+                  <td colSpan={7} className="p-6 text-center text-muted-foreground">
                     Nenhuma OS
                   </td>
                 </tr>
@@ -108,6 +113,11 @@ export function OsList({ onNovaOs }: { onNovaOs?: () => void } = {}) {
                     <Badge variant={STATUS_VARIANTS[o.status] ?? 'outline'}>
                       {o.status}
                     </Badge>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {o.tecnico_id
+                      ? tecnicoNomePorId.get(o.tecnico_id) ?? '—'
+                      : <span className="italic">sem técnico</span>}
                   </td>
                   <td className="px-4 py-3 max-w-xs truncate">{o.problema}</td>
                   <td className="px-4 py-3 max-w-xs truncate text-muted-foreground">

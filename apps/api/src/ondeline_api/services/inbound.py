@@ -138,6 +138,41 @@ def _br_local_digits(digits: str) -> str:
     return digits
 
 
+async def _find_tecnico_ativo_by_jid(session: Any, jid: str) -> Any | None:
+    """Resolve um Tecnico ATIVO pelo JID Evolution (ex.: 5597...@s.whatsapp.net).
+
+    Faz matching pelos 8 digitos locais (ignora DDI, DDD, nono digito) — mesma
+    logica que os handlers ESTOQUE/CONCLUIR ja usam. Retorna None se nenhum
+    bater ou se o tecnico estiver inativo.
+    """
+    if session is None or not jid:
+        return None
+    from sqlalchemy import select as _sa_sel
+
+    from ondeline_api.db.models.business import Tecnico as _TecModel
+
+    jid_digits = re.sub(r"\D", "", jid)
+    jid_local = _br_local_digits(jid_digits)
+    if len(jid_local) != 8:
+        return None
+    rows = list(
+        (
+            await session.execute(
+                _sa_sel(_TecModel).where(
+                    _TecModel.whatsapp.isnot(None), _TecModel.ativo.is_(True)
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for t in rows:
+        t_local = _br_local_digits(re.sub(r"\D", "", t.whatsapp or ""))
+        if len(t_local) == 8 and t_local == jid_local:
+            return t
+    return None
+
+
 def _to_fsm_event(kind: InboundKind, text: str | None) -> Event:
     if kind is InboundKind.TEXT:
         return Event(kind=EventKind.MSG_CLIENTE_TEXT, text=text)
@@ -1132,6 +1167,81 @@ async def process_inbound_message(
                 duplicate=False,
                 escalated=False,
                 skipped_reason="bot_desativado",
+            )
+
+    # F13 — Short-circuit do tecnico. Se quem enviou eh um Tecnico ATIVO e a
+    # mensagem nao casou com nenhum comando especifico (ESTOQUE/CONCLUIR/
+    # INDICADO/CHECKLIST_OS ja teriam retornado cedo), respondemos com menu
+    # determinitistico de comandos. NAO chamamos LLM nem aplicamos gate F12 —
+    # tecnico nao eh cliente.
+    if (
+        evt.kind is InboundKind.TEXT
+        and evt.text
+        and deps.session is not None
+    ):
+        tec = await _find_tecnico_ativo_by_jid(deps.session, evt.jid)
+        if tec is not None:
+            txt_upper = (evt.text or "").strip().upper()
+            primeiro_nome = tec.nome.split()[0] if tec.nome else "tec"
+
+            # MINHAS OS — lista OSs abertas atribuidas a esse tecnico
+            if txt_upper in ("MINHAS OS", "MINHAS-OS", "MINHAS_OS", "OS"):
+                from sqlalchemy import select as _sa_sel2
+
+                from ondeline_api.db.models.business import (
+                    OrdemServico as _OS,
+                )
+
+                os_rows = list(
+                    (
+                        await deps.session.execute(
+                            _sa_sel2(_OS).where(
+                                _OS.tecnico_id == tec.id,
+                                _OS.status.in_(
+                                    [OsStatus.PENDENTE, OsStatus.EM_ANDAMENTO]
+                                ),
+                            )
+                        )
+                    )
+                    .scalars()
+                    .all()
+                )
+                if not os_rows:
+                    msg_txt = (
+                        f"📋 *Suas OS, {primeiro_nome}*\n\n"
+                        "_(nenhuma OS em aberto atribuida a voce)_"
+                    )
+                else:
+                    linhas = [
+                        f"• *{o.codigo}* — {o.status.value} — "
+                        f"{(o.problema or '')[:50]}"
+                        for o in os_rows
+                    ]
+                    msg_txt = (
+                        f"📋 *Suas OS, {primeiro_nome}*\n\n" + "\n".join(linhas)
+                    )
+                deps.outbound.enqueue_send_outbound(evt.jid, msg_txt, conversa.id)
+                return InboundResult(
+                    conversa_id=conversa.id,
+                    persisted=True,
+                    duplicate=False,
+                    escalated=False,
+                )
+
+            # Catch-all: menu de AJUDA. NAO chama LLM, NAO escala.
+            msg_txt = (
+                f"👷 Oi, *{primeiro_nome}*! Comandos disponíveis:\n\n"
+                "• *ESTOQUE* — ver seu saldo de equipamentos\n"
+                "• *MINHAS OS* — OSs em aberto atribuidas a voce\n"
+                "• *CONCLUIR OS-1234* — finalizar uma OS\n"
+                "• *AJUDA* — esta lista"
+            )
+            deps.outbound.enqueue_send_outbound(evt.jid, msg_txt, conversa.id)
+            return InboundResult(
+                conversa_id=conversa.id,
+                persisted=True,
+                duplicate=False,
+                escalated=False,
             )
 
     # Intercepta midia para classificacao antes do FSM
