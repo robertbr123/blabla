@@ -230,6 +230,54 @@ def _msg_to_chat(m: Mensagem) -> ChatMessage:
     return ChatMessage(role=role, content=content)
 
 
+def _build_contexto_dinamico(ctx: ToolContext, history: list[Mensagem]) -> str:
+    """Monta uma 2a mensagem system com contexto factual da conversa atual.
+
+    Evita 2 bugs:
+    - LLM cumprimentando cliente que JA esta identificado
+    - LLM cumprimentando como 'primeira interacao' quando ja houve atendimento
+      humano antes (reassumindo deveria continuar, nao re-comecar).
+    """
+    linhas: list[str] = ["CONTEXTO ATUAL DESTA CONVERSA (factual, nao narre ao cliente):"]
+
+    # Cliente
+    if ctx.cliente is not None:
+        try:
+            nome = decrypt_pii(ctx.cliente.nome_encrypted) if ctx.cliente.nome_encrypted else ""
+        except Exception:
+            nome = ""
+        partes_cli = [f"Cliente identificado: *{nome or '<sem nome>'}*"]
+        if ctx.cliente.plano:
+            partes_cli.append(f"Plano: {ctx.cliente.plano}")
+        if ctx.cliente.cidade:
+            partes_cli.append(f"Cidade: {ctx.cliente.cidade}")
+        if ctx.cliente.status:
+            partes_cli.append(f"Status: {ctx.cliente.status}")
+        linhas.append("- " + " · ".join(partes_cli))
+        linhas.append(
+            "- Cliente JA identificado: NAO peca CPF/CNPJ de novo, NAO se "
+            "reapresente, va direto ao que ele esta pedindo."
+        )
+    else:
+        linhas.append("- Cliente AINDA NAO identificado (sem CPF/CNPJ no cadastro).")
+
+    # Quantidade de mensagens (sinal de continuidade)
+    if history:
+        linhas.append(f"- Esta conversa tem {len(history)} mensagens no historico.")
+
+    # Houve atendimento humano antes?
+    teve_humano = any(m.role is MensagemRole.ATENDENTE for m in history)
+    if teve_humano:
+        linhas.append(
+            "- *Voce esta REASSUMINDO o atendimento apos um humano ter atendido.* "
+            "Continue de onde o atendente parou. NAO se apresente, NAO cumprimente "
+            "novamente — apenas siga o fluxo. Trate a proxima mensagem do cliente "
+            "como continuacao natural."
+        )
+
+    return "\n".join(linhas)
+
+
 async def _resolve_system_prompt(ctx: ToolContext) -> str:
     """Resolve qual system prompt usar pra essa conversa (F5).
 
@@ -297,8 +345,15 @@ async def run_turn(
     history = await MensagemRepo(ctx.session).list_history(
         ctx.conversa.id, limit=history_turns
     )
+
+    # Contexto dinamico da conversa — informa ao LLM:
+    # - quem eh o cliente (se identificado) pra ele NAO se reapresentar
+    # - se houve atendente humano antes (reassumir = continuar, nao cumprimentar)
+    contexto = _build_contexto_dinamico(ctx, history)
+
     messages: list[ChatMessage] = [
         ChatMessage(role=Role.SYSTEM, content=system_prompt),
+        ChatMessage(role=Role.SYSTEM, content=contexto),
         *(_msg_to_chat(m) for m in history),
     ]
 
