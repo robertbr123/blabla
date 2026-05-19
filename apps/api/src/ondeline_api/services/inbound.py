@@ -144,6 +144,59 @@ def _to_fsm_event(kind: InboundKind, text: str | None) -> Event:
     return Event(kind=EventKind.MSG_CLIENTE_MEDIA, text=text)
 
 
+# F12 — Hard gate de identificacao. Quando cliente nao identificado esta em
+# estado de coleta inicial e manda mensagem que NAO contem CPF, opcao 1/2 nem
+# palavra-chave de contratacao/escape, NAO chamamos LLM — repetimos pedido fixo
+# pra ele se identificar. Evita LLM "conversar" sem ter cliente_id.
+_GATE_ESTADOS = frozenset({
+    ConversaEstado.AGUARDA_OPCAO,
+    ConversaEstado.CLIENTE_CPF,
+    ConversaEstado.LEAD_NOME,
+    ConversaEstado.LEAD_INTERESSE,
+})
+
+_RE_OPCAO_12 = re.compile(r"(?:^|\s)[12](?:$|\s|[.,!])")
+_RE_QUER_CONTRATAR = re.compile(
+    r"\b(contrat|quero (?:ser cliente|internet|plano|fibra)|novo cliente|"
+    r"interesse|plano|fibra|mbps|velocidade|valor do plano|quanto custa)\b",
+    re.IGNORECASE,
+)
+_RE_JA_CLIENTE = re.compile(
+    r"\b(sou cliente|j[aá] sou|cliente antigo|tenho internet de voc[eê]s)\b",
+    re.IGNORECASE,
+)
+_RE_ESCAPE_HUMANO = re.compile(
+    r"\b(atendente|humano|sac|falar com algu[eé]m|suporte)\b",
+    re.IGNORECASE,
+)
+
+_GATE_MSG = (
+    "Pra continuar preciso te identificar 🙋\n\n"
+    "Digite seu *CPF* (somente números, 11 dígitos) se já é cliente, "
+    "ou *2* se quer contratar um plano."
+)
+
+
+def _mensagem_identifica_ou_libera(text: str | None) -> bool:
+    """True se a mensagem traz CPF, opcao 1/2 ou palavra-chave que justifica
+    seguir pro LLM. False = bloqueia e repete o pedido."""
+    t = (text or "").strip()
+    if not t:
+        return False
+    digits = re.sub(r"\D", "", t)
+    if len(digits) >= 11:  # CPF (11) ou CNPJ (14) presentes
+        return True
+    if _RE_OPCAO_12.search(f" {t} "):
+        return True
+    if _RE_QUER_CONTRATAR.search(t):
+        return True
+    if _RE_JA_CLIENTE.search(t):
+        return True
+    if _RE_ESCAPE_HUMANO.search(t):
+        return True
+    return False
+
+
 def _extract_audio_seconds(evt: InboundEvent) -> int | None:
     """Tenta extrair duracao do audioMessage. Hoje o parser nao expoe isso —
     quando expusermos no InboundEvent, este helper passa a devolver o valor.
@@ -1279,6 +1332,30 @@ async def process_inbound_message(
             )
         except Exception:
             pass
+
+    # F12 — Gate de identificacao: se ja pedimos opcao/CPF antes (estado
+    # AGUARDA_OPCAO/CLIENTE_CPF/LEAD_*) e cliente segue sem CPF/opcao/palavra
+    # de fluxo, NAO deixamos o LLM conversar. Repetimos o pedido determinis-
+    # ticamente. Cobre so mensagem TEXT — media segue caminho normal.
+    if (
+        evt.kind is InboundKind.TEXT
+        and conversa.cliente_id is None
+        and conversa.estado in _GATE_ESTADOS
+        and not _mensagem_identifica_ou_libera(evt.text)
+    ):
+        log.info(
+            "inbound.identificacao_gate.blocked",
+            conversa_id=str(conversa.id),
+            estado=conversa.estado.value,
+        )
+        deps.outbound.enqueue_send_outbound(evt.jid, _GATE_MSG, conversa.id)
+        # Estado nao muda — continua aguardando identificacao.
+        return InboundResult(
+            conversa_id=conversa.id,
+            persisted=True,
+            duplicate=False,
+            escalated=False,
+        )
 
     decision: FsmDecision = Fsm.transition(
         estado=conversa.estado,
