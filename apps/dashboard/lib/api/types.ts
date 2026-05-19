@@ -268,6 +268,19 @@ export interface MetricasOut {
   leads_novos_7d: number
 }
 
+export interface TimeseriesPontoOut {
+  dia: string
+  msgs: number
+  os_concluidas: number
+  leads_novos: number
+  csat_avg: number | null
+}
+
+export interface TimeseriesOut {
+  days: number
+  pontos: TimeseriesPontoOut[]
+}
+
 export interface SgpClienteOut {
   nome: string
   cpf_cnpj: string

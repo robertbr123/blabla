@@ -52,3 +52,18 @@ class ProdutividadeResponse(BaseModel):
     mes: str  # "YYYY-MM"
     config: ComissaoConfigOut
     tecnicos: list[ProdutividadeTecnicoOut]
+
+
+class TimeseriesPontoOut(BaseModel):
+    """Ponto diario da serie de metricas."""
+
+    dia: str  # "YYYY-MM-DD"
+    msgs: int
+    os_concluidas: int
+    leads_novos: int
+    csat_avg: float | None
+
+
+class TimeseriesOut(BaseModel):
+    days: int
+    pontos: list[TimeseriesPontoOut]

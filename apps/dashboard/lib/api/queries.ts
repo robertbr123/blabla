@@ -620,6 +620,29 @@ export function useMetricas() {
   })
 }
 
+export function useTimeseries(days: number) {
+  return useQuery<import('./types').TimeseriesOut>({
+    queryKey: ['metricas', 'timeseries', days],
+    queryFn: () => apiFetch(`/api/v1/metricas/timeseries?days=${days}`),
+  })
+}
+
+export async function downloadTimeseriesCsv(days: number): Promise<void> {
+  const token = getAccessToken()
+  const res = await fetch(`/api/v1/metricas/timeseries/export?days=${days}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: 'include',
+  })
+  if (!res.ok) throw new Error('Erro ao exportar CSV')
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `timeseries-${days}d-${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
 // ── Ranking de Técnicos ─────────────────────────────────────────────
 
 export function useRankingTecnicos(mes?: string) {

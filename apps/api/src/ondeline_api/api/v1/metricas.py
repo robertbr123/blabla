@@ -17,6 +17,8 @@ from ondeline_api.api.schemas.metrica import (
     ProdutividadeResponse,
     ProdutividadeTecnicoOut,
     RankingTecnicoOut,
+    TimeseriesOut,
+    TimeseriesPontoOut,
 )
 from ondeline_api.auth.rbac import require_role
 from ondeline_api.db.models.business import (
@@ -199,6 +201,136 @@ async def export_ranking_tecnicos_csv(
         ])
 
     filename = f"ranking-tecnicos-{mes_label}.csv"
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# ── Timeseries (tendencia diaria) ──────────────────────────────────
+
+
+def _parse_days(days: int) -> int:
+    # Clamp pra evitar query gigante.
+    if days < 1:
+        return 1
+    if days > 365:
+        return 365
+    return days
+
+
+async def _build_timeseries(
+    session: AsyncSession, days: int
+) -> list[TimeseriesPontoOut]:
+    """Serie diaria dos ultimos N dias: msgs, os_concluidas, leads, csat_avg."""
+    days = _parse_days(days)
+    now = datetime.now(tz=UTC)
+    # Dia local (UTC): trunca pra inicio do dia atual e volta N-1 dias.
+    hoje = datetime(now.year, now.month, now.day, tzinfo=UTC)
+    inicio = hoje - timedelta(days=days - 1)
+    fim = hoje + timedelta(days=1)
+
+    # Mensagens por dia (created_at).
+    msgs_rows = (
+        await session.execute(
+            select(
+                func.date_trunc("day", Mensagem.created_at).label("dia"),
+                func.count(Mensagem.id).label("n"),
+            )
+            .where(Mensagem.created_at >= inicio, Mensagem.created_at < fim)
+            .group_by("dia")
+        )
+    ).all()
+    msgs_map: dict[str, int] = {
+        r.dia.date().isoformat(): int(r.n or 0) for r in msgs_rows
+    }
+
+    # OS concluidas por dia.
+    os_rows = (
+        await session.execute(
+            select(
+                func.date_trunc("day", OrdemServico.concluida_em).label("dia"),
+                func.count(OrdemServico.id).label("n"),
+                func.avg(OrdemServico.csat).label("csat_avg"),
+            )
+            .where(
+                OrdemServico.status == OsStatus.CONCLUIDA,
+                OrdemServico.concluida_em >= inicio,
+                OrdemServico.concluida_em < fim,
+            )
+            .group_by("dia")
+        )
+    ).all()
+    os_map: dict[str, tuple[int, float | None]] = {
+        r.dia.date().isoformat(): (
+            int(r.n or 0),
+            float(r.csat_avg) if r.csat_avg is not None else None,
+        )
+        for r in os_rows
+    }
+
+    # Leads novos por dia.
+    leads_rows = (
+        await session.execute(
+            select(
+                func.date_trunc("day", Lead.created_at).label("dia"),
+                func.count(Lead.id).label("n"),
+            )
+            .where(Lead.created_at >= inicio, Lead.created_at < fim)
+            .group_by("dia")
+        )
+    ).all()
+    leads_map: dict[str, int] = {
+        r.dia.date().isoformat(): int(r.n or 0) for r in leads_rows
+    }
+
+    pontos: list[TimeseriesPontoOut] = []
+    for i in range(days):
+        d = (inicio + timedelta(days=i)).date()
+        key = d.isoformat()
+        os_n, csat = os_map.get(key, (0, None))
+        pontos.append(
+            TimeseriesPontoOut(
+                dia=key,
+                msgs=msgs_map.get(key, 0),
+                os_concluidas=os_n,
+                leads_novos=leads_map.get(key, 0),
+                csat_avg=round(csat, 2) if csat is not None else None,
+            )
+        )
+    return pontos
+
+
+@router.get("/timeseries", response_model=TimeseriesOut, dependencies=[_role_dep])
+async def get_timeseries(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    days: Annotated[int, Query(ge=1, le=365)] = 30,
+) -> TimeseriesOut:
+    """Serie diaria de KPIs operacionais nos ultimos N dias (max 365)."""
+    pontos = await _build_timeseries(session, days)
+    return TimeseriesOut(days=_parse_days(days), pontos=pontos)
+
+
+@router.get("/timeseries/export", dependencies=[_role_dep])
+async def export_timeseries_csv(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    days: Annotated[int, Query(ge=1, le=365)] = 30,
+) -> StreamingResponse:
+    """Exporta timeseries diario como CSV."""
+    pontos = await _build_timeseries(session, days)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Dia", "Mensagens", "OS Concluidas", "Leads Novos", "CSAT Medio"])
+    for p in pontos:
+        writer.writerow([
+            p.dia,
+            p.msgs,
+            p.os_concluidas,
+            p.leads_novos,
+            f"{p.csat_avg:.2f}" if p.csat_avg is not None else "",
+        ])
+    filename = f"timeseries-{_parse_days(days)}d-{datetime.now(tz=UTC).strftime('%Y%m%d')}.csv"
     return StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv",
