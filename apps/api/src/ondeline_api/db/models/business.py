@@ -419,6 +419,16 @@ class OrdemServico(Base):
         DateTime(timezone=True), nullable=True
     )
     follow_up_resultado: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    reaberta_em: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    reaberta_por: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    reabertura_motivo: Mapped[str | None] = mapped_column(Text, nullable=True)
+    historico_reaberturas: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JSONB, nullable=True
+    )
     pppoe_login: Mapped[str | None] = mapped_column(String(120), nullable=True)
     pppoe_senha: Mapped[str | None] = mapped_column(String(120), nullable=True)
     plano: Mapped[str | None] = mapped_column(String(120), nullable=True)

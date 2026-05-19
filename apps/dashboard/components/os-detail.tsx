@@ -13,6 +13,7 @@ import {
   useConcluirOs,
   useOs,
   usePatchOs,
+  useReabrirOs,
   useUploadFoto,
 } from '@/lib/api/queries'
 import { apiFetch } from '@/lib/api/client'
@@ -22,10 +23,12 @@ export function OsDetail({ id }: { id: string }) {
   const { data, isLoading, error } = useOs(id)
   const patchOs = usePatchOs(id)
   const concluirOs = useConcluirOs(id)
+  const reabrirOs = useReabrirOs(id)
   const uploadFoto = useUploadFoto(id)
   const fileRef = useRef<HTMLInputElement>(null)
   const [csat, setCsat] = useState('')
   const [comentario, setComentario] = useState('')
+  const [reaberturaMotivo, setReaberturaMotivo] = useState('')
   const [enviandoPdf, setEnviandoPdf] = useState(false)
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Carregando…</p>
@@ -187,6 +190,68 @@ export function OsDetail({ id }: { id: string }) {
                 <option value="em_andamento">Em andamento</option>
                 <option value="cancelada">Cancelada</option>
               </Select>
+            </CardContent>
+          </Card>
+        )}
+
+        {(data.status === 'concluida' || data.status === 'cancelada') && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Reabrir OS</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Use quando o cliente reclamar que o problema voltou. A OS volta
+                pra <em>em andamento</em> e o técnico pode atender novamente.
+                {data.csat !== null && data.csat !== undefined && (
+                  <> O CSAT atual ({data.csat}/5) fica preservado no histórico.</>
+                )}
+              </p>
+              <Label htmlFor="motivo-reabertura">Motivo (obrigatório)</Label>
+              <Textarea
+                id="motivo-reabertura"
+                value={reaberturaMotivo}
+                onChange={(e) => setReaberturaMotivo(e.target.value)}
+                placeholder="Ex: Cliente reclamou que internet voltou a oscilar"
+                rows={3}
+              />
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  if (reaberturaMotivo.trim().length < 3) {
+                    toast.error('Informe o motivo (mín. 3 caracteres).')
+                    return
+                  }
+                  try {
+                    await reabrirOs.mutateAsync(reaberturaMotivo.trim())
+                    toast.success('OS reaberta.')
+                    setReaberturaMotivo('')
+                  } catch (e) {
+                    toast.error(
+                      e instanceof Error ? e.message : 'Erro ao reabrir',
+                    )
+                  }
+                }}
+                disabled={reabrirOs.isPending || reaberturaMotivo.trim().length < 3}
+                className="w-full"
+              >
+                {reabrirOs.isPending ? 'Reabrindo…' : 'Reabrir OS'}
+              </Button>
+              {data.historico_reaberturas && data.historico_reaberturas.length > 0 && (
+                <div className="border-t pt-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Reaberturas anteriores: {data.historico_reaberturas.length}
+                  </p>
+                  <ul className="mt-1 space-y-1 text-xs text-muted-foreground">
+                    {data.historico_reaberturas.slice(-3).reverse().map((h, i) => (
+                      <li key={i} className="truncate">
+                        {new Date(h.ts as string).toLocaleString('pt-BR')} —{' '}
+                        {String(h.motivo ?? '')}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

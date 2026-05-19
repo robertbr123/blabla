@@ -39,6 +39,10 @@ class OsOut(OsListItem):
     relatorio: str | None = None
     houve_visita: bool | None = None
     materiais: str | None = None
+    reaberta_em: datetime | None = None
+    reaberta_por: UUID | None = None
+    reabertura_motivo: str | None = None
+    historico_reaberturas: list[dict[str, Any]] | None = None
 
 
 class OsCreate(BaseModel):
@@ -69,6 +73,10 @@ class OsConcluirIn(BaseModel):
 
 class OsReatribuirIn(BaseModel):
     tecnico_id: UUID
+
+
+class OsReabrirIn(BaseModel):
+    motivo: str = Field(min_length=3, max_length=500)
 
 
 class OsDeleteOut(BaseModel):

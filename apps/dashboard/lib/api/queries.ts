@@ -347,6 +347,21 @@ export function useConcluirOs(id: string) {
   })
 }
 
+export function useReabrirOs(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (motivo: string) =>
+      apiFetch<OsOut>(`/api/v1/os/${id}/reabrir`, {
+        method: 'POST',
+        body: JSON.stringify({ motivo }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['os-detail', id] })
+      qc.invalidateQueries({ queryKey: ['os'] })
+    },
+  })
+}
+
 export function useUploadFoto(id: string) {
   const qc = useQueryClient()
   return useMutation({

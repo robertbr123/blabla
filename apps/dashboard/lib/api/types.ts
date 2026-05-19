@@ -84,6 +84,10 @@ export interface OsOut extends OsListItem {
   relatorio: string | null
   houve_visita: boolean | null
   materiais: string | null
+  reaberta_em?: string | null
+  reaberta_por?: string | null
+  reabertura_motivo?: string | null
+  historico_reaberturas?: Array<Record<string, unknown>> | null
 }
 
 export interface OsCreate {

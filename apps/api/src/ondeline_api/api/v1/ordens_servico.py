@@ -19,6 +19,7 @@ from ondeline_api.api.schemas.os import (
     OsListItem,
     OsOut,
     OsPatch,
+    OsReabrirIn,
     OsReatribuirIn,
 )
 from ondeline_api.api.schemas.pagination import CursorPage, encode_cursor
@@ -403,6 +404,52 @@ async def concluir_os(
             conversa.estado = ConversaEstado.AGUARDA_FOLLOWUP_OS
             conversa.followup_os_id = os_.id
             await session.flush()
+
+    out = OsOut.model_validate(os_)
+    out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
+    return out
+
+
+@router.post(
+    "/{os_id}/reabrir",
+    response_model=OsOut,
+    dependencies=[_admin_dep],
+)
+async def reabrir_os(
+    os_id: UUID,
+    body: OsReabrirIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> OsOut:
+    """Reabre uma OS concluida ou cancelada. Apenas admin.
+
+    - Status volta pra em_andamento
+    - concluida_em zerado (permite nova conclusao + CSAT)
+    - csat antigo e relatorio sao preservados em historico_reaberturas
+    - reabertura_motivo obrigatorio (audit)
+    """
+    import structlog
+
+    log = structlog.get_logger(__name__)
+
+    repo = OrdemServicoRepo(session)
+    os_ = await repo.get_by_id(os_id)
+    if os_ is None:
+        raise HTTPException(status_code=404, detail="OS not found")
+    if os_.status not in (OsStatus.CONCLUIDA, OsStatus.CANCELADA):
+        raise HTTPException(
+            status_code=422,
+            detail=f"so e possivel reabrir OS concluida/cancelada (atual: {os_.status.value})",
+        )
+
+    await repo.reabrir(os_, motivo=body.motivo, user_id=user.id)
+    log.info(
+        "os.reabrir",
+        os_id=str(os_id),
+        codigo=os_.codigo,
+        user_id=str(user.id),
+        motivo=body.motivo,
+    )
 
     out = OsOut.model_validate(os_)
     out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp

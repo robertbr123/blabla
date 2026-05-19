@@ -200,3 +200,35 @@ class OrdemServicoRepo:
         if materiais is not None:
             os_.materiais = materiais
         await self._session.flush()
+
+    async def reabrir(
+        self,
+        os_: OrdemServico,
+        *,
+        motivo: str,
+        user_id: UUID | None,
+    ) -> None:
+        """Reabre uma OS concluida/cancelada. Preserva csat/relatorio antigos
+        no historico_reaberturas e zera concluida_em pra permitir nova conclusao.
+        """
+        from datetime import UTC
+        from datetime import datetime as _datetime
+
+        now = _datetime.now(tz=UTC)
+        historico = list(os_.historico_reaberturas or [])
+        historico.append({
+            "ts": now.isoformat(),
+            "status_anterior": os_.status.value if os_.status else None,
+            "concluida_em_anterior": os_.concluida_em.isoformat() if os_.concluida_em else None,
+            "csat_anterior": os_.csat,
+            "follow_up_resultado_anterior": os_.follow_up_resultado,
+            "motivo": motivo,
+            "por": str(user_id) if user_id else None,
+        })
+        os_.status = OsStatus.EM_ANDAMENTO
+        os_.concluida_em = None
+        os_.reaberta_em = now
+        os_.reaberta_por = user_id
+        os_.reabertura_motivo = motivo
+        os_.historico_reaberturas = historico
+        await self._session.flush()
