@@ -1154,10 +1154,9 @@ async def process_inbound_message(
                     cli.asr_aviso_enviado_at = datetime.now(tz=UTC)
                     await deps.session.flush()
 
-            # ACK imediato + marca mensagem como pending + enfileira ASR.
-            deps.outbound.enqueue_send_outbound(
-                evt.jid, "🎧 Recebi seu áudio, vou ouvir e já respondo.", conversa.id
-            )
+            # Sem ACK explicito — a transcricao + resposta do LLM levam ~3-8s,
+            # tempo suficiente pro cliente perceber o "digitando..." no WhatsApp.
+            # ACK gerava ruido em conversas com varios audios seguidos.
             msg.transcricao_status = "pending"
             deps.outbound.enqueue_asr(
                 mensagem_id=msg.id,

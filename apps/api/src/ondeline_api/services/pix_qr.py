@@ -90,8 +90,31 @@ async def enviar_pix_qr_best_effort(
         return False
 
     pix_qr_source_total.labels(fonte="sgp").inc()
+    log.info(
+        "pix_qr.start",
+        jid=jid,
+        fatura_id=fatura_id,
+        brcode_len=len(codigo_pix_sgp),
+    )
+
+    # Sempre tenta enviar o texto copia-e-cola PRIMEIRO — eh o mais importante
+    # e nao depende de gerar imagem. Se a imagem falhar, ao menos o codigo
+    # textual chega ao cliente.
+    text_ok = False
+    try:
+        await evolution.send_text(jid, codigo_pix_sgp)
+        text_ok = True
+        log.info("pix_qr.text_sent", jid=jid)
+    except EvolutionError as e:
+        log.warning("pix_qr.text_send_failed", jid=jid, error=str(e))
+    except Exception as e:
+        log.warning("pix_qr.text_send_failed_unexpected", jid=jid, error=str(e))
+
+    # Depois tenta a imagem QR (best-effort, opcional).
+    img_ok = False
     try:
         png = await _cached_qr_png(redis, codigo_pix_sgp)
+        log.info("pix_qr.png_rendered", jid=jid, bytes=len(png))
         await evolution.send_media_bytes(
             jid,
             data=png,
@@ -100,11 +123,11 @@ async def enviar_pix_qr_best_effort(
             file_name="pix.png",
             caption="Aponte a câmera do app do seu banco aqui 👆",
         )
-        await evolution.send_text(jid, codigo_pix_sgp)
-        return True
+        img_ok = True
+        log.info("pix_qr.png_sent", jid=jid)
     except EvolutionError as e:
-        log.warning("pix_qr.send_failed", jid=jid, error=str(e))
-        return False
+        log.warning("pix_qr.png_send_failed", jid=jid, error=str(e))
     except Exception as e:
-        log.warning("pix_qr.render_failed", jid=jid, error=str(e))
-        return False
+        log.warning("pix_qr.png_render_failed", jid=jid, error=str(e))
+
+    return text_ok or img_ok

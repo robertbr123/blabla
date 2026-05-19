@@ -76,15 +76,25 @@ class EvolutionAdapter:
         file_name: str,
         caption: str = "",
     ) -> dict[str, Any]:
-        """Envia media inline (base64). Util pra QR Pix gerado localmente."""
+        """Envia media inline (base64). Util pra QR Pix gerado localmente.
+
+        Evolution v2 aceita `media` como:
+          - URL (http://...)
+          - Data URL (data:image/png;base64,...)
+          - Base64 puro (string sem prefixo)
+
+        Algumas versoes rejeitam base64 puro. Usamos data URL pra ser
+        compativel com a maioria.
+        """
         import base64
 
         b64 = base64.b64encode(data).decode("ascii")
+        data_url = f"data:{mimetype};base64,{b64}"
         payload = {
             "number": jid,
             "mediatype": mediatype,
             "mimetype": mimetype,
-            "media": b64,
+            "media": data_url,
             "fileName": file_name,
             "caption": caption,
         }
