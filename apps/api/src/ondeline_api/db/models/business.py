@@ -13,6 +13,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     Enum,
@@ -20,6 +21,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     PrimaryKeyConstraint,
     SmallInteger,
     String,
@@ -663,3 +665,83 @@ class IndicacaoUso(Base):
     observacao: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     __table_args__ = (Index("ix_indicacao_uso_indicacao", "indicacao_id"),)
+
+
+class ClienteCadastro(Base):
+    """Cliente cadastrado em campo pelo tecnico (fonte primaria da instalacao).
+
+    Separado da tabela `clientes` (que e cache do SGP). Quando o bot identifica
+    via WhatsApp e o CPF bate, cruzamos pelo cpf_hash pra mostrar historico.
+
+    PII (cpf, nome, telefone, pppoe) encriptado seguindo padrao do projeto.
+    """
+
+    __tablename__ = "clientes_cadastro"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    # PII (encrypted + hash)
+    cpf_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    cpf_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    nome_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    dob: Mapped[date] = mapped_column(Date, nullable=False)
+    telefone_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    # Endereco (plain — buscavel)
+    cep: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    address: Mapped[str] = mapped_column(String(255), nullable=False)
+    number: Mapped[str] = mapped_column(String(10), nullable=False)
+    complement: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    neighborhood: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    city: Mapped[str] = mapped_column(String(100), nullable=False)
+    state: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    # Plano + conexao
+    plan_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    plan_nome: Mapped[str] = mapped_column(String(255), nullable=False)
+    pppoe_user_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pppoe_pass_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    due_date: Mapped[int] = mapped_column(Integer, nullable=False)  # 1-28
+    # Instalador
+    installer_user_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    installer_nome: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Equipamento + contrato + obs
+    serial: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    contrato: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    observation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Geo
+    latitude: Mapped[float | None] = mapped_column(Numeric(10, 8), nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Numeric(11, 8), nullable=True)
+    location_accuracy: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # Fotos (lista de dicts {url, ts, size, mime, tipo})
+    fotos: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB, nullable=True)
+    # Audit + sync SGP
+    registration_date: Mapped[date] = mapped_column(Date, nullable=False)
+    sgp_synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    sgp_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint("due_date BETWEEN 1 AND 28", name="ck_cliente_cad_due_date"),
+        Index("ix_clientes_cadastro_cpf_hash", "cpf_hash", unique=True),
+        Index("ix_clientes_cadastro_city", "city"),
+        Index("ix_clientes_cadastro_serial", "serial"),
+        Index("ix_clientes_cadastro_location", "latitude", "longitude"),
+        Index("ix_clientes_cadastro_installer", "installer_user_id"),
+        Index("ix_clientes_cadastro_sync", "sgp_synced_at"),
+        Index("ix_clientes_cadastro_deleted", "deleted_at"),
+    )

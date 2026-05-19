@@ -147,6 +147,11 @@ class EstoqueMovimento(Base):
         ForeignKey("ordens_servico.id", ondelete="SET NULL"),
         nullable=True,
     )
+    cliente_cadastro_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True),
+        ForeignKey("clientes_cadastro.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     observacao: Mapped[str | None] = mapped_column(Text, nullable=True)
     criado_por: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
@@ -164,4 +169,5 @@ class EstoqueMovimento(Base):
         ),
         Index("ix_estoque_mov_tecnico_item", "tecnico_id", "item_id"),
         Index("ix_estoque_mov_os", "ordem_servico_id"),
+        Index("ix_estoque_mov_cliente_cadastro", "cliente_cadastro_id"),
     )
