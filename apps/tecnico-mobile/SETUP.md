@@ -153,6 +153,9 @@ cd apps/tecnico-mobile
 # Se ainda não fez (passo 3.3), gera ios/:
 flutter create . --org br.com.ondeline --project-name tecnico_mobile --platforms=ios
 
+# Patch no Podfile pra silenciar warnings de iOS 9/11 (roda 1x após flutter create):
+bash scripts/setup-ios.sh
+
 # CocoaPods (1ª vez ou depois de mudar pubspec):
 cd ios && pod install && cd ..
 

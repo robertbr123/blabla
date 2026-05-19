@@ -99,10 +99,6 @@ ThemeData _build(ColorScheme scheme) {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
-    cardTheme: const CardTheme(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-    ),
     chipTheme: ChipThemeData(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
@@ -113,14 +109,6 @@ ThemeData _build(ColorScheme scheme) {
       labelTextStyle: WidgetStateProperty.all(
         const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
       ),
-    ),
-    tabBarTheme: TabBarTheme(
-      labelColor: scheme.primary,
-      unselectedLabelColor: scheme.onSurfaceVariant,
-      indicatorColor: scheme.primary,
-      indicatorSize: TabBarIndicatorSize.label,
-      labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-      unselectedLabelStyle: const TextStyle(fontSize: 13),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
