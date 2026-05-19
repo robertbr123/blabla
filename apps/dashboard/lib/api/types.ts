@@ -332,7 +332,7 @@ export interface EstoqueMovimento {
   id: string
   item_id: string
   tecnico_id: string | null
-  tipo: 'entrada' | 'saida' | 'devolucao' | 'perda' | 'ajuste_positivo' | 'ajuste_negativo'
+  tipo: 'entrada' | 'saida' | 'recolhido' | 'devolucao' | 'perda' | 'ajuste_positivo' | 'ajuste_negativo'
   quantidade: number
   serial: string | null
   ordem_servico_id: string | null

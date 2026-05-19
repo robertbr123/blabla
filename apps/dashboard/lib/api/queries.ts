@@ -104,7 +104,7 @@ export function useCreateEstoqueItem() {
 
 export interface EstoqueMovimentoCreate {
   item_id: string
-  tipo: 'entrada' | 'saida' | 'devolucao' | 'perda' | 'ajuste_positivo' | 'ajuste_negativo'
+  tipo: 'entrada' | 'saida' | 'recolhido' | 'devolucao' | 'perda' | 'ajuste_positivo' | 'ajuste_negativo'
   quantidade: number
   tecnico_id?: string | null
   serial?: string | null
