@@ -1,0 +1,27 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+.idea/
+.vscode/
+*.iml
+
+# Generated code (drift)
+lib/**/*.g.dart
+
+# Native (gerados via `flutter create .`)
+android/
+ios/
+linux/
+macos/
+windows/
+web/
+
+# Firebase
+google-services.json
+GoogleService-Info.plist
+firebase_options.dart
