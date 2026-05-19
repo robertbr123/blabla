@@ -2,6 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/auth/auth_storage.dart';
+import '../../core/db/cliente_cadastro_repo.dart';
+import '../../core/db/database.dart';
 
 class ClienteListItem {
   final String id;
@@ -219,31 +222,100 @@ class ClienteListPage {
   ClienteListPage({required this.items, this.nextCursor});
 }
 
+final clienteCadastroRepoProvider = Provider<ClienteCadastroLocalRepo>(
+  (ref) => ClienteCadastroLocalRepo(ref.watch(dbProvider)),
+);
+
+/// Lista cache-first:
+/// 1. Sem filtro → retorna cache imediatamente e refaz fetch em background
+/// 2. Com filtro de busca → vai direto na API (cache so guarda snapshot full)
+/// 3. Fallback pro cache quando API falha
 final clientesListProvider =
     FutureProvider.autoDispose<ClienteListPage>((ref) async {
   final filter = ref.watch(clienteListFilterProvider);
   final dio = ref.watch(apiClientProvider);
+  final repo = ref.watch(clienteCadastroRepoProvider);
+  final userId = await readUserId();
+
   final qs = filter.toQueryString();
   final url = '/api/v1/clientes-campo${qs.isNotEmpty ? '?$qs' : ''}';
-  final r = await dio.get(url);
-  final raw = r.data as Map<String, dynamic>;
-  final items = (raw['items'] as List? ?? const [])
-      .cast<Map>()
-      .map((m) => ClienteListItem.fromJson(m.cast<String, dynamic>()))
-      .toList();
-  return ClienteListPage(
-    items: items,
-    nextCursor: raw['next_cursor'] as String?,
-  );
+
+  try {
+    final r = await dio.get(url);
+    final raw = r.data as Map<String, dynamic>;
+    final items = (raw['items'] as List? ?? const [])
+        .cast<Map>()
+        .map((m) => ClienteListItem.fromJson(m.cast<String, dynamic>()))
+        .toList();
+
+    // So cacheia quando nao tem filtro — cache representa "tudo".
+    if (qs.isEmpty && userId != null && userId.isNotEmpty) {
+      final rows = (raw['items'] as List? ?? const [])
+          .cast<Map>()
+          .map((m) => m.cast<String, dynamic>())
+          .toList();
+      await repo.replaceAll(userId: userId, rows: rows);
+    }
+    return ClienteListPage(
+      items: items,
+      nextCursor: raw['next_cursor'] as String?,
+    );
+  } on DioException catch (e) {
+    if (!_isNetworkError(e) || userId == null || userId.isEmpty) {
+      rethrow;
+    }
+    // Fallback offline: usa cache local (ignora filtro de servidor —
+    // aplica busca client-side no caminho de cima quando online).
+    final cached = await repo.listAll(userId: userId);
+    final q = (filter.q ?? '').toLowerCase();
+    final filtered = cached.where((row) {
+      if (q.isEmpty) return true;
+      final nome = (row['nome'] ?? '').toString().toLowerCase();
+      final city = (row['city'] ?? '').toString().toLowerCase();
+      final address = (row['address'] ?? '').toString().toLowerCase();
+      return nome.contains(q) || city.contains(q) || address.contains(q);
+    }).toList();
+    return ClienteListPage(
+      items: filtered
+          .map((m) => ClienteListItem.fromJson(m))
+          .toList(),
+      nextCursor: null,
+    );
+  }
 });
 
-/// Detalhe (family por id).
+/// Detalhe cache-first.
 final clienteDetailProvider =
     FutureProvider.autoDispose.family<ClienteCampo, String>((ref, id) async {
   final dio = ref.watch(apiClientProvider);
-  final r = await dio.get('/api/v1/clientes-campo/$id');
-  return ClienteCampo.fromJson((r.data as Map).cast<String, dynamic>());
+  final repo = ref.watch(clienteCadastroRepoProvider);
+  final userId = await readUserId();
+
+  try {
+    final r = await dio.get('/api/v1/clientes-campo/$id');
+    final raw = (r.data as Map).cast<String, dynamic>();
+    if (userId != null && userId.isNotEmpty) {
+      await repo.upsertOne(userId: userId, row: raw);
+    }
+    return ClienteCampo.fromJson(raw);
+  } on DioException catch (e) {
+    if (!_isNetworkError(e) || userId == null || userId.isEmpty) {
+      rethrow;
+    }
+    final cached = await repo.get(userId: userId, id: id);
+    if (cached != null) {
+      return ClienteCampo.fromJson(cached);
+    }
+    rethrow;
+  }
 });
+
+bool _isNetworkError(DioException e) {
+  return e.type == DioExceptionType.connectionError ||
+      e.type == DioExceptionType.connectionTimeout ||
+      e.type == DioExceptionType.sendTimeout ||
+      e.type == DioExceptionType.receiveTimeout;
+}
 
 class MaterialUsado {
   final String movimentoId;

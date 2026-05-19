@@ -10,13 +10,19 @@ import 'tables.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [OsLocal, OutboxItem, EstoqueLocal, PerfilLocal])
+@DriftDatabase(tables: [
+  OsLocal,
+  OutboxItem,
+  EstoqueLocal,
+  PerfilLocal,
+  ClienteCadastroLocal,
+])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_open());
   AppDatabase.forTesting(QueryExecutor e) : super(e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -31,6 +37,9 @@ class AppDatabase extends _$AppDatabase {
           if (from < 4) {
             await m.deleteTable('estoque_local');
             await m.createTable(estoqueLocal);
+          }
+          if (from < 5) {
+            await m.createTable(clienteCadastroLocal);
           }
         },
       );

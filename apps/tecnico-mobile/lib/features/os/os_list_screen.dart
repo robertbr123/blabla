@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_repository.dart';
+import '../../core/auth/auth_storage.dart';
 import '../../core/push/fcm_service.dart';
 import '../../core/sync/sync_service.dart';
+import '../clientes/cliente_data.dart';
 import 'os_data.dart';
 import 'widgets/os_card.dart';
 
@@ -235,6 +237,10 @@ class _OsListScreenState extends ConsumerState<OsListScreen>
       await ref.read(fcmServiceProvider).revoke();
     } catch (_) {}
     await ref.read(osLocalRepoProvider).clear();
+    final userId = await readUserId();
+    if (userId != null && userId.isNotEmpty) {
+      await ref.read(clienteCadastroRepoProvider).clear(userId: userId);
+    }
     await ref.read(authRepositoryProvider).logout();
     ref.invalidate(hasTokenProvider);
     if (mounted) context.go('/login');

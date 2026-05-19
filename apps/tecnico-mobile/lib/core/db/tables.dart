@@ -52,3 +52,19 @@ class PerfilLocal extends Table {
   @override
   Set<Column> get primaryKey => {userId};
 }
+
+/// Cache local de cliente_cadastro (lista + detalhe).
+/// userId aqui = tecnico logado (cache por user pra nao misturar dados
+/// entre logins no mesmo device).
+class ClienteCadastroLocal extends Table {
+  TextColumn get userId => text()();
+  TextColumn get id => text()();           // uuid do cliente_cadastro
+  TextColumn get nome => text()();         // descriptografado
+  TextColumn get city => text()();
+  TextColumn get planNome => text()();
+  TextColumn get payloadJson => text()();  // DTO completo pro detalhe
+  DateTimeColumn get syncedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {userId, id};
+}
