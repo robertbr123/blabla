@@ -11,7 +11,13 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ondeline_api.api.schemas.metrica import MetricasOut, RankingTecnicoOut
+from ondeline_api.api.schemas.metrica import (
+    ComissaoConfigOut,
+    MetricasOut,
+    ProdutividadeResponse,
+    ProdutividadeTecnicoOut,
+    RankingTecnicoOut,
+)
 from ondeline_api.auth.rbac import require_role
 from ondeline_api.db.models.business import (
     Conversa,
@@ -245,7 +251,7 @@ async def _load_comissao_config(session: AsyncSession) -> dict[str, float]:
 async def get_produtividade_tecnicos(
     session: Annotated[AsyncSession, Depends(get_db)],
     mes: Annotated[str | None, Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")] = None,
-) -> "ProdutividadeResponse":
+) -> ProdutividadeResponse:
     """F9 — Ranking + cálculo de comissão por técnico.
 
     Comissao = (os_concluidas * valor_por_os) + (os_csat_5 * bonus_csat_5)
@@ -256,11 +262,6 @@ async def get_produtividade_tecnicos(
       - comissao.bonus_csat_5
       - comissao.bonus_csat_4
     """
-    from ondeline_api.api.schemas.metrica import (
-        ComissaoConfigOut,
-        ProdutividadeResponse,
-        ProdutividadeTecnicoOut,
-    )
 
     now = datetime.now(tz=UTC)
     if mes:
