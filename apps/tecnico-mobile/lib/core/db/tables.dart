@@ -31,3 +31,24 @@ class OutboxItem extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get sentAt => dateTime().nullable()();
 }
+
+/// Snapshot local do saldo de estoque do tecnico.
+class EstoqueLocal extends Table {
+  TextColumn get userId => text()();
+  TextColumn get itemId => text()();
+  TextColumn get payloadJson => text()();
+  DateTimeColumn get syncedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {userId, itemId};
+}
+
+/// Snapshot local do perfil do tecnico.
+class PerfilLocal extends Table {
+  TextColumn get userId => text()();
+  TextColumn get payloadJson => text()();
+  DateTimeColumn get syncedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {userId};
+}
