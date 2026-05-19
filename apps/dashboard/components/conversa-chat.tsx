@@ -17,6 +17,7 @@ import {
   useOsList,
   useResponder,
   useTecnicos,
+  useVincularCliente,
 } from '@/lib/api/queries'
 import type { MensagemOut } from '@/lib/api/types'
 import { cn } from '@/lib/utils'
@@ -236,7 +237,7 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
         {tab === 'cliente' && (
           <div className="flex-1 overflow-y-auto rounded-md border bg-card p-4 mt-3 space-y-3 text-sm">
             {!data.cliente ? (
-              <p className="text-muted-foreground">Cliente ainda não identificado nesta conversa.</p>
+              <VincularClienteBox conversaId={conversaId} onSuccess={() => void refetch()} />
             ) : (
               <>
                 <div>
@@ -439,6 +440,75 @@ interface ResponderBoxProps {
   setText: (v: string) => void
   handleSend: () => Promise<void> | void
   pending: boolean
+}
+
+function VincularClienteBox({
+  conversaId,
+  onSuccess,
+}: {
+  conversaId: string
+  onSuccess: () => void
+}) {
+  const [cpf, setCpf] = useState('')
+  const vincular = useVincularCliente(conversaId)
+  const cpfDigits = cpf.replace(/\D/g, '')
+  const valid = cpfDigits.length === 11 || cpfDigits.length === 14
+
+  async function handleVincular() {
+    if (!valid) return
+    try {
+      await vincular.mutateAsync(cpfDigits)
+      setCpf('')
+      onSuccess()
+    } catch {
+      /* erro exibido abaixo */
+    }
+  }
+
+  const errMsg =
+    vincular.error instanceof Error
+      ? vincular.error.message
+      : vincular.error
+      ? 'Erro ao vincular cliente'
+      : null
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="text-muted-foreground mb-1">Cliente ainda não identificado nesta conversa.</p>
+        <p className="text-xs text-muted-foreground">
+          Se o cliente digitou o CPF errado ou o bot não conseguiu identificar, vincule
+          manualmente abaixo — consulta o SGP e libera a conversa para atendimento.
+        </p>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="vincular-cpf">CPF ou CNPJ do cliente</Label>
+        <Input
+          id="vincular-cpf"
+          value={cpf}
+          onChange={(e) => setCpf(e.target.value)}
+          placeholder="Somente números (11 ou 14 dígitos)"
+          inputMode="numeric"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && valid && !vincular.isPending) {
+              e.preventDefault()
+              void handleVincular()
+            }
+          }}
+        />
+        {cpf && !valid && (
+          <p className="text-xs text-destructive">CPF/CNPJ deve ter 11 ou 14 dígitos.</p>
+        )}
+        {errMsg && <p className="text-xs text-destructive">{errMsg}</p>}
+        <Button
+          onClick={() => void handleVincular()}
+          disabled={!valid || vincular.isPending}
+        >
+          {vincular.isPending ? 'Consultando SGP…' : 'Buscar e vincular'}
+        </Button>
+      </div>
+    </div>
+  )
 }
 
 function ResponderBox({ text, setText, handleSend, pending }: ResponderBoxProps) {

@@ -46,3 +46,7 @@ class ConversaOut(ConversaListItem):
 
 class ResponderIn(BaseModel):
     text: str = Field(min_length=1, max_length=4096)
+
+
+class VincularClienteIn(BaseModel):
+    cpf: str = Field(min_length=11, max_length=18)

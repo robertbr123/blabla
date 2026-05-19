@@ -13,15 +13,17 @@ from ondeline_api.api.schemas.conversa import (
     ConversaListItem,
     ConversaOut,
     ResponderIn,
+    VincularClienteIn,
 )
 from ondeline_api.api.schemas.mensagem import MensagemOut
 from ondeline_api.api.schemas.pagination import CursorPage, encode_cursor
 from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.rbac import require_role
 from ondeline_api.db.crypto import decrypt_pii
-from ondeline_api.db.models.business import Cliente, Mensagem
+from ondeline_api.db.models.business import Cliente, ConversaEstado, Mensagem
 from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db
+from ondeline_api.repositories.cliente import ClienteRepo
 from ondeline_api.repositories.conversa import ConversaRepo
 from ondeline_api.services.conversa_attend import (
     ConversaNotFound,
@@ -164,6 +166,107 @@ async def responder_endpoint(
         await responder(session, conversa_id, user.id, body.text, enqueuer, redis=redis)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail="conversa not found") from exc
+
+
+_ESTADOS_PRE_IDENT = {
+    ConversaEstado.INICIO,
+    ConversaEstado.AGUARDA_OPCAO,
+    ConversaEstado.CLIENTE_CPF,
+    ConversaEstado.LEAD_NOME,
+    ConversaEstado.LEAD_INTERESSE,
+}
+
+
+@router.post(
+    "/{conversa_id}/vincular-cliente",
+    response_model=ConversaOut,
+    dependencies=[_role_dep],
+)
+async def vincular_cliente_endpoint(
+    conversa_id: UUID,
+    body: VincularClienteIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> ConversaOut:
+    """Vincula manualmente um cliente (via CPF/CNPJ) a uma conversa.
+
+    Util quando o cliente digitou CPF errado no chat e o bot nao conseguiu
+    identifica-lo. Faz lookup no SGP, upsert no DB local e libera o gate
+    F12 movendo o estado pra CLIENTE.
+    """
+    import structlog
+
+    from ondeline_api.adapters.sgp.linknetam import SgpLinkNetAMProvider
+    from ondeline_api.adapters.sgp.ondeline import SgpOndelineProvider
+    from ondeline_api.adapters.sgp.router import SgpRouter
+    from ondeline_api.config import get_settings
+    from ondeline_api.services.sgp_cache import SgpCacheService
+    from ondeline_api.services.sgp_config import load_sgp_config
+    from ondeline_api.workers.runtime import get_redis
+
+    log = structlog.get_logger(__name__)
+
+    repo = ConversaRepo(session)
+    conversa = await repo.get_by_id(conversa_id)
+    if conversa is None:
+        raise HTTPException(status_code=404, detail="conversa not found")
+
+    cpf_digits = "".join(c for c in body.cpf if c.isdigit())
+    if len(cpf_digits) not in (11, 14):
+        raise HTTPException(status_code=400, detail="CPF/CNPJ invalido")
+
+    s = get_settings()
+    redis = await get_redis()
+    sgp_ond = await load_sgp_config(session, "ondeline")
+    sgp_lnk = await load_sgp_config(session, "linknetam")
+    router_sgp = SgpRouter(
+        primary=SgpOndelineProvider(**sgp_ond),
+        secondary=SgpLinkNetAMProvider(**sgp_lnk),
+    )
+    cache = SgpCacheService(
+        redis=redis,
+        session=session,
+        router=router_sgp,
+        ttl_cliente=s.sgp_cache_ttl_cliente,
+        ttl_negativo=s.sgp_cache_ttl_negativo,
+    )
+    # Invalida cache negativo: se o atendente esta vinculando manualmente,
+    # provavelmente houve erro previo (CPF digitado errado, ou bug do _format_endereco).
+    await cache.invalidate(cpf_digits)
+    cli_sgp = await cache.get_cliente(cpf_digits)
+    if cli_sgp is None:
+        raise HTTPException(status_code=404, detail="cliente nao encontrado no SGP")
+
+    cliente_db = await ClienteRepo(session).upsert_from_sgp(
+        cli_sgp, whatsapp=conversa.whatsapp
+    )
+    conversa.cliente_id = cliente_db.id
+    if conversa.estado in _ESTADOS_PRE_IDENT:
+        conversa.estado = ConversaEstado.CLIENTE
+    await session.flush()
+
+    log.info(
+        "conversa.vincular_cliente",
+        conversa_id=str(conversa_id),
+        cliente_id=str(cliente_db.id),
+        atendente_id=str(user.id),
+        cpf=cpf_digits,
+    )
+
+    # Retorna conversa atualizada (mesmo shape que GET).
+    msgs, _ = await repo.list_messages(conversa.id, limit=50)
+    out = ConversaOut.model_validate(conversa)
+    out.mensagens = [_to_msg_out(m) for m in msgs]
+    out.cliente = ClienteEmbutido(
+        id=cliente_db.id,
+        nome=decrypt_pii(cliente_db.nome_encrypted) if cliente_db.nome_encrypted else "",
+        cpf_cnpj=decrypt_pii(cliente_db.cpf_cnpj_encrypted) if cliente_db.cpf_cnpj_encrypted else "",
+        whatsapp=cliente_db.whatsapp,
+        plano=cliente_db.plano,
+        cidade=cliente_db.cidade,
+        endereco=decrypt_pii(cliente_db.endereco_encrypted) if cliente_db.endereco_encrypted else None,
+    )
+    return out
 
 
 @router.post(

@@ -183,6 +183,21 @@ export function useEncerrar(conversaId: string) {
   })
 }
 
+export function useVincularCliente(conversaId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (cpf: string) =>
+      apiFetch(`/api/v1/conversas/${conversaId}/vincular-cliente`, {
+        method: 'POST',
+        body: JSON.stringify({ cpf }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['conversa', conversaId] })
+      qc.invalidateQueries({ queryKey: ['conversas'] })
+    },
+  })
+}
+
 export function useDeleteConversa(conversaId: string) {
   const qc = useQueryClient()
   return useMutation({
