@@ -79,7 +79,7 @@ export function IndicacaoConfigEditor() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Gift className="h-4 w-4" /> Indicação "Indicou, ganhou"
+          <Gift className="h-4 w-4" /> Indicação &ldquo;Indicou, ganhou&rdquo;
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
