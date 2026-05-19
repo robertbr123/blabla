@@ -456,3 +456,61 @@ export interface RankingIndicadorOut {
   usos: number
   convertidos: number
 }
+
+// ── Clientes cadastrados em campo (Fase 5+) ────────────────────
+
+export interface ClienteCampoListItem {
+  id: string
+  cpf: string
+  nome: string
+  address: string
+  number: string
+  neighborhood: string | null
+  city: string
+  plan_nome: string
+  installer_nome: string
+  sgp_synced_at: string | null
+  sgp_id: string | null
+  created_at: string
+}
+
+export interface ClienteCampoOut {
+  id: string
+  cpf: string
+  nome: string
+  dob: string
+  telefone: string
+  cep: string | null
+  address: string
+  number: string
+  complement: string | null
+  neighborhood: string | null
+  city: string
+  state: string | null
+  plan_id: number | null
+  plan_nome: string
+  pppoe_user: string | null
+  pppoe_pass: string | null
+  due_date: number
+  installer_user_id: string | null
+  installer_nome: string
+  serial: string | null
+  contrato: string | null
+  observation: string | null
+  latitude: number | null
+  longitude: number | null
+  location_accuracy: number | null
+  fotos: Array<Record<string, unknown>> | null
+  registration_date: string
+  sgp_synced_at: string | null
+  sgp_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ImportResultOut {
+  inserted: number
+  updated: number
+  skipped: number
+  errors: string[]
+}

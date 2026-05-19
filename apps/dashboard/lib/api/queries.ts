@@ -962,3 +962,92 @@ export function useClienteSgpInfo(cpf: string | null) {
     retry: false,
   })
 }
+
+// ── Clientes cadastrados em campo (Fase 10) ───────────────────
+
+export interface ClientesCampoFilter {
+  q?: string
+  city?: string
+  sgp_status?: 'synced' | 'pending'
+  cursor?: string
+}
+
+export function useClientesCampo(filter: ClientesCampoFilter = {}) {
+  const params = new URLSearchParams()
+  if (filter.q) params.set('q', filter.q)
+  if (filter.city) params.set('city', filter.city)
+  if (filter.sgp_status) params.set('sgp_status', filter.sgp_status)
+  if (filter.cursor) params.set('cursor', filter.cursor)
+  const qs = params.toString()
+  return useQuery<import('./types').CursorPage<import('./types').ClienteCampoListItem>>({
+    queryKey: ['clientes-campo', filter],
+    queryFn: () =>
+      apiFetch(`/api/v1/clientes-campo${qs ? `?${qs}` : ''}`),
+  })
+}
+
+export function useClienteCampoDetail(id: string | null) {
+  return useQuery<import('./types').ClienteCampoOut>({
+    queryKey: ['cliente-campo', id],
+    queryFn: () => apiFetch(`/api/v1/clientes-campo/${id}`),
+    enabled: !!id,
+  })
+}
+
+export function useMarcarSyncSgp() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, sgp_id }: { id: string; sgp_id: string }) =>
+      apiFetch<import('./types').ClienteCampoOut>(
+        `/api/v1/clientes-campo/${id}/sync-sgp`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ sgp_id }),
+        },
+      ),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['clientes-campo'] })
+      qc.invalidateQueries({ queryKey: ['cliente-campo', vars.id] })
+    },
+  })
+}
+
+export function useDeleteClienteCampo() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<void>(`/api/v1/clientes-campo/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['clientes-campo'] }),
+  })
+}
+
+export interface ImportCsvOptions {
+  file: File
+  dryRun: boolean
+  markAsSynced: boolean
+}
+
+export function useImportClientesCsv() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (opts: ImportCsvOptions) => {
+      const fd = new FormData()
+      fd.append('file', opts.file)
+      fd.append('dry_run', String(opts.dryRun))
+      fd.append('mark_as_synced', String(opts.markAsSynced))
+      const token = getAccessToken()
+      const res = await fetch(`/api/v1/clientes-campo/import/csv`, {
+        method: 'POST',
+        body: fd,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '')
+        throw new Error(txt || `HTTP ${res.status}`)
+      }
+      return (await res.json()) as import('./types').ImportResultOut
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['clientes-campo'] }),
+  })
+}
