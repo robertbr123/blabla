@@ -168,7 +168,9 @@ async def sgp_lookup(
             abertos, key=lambda t: t.vencimento or "9999-12-31"
         )
         proxima = abertos_sorted[0]
-    from datetime import UTC as _UTC, date as _date, datetime as _dt
+    from datetime import UTC as _UTC
+    from datetime import date as _date
+    from datetime import datetime as _dt
 
     hoje = _dt.now(tz=_UTC).date()
 
