@@ -10,6 +10,16 @@ import '../api/api_client.dart';
 import '../db/database.dart';
 import 'outbox_repo.dart';
 
+DateTime computeNextRetryAt({
+  required int attempts,
+  required DateTime createdAt,
+  required DateTime? lastAttemptAt,
+}) {
+  final base = lastAttemptAt ?? createdAt;
+  final waitSec = (1 << attempts.clamp(0, 8)).clamp(2, 300);
+  return base.add(Duration(seconds: waitSec));
+}
+
 /// Processa a fila offline (OutboxItem) em FIFO com backoff exponencial.
 ///
 /// - Conectividade: usa connectivity_plus pra disparar flush quando rede volta
