@@ -42,7 +42,7 @@ export function ClienteList() {
           <table className="w-full text-sm">
             <thead className="border-b text-left text-xs uppercase text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">WhatsApp</th>
+                <th className="px-4 py-3">Cliente</th>
                 <th className="px-4 py-3">Plano</th>
                 <th className="px-4 py-3">Cidade</th>
                 <th className="px-4 py-3">Status</th>
@@ -60,8 +60,11 @@ export function ClienteList() {
               {data.items.map((c) => (
                 <tr key={c.id} className="border-b last:border-b-0 hover:bg-muted/50">
                   <td className="px-4 py-3">
-                    <Link href={`/clientes/${c.id}`} className="font-medium hover:underline">
-                      {c.whatsapp}
+                    <Link href={`/clientes/${c.id}`} className="block hover:underline">
+                      <span className="font-medium">{c.nome ?? '—'}</span>
+                      <span className="block text-xs text-muted-foreground font-mono">
+                        {c.whatsapp}
+                      </span>
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{c.plano ?? '—'}</td>

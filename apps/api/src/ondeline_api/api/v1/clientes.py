@@ -53,9 +53,14 @@ class SgpClienteOut(_BaseModel):
 
 
 def _to_list_item(c: Cliente) -> ClienteListItem:
+    try:
+        nome = decrypt_pii(c.nome_encrypted) if c.nome_encrypted else None
+    except Exception:
+        nome = None
     return ClienteListItem.model_validate({
         "id": c.id,
         "whatsapp": c.whatsapp,
+        "nome": nome,
         "plano": c.plano,
         "status": c.status,
         "cidade": c.cidade,

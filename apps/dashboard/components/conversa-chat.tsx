@@ -396,18 +396,23 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
       <div className="flex w-44 shrink-0 flex-col gap-3">
         <p className="text-xs font-medium uppercase text-muted-foreground">Ações</p>
 
-        {data.status === 'aguardando' && (
+        {/* Botão Assumir: aguardando (bot escalou) ou bot (atendente quer
+            intervir mesmo sem escalação). Esconde quando já estou atendendo. */}
+        {(data.status === 'aguardando' || data.status === 'bot') && (
           <Button
             size="sm"
             onClick={() => atender.mutate()}
             disabled={atender.isPending}
             className="w-full"
           >
-            <UserCheck className="h-4 w-4" /> Assumir
+            <UserCheck className="h-4 w-4" />{' '}
+            {data.status === 'aguardando' ? 'Assumir' : 'Atender'}
           </Button>
         )}
 
-        {data.status !== 'encerrada' && (
+        {/* Encerrar: só faz sentido em atendimento humano ou aguardando.
+            Em BOT, não tem o que encerrar (bot já está respondendo). */}
+        {(data.status === 'humano' || data.status === 'aguardando') && (
           <Button
             size="sm"
             variant="outline"
@@ -415,7 +420,7 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
             disabled={encerrar.isPending}
             className="w-full"
           >
-            <X className="h-4 w-4" /> Encerrar
+            <X className="h-4 w-4" /> Encerrar atendimento
           </Button>
         )}
 

@@ -47,13 +47,15 @@ async def responder(
     )
     session.add(msg)
     await session.flush()
-    # Prefixa mensagem enviada com *SUPORTE:* pra o cliente saber que eh humano
-    # (e nao mais o bot). No dashboard exibe sem o prefixo — eh adicionado so
-    # no envio outbound. Idempotente: se atendente ja digitou prefixo, nao duplica.
+    # Prefixa mensagem enviada com '*SUPORTE:*\n\n<texto>' pra o cliente saber
+    # que eh humano (e nao mais o bot). 2 quebras de linha separam o cabecalho
+    # do conteudo, ficando visualmente claro no WhatsApp.
+    # No dashboard exibe sem o prefixo — eh adicionado so no envio outbound.
+    # Idempotente: se atendente ja digitou prefixo, nao duplica.
     if text.lstrip().startswith("*SUPORTE:*") or text.lstrip().startswith("*Suporte:*"):
         text_outbound = text
     else:
-        text_outbound = f"*SUPORTE:* {text}"
+        text_outbound = f"*SUPORTE:*\n\n{text}"
     enqueuer.enqueue_send_outbound(c.whatsapp, text_outbound, c.id)
 
     if redis is not None:

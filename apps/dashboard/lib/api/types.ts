@@ -148,6 +148,7 @@ export interface LeadPatch {
 export interface ClienteListItem {
   id: string
   whatsapp: string
+  nome: string | null
   plano: string | null
   status: string | null
   cidade: string | null

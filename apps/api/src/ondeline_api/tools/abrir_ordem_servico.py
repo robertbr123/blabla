@@ -194,11 +194,30 @@ async def abrir_ordem_servico(
             if ctx.cliente.nome_encrypted
             else "Cliente"
         )
+        # Mensagem rica pro tecnico — com emoji + bold WhatsApp + lembrete do
+        # comando CONCLUIR. Ajuda o tecnico a localizar/identificar a OS no
+        # campo e saber como fechar quando terminar.
+        wpp_cliente = ctx.conversa.whatsapp.split("@")[0] if ctx.conversa.whatsapp else ""
+        # Formata em '(DD) X XXXX-XXXX' se conseguir.
+        only_d = "".join(c for c in wpp_cliente if c.isdigit())
+        if only_d.startswith("55") and len(only_d) >= 12:
+            only_d = only_d[2:]
+        if len(only_d) == 11:
+            wpp_fmt = f"({only_d[:2]}) {only_d[2:3]} {only_d[3:7]}-{only_d[7:]}"
+        elif len(only_d) == 10:
+            wpp_fmt = f"({only_d[:2]}) {only_d[2:6]}-{only_d[6:]}"
+        else:
+            wpp_fmt = ctx.conversa.whatsapp or ""
+
         msg = (
-            f"Nova OS {codigo}\n"
-            f"Cliente: {nome_cliente}\n"
-            f"Endereco: {endereco_final}\n"
-            f"Problema: {problema}"
+            f"🔧 *Nova OS atribuída a você*\n\n"
+            f"*Código:* {codigo}\n"
+            f"*Cliente:* {nome_cliente}\n"
+            f"*WhatsApp:* {wpp_fmt}\n"
+            f"*Endereço:* {endereco_final}\n"
+            f"*Problema:* {problema}\n\n"
+            f"Quando concluir, mande no chat:\n"
+            f"_CONCLUIR {codigo}_"
         )
         # Notificacao do tecnico e best-effort: a OS ja esta persistida.
         # Se o numero nao existe no WhatsApp / Evolution falha, nao quebrar a tool.

@@ -110,7 +110,11 @@ _MEDIA_KINDS = {
 }
 
 
-_CMD_CONCLUIR_RE = re.compile(r"^conclu[ií]r\s+(OS-[\w-]+)\b", re.IGNORECASE)
+_CMD_CONCLUIR_RE = re.compile(
+    # Aceita: CONCLUIR OS-1234, concluir os 1234, finalizar OS-1234, finalizar 1234
+    r"^(?:conclu[ií]r|finaliz[a-z]+|encerrar|fechar|terminar)\s+(?:OS[\s-]*)?([A-Za-z0-9][\w-]*)\b",
+    re.IGNORECASE,
+)
 # F10 — detecta "Indicado por XXXXX" como inicio de mensagem.
 _CMD_INDICADO_RE = re.compile(
     r"^indicad[oa]\s+por\s+([A-Z0-9]{4,16})\b", re.IGNORECASE
@@ -891,6 +895,69 @@ async def process_inbound_message(
                     escalated=True,
                 )
 
+    # F11 — comando ESTOQUE (técnico consulta saldo via WhatsApp).
+    # Detecta antes do CONCLUIR pra não conflitar com outras palavras.
+    if (
+        evt.kind is InboundKind.TEXT
+        and evt.text
+        and deps.session is not None
+        and (evt.text or "").strip().upper() in ("ESTOQUE", "MEU ESTOQUE", "SALDO")
+    ):
+        import re as _re
+
+        from sqlalchemy import select as _sa_sel
+
+        from ondeline_api.db.models.business import Tecnico as _TecModel
+        from ondeline_api.repositories.estoque import MovimentoRepo as _MovRepo
+
+        jid_digits = _re.sub(r"\D", "", evt.jid)
+        jid_local = _br_local_digits(jid_digits)
+        tecnicos_all = list(
+            (
+                await deps.session.execute(
+                    _sa_sel(_TecModel).where(_TecModel.whatsapp.isnot(None))
+                )
+            )
+            .scalars()
+            .all()
+        )
+        tec = next(
+            (
+                t
+                for t in tecnicos_all
+                if (t_local := _br_local_digits(_re.sub(r"\D", "", t.whatsapp or "")))
+                and len(t_local) == 8
+                and len(jid_local) == 8
+                and jid_local == t_local
+            ),
+            None,
+        )
+        if tec is not None:
+            saldos = await _MovRepo(deps.session).saldo_full_por_tecnico(tec.id)
+            com_saldo = [(it, s) for it, s in saldos if s > 0]
+            if not com_saldo:
+                msg = (
+                    f"📦 *Seu estoque, {tec.nome.split()[0] if tec.nome else 'tec'}*\n\n"
+                    "_(vazio — sem itens em estoque)_\n\n"
+                    "Pra dar entrada, peça pro admin no painel."
+                )
+            else:
+                linhas = [
+                    f"• *{it.nome}*: {s}" + (" (serial)" if it.serializado else "")
+                    for it, s in com_saldo
+                ]
+                msg = (
+                    f"📦 *Seu estoque, {tec.nome.split()[0] if tec.nome else 'tec'}*\n\n"
+                    + "\n".join(linhas)
+                )
+            deps.outbound.enqueue_send_outbound(evt.jid, msg, conversa.id)
+            return InboundResult(
+                conversa_id=conversa.id,
+                persisted=True,
+                duplicate=False,
+                escalated=False,
+            )
+
     # Detecção de comando CONCLUIR OS-* (técnico finaliza OS via WhatsApp).
     # Roda antes da verificação de bot.ativo para que técnicos sempre consigam concluir.
     if (
@@ -902,6 +969,12 @@ async def process_inbound_message(
         log.info("concluir.cmd_check", regex_matched=bool(_m))
         if _m:
             codigo = _m.group(1).upper()
+            # Pre-fixa OS- se tecnico digitou so o numero (regex aceita ambas formas).
+            if not codigo.startswith("OS-") and not codigo.startswith("OS"):
+                codigo = f"OS-{codigo}"
+            elif codigo.startswith("OS") and not codigo.startswith("OS-"):
+                # 'OS1234' → 'OS-1234'
+                codigo = "OS-" + codigo[2:].lstrip("-")
             import re as _re
 
             from sqlalchemy import select as sa_select

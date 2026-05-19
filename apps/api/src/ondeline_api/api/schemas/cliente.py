@@ -8,10 +8,11 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ClienteListItem(BaseModel):
-    """List view — NO decrypted PII."""
+    """List view — nome decifrado (admin/atendente já tem acesso) pra facilitar identificação."""
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     whatsapp: str
+    nome: str | None = None  # decifrado server-side
     plano: str | None
     status: str | None
     cidade: str | None
