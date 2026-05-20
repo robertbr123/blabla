@@ -98,8 +98,8 @@ void main() {
     await tester.tap(find.text('Entrar com email e senha'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Bem-vindo'), findsOneWidget);
-    expect(find.text('Entrar'), findsOneWidget);
+    expect(find.text('Painel técnico em campo'), findsOneWidget);
+    expect(find.text('Acessar painel'), findsOneWidget);
   });
 
   testWidgets('splash routes to login when there is no token', (tester) async {
@@ -108,8 +108,22 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1300));
     await tester.pumpAndSettle();
 
-    expect(find.text('Bem-vindo'), findsOneWidget);
-    expect(find.text('Entrar'), findsOneWidget);
+    expect(find.text('Painel técnico em campo'), findsOneWidget);
+    expect(find.text('Acessar painel'), findsOneWidget);
+  });
+
+  testWidgets('login screen shows premium hero copy and two fields',
+      (tester) async {
+    await tester.pumpWidget(_buildRouterApp(hasToken: false));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1300));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Atendimentos, estoque e sync offline sem fricção.'),
+        findsOneWidget);
+    expect(find.text('Email corporativo'), findsOneWidget);
+    expect(find.text('Senha'), findsOneWidget);
+    expect(find.byType(TextField), findsNWidgets(2));
   });
 
   testWidgets('splash routes to os when token has no biometric snapshot',
