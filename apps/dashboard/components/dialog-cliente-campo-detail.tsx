@@ -28,6 +28,7 @@ export function DialogClienteCampoDetail({ id, onClose }: Props) {
       setForm({
         nome: c.nome,
         telefone: c.telefone,
+        email: c.email,
         cep: c.cep,
         address: c.address,
         number: c.number,
@@ -139,6 +140,7 @@ export function DialogClienteCampoDetail({ id, onClose }: Props) {
               <>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field label="Telefone" value={fmtPhone(c.telefone)} />
+                  <Field label="Email" value={c.email ?? '—'} copyable={!!c.email} />
                   <Field label="Nascimento" value={fmtDate(c.dob)} />
                   <Field label="Plano" value={c.plan_nome} />
                   <Field label="Vencimento" value={`dia ${c.due_date}`} />
@@ -217,12 +219,19 @@ export function DialogClienteCampoDetail({ id, onClose }: Props) {
                 }}
                 className="space-y-4"
               >
-                <p className="text-xs text-muted-foreground">
-                  CPF e data de nascimento não podem ser alterados. Para corrigi-los, crie um novo cadastro.
-                </p>
+                <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    <strong className="text-foreground">CPF</strong> e <strong className="text-foreground">data de nascimento</strong> são imutáveis (identificam a pessoa e estão em auditoria). Para corrigi-los, exclua este cadastro e crie um novo.
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <FormField label="CPF (imutável)" value={fmtCpf(c.cpf)} onChange={() => {}} disabled mono />
+                    <FormField label="Nascimento (imutável)" value={fmtDate(c.dob)} onChange={() => {}} disabled />
+                  </div>
+                </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <FormField label="Nome" value={form.nome ?? ''} onChange={(v) => setField('nome', v)} maxLength={255} />
                   <FormField label="Telefone" value={form.telefone ?? ''} onChange={(v) => setField('telefone', v)} maxLength={15} />
+                  <FormField label="Email" value={form.email ?? ''} onChange={(v) => setField('email', v)} maxLength={255} type="email" />
                   <FormField label="Plano" value={form.plan_nome ?? ''} onChange={(v) => setField('plan_nome', v)} maxLength={255} />
                   <FormField
                     label="Vencimento (10-30)"
@@ -337,13 +346,15 @@ function FormField({
   type = 'text',
   maxLength,
   mono = false,
+  disabled = false,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
-  type?: 'text' | 'number'
+  type?: 'text' | 'number' | 'email'
   maxLength?: number
   mono?: boolean
+  disabled?: boolean
 }) {
   const id = `f-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`
   return (
@@ -357,7 +368,9 @@ function FormField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         maxLength={maxLength}
-        className={`mt-1 ${mono ? 'font-mono' : ''}`}
+        disabled={disabled}
+        readOnly={disabled}
+        className={`mt-1 ${mono ? 'font-mono' : ''} ${disabled ? 'cursor-not-allowed opacity-70' : ''}`}
       />
     </div>
   )

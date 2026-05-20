@@ -480,6 +480,7 @@ export interface ClienteCampoOut {
   nome: string
   dob: string
   telefone: string
+  email: string | null
   cep: string | null
   address: string
   number: string
