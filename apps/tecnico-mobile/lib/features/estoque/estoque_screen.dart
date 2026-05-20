@@ -59,6 +59,7 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
               todas.fold<int>(0, (a, l) => a + (l.saldo > 0 ? l.saldo : 0));
           final categorias =
               <String>{for (final l in todas) l.categoria}.length;
+          final hasActiveRefinement = query.isNotEmpty || _soComSaldo;
 
           return Column(
             children: [
@@ -160,7 +161,7 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
                 child: RefreshIndicator(
                   onRefresh: () async => ref.invalidate(estoqueSaldoProvider),
                   child: filtradas.isEmpty
-                      ? const _Vazio()
+                      ? _Vazio(hasActiveRefinement: hasActiveRefinement)
                       : ListView.builder(
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.only(bottom: 24),
@@ -361,7 +362,8 @@ class _ItemTile extends StatelessWidget {
 }
 
 class _Vazio extends StatelessWidget {
-  const _Vazio();
+  final bool hasActiveRefinement;
+  const _Vazio({required this.hasActiveRefinement});
 
   @override
   Widget build(BuildContext context) {
@@ -390,7 +392,9 @@ class _Vazio extends StatelessWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'Ajuste a busca ou desative o filtro para revisar todo o material disponível.',
+                hasActiveRefinement
+                    ? 'Ajuste a busca ou desative o filtro para revisar todo o material disponível.'
+                    : 'Nenhum item de estoque foi disponibilizado para este técnico até o momento.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: scheme.onSurfaceVariant,

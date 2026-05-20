@@ -138,11 +138,13 @@ class _HeaderCard extends ConsumerStatefulWidget {
   ConsumerState<_HeaderCard> createState() => _HeaderCardState();
 }
 
+enum _PhotoSheetAction { camera, gallery, remove }
+
 class _HeaderCardState extends ConsumerState<_HeaderCard> {
   bool _uploading = false;
 
   Future<void> _trocarFoto() async {
-    final source = await showModalBottomSheet<ImageSource>(
+    final action = await showModalBottomSheet<_PhotoSheetAction>(
       context: context,
       builder: (_) => SafeArea(
         child: Column(
@@ -151,12 +153,12 @@ class _HeaderCardState extends ConsumerState<_HeaderCard> {
             ListTile(
               leading: const Icon(Icons.photo_camera),
               title: const Text('Tirar foto'),
-              onTap: () => Navigator.of(context).pop(ImageSource.camera),
+              onTap: () => Navigator.of(context).pop(_PhotoSheetAction.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
               title: const Text('Escolher da galeria'),
-              onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+              onTap: () => Navigator.of(context).pop(_PhotoSheetAction.gallery),
             ),
             if (widget.perfil.hasFoto)
               ListTile(
@@ -166,7 +168,8 @@ class _HeaderCardState extends ConsumerState<_HeaderCard> {
                   'Remover foto atual',
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                 ),
-                onTap: () => Navigator.of(context).pop(null),
+                onTap: () =>
+                    Navigator.of(context).pop(_PhotoSheetAction.remove),
               ),
             const SizedBox(height: 8),
           ],
@@ -175,8 +178,9 @@ class _HeaderCardState extends ConsumerState<_HeaderCard> {
     );
     if (!mounted) return;
 
-    if (source == null) {
-      // Remover
+    if (action == null) return;
+
+    if (action == _PhotoSheetAction.remove) {
       setState(() => _uploading = true);
       try {
         await ref.read(perfilActionsProvider).removerFoto();
@@ -191,6 +195,13 @@ class _HeaderCardState extends ConsumerState<_HeaderCard> {
       }
       return;
     }
+
+    final source = switch (action) {
+      _PhotoSheetAction.camera => ImageSource.camera,
+      _PhotoSheetAction.gallery => ImageSource.gallery,
+      _PhotoSheetAction.remove => null,
+    };
+    if (source == null) return;
 
     final picker = ImagePicker();
     final x = await picker.pickImage(
@@ -336,7 +347,7 @@ class _HeaderCardState extends ConsumerState<_HeaderCard> {
                           label: p.roleLabel,
                           tone: AppStatusTone.info,
                         ),
-                        if (p.hasLastGpsSnapshot)
+                        if (p.hasRecentGpsSnapshot())
                           const AppStatusChip(
                             label: 'GPS recente',
                             tone: AppStatusTone.neutral,

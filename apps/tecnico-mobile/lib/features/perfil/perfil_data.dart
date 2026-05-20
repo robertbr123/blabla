@@ -27,6 +27,8 @@ class PerfilEstatisticas {
 }
 
 class Perfil {
+  static const Duration gpsFreshnessWindow = Duration(hours: 12);
+
   final String userId;
   final String email;
   final String nome;
@@ -77,9 +79,20 @@ class Perfil {
     return trimmed;
   }
 
-  bool get hasLastGpsSnapshot {
+  bool hasRecentGpsSnapshot({
+    DateTime? now,
+    Duration freshnessWindow = gpsFreshnessWindow,
+  }) {
     final trimmed = lastGpsTs?.trim();
-    return trimmed != null && trimmed.isNotEmpty;
+    if (trimmed == null || trimmed.isEmpty) return false;
+
+    final parsed = DateTime.tryParse(trimmed);
+    if (parsed == null) return false;
+
+    final reference = (now ?? DateTime.now()).toUtc();
+    final snapshotAt = parsed.toUtc();
+    final age = reference.difference(snapshotAt);
+    return age >= Duration.zero && age <= freshnessWindow;
   }
 }
 
