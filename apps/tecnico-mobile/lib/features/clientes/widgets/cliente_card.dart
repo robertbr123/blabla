@@ -120,7 +120,7 @@ class ClienteCard extends StatelessWidget {
                             _Pill(
                               icon: Icons.engineering_outlined,
                               label: item.installerNome,
-                              color: const Color(0xFF17324D),
+                              color: scheme.primary,
                             ),
                             if (destaqueInstaladoPorMim)
                               const _Pill(

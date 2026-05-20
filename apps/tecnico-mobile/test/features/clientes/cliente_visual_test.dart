@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:permission_handler_platform_interface/permission_handler_platform_interface.dart';
 import 'package:tecnico_mobile/core/theme.dart';
 import 'package:tecnico_mobile/core/ui/app_surfaces.dart';
 import 'package:tecnico_mobile/features/clientes/cliente_data.dart';
@@ -10,42 +10,12 @@ import 'package:tecnico_mobile/features/clientes/cliente_detail_screen.dart';
 import 'package:tecnico_mobile/features/clientes/cliente_form_data.dart';
 import 'package:tecnico_mobile/features/clientes/cliente_novo_screen.dart';
 import 'package:tecnico_mobile/features/clientes/clientes_list_screen.dart';
+import 'package:tecnico_mobile/features/clientes/widgets/cliente_card.dart';
 import 'package:tecnico_mobile/features/estoque/estoque_data.dart';
 
-class _FakePermissionHandlerPlatform extends PermissionHandlerPlatform {
-  _FakePermissionHandlerPlatform(this.status);
-
-  final PermissionStatus status;
-
-  @override
-  Future<PermissionStatus> checkPermissionStatus(Permission permission) async {
-    return status;
-  }
-
-  @override
-  Future<ServiceStatus> checkServiceStatus(Permission permission) async {
-    return ServiceStatus.disabled;
-  }
-
-  @override
-  Future<bool> openAppSettings() async => true;
-
-  @override
-  Future<Map<Permission, PermissionStatus>> requestPermissions(
-    List<Permission> permissions,
-  ) async {
-    return {
-      for (final permission in permissions) permission: status,
-    };
-  }
-
-  @override
-  Future<bool> shouldShowRequestPermissionRationale(
-    Permission permission,
-  ) async {
-    return false;
-  }
-}
+const _permissionChannel = MethodChannel(
+  'flutter.baseflow.com/permissions/methods',
+);
 
 ClienteListItem _listItem({
   required String id,
@@ -204,21 +174,46 @@ Future<void> pumpNovoCliente(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-void main() {
-  late PermissionHandlerPlatform originalPermissionPlatform;
+Future<void> pumpClienteCardDarkTheme(WidgetTester tester) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: buildDarkTheme(),
+      home: Scaffold(
+        body: ClienteCard(
+          item: _listItem(id: 'cliente-dark', nome: 'Marina Silva'),
+          onTap: () {},
+        ),
+      ),
+    ),
+  );
 
+  await tester.pumpAndSettle();
+}
+
+void main() {
   setUpAll(() {
     TestWidgetsFlutterBinding.ensureInitialized();
-    originalPermissionPlatform = PermissionHandlerPlatform.instance;
   });
 
   setUp(() {
-    PermissionHandlerPlatform.instance =
-        _FakePermissionHandlerPlatform(PermissionStatus.denied);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_permissionChannel, (call) async {
+      if (call.method == 'requestPermissions') {
+        return <int, int>{Permission.location.value: 0};
+      }
+      if (call.method == 'checkServiceStatus') {
+        return 0;
+      }
+      if (call.method == 'shouldShowRequestPermissionRationale') {
+        return false;
+      }
+      return 0;
+    });
   });
 
   tearDown(() {
-    PermissionHandlerPlatform.instance = originalPermissionPlatform;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_permissionChannel, null);
   });
 
   testWidgets('clientes list shows premium search and section header',
@@ -255,5 +250,14 @@ void main() {
     expect(find.text('Novo cliente'), findsOneWidget);
     expect(find.text('Cadastro guiado'), findsOneWidget);
     expect(find.byType(AppSurfaceCard), findsAtLeastNWidgets(2));
+  });
+
+  testWidgets('cliente card uses theme-driven installer accent in dark mode',
+      (tester) async {
+    await pumpClienteCardDarkTheme(tester);
+
+    final installerText = tester.widget<Text>(find.text('Técnico 1').last);
+
+    expect(installerText.style?.color, buildDarkTheme().colorScheme.primary);
   });
 }
