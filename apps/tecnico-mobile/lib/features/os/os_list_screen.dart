@@ -4,9 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_repository.dart';
 import '../../core/auth/session_cleanup.dart';
+import '../../core/theme.dart';
+import '../../core/ui/app_section_header.dart';
+import '../../core/ui/app_surfaces.dart';
 import '../../core/push/fcm_service.dart';
 import '../../core/sync/sync_service.dart';
 import 'os_data.dart';
+import 'widgets/home_filter_strip.dart';
+import 'widgets/home_hero.dart';
+import 'widgets/home_summary_card.dart';
 import 'widgets/os_card.dart';
 
 class _OsItem {
@@ -46,40 +52,6 @@ class _OsItem {
       );
 }
 
-enum _Aba { todas, pendente, andamento, concluida, cancelada }
-
-extension _AbaLabel on _Aba {
-  String get label {
-    switch (this) {
-      case _Aba.todas:
-        return 'Todas';
-      case _Aba.pendente:
-        return 'Pendentes';
-      case _Aba.andamento:
-        return 'Andamento';
-      case _Aba.concluida:
-        return 'Concluídas';
-      case _Aba.cancelada:
-        return 'Canceladas';
-    }
-  }
-
-  bool matches(String s) {
-    switch (this) {
-      case _Aba.todas:
-        return true;
-      case _Aba.pendente:
-        return s == 'pendente';
-      case _Aba.andamento:
-        return s == 'em_andamento';
-      case _Aba.concluida:
-        return s == 'concluida';
-      case _Aba.cancelada:
-        return s == 'cancelada';
-    }
-  }
-}
-
 class OsListScreen extends ConsumerStatefulWidget {
   const OsListScreen({super.key});
 
@@ -87,25 +59,9 @@ class OsListScreen extends ConsumerStatefulWidget {
   ConsumerState<OsListScreen> createState() => _OsListScreenState();
 }
 
-class _OsListScreenState extends ConsumerState<OsListScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tab;
-  static const _abas = _Aba.values;
-
-  @override
-  void initState() {
-    super.initState();
-    _tab = TabController(length: _abas.length, vsync: this);
-    // Default abre em "Pendentes" — onde técnico mais opera.
-    _tab.index = _Aba.pendente.index;
-    _tab.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _tab.dispose();
-    super.dispose();
-  }
+class _OsListScreenState extends ConsumerState<OsListScreen> {
+  static const _filters = OsHomeFilter.values;
+  OsHomeFilter _selectedFilter = OsHomeFilter.pendente;
 
   @override
   Widget build(BuildContext context) {
@@ -116,7 +72,7 @@ class _OsListScreenState extends ConsumerState<OsListScreen>
     return Scaffold(
       backgroundColor: scheme.surfaceContainerLowest,
       appBar: AppBar(
-        title: const Text('Minhas OS'),
+        title: const Text('Home'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -129,15 +85,6 @@ class _OsListScreenState extends ConsumerState<OsListScreen>
             onPressed: _logout,
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: TabBar(
-            controller: _tab,
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            tabs: _abas.map((a) => Tab(text: a.label)).toList(),
-          ),
-        ),
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -148,63 +95,146 @@ class _OsListScreenState extends ConsumerState<OsListScreen>
         data: (rows) {
           final items = rows.map(_OsItem.fromJson).toList()
             ..sort((a, b) => _sortKey(a).compareTo(_sortKey(b)));
-          return Column(
-            children: [
-              pendingSync.when(
-                data: (n) => n > 0
-                    ? _OfflineQueueBanner(count: n)
-                    : const SizedBox.shrink(),
-                loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
-              ),
-              _SummaryStrip(
-                counts: _countByStatus(items),
-                onTap: (aba) => _tab.animateTo(aba.index),
-                selected: _abas[_tab.index],
-              ),
-              const SizedBox(height: 4),
-              Expanded(
-                child: TabBarView(
-                  controller: _tab,
-                  children: _abas.map((aba) {
-                    final filtered =
-                        items.where((i) => aba.matches(i.status)).toList();
-                    if (filtered.isEmpty) {
-                      return _EstadoVazio(
-                        aba: aba,
-                        onRefresh: () => ref.invalidate(osListStreamProvider),
-                      );
-                    }
-                    return RefreshIndicator(
-                      onRefresh: () async =>
-                          ref.invalidate(osListStreamProvider),
-                      child: ListView.builder(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.only(top: 4, bottom: 16),
-                        itemCount: filtered.length,
-                        itemBuilder: (_, i) {
-                          final it = filtered[i];
-                          return OsCard(
-                            id: it.id,
-                            codigo: it.codigo,
-                            status: it.status,
-                            problema: it.problema,
-                            endereco: it.endereco,
-                            nomeCliente: it.nomeCliente,
-                            agendamentoAt: it.agendamentoAt,
-                            onTap: () => context.push('/os/${it.id}'),
-                          );
-                        },
-                      ),
-                    );
-                  }).toList(),
+          final counts = _countByStatus(items);
+          final filtered = items
+              .where((item) => _selectedFilter.matches(item.status))
+              .toList();
+
+          return RefreshIndicator(
+            onRefresh: () async => ref.invalidate(osListStreamProvider),
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(top: 8, bottom: 24),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                  child: HomeHero(
+                    total: items.length,
+                    pendentes: counts['pendente'] ?? 0,
+                    andamento: counts['em_andamento'] ?? 0,
+                    nextAt: _nextScheduledAt(items),
+                  ),
                 ),
-              ),
-            ],
+                if (pendingSync case AsyncData(:final value)
+                    when value > 0) ...[
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: _OfflineQueueBanner(count: value),
+                  ),
+                ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: AppSectionHeader(
+                    title: 'Pulso operacional',
+                    subtitle:
+                        'Atalhos rápidos para a fila que precisa da sua atenção.',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 160,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    children: [
+                      HomeSummaryCard(
+                        key: const ValueKey('home-summary-pendentes'),
+                        label: 'Pendentes',
+                        value: counts['pendente'] ?? 0,
+                        subtitle: 'Aguardando visita',
+                        icon: Icons.hourglass_top_rounded,
+                        color: brandAccent,
+                        selected: _selectedFilter == OsHomeFilter.pendente,
+                        onTap: () => _selectFilter(OsHomeFilter.pendente),
+                      ),
+                      const SizedBox(width: 12),
+                      HomeSummaryCard(
+                        key: const ValueKey('home-summary-andamento'),
+                        label: 'Em andamento',
+                        value: counts['em_andamento'] ?? 0,
+                        subtitle: 'Visitas em curso',
+                        icon: Icons.route_rounded,
+                        color: scheme.primary,
+                        selected: _selectedFilter == OsHomeFilter.andamento,
+                        onTap: () => _selectFilter(OsHomeFilter.andamento),
+                      ),
+                      const SizedBox(width: 12),
+                      HomeSummaryCard(
+                        key: const ValueKey('home-summary-concluidas'),
+                        label: 'Concluídas',
+                        value: counts['concluida'] ?? 0,
+                        subtitle: 'Encerradas hoje',
+                        icon: Icons.check_circle_rounded,
+                        color: scheme.tertiary,
+                        selected: _selectedFilter == OsHomeFilter.concluida,
+                        onTap: () => _selectFilter(OsHomeFilter.concluida),
+                      ),
+                      const SizedBox(width: 12),
+                      HomeSummaryCard(
+                        key: const ValueKey('home-summary-canceladas'),
+                        label: 'Canceladas',
+                        value: counts['cancelada'] ?? 0,
+                        subtitle: 'Exigem revisão',
+                        icon: Icons.cancel_rounded,
+                        color: scheme.error,
+                        selected: _selectedFilter == OsHomeFilter.cancelada,
+                        onTap: () => _selectFilter(OsHomeFilter.cancelada),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                  child: HomeFilterStrip(
+                    filters: _filters,
+                    selected: _selectedFilter,
+                    onSelected: _selectFilter,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                  child: AppSectionHeader(
+                    title: _selectedFilter.listTitle,
+                    subtitle: _selectedFilter.listSubtitle(filtered.length),
+                    actionLabel:
+                        _selectedFilter == OsHomeFilter.todas ? null : 'Todas',
+                    onAction: _selectedFilter == OsHomeFilter.todas
+                        ? null
+                        : () => _selectFilter(OsHomeFilter.todas),
+                  ),
+                ),
+                if (filtered.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: _EstadoVazio(
+                      filter: _selectedFilter,
+                      onRefresh: () => ref.invalidate(osListStreamProvider),
+                    ),
+                  )
+                else
+                  ...filtered.map(
+                    (it) => OsCard(
+                      id: it.id,
+                      codigo: it.codigo,
+                      status: it.status,
+                      problema: it.problema,
+                      endereco: it.endereco,
+                      nomeCliente: it.nomeCliente,
+                      agendamentoAt: it.agendamentoAt,
+                      onTap: () => context.push('/os/${it.id}'),
+                    ),
+                  ),
+              ],
+            ),
           );
         },
       ),
     );
+  }
+
+  void _selectFilter(OsHomeFilter filter) {
+    if (_selectedFilter == filter) return;
+    setState(() => _selectedFilter = filter);
   }
 
   // Ordena: atrasadas/agendamento mais próximo primeiro; sem agendamento
@@ -230,6 +260,15 @@ class _OsListScreenState extends ConsumerState<OsListScreen>
     return m;
   }
 
+  DateTime? _nextScheduledAt(List<_OsItem> items) {
+    for (final item in items) {
+      if (item.agendamentoAt != null) {
+        return item.agendamentoAt;
+      }
+    }
+    return null;
+  }
+
   Future<void> _logout() async {
     try {
       await ref.read(fcmServiceProvider).revoke();
@@ -240,169 +279,51 @@ class _OsListScreenState extends ConsumerState<OsListScreen>
   }
 }
 
-class _SummaryStrip extends StatelessWidget {
-  final Map<String, int> counts;
-  final void Function(_Aba) onTap;
-  final _Aba selected;
-  const _SummaryStrip({
-    required this.counts,
-    required this.onTap,
-    required this.selected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final pend = counts['pendente'] ?? 0;
-    final and = counts['em_andamento'] ?? 0;
-    final conc = counts['concluida'] ?? 0;
-    final canc = counts['cancelada'] ?? 0;
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      child: Row(
-        children: [
-          _Kpi(
-            label: 'Pendentes',
-            value: pend,
-            color: const Color(0xFFf59e0b),
-            icon: Icons.hourglass_top,
-            selected: selected == _Aba.pendente,
-            onTap: () => onTap(_Aba.pendente),
-          ),
-          const SizedBox(width: 8),
-          _Kpi(
-            label: 'Em andamento',
-            value: and,
-            color: const Color(0xFF2563eb),
-            icon: Icons.directions_run,
-            selected: selected == _Aba.andamento,
-            onTap: () => onTap(_Aba.andamento),
-          ),
-          const SizedBox(width: 8),
-          _Kpi(
-            label: 'Concluídas',
-            value: conc,
-            color: const Color(0xFF16a34a),
-            icon: Icons.check_circle,
-            selected: selected == _Aba.concluida,
-            onTap: () => onTap(_Aba.concluida),
-          ),
-          const SizedBox(width: 8),
-          _Kpi(
-            label: 'Canceladas',
-            value: canc,
-            color: const Color(0xFF6b7280),
-            icon: Icons.cancel,
-            selected: selected == _Aba.cancelada,
-            onTap: () => onTap(_Aba.cancelada),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Kpi extends StatelessWidget {
-  final String label;
-  final int value;
-  final Color color;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-  const _Kpi({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: 120,
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-        decoration: BoxDecoration(
-          color: selected
-              ? color.withValues(alpha: 0.15)
-              : scheme.surfaceContainerHigh,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: selected ? color : scheme.outlineVariant,
-            width: selected ? 1.5 : 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 14, color: color),
-                const Spacer(),
-                Text(
-                  '$value',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: scheme.onSurface,
-                    height: 1,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _OfflineQueueBanner extends StatelessWidget {
   final int count;
   const _OfflineQueueBanner({required this.count});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFf59e0b).withValues(alpha: 0.13),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: const Color(0xFFf59e0b).withValues(alpha: 0.35),
-        ),
-      ),
+    return AppSurfaceCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
-          const Icon(Icons.cloud_upload, size: 16, color: Color(0xFFd97706)),
-          const SizedBox(width: 8),
+          Container(
+            height: 36,
+            width: 36,
+            decoration: BoxDecoration(
+              color: brandAccent.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.cloud_upload_rounded,
+              size: 18,
+              color: brandAccent,
+            ),
+          ),
+          const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              '$count ${count == 1 ? "item" : "itens"} aguardando upload',
-              style: const TextStyle(
-                color: Color(0xFFb45309),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Fila offline pronta para sincronizar',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '$count ${count == 1 ? "item" : "itens"} aguardando upload',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -412,42 +333,40 @@ class _OfflineQueueBanner extends StatelessWidget {
 }
 
 class _EstadoVazio extends StatelessWidget {
-  final _Aba aba;
+  final OsHomeFilter filter;
   final VoidCallback onRefresh;
-  const _EstadoVazio({required this.aba, required this.onRefresh});
+  const _EstadoVazio({required this.filter, required this.onRefresh});
 
   @override
   Widget build(BuildContext context) {
     String texto;
     IconData icone;
-    switch (aba) {
-      case _Aba.todas:
+    switch (filter) {
+      case OsHomeFilter.todas:
         texto = 'Nenhuma OS atribuída a você.';
         icone = Icons.inbox_outlined;
         break;
-      case _Aba.pendente:
-        texto = 'Nenhuma OS pendente. 🎉';
+      case OsHomeFilter.pendente:
+        texto = 'Nenhuma OS pendente.';
         icone = Icons.check_circle_outline;
         break;
-      case _Aba.andamento:
+      case OsHomeFilter.andamento:
         texto = 'Nenhuma OS em andamento.';
         icone = Icons.directions_run;
         break;
-      case _Aba.concluida:
+      case OsHomeFilter.concluida:
         texto = 'Nenhuma OS concluída ainda.';
         icone = Icons.check_circle_outline;
         break;
-      case _Aba.cancelada:
+      case OsHomeFilter.cancelada:
         texto = 'Nenhuma OS cancelada.';
         icone = Icons.cancel_outlined;
         break;
     }
-    return RefreshIndicator(
-      onRefresh: () async => onRefresh(),
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
+    return AppSurfaceCard(
+      padding: const EdgeInsets.fromLTRB(20, 32, 20, 32),
+      child: Column(
         children: [
-          const SizedBox(height: 80),
           Icon(
             icone,
             size: 56,
@@ -460,6 +379,12 @@ class _EstadoVazio extends StatelessWidget {
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            onPressed: onRefresh,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Atualizar'),
           ),
         ],
       ),

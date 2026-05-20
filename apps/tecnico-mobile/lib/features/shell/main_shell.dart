@@ -54,9 +54,9 @@ class _MainShellState extends ConsumerState<MainShell> {
         },
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.assignment_outlined),
-            selectedIcon: Icon(Icons.assignment),
-            label: 'OS',
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Home',
           ),
           NavigationDestination(
             icon: Icon(Icons.inventory_2_outlined),

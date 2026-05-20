@@ -69,27 +69,51 @@ void main() {
   testWidgets('home screen shows operational hero and dominant os list',
       (tester) async {
     await _pumpHome(tester);
+    final mainScroll = find.byType(Scrollable).first;
 
     expect(find.text('Home'), findsOneWidget);
     expect(find.textContaining('Hoje'), findsOneWidget);
     expect(find.text('Pendentes'), findsWidgets);
+    expect(find.textContaining('aguardando upload'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('OS-001'),
+      300,
+      scrollable: mainScroll,
+    );
+
     expect(find.text('OS-001'), findsOneWidget);
     expect(find.text('OS-002'), findsNothing);
-    expect(find.textContaining('aguardando upload'), findsOneWidget);
   });
 
   testWidgets('home filters can switch between all os and em andamento',
       (tester) async {
     await _pumpHome(tester);
+    final mainScroll = find.byType(Scrollable).first;
 
-    await tester.tap(find.text('Todas').last);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('home-filter-todas')),
+      300,
+      scrollable: mainScroll,
+    );
+    await tester.tap(find.byKey(const ValueKey('home-filter-todas')));
     await tester.pumpAndSettle();
 
     expect(find.text('OS-001'), findsOneWidget);
     expect(find.text('OS-002'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('OS-003'),
+      220,
+      scrollable: mainScroll,
+    );
     expect(find.text('OS-003'), findsOneWidget);
 
-    await tester.tap(find.text('Em andamento').last);
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('home-filter-andamento')),
+      150,
+      scrollable: mainScroll,
+    );
+    await tester.tap(find.byKey(const ValueKey('home-filter-andamento')));
     await tester.pumpAndSettle();
 
     expect(find.text('OS-001'), findsNothing);
@@ -101,7 +125,12 @@ void main() {
       (tester) async {
     await _pumpHome(tester, child: const MainShell());
 
-    expect(find.byIcon(Icons.home_rounded), findsOneWidget);
-    expect(find.text('Home'), findsAtLeastNWidgets(1));
+    expect(
+      find.descendant(
+        of: find.byType(NavigationBar),
+        matching: find.text('Home'),
+      ),
+      findsOneWidget,
+    );
   });
 }
