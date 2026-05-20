@@ -53,7 +53,7 @@ class _Body extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pendingAsync = ref.watch(pendingCountProvider);
-    final status = os['status']?.toString() ?? '';
+    final status = os.readString('status', fallback: '');
     final isPendente = status == 'pendente';
     final isEmAndamento = status == 'em_andamento';
     final podeConcluir = isEmAndamento;
@@ -75,11 +75,11 @@ class _Body extends ConsumerWidget {
         _StatusSection(os: os),
         const SizedBox(height: 12),
         _ContextSection(
-          endereco: os['endereco']?.toString() ?? '—',
-          problema: os['problema']?.toString() ?? '—',
-          plano: os['plano'] as String?,
-          login: os['pppoe_login'] as String?,
-          senha: os['pppoe_senha'] as String?,
+          endereco: os.readString('endereco'),
+          problema: os.readString('problema'),
+          plano: os.readOptionalString('plano'),
+          login: os.readOptionalString('pppoe_login'),
+          senha: os.readOptionalString('pppoe_senha'),
         ),
         const SizedBox(height: 12),
         _ActionsSection(
@@ -112,6 +112,7 @@ class _Body extends ConsumerWidget {
               '/api/v1/tecnico/me/os/$osId/iniciar',
               data: body,
             );
+        await ref.read(osLocalRepoProvider).markStartedOptimistic(osId);
         ref.invalidate(osDetailProvider(osId));
         _showSnack(context, 'OS iniciada ✅');
       } else {
@@ -221,6 +222,9 @@ class _ConcluirSheetState extends ConsumerState<_ConcluirSheet> {
                 '/api/v1/tecnico/me/os/${widget.osId}/concluir',
                 data: body,
               );
+          await ref
+              .read(osLocalRepoProvider)
+              .markConcludedOptimistic(widget.osId, body);
         } catch (_) {
           await ref
               .read(osLocalRepoProvider)
@@ -388,10 +392,10 @@ class _StatusSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final statusInfo = _StatusInfo.of((os['status'] ?? '') as String);
-    final nome = (os['nome_cliente'] as String?) ?? 'Cliente —';
-    final codigo = (os['codigo'] ?? '') as String;
-    final agendamento = _parseDate(os['agendamento_at']?.toString());
+    final statusInfo = _StatusInfo.of(os.readString('status', fallback: ''));
+    final nome = os.readString('nome_cliente');
+    final codigo = os.readString('codigo', fallback: '');
+    final agendamento = _parseDate(os.readOptionalString('agendamento_at'));
 
     return AppSurfaceCard(
       child: Column(
@@ -760,18 +764,16 @@ class _ConnectionRow extends StatelessWidget {
 class _DetailMetaPill extends StatelessWidget {
   final IconData icon;
   final String label;
-  final Color? color;
 
   const _DetailMetaPill({
     required this.icon,
     required this.label,
-    this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final resolvedColor = color ?? scheme.onSurfaceVariant;
+    final resolvedColor = scheme.onSurfaceVariant;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -800,49 +802,22 @@ class _DetailMetaPill extends StatelessWidget {
 
 class _StatusInfo {
   final String label;
-  final Color color;
-  final IconData icon;
   final AppStatusTone tone;
 
-  const _StatusInfo(this.label, this.color, this.icon, this.tone);
+  const _StatusInfo(this.label, this.tone);
 
   static _StatusInfo of(String status) {
     switch (status) {
       case 'pendente':
-        return const _StatusInfo(
-          'Pendente',
-          Color(0xFFf59e0b),
-          Icons.hourglass_top_rounded,
-          AppStatusTone.warning,
-        );
+        return const _StatusInfo('Pendente', AppStatusTone.warning);
       case 'em_andamento':
-        return const _StatusInfo(
-          'Em andamento',
-          Color(0xFF2563eb),
-          Icons.directions_run_rounded,
-          AppStatusTone.info,
-        );
+        return const _StatusInfo('Em andamento', AppStatusTone.info);
       case 'concluida':
-        return const _StatusInfo(
-          'Concluída',
-          Color(0xFF16a34a),
-          Icons.check_circle_rounded,
-          AppStatusTone.success,
-        );
+        return const _StatusInfo('Concluída', AppStatusTone.success);
       case 'cancelada':
-        return const _StatusInfo(
-          'Cancelada',
-          Color(0xFF6b7280),
-          Icons.cancel_rounded,
-          AppStatusTone.neutral,
-        );
+        return const _StatusInfo('Cancelada', AppStatusTone.neutral);
       default:
-        return _StatusInfo(
-          status,
-          const Color(0xFF6b7280),
-          Icons.help_outline_rounded,
-          AppStatusTone.neutral,
-        );
+        return _StatusInfo(status, AppStatusTone.neutral);
     }
   }
 }
@@ -852,6 +827,28 @@ DateTime? _parseDate(String? value) {
     return null;
   }
   return DateTime.tryParse(value);
+}
+
+extension on Map<String, dynamic> {
+  String readString(String key, {String fallback = '—'}) {
+    final value = this[key];
+    if (value == null) {
+      return fallback;
+    }
+
+    final normalized = value.toString().trim();
+    return normalized.isEmpty ? fallback : normalized;
+  }
+
+  String? readOptionalString(String key) {
+    final value = this[key];
+    if (value == null) {
+      return null;
+    }
+
+    final normalized = value.toString().trim();
+    return normalized.isEmpty ? null : normalized;
+  }
 }
 
 class _Erro extends StatelessWidget {

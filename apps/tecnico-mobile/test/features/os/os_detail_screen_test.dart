@@ -87,6 +87,40 @@ class _OfflineAdapter implements HttpClientAdapter {
   }
 }
 
+class _PostSuccessGetFailureAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.method == 'POST') {
+      return ResponseBody.fromString(
+        '{}',
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      );
+    }
+
+    throw DioException(
+      requestOptions: options,
+      type: DioExceptionType.connectionError,
+      error: 'detail refetch failed',
+    );
+  }
+}
+
+Dio _postSuccessGetFailureDio() {
+  final dio = Dio();
+  dio.httpClientAdapter = _PostSuccessGetFailureAdapter();
+  return dio;
+}
+
 Future<void> _pumpOfflineOsDetail(
   WidgetTester tester, {
   required AppDatabase db,
@@ -265,6 +299,32 @@ void main() {
   });
 
   testWidgets(
+      'online iniciar success keeps updated state when refetch falls back to cache',
+      (tester) async {
+    final db = _testDatabase();
+    addTearDown(db.close);
+
+    ConnectivityPlatform.instance =
+        _FakeConnectivityPlatform(const [ConnectivityResult.wifi]);
+    await _pumpOfflineOsDetail(
+      tester,
+      db: db,
+      status: 'pendente',
+      dio: _postSuccessGetFailureDio(),
+    );
+
+    await _scrollUntilVisible(
+      tester,
+      find.text('Iniciar visita (com GPS)'),
+    );
+    await tester.tap(find.text('Iniciar visita (com GPS)'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Iniciar visita (com GPS)'), findsNothing);
+    expect(find.text('Concluir OS'), findsOneWidget);
+  });
+
+  testWidgets(
       'online concluir fallback updates screen state immediately when post fails',
       (tester) async {
     final db = _testDatabase();
@@ -291,5 +351,31 @@ void main() {
       find.text('Falha online — conclusão enfileirada pra retry.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets(
+      'online concluir success keeps updated state when refetch falls back to cache',
+      (tester) async {
+    final db = _testDatabase();
+    addTearDown(db.close);
+
+    ConnectivityPlatform.instance =
+        _FakeConnectivityPlatform(const [ConnectivityResult.wifi]);
+    await _pumpOfflineOsDetail(
+      tester,
+      db: db,
+      status: 'em_andamento',
+      dio: _postSuccessGetFailureDio(),
+    );
+
+    await _scrollUntilVisible(tester, find.text('Concluir OS'));
+    await tester.tap(find.text('Concluir OS'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Concluir'));
+    await tester.pumpAndSettle();
+    await _scrollBackUntilVisible(tester, find.text('Concluída'));
+
+    expect(find.text('Concluir OS'), findsNothing);
+    expect(find.text('Concluída'), findsOneWidget);
   });
 }
