@@ -59,6 +59,7 @@ class ClienteCampo {
   final String nome;
   final DateTime dob;
   final String telefone;
+  final String? email;
   final String? cep;
   final String address;
   final String number;
@@ -92,6 +93,7 @@ class ClienteCampo {
     required this.nome,
     required this.dob,
     required this.telefone,
+    required this.email,
     required this.cep,
     required this.address,
     required this.number,
@@ -126,6 +128,7 @@ class ClienteCampo {
         nome: (j['nome'] ?? '') as String,
         dob: DateTime.parse(j['dob'] as String),
         telefone: (j['telefone'] ?? '') as String,
+        email: j['email'] as String?,
         cep: j['cep'] as String?,
         address: (j['address'] ?? '') as String,
         number: (j['number'] ?? '') as String,
@@ -150,8 +153,7 @@ class ClienteCampo {
             ?.cast<Map>()
             .map((m) => m.cast<String, dynamic>())
             .toList(),
-        registrationDate:
-            DateTime.parse(j['registration_date'] as String),
+        registrationDate: DateTime.parse(j['registration_date'] as String),
         sgpSyncedAt: j['sgp_synced_at'] != null
             ? DateTime.tryParse(j['sgp_synced_at'] as String)
             : null,
@@ -203,7 +205,8 @@ class ClienteListFilter {
 
   String toQueryString() {
     final parts = <String>[];
-    if (q != null && q!.trim().isNotEmpty) parts.add('q=${Uri.encodeQueryComponent(q!.trim())}');
+    if (q != null && q!.trim().isNotEmpty)
+      parts.add('q=${Uri.encodeQueryComponent(q!.trim())}');
     if (city != null && city!.trim().isNotEmpty) {
       parts.add('city=${Uri.encodeQueryComponent(city!.trim())}');
     }
@@ -276,9 +279,7 @@ final clientesListProvider =
       return nome.contains(q) || city.contains(q) || address.contains(q);
     }).toList();
     return ClienteListPage(
-      items: filtered
-          .map((m) => ClienteListItem.fromJson(m))
-          .toList(),
+      items: filtered.map((m) => ClienteListItem.fromJson(m)).toList(),
       nextCursor: null,
     );
   }

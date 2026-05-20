@@ -5,7 +5,13 @@ from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+def _validate_due_date(value: int) -> int:
+    if value not in (10, 20, 30):
+        raise ValueError("due_date deve ser 10, 20 ou 30")
+    return value
 
 # ── Input ────────────────────────────────────────────────────
 
@@ -25,6 +31,7 @@ class ClienteCampoIn(BaseModel):
     nome: str = Field(min_length=1, max_length=255)
     dob: date
     telefone: str = Field(min_length=10, max_length=15)
+    email: str | None = Field(default=None, max_length=255)
     # Endereco
     cep: str | None = Field(default=None, max_length=10)
     address: str = Field(min_length=1, max_length=255)
@@ -38,7 +45,7 @@ class ClienteCampoIn(BaseModel):
     plan_nome: str = Field(min_length=1, max_length=255)
     pppoe_user: str | None = Field(default=None, max_length=100)
     pppoe_pass: str | None = Field(default=None, max_length=100)
-    due_date: int = Field(ge=1, le=28)
+    due_date: int = Field(ge=10, le=30)
     # Equipamento + contrato + obs
     serial: str | None = Field(default=None, max_length=100)
     contrato: str | None = Field(default=None, max_length=20)
@@ -50,12 +57,15 @@ class ClienteCampoIn(BaseModel):
     # Materiais consumidos na instalacao (opcional — pode ficar vazio)
     materiais: list[MaterialUsado] = Field(default_factory=list)
 
+    _due_date_validator = field_validator("due_date")(_validate_due_date)
+
 
 class ClienteCampoPatch(BaseModel):
     """PATCH parcial. Campos nao listados aqui sao imutaveis (cpf, dob, installer)."""
 
     nome: str | None = Field(default=None, max_length=255)
     telefone: str | None = Field(default=None, max_length=15)
+    email: str | None = Field(default=None, max_length=255)
     cep: str | None = Field(default=None, max_length=10)
     address: str | None = Field(default=None, max_length=255)
     number: str | None = Field(default=None, max_length=10)
@@ -67,13 +77,15 @@ class ClienteCampoPatch(BaseModel):
     plan_nome: str | None = Field(default=None, max_length=255)
     pppoe_user: str | None = Field(default=None, max_length=100)
     pppoe_pass: str | None = Field(default=None, max_length=100)
-    due_date: int | None = Field(default=None, ge=1, le=28)
+    due_date: int | None = Field(default=None, ge=10, le=30)
     serial: str | None = Field(default=None, max_length=100)
     contrato: str | None = Field(default=None, max_length=20)
     observation: str | None = None
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
     location_accuracy: float | None = Field(default=None, ge=0)
+
+    _due_date_validator = field_validator("due_date")(_validate_due_date)
 
 
 class SyncSgpIn(BaseModel):
@@ -103,7 +115,7 @@ class ImportClienteRow(BaseModel):
     plan_id: int | None = None
     pppoe_user: str | None = Field(default=None, max_length=100)
     pppoe_pass: str | None = Field(default=None, max_length=100)
-    due_date: int = Field(ge=1, le=28)
+    due_date: int = Field(ge=10, le=30)
     installer: str = Field(min_length=1, max_length=255)
     serial: str | None = Field(default=None, max_length=100)
     contrato: str | None = Field(default=None, max_length=20)
@@ -112,6 +124,8 @@ class ImportClienteRow(BaseModel):
     longitude: float | None = Field(default=None, ge=-180, le=180)
     location_accuracy: float | None = Field(default=None, ge=0)
     registration_date: date
+
+    _due_date_validator = field_validator("due_date")(_validate_due_date)
 
 
 class ImportResult(BaseModel):
@@ -164,6 +178,7 @@ class ClienteCampoOut(BaseModel):
     nome: str
     dob: date
     telefone: str
+    email: str | None
     cep: str | None
     address: str
     number: str

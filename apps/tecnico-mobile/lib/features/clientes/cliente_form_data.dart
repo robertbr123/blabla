@@ -88,6 +88,7 @@ class CreateClienteCampoIn {
   final String nome;
   final String dob;
   final String telefone;
+  final String? email;
   final String? cep;
   final String address;
   final String number;
@@ -113,6 +114,7 @@ class CreateClienteCampoIn {
     required this.nome,
     required this.dob,
     required this.telefone,
+    required this.email,
     required this.cep,
     required this.address,
     required this.number,
@@ -139,6 +141,7 @@ class CreateClienteCampoIn {
         'nome': nome,
         'dob': dob,
         'telefone': telefone,
+        if (email != null) 'email': email,
         if (cep != null) 'cep': cep,
         'address': address,
         'number': number,
@@ -202,6 +205,24 @@ class ClienteFormActions {
 final clienteFormActionsProvider = Provider<ClienteFormActions>(
   (ref) => ClienteFormActions(ref.watch(apiClientProvider)),
 );
+
+String extractDioMessage(
+  DioException error, {
+  String fallback = 'Não consegui concluir a ação agora.',
+}) {
+  final data = error.response?.data;
+  if (data is Map) {
+    final detail = data['detail']?.toString().trim();
+    if (detail != null && detail.isNotEmpty) {
+      return detail;
+    }
+  }
+  final message = error.message?.trim();
+  if (message != null && message.isNotEmpty) {
+    return message;
+  }
+  return fallback;
+}
 
 List<SgpPlano> _decodeSgpPlanos(Object? data) {
   final raw = (data as Map).cast<String, dynamic>();

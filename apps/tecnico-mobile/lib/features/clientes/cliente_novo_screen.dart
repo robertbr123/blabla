@@ -29,6 +29,7 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
   final _nome = TextEditingController();
   DateTime? _dob;
   final _telefone = TextEditingController();
+  final _email = TextEditingController();
 
   // Step 2 — endereço + plano
   final _cep = TextEditingController();
@@ -75,6 +76,7 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
     _cpf.dispose();
     _nome.dispose();
     _telefone.dispose();
+    _email.dispose();
     _cep.dispose();
     _address.dispose();
     _number.dispose();
@@ -132,6 +134,11 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
     if (_dob == null) return 'Data de nascimento é obrigatória.';
     final tel = onlyDigits(_telefone.text);
     if (tel.length < 10) return 'Telefone inválido (mínimo 10 dígitos).';
+    final email = _email.text.trim();
+    if (email.isNotEmpty &&
+        !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      return 'Email inválido.';
+    }
     return null;
   }
 
@@ -140,7 +147,9 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
     if (_number.text.trim().isEmpty) return 'Número é obrigatório.';
     if (_city.text.trim().isEmpty) return 'Cidade é obrigatória.';
     if (_planoSelecionado == null) return 'Selecione um plano.';
-    if (_dueDate < 1 || _dueDate > 28) return 'Vencimento entre 1 e 28.';
+    if (![10, 20, 30].contains(_dueDate)) {
+      return 'Vencimento deve ser dia 10, 20 ou 30.';
+    }
     return null;
   }
 
@@ -168,6 +177,7 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
         nome: _nome.text.trim(),
         dob: DateFormat('yyyy-MM-dd').format(_dob!),
         telefone: onlyDigits(_telefone.text),
+        email: _email.text.trim().isEmpty ? null : _email.text.trim(),
         cep: _cep.text.trim().isEmpty ? null : onlyDigits(_cep.text),
         address: _address.text.trim(),
         number: _number.text.trim(),
@@ -373,6 +383,16 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
               hintText: 'Ex: 92999998888',
             ),
           ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _email,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'Email (opcional)',
+              prefixIcon: Icon(Icons.email_outlined),
+              hintText: 'cliente@exemplo.com',
+            ),
+          ),
         ],
       ),
     );
@@ -507,20 +527,22 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
             children: [
               const Icon(Icons.calendar_today, size: 18),
               const SizedBox(width: 8),
-              const Text('Vencimento dia '),
+              const Text('Vencimento'),
               const SizedBox(width: 8),
               Expanded(
-                child: Slider(
-                  min: 1,
-                  max: 28,
-                  divisions: 27,
-                  value: _dueDate.toDouble(),
-                  label: '$_dueDate',
-                  onChanged: (v) => setState(() => _dueDate = v.round()),
+                child: Wrap(
+                  spacing: 8,
+                  children: [10, 20, 30]
+                      .map(
+                        (day) => ChoiceChip(
+                          label: Text('Dia $day'),
+                          selected: _dueDate == day,
+                          onSelected: (_) => setState(() => _dueDate = day),
+                        ),
+                      )
+                      .toList(),
                 ),
               ),
-              Text('$_dueDate',
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
             ],
           ),
         ],

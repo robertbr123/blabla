@@ -685,6 +685,7 @@ class ClienteCadastro(Base):
     nome_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
     dob: Mapped[date] = mapped_column(Date, nullable=False)
     telefone_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    email_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Endereco (plain — buscavel)
     cep: Mapped[str | None] = mapped_column(String(10), nullable=True)
     address: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -698,7 +699,7 @@ class ClienteCadastro(Base):
     plan_nome: Mapped[str] = mapped_column(String(255), nullable=False)
     pppoe_user_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
     pppoe_pass_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
-    due_date: Mapped[int] = mapped_column(Integer, nullable=False)  # 1-28
+    due_date: Mapped[int] = mapped_column(Integer, nullable=False)  # 10|20|30
     # Instalador
     installer_user_id: Mapped[UUID | None] = mapped_column(
         PgUUID(as_uuid=True),
@@ -736,7 +737,7 @@ class ClienteCadastro(Base):
     )
 
     __table_args__ = (
-        CheckConstraint("due_date BETWEEN 1 AND 28", name="ck_cliente_cad_due_date"),
+        CheckConstraint("due_date IN (10, 20, 30)", name="ck_cliente_cad_due_date"),
         Index("ix_clientes_cadastro_cpf_hash", "cpf_hash", unique=True),
         Index("ix_clientes_cadastro_city", "city"),
         Index("ix_clientes_cadastro_serial", "serial"),

@@ -9,9 +9,24 @@ import '../cliente_data.dart';
 import '../cliente_form_data.dart';
 
 const _tipos = <({String key, String label, IconData icon, Color color})>[
-  (key: 'serial', label: 'Serial', icon: Icons.qr_code_2, color: Color(0xFF7c3aed)),
-  (key: 'instalacao', label: 'Instalação', icon: Icons.engineering, color: Color(0xFF2563eb)),
-  (key: 'speedtest', label: 'Speedtest', icon: Icons.speed, color: Color(0xFF16a34a)),
+  (
+    key: 'serial',
+    label: 'Serial',
+    icon: Icons.qr_code_2,
+    color: Color(0xFF7c3aed)
+  ),
+  (
+    key: 'instalacao',
+    label: 'Instalação',
+    icon: Icons.engineering,
+    color: Color(0xFF2563eb)
+  ),
+  (
+    key: 'speedtest',
+    label: 'Speedtest',
+    icon: Icons.speed,
+    color: Color(0xFF16a34a)
+  ),
   (key: 'outro', label: 'Outro', icon: Icons.photo, color: Color(0xFF6b7280)),
 ];
 
@@ -35,7 +50,8 @@ class _ClienteFotosSectionState extends ConsumerState<ClienteFotosSection> {
   bool _uploading = false;
 
   Future<void> _adicionarFoto() async {
-    final escolha = await showModalBottomSheet<({ImageSource source, String tipo})?>(
+    final escolha =
+        await showModalBottomSheet<({ImageSource source, String tipo})?>(
       context: context,
       isScrollControlled: true,
       builder: (_) => const _AdicionarFotoSheet(),
@@ -66,7 +82,14 @@ class _ClienteFotosSectionState extends ConsumerState<ClienteFotosSection> {
     } on DioException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Falhou: ${e.message ?? e.type.name}')),
+          SnackBar(
+            content: Text(
+              extractDioMessage(
+                e,
+                fallback: 'Não consegui enviar a foto agora.',
+              ),
+            ),
+          ),
         );
       }
     } finally {
@@ -104,7 +127,7 @@ class _ClienteFotosSectionState extends ConsumerState<ClienteFotosSection> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Falhou: $e')),
+          const SnackBar(content: Text('Não consegui remover a foto agora.')),
         );
       }
     }
@@ -175,8 +198,7 @@ class _ClienteFotosSectionState extends ConsumerState<ClienteFotosSection> {
               GridView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
                   mainAxisSpacing: 8,
                   crossAxisSpacing: 8,
@@ -302,7 +324,8 @@ class _FotoNetworkImageState extends ConsumerState<_FotoNetworkImage> {
         ),
       );
     }
-    final url = '$apiBaseUrl/api/v1/clientes-campo/${widget.clienteId}/foto/${widget.idx}';
+    final url =
+        '$apiBaseUrl/api/v1/clientes-campo/${widget.clienteId}/foto/${widget.idx}';
     final image = Image.network(
       url,
       fit: widget.fit,

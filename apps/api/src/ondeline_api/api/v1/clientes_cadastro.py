@@ -83,6 +83,7 @@ def _to_out(c: ClienteCadastro) -> ClienteCampoOut:
         nome=_dec(c.nome_encrypted) or "",
         dob=c.dob,
         telefone=_dec(c.telefone_encrypted) or "",
+        email=_dec(c.email_encrypted),
         cep=c.cep,
         address=c.address,
         number=c.number,
@@ -371,6 +372,7 @@ async def create_cliente_campo(
         nome_encrypted=encrypt_pii(body.nome.strip()),
         dob=body.dob,
         telefone_encrypted=encrypt_pii(tel_digits),
+        email_encrypted=encrypt_pii(body.email.strip()) if body.email else None,
         cep=body.cep,
         address=body.address.strip(),
         number=body.number.strip(),
@@ -458,6 +460,9 @@ async def patch_cliente_campo(
         if len(tel_digits) < 10:
             raise HTTPException(status_code=400, detail="telefone invalido")
         cliente.telefone_encrypted = encrypt_pii(tel_digits)
+    if "email" in data:
+        v = data.pop("email")
+        cliente.email_encrypted = encrypt_pii(v.strip()) if v else None
     if "pppoe_user" in data:
         v = data.pop("pppoe_user")
         cliente.pppoe_user_encrypted = encrypt_pii(v) if v else None

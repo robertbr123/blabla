@@ -37,6 +37,54 @@ ResponseBody _jsonBody(Object body, int statusCode) {
 }
 
 void main() {
+  test('CreateClienteCampoIn serializes optional email when present', () {
+    final body = CreateClienteCampoIn(
+      cpf: '12345678901',
+      nome: 'Cliente Teste',
+      dob: '2026-05-20',
+      telefone: '92999998888',
+      email: 'cliente@teste.com',
+      cep: '69900000',
+      address: 'Rua A',
+      number: '12',
+      complement: null,
+      neighborhood: 'Centro',
+      city: 'Rio Branco',
+      state: 'AC',
+      planId: 1,
+      planNome: 'Plano X',
+      pppoeUser: null,
+      pppoePass: null,
+      dueDate: 20,
+      serial: null,
+      contrato: null,
+      observation: null,
+      latitude: null,
+      longitude: null,
+      locationAccuracy: null,
+      materiais: const [],
+    );
+
+    expect(body.toJson()['email'], 'cliente@teste.com');
+    expect(body.toJson()['due_date'], 20);
+  });
+
+  test('extractDioMessage prefers backend detail', () {
+    final error = DioException(
+      requestOptions: RequestOptions(path: '/api/v1/clientes-campo/x/fotos'),
+      response: Response(
+        requestOptions: RequestOptions(path: '/api/v1/clientes-campo/x/fotos'),
+        statusCode: 500,
+        data: {'detail': 'arquivo da foto inválido'},
+      ),
+    );
+
+    expect(
+      extractDioMessage(error, fallback: 'fallback'),
+      'arquivo da foto inválido',
+    );
+  });
+
   test('planosProvider returns sgp plans when endpoint succeeds', () async {
     final dio = Dio()
       ..httpClientAdapter = _QueuedAdapter([
