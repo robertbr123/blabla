@@ -11,7 +11,9 @@ Roles:
 """
 from __future__ import annotations
 
+import os
 from datetime import UTC, date, datetime
+from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
@@ -520,9 +522,21 @@ async def marcar_sincronizado_sgp(
 # ── Fotos da instalacao ─────────────────────────────────────
 
 
-FOTOS_DIR = __import__("pathlib").Path("/tmp/ondeline_cliente_fotos")
 _MAX_FOTO_BYTES = 8 * 1024 * 1024  # 8 MB
 _TIPOS_FOTO_VALIDOS = {"serial", "instalacao", "speedtest", "outro"}
+
+
+def _cliente_fotos_dir() -> Path:
+    """Diretorio persistente e gravavel para fotos de clientes-campo.
+
+    Em producao o container roda como usuario nao-root (`app`), entao gravar
+    em um path herdado de `/tmp` pode falhar se o diretorio-pai tiver sido
+    criado antes com outro owner. O home do usuario atual e mais previsivel.
+    """
+    configured = os.environ.get("CLIENTE_FOTOS_DIR")
+    base = Path(configured) if configured else (Path.home() / ".cache" / "ondeline_cliente_fotos")
+    base.mkdir(parents=True, exist_ok=True)
+    return base
 
 
 @router.post(
@@ -567,15 +581,19 @@ async def upload_foto_cliente_campo(
     if len(contents) > _MAX_FOTO_BYTES:
         raise HTTPException(status_code=413, detail="foto excede 8MB")
 
-    from pathlib import Path
-
-    target_dir = FOTOS_DIR / str(cliente_id)
-    target_dir.mkdir(parents=True, exist_ok=True)
+    target_dir = _cliente_fotos_dir() / str(cliente_id)
     suffix = Path(file.filename or "").suffix or ".jpg"
     fname = f"{uuid4().hex}{suffix}"
     fpath = target_dir / fname
-    fpath.write_bytes(contents)
-    fpath.chmod(0o600)
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        fpath.write_bytes(contents)
+        fpath.chmod(0o600)
+    except OSError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="falha ao salvar foto no servidor",
+        ) from exc
 
     foto = {
         "url": str(fpath),

@@ -116,6 +116,7 @@ async def buscar_cliente_sgp(ctx: ToolContext, *, cpf_cnpj: str) -> dict[str, An
         cli_sgp, whatsapp=ctx.conversa.whatsapp
     )
     ctx.conversa.cliente_id = cliente_db.id
+    ctx.cliente = cliente_db
     await ctx.session.flush()
 
     contratos = cli_sgp.contratos or []

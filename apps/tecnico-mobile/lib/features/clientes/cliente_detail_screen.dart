@@ -148,8 +148,7 @@ class _Header extends StatelessWidget {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -189,12 +188,18 @@ class _Header extends StatelessWidget {
             valueToCopy: cliente.telefone,
             onTap: () => launchUrl(Uri.parse('tel:+55${cliente.telefone}')),
           ),
+          if (cliente.email != null && cliente.email!.trim().isNotEmpty)
+            _KvCopyable(
+              icon: Icons.email_outlined,
+              label: cliente.email!,
+              valueToCopy: cliente.email!,
+              onTap: () => launchUrl(Uri.parse('mailto:${cliente.email!}')),
+            ),
           if (cliente.dob.year > 1900)
             Row(
               children: [
                 Icon(Icons.cake_outlined,
-                    size: 14,
-                    color: scheme.onSurfaceVariant),
+                    size: 14, color: scheme.onSurfaceVariant),
                 const SizedBox(width: 6),
                 Text(
                   DateFormat('dd/MM/yyyy').format(cliente.dob),
@@ -533,7 +538,9 @@ class _KvCopyable extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Row(
           children: [
-            Icon(icon, size: 13, color: Theme.of(context).colorScheme.onSurfaceVariant),
+            Icon(icon,
+                size: 13,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
             const SizedBox(width: 6),
             Text(label, style: const TextStyle(fontSize: 13)),
           ],
@@ -600,8 +607,7 @@ class _OsTile extends StatelessWidget {
                     fontFamily: 'monospace', fontWeight: FontWeight.w600)),
             const SizedBox(width: 8),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
               decoration: BoxDecoration(
                 color: cor.withValues(alpha: 0.13),
                 borderRadius: BorderRadius.circular(8),

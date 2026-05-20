@@ -75,6 +75,8 @@ async def test_encontra_e_vincula_conversa(db_session: AsyncSession) -> None:
     # vinculou cliente_id
     await db_session.flush()
     assert conv.cliente_id is not None
+    assert ctx.cliente is not None
+    assert ctx.cliente.id == conv.cliente_id
 
 
 async def test_retorna_proximo_vencimento_e_valor(db_session: AsyncSession) -> None:
