@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../auth/session_cleanup.dart';
 import '../auth/auth_storage.dart';
 
 /// URL base — override via --dart-define=API_URL=https://... se precisar.
@@ -25,7 +26,14 @@ final apiClientProvider = Provider<Dio>((ref) {
       }
       handler.next(options);
     },
-    onError: (e, handler) {
+    onError: (e, handler) async {
+      final statusCode = e.response?.statusCode;
+      final skipExpiryHandling =
+          e.requestOptions.extra['skipSessionExpiryHandling'] == true;
+      final isLoginRequest = e.requestOptions.path == '/auth/login';
+      if (statusCode == 401 && !skipExpiryHandling && !isLoginRequest) {
+        await ref.read(sessionCleanupProvider).clearLocalSession();
+      }
       // TODO: refresh token flow quando o backend expor /auth/refresh com cookie
       handler.next(e);
     },

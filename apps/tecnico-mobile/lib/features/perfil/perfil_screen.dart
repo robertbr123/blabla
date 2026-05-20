@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/auth/auth_repository.dart';
 import '../../core/auth/auth_storage.dart';
+import '../../core/auth/session_cleanup.dart';
 import '../../core/push/fcm_service.dart';
 import '../../core/theme.dart';
 import '../clientes/cliente_data.dart';
@@ -95,7 +96,8 @@ class PerfilScreen extends ConsumerWidget {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Sair?'),
-        content: const Text('Você terá que fazer login de novo pra acessar o app.'),
+        content:
+            const Text('Você terá que fazer login de novo pra acessar o app.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -113,13 +115,8 @@ class PerfilScreen extends ConsumerWidget {
     try {
       await ref.read(fcmServiceProvider).revoke();
     } catch (_) {}
-    await ref.read(osLocalRepoProvider).clear();
-    final userId = await readUserId();
-    if (userId != null && userId.isNotEmpty) {
-      await ref.read(clienteCadastroRepoProvider).clear(userId: userId);
-    }
     await ref.read(authRepositoryProvider).logout();
-    ref.invalidate(hasTokenProvider);
+    await ref.read(sessionCleanupProvider).clearLocalSession();
     if (context.mounted) context.go('/login');
   }
 }
@@ -611,8 +608,9 @@ class _MudarSenhaSheetState extends ConsumerState<_MudarSenhaSheet> {
       final msg = e.response?.statusCode == 401
           ? 'Senha atual incorreta.'
           : (e.response?.data is Map
-              ? (e.response!.data as Map)['detail']?.toString() ?? e.message
-              : e.message) ?? 'Erro ao mudar senha.';
+                  ? (e.response!.data as Map)['detail']?.toString() ?? e.message
+                  : e.message) ??
+              'Erro ao mudar senha.';
       setState(() => _erro = msg);
     } finally {
       if (mounted) setState(() => _enviando = false);
@@ -667,9 +665,8 @@ class _MudarSenhaSheetState extends ConsumerState<_MudarSenhaSheet> {
                 helperText: 'Pelo menos 8 caracteres',
                 prefixIcon: const Icon(Icons.lock_reset),
                 suffixIcon: IconButton(
-                  icon: Icon(_mostrar
-                      ? Icons.visibility_off
-                      : Icons.visibility),
+                  icon:
+                      Icon(_mostrar ? Icons.visibility_off : Icons.visibility),
                   onPressed: () => setState(() => _mostrar = !_mostrar),
                 ),
               ),
@@ -697,17 +694,14 @@ class _MudarSenhaSheetState extends ConsumerState<_MudarSenhaSheet> {
                 child: Row(
                   children: [
                     Icon(Icons.error_outline,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.error),
+                        size: 18, color: Theme.of(context).colorScheme.error),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _erro!,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onErrorContainer,
+                          color: Theme.of(context).colorScheme.onErrorContainer,
                         ),
                       ),
                     ),

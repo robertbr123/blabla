@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/api_client.dart';
 import 'auth_storage.dart';
-import 'session_state.dart';
+export 'auth_state.dart';
 
 class LoginResult {
   final String accessToken;
@@ -53,17 +53,6 @@ class AuthRepository {
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ref.watch(apiClientProvider));
-});
-
-/// `true` se houver token salvo. Não valida o token contra o servidor —
-/// o primeiro 401 já provoca redirect pra login.
-final hasTokenProvider = FutureProvider<bool>((ref) async {
-  final t = await readAccessToken();
-  return t != null && t.isNotEmpty;
-});
-
-final sessionSnapshotProvider = FutureProvider<SessionSnapshot?>((ref) async {
-  return readSessionSnapshot();
 });
 
 String _resolveDisplayName({

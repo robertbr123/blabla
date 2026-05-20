@@ -44,7 +44,8 @@ class OutboxRepo {
   }
 
   Future<void> markAttempt(int id, String? error) async {
-    final row = await (_db.select(_db.outboxItem)..where((o) => o.id.equals(id)))
+    final row = await (_db.select(_db.outboxItem)
+          ..where((o) => o.id.equals(id)))
         .getSingleOrNull();
     if (row == null) return;
     await (_db.update(_db.outboxItem)..where((o) => o.id.equals(id))).write(
@@ -62,6 +63,14 @@ class OutboxRepo {
           ..where(_db.outboxItem.sentAt.isNull()))
         .getSingle();
     return row.read(_db.outboxItem.id.count()) ?? 0;
+  }
+
+  Future<void> clear() async {
+    final rows = await _db.select(_db.outboxItem).get();
+    for (final row in rows) {
+      await deleteFileIfExists(row.filePath);
+    }
+    await _db.delete(_db.outboxItem).go();
   }
 
   Future<void> deleteFileIfExists(String? path) async {

@@ -58,8 +58,8 @@ class Perfil {
         fotoB64: j['foto_b64'] as String?,
         ativo: (j['ativo'] ?? true) as bool,
         lastGpsTs: j['last_gps_ts'] as String?,
-        estatisticas:
-            PerfilEstatisticas.fromJson(j['estatisticas'] as Map<String, dynamic>),
+        estatisticas: PerfilEstatisticas.fromJson(
+            j['estatisticas'] as Map<String, dynamic>),
       );
 }
 
@@ -141,6 +141,9 @@ class PerfilActions {
     await _dio.post(
       '/api/v1/tecnico/me/senha',
       data: {'senha_atual': atual, 'senha_nova': nova},
+      options: Options(
+        extra: {'skipSessionExpiryHandling': true},
+      ),
     );
   }
 }

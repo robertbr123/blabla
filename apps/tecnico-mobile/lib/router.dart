@@ -14,6 +14,7 @@ import 'features/splash/splash_screen.dart';
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/splash',
+    refreshListenable: ref.watch(authRefreshListenableProvider),
     redirect: (context, state) async {
       final loc = state.matchedLocation;
       // Splash decide pra onde mandar — nao redireciona.

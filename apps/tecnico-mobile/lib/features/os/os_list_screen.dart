@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_repository.dart';
 import '../../core/auth/auth_storage.dart';
+import '../../core/auth/session_cleanup.dart';
 import '../../core/push/fcm_service.dart';
 import '../../core/sync/sync_service.dart';
 import '../clientes/cliente_data.dart';
@@ -173,8 +174,7 @@ class _OsListScreenState extends ConsumerState<OsListScreen>
                     if (filtered.isEmpty) {
                       return _EstadoVazio(
                         aba: aba,
-                        onRefresh: () =>
-                            ref.invalidate(osListStreamProvider),
+                        onRefresh: () => ref.invalidate(osListStreamProvider),
                       );
                     }
                     return RefreshIndicator(
@@ -236,13 +236,8 @@ class _OsListScreenState extends ConsumerState<OsListScreen>
     try {
       await ref.read(fcmServiceProvider).revoke();
     } catch (_) {}
-    await ref.read(osLocalRepoProvider).clear();
-    final userId = await readUserId();
-    if (userId != null && userId.isNotEmpty) {
-      await ref.read(clienteCadastroRepoProvider).clear(userId: userId);
-    }
     await ref.read(authRepositoryProvider).logout();
-    ref.invalidate(hasTokenProvider);
+    await ref.read(sessionCleanupProvider).clearLocalSession();
     if (mounted) context.go('/login');
   }
 }
