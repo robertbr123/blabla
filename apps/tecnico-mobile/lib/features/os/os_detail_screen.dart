@@ -443,23 +443,20 @@ class _StatusSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _DetailMetaPill(
-                icon: statusInfo.icon,
-                label: statusInfo.label,
-                color: statusInfo.color,
+          if (agendamento != null)
+            _DetailMetaPill(
+              icon: Icons.event_rounded,
+              label:
+                  DateFormat("dd/MM 'às' HH:mm").format(agendamento.toLocal()),
+            )
+          else
+            Text(
+              'Sem agendamento registrado para esta OS.',
+              style: TextStyle(
+                color: scheme.onSurfaceVariant,
+                height: 1.4,
               ),
-              if (agendamento != null)
-                _DetailMetaPill(
-                  icon: Icons.event_rounded,
-                  label: DateFormat("dd/MM 'às' HH:mm")
-                      .format(agendamento.toLocal()),
-                ),
-            ],
-          ),
+            ),
         ],
       ),
     );
