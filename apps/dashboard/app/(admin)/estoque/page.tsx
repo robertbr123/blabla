@@ -35,13 +35,13 @@ import { cn } from '@/lib/utils'
 type Aba = 'deposito' | 'tecnicos' | 'itens'
 
 const TIPO_LABEL: Record<string, { texto: string; cor: string }> = {
-  entrada: { texto: 'Entrada', cor: 'text-green-700' },
-  saida: { texto: 'Saída', cor: 'text-red-700' },
-  devolucao: { texto: 'Devolução', cor: 'text-orange-700' },
-  recolhido: { texto: 'Recolhido', cor: 'text-blue-700' },
-  perda: { texto: 'Perda', cor: 'text-red-900' },
-  ajuste_positivo: { texto: 'Ajuste +', cor: 'text-green-700' },
-  ajuste_negativo: { texto: 'Ajuste -', cor: 'text-red-700' },
+  entrada: { texto: 'Entrada', cor: 'text-success' },
+  saida: { texto: 'Saída', cor: 'text-destructive' },
+  devolucao: { texto: 'Devolução', cor: 'text-warning' },
+  recolhido: { texto: 'Recolhido', cor: 'text-info' },
+  perda: { texto: 'Perda', cor: 'text-destructive font-semibold' },
+  ajuste_positivo: { texto: 'Ajuste +', cor: 'text-success' },
+  ajuste_negativo: { texto: 'Ajuste -', cor: 'text-destructive' },
 }
 
 export default function EstoquePage() {
@@ -169,24 +169,9 @@ export default function EstoquePage() {
 
       {/* KPIs */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <Kpi
-          label="No depósito"
-          value={totalDeposito}
-          icon={Warehouse}
-          color="text-blue-700"
-        />
-        <Kpi
-          label="Em campo (técnicos)"
-          value={totalEmCampo}
-          icon={Users}
-          color="text-emerald-700"
-        />
-        <Kpi
-          label="Técnicos com estoque"
-          value={tecnicosComEstoque}
-          icon={Boxes}
-          color="text-violet-700"
-        />
+        <Kpi label="No depósito" value={totalDeposito} icon={Warehouse} tone="info" />
+        <Kpi label="Em campo (técnicos)" value={totalEmCampo} icon={Users} tone="success" />
+        <Kpi label="Técnicos com estoque" value={tecnicosComEstoque} icon={Boxes} tone="primary" />
       </div>
 
       {/* Tabs */}
@@ -369,25 +354,42 @@ function filtrar(
     .includes(q.toLowerCase())
 }
 
+const ESTOQUE_KPI_TONE: Record<'primary' | 'info' | 'success' | 'warning' | 'muted', string> = {
+  primary: 'bg-primary/[0.10] text-primary',
+  info: 'bg-info/[0.12] text-info',
+  success: 'bg-success/[0.12] text-success',
+  warning: 'bg-warning/[0.15] text-warning',
+  muted: 'bg-muted text-muted-foreground',
+}
+
 function Kpi({
   label,
   value,
   icon: Icon,
-  color,
+  tone = 'muted',
 }: {
   label: string
   value: number
   icon: React.ComponentType<{ className?: string }>
-  color: string
+  tone?: keyof typeof ESTOQUE_KPI_TONE
 }) {
   return (
-    <Card>
-      <CardContent className="flex items-center justify-between p-5">
-        <div>
-          <div className="text-xs uppercase text-muted-foreground">{label}</div>
-          <div className="mt-1 text-3xl font-bold">{value}</div>
+    <Card className="transition-shadow hover:shadow-md">
+      <CardContent className="flex items-start justify-between gap-3 p-5">
+        <div className="min-w-0">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </div>
+          <div
+            className="mt-2 text-3xl font-semibold leading-none"
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+          >
+            {value}
+          </div>
         </div>
-        <Icon className={cn('h-7 w-7', color)} />
+        <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-md', ESTOQUE_KPI_TONE[tone])}>
+          <Icon className="h-4 w-4" />
+        </div>
       </CardContent>
     </Card>
   )
@@ -458,7 +460,7 @@ function TabelaSaldo({
               <td className="px-4 py-3 font-medium">
                 {l.nome}
                 {l.serializado && (
-                  <span className="ml-2 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700">
+                  <span className="ml-2 inline-flex items-center rounded bg-info/[0.12] px-1.5 py-0.5 text-[10px] font-semibold text-info ring-1 ring-inset ring-info/30">
                     serial
                   </span>
                 )}
@@ -472,11 +474,12 @@ function TabelaSaldo({
                   className={cn(
                     'rounded-md px-2 py-1 font-semibold',
                     l.saldo > 0
-                      ? 'bg-emerald-100 text-emerald-800'
+                      ? 'bg-success/[0.12] text-success ring-1 ring-inset ring-success/30'
                       : l.saldo === 0
                         ? 'text-muted-foreground'
-                        : 'bg-red-100 text-red-800',
+                        : 'bg-destructive/[0.12] text-destructive ring-1 ring-inset ring-destructive/30',
                   )}
+                  style={{ fontVariantNumeric: 'tabular-nums' }}
                 >
                   {l.saldo}
                 </span>

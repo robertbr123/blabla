@@ -3,6 +3,7 @@ import { AlertCircle, Calendar, ClipboardList, DollarSign } from 'lucide-react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { OsStatusPill } from './os-status-pill'
 import { useClienteSgpInfo, useOsList } from '@/lib/api/queries'
 
 function fmtR(v: number | null): string {
@@ -22,13 +23,6 @@ function fmtDate(s: string | null): string {
   } catch {
     return s
   }
-}
-
-const STATUS_OS_COR: Record<string, string> = {
-  pendente: 'bg-yellow-50 text-yellow-900 border-yellow-300',
-  em_andamento: 'bg-blue-50 text-blue-900 border-blue-300',
-  concluida: 'bg-green-50 text-green-900 border-green-300',
-  cancelada: 'bg-muted text-muted-foreground',
 }
 
 interface Props {
@@ -128,13 +122,13 @@ export function ClienteResumoSgp({ clienteId, cpf }: Props) {
             <Link
               key={o.id}
               href={`/os/${o.id}`}
-              className={`block rounded-md border px-3 py-2 text-sm hover:bg-muted/50 ${STATUS_OS_COR[o.status] ?? ''}`}
+              className="block rounded-md border bg-card px-3 py-2 text-sm transition-colors hover:bg-accent/40 hover:border-accent"
             >
-              <div className="flex items-center justify-between">
-                <span className="font-mono font-semibold">{o.codigo}</span>
-                <span className="text-xs capitalize">{o.status.replace('_', ' ')}</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono font-semibold text-primary">{o.codigo}</span>
+                <OsStatusPill status={o.status} size="sm" />
               </div>
-              <p className="mt-0.5 truncate text-xs">{o.problema}</p>
+              <p className="mt-1 truncate text-xs text-muted-foreground">{o.problema}</p>
               <p className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
                 <Calendar className="h-3 w-3" />
                 {new Date(o.criada_em).toLocaleDateString('pt-BR')}
