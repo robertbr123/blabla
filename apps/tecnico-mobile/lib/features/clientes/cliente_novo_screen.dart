@@ -48,7 +48,8 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
   final _contrato = TextEditingController();
   final _observation = TextEditingController();
   final Map<String, int> _materiaisQtd = {}; // itemId -> qtd
-  final Map<String, String> _materiaisSerial = {}; // itemId -> serial (serializado)
+  final Map<String, String> _materiaisSerial =
+      {}; // itemId -> serial (serializado)
 
   // GPS background
   LocationResult? _gps;
@@ -170,14 +171,21 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
         cep: _cep.text.trim().isEmpty ? null : onlyDigits(_cep.text),
         address: _address.text.trim(),
         number: _number.text.trim(),
-        complement: _complement.text.trim().isEmpty ? null : _complement.text.trim(),
-        neighborhood:
-            _neighborhood.text.trim().isEmpty ? null : _neighborhood.text.trim(),
+        complement:
+            _complement.text.trim().isEmpty ? null : _complement.text.trim(),
+        neighborhood: _neighborhood.text.trim().isEmpty
+            ? null
+            : _neighborhood.text.trim(),
         city: _city.text.trim(),
-        state: _state.text.trim().isEmpty ? null : _state.text.trim().toUpperCase(),
-        planId: _planoSelecionado?.id,
+        state: _state.text.trim().isEmpty
+            ? null
+            : _state.text.trim().toUpperCase(),
+        planId: _planoSelecionado?.isFallback == true
+            ? null
+            : _planoSelecionado?.id,
         planNome: _planoSelecionado!.descricao,
-        pppoeUser: _pppoeUser.text.trim().isEmpty ? null : _pppoeUser.text.trim(),
+        pppoeUser:
+            _pppoeUser.text.trim().isEmpty ? null : _pppoeUser.text.trim(),
         pppoePass: _pppoePass.text.isEmpty ? null : _pppoePass.text,
         dueDate: _dueDate,
         serial: _serial.text.trim().isEmpty ? null : _serial.text.trim(),
@@ -827,8 +835,7 @@ class _MateriaisSelector extends ConsumerWidget {
               ),
             ),
             data: (linhas) {
-              final disponiveis =
-                  linhas.where((l) => l.saldo > 0).toList();
+              final disponiveis = linhas.where((l) => l.saldo > 0).toList();
               if (disponiveis.isEmpty) {
                 return const Padding(
                   padding: EdgeInsets.all(8),

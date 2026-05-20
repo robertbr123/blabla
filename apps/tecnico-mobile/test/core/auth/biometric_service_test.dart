@@ -93,4 +93,19 @@ void main() {
     expect(fake.lastOptions?.biometricOnly, isTrue);
     expect(fake.lastOptions?.stickyAuth, isTrue);
   });
+
+  test('biometric service does not try authenticate when unsupported',
+      () async {
+    final fake = _FakeLocalAuthPlatform(
+      supportsBiometrics: false,
+      supportsDevice: false,
+    );
+    LocalAuthPlatform.instance = fake;
+
+    final service = BiometricService();
+    final authenticated = await service.authenticate();
+
+    expect(authenticated, isFalse);
+    expect(fake.lastLocalizedReason, isNull);
+  });
 }

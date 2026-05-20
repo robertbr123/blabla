@@ -10,6 +10,8 @@ class SgpPlano {
   final double preco;
   final int download; // Kbps
   final int upload;
+  final bool isFallback;
+  final String? velocidadeLabel;
 
   SgpPlano({
     required this.id,
@@ -18,6 +20,8 @@ class SgpPlano {
     required this.preco,
     required this.download,
     required this.upload,
+    this.isFallback = false,
+    this.velocidadeLabel,
   });
 
   factory SgpPlano.fromJson(Map<String, dynamic> j) => SgpPlano(
@@ -29,18 +33,37 @@ class SgpPlano {
         upload: ((j['upload'] as num?) ?? 0).toInt(),
       );
 
+  factory SgpPlano.fromConfigJson(Map<String, dynamic> j) => SgpPlano(
+        id: (j['index'] as num).toInt(),
+        grupo: null,
+        descricao: (j['nome'] ?? '') as String,
+        preco: (j['preco'] as num?)?.toDouble() ?? 0,
+        download: 0,
+        upload: 0,
+        isFallback: true,
+        velocidadeLabel: (j['velocidade'] as String?)?.trim(),
+      );
+
   /// "46 Mbps" / "150 Mbps" — converte Kbps pra Mbps arredondado.
-  String velocidadeStr() => '${(download / 1024).round()} Mbps';
+  String velocidadeStr() {
+    final fallback = velocidadeLabel;
+    if (fallback != null && fallback.isNotEmpty) {
+      return fallback;
+    }
+    return '${(download / 1024).round()} Mbps';
+  }
 }
 
 final planosProvider = FutureProvider.autoDispose<List<SgpPlano>>((ref) async {
   final dio = ref.watch(apiClientProvider);
-  final r = await dio.get('/api/v1/sgp/planos');
-  final raw = (r.data as Map).cast<String, dynamic>();
-  return (raw['planos'] as List? ?? const [])
-      .cast<Map>()
-      .map((m) => SgpPlano.fromJson(m.cast<String, dynamic>()))
-      .toList();
+  try {
+    final r = await dio.get('/api/v1/sgp/planos');
+    return _decodeSgpPlanos(r.data);
+  } on DioException catch (e) {
+    if (!_shouldFallbackToConfiguredPlans(e)) rethrow;
+    final fallback = await dio.get('/api/v1/planos');
+    return _decodeConfiguredPlanos(fallback.data);
+  }
 });
 
 class CreateClienteCampoMaterial {
@@ -179,3 +202,27 @@ class ClienteFormActions {
 final clienteFormActionsProvider = Provider<ClienteFormActions>(
   (ref) => ClienteFormActions(ref.watch(apiClientProvider)),
 );
+
+List<SgpPlano> _decodeSgpPlanos(Object? data) {
+  final raw = (data as Map).cast<String, dynamic>();
+  return (raw['planos'] as List? ?? const [])
+      .cast<Map>()
+      .map((m) => SgpPlano.fromJson(m.cast<String, dynamic>()))
+      .toList();
+}
+
+List<SgpPlano> _decodeConfiguredPlanos(Object? data) {
+  return (data as List? ?? const [])
+      .whereType<Map>()
+      .map((m) => SgpPlano.fromConfigJson(m.cast<String, dynamic>()))
+      .toList();
+}
+
+bool _shouldFallbackToConfiguredPlans(DioException error) {
+  final code = error.response?.statusCode;
+  return code == 502 ||
+      code == 503 ||
+      error.type == DioExceptionType.connectionError ||
+      error.type == DioExceptionType.connectionTimeout ||
+      error.type == DioExceptionType.receiveTimeout;
+}
