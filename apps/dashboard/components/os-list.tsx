@@ -1,21 +1,14 @@
 'use client'
 import Link from 'next/link'
 import { useState } from 'react'
-import { Plus, Trash2, UserCog } from 'lucide-react'
+import { ClipboardList, Plus, Trash2, UserCog } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { useDeleteOs, useOsList, useTecnicos } from '@/lib/api/queries'
 import { DialogReatribuirTecnico } from './dialog-reatribuir-tecnico'
+import { OsStatusPill } from './os-status-pill'
 import type { OsListItem } from '@/lib/api/types'
-
-const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  pendente: 'destructive',
-  em_andamento: 'default',
-  concluida: 'secondary',
-  cancelada: 'outline',
-}
 
 function DeleteButton({ osId }: { osId: string }) {
   const deleteOs = useDeleteOs(osId)
@@ -80,39 +73,47 @@ export function OsList({ onNovaOs }: { onNovaOs?: () => void } = {}) {
         </p>
       )}
 
-      {data && (
-        <div className="rounded-md border bg-card">
+      {data && data.items.length === 0 && (
+        <div className="rounded-md border bg-card p-12 text-center">
+          <ClipboardList className="mx-auto h-10 w-10 text-muted-foreground/50" />
+          <h3 className="mt-3 text-sm font-medium">Nenhuma OS encontrada</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {status
+              ? 'Tente outro filtro de status ou limpe a seleção.'
+              : 'Crie a primeira ordem de serviço pra começar.'}
+          </p>
+          {!status && (
+            <Button onClick={() => onNovaOs?.()} className="mt-4" size="sm">
+              <Plus className="h-4 w-4" /> Nova OS
+            </Button>
+          )}
+        </div>
+      )}
+
+      {data && data.items.length > 0 && (
+        <div className="rounded-md border bg-card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b text-left text-xs uppercase text-muted-foreground">
+            <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">Código</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Técnico</th>
-                <th className="px-4 py-3">Problema</th>
-                <th className="px-4 py-3">Endereço</th>
-                <th className="px-4 py-3">Criada</th>
-                <th className="px-4 py-3">Ações</th>
+                <th className="px-4 py-2.5 font-semibold">Código</th>
+                <th className="px-4 py-2.5 font-semibold">Status</th>
+                <th className="px-4 py-2.5 font-semibold">Técnico</th>
+                <th className="px-4 py-2.5 font-semibold">Problema</th>
+                <th className="px-4 py-2.5 font-semibold">Endereço</th>
+                <th className="px-4 py-2.5 font-semibold">Criada</th>
+                <th className="px-4 py-2.5 font-semibold">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {data.items.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="p-6 text-center text-muted-foreground">
-                    Nenhuma OS
-                  </td>
-                </tr>
-              )}
               {data.items.map((o: OsListItem) => (
-                <tr key={o.id} className="border-b last:border-b-0 hover:bg-muted/50">
+                <tr key={o.id} className="border-b last:border-b-0 transition-colors hover:bg-accent/40">
                   <td className="px-4 py-3">
-                    <Link href={`/os/${o.id}`} className="font-medium hover:underline">
+                    <Link href={`/os/${o.id}`} className="font-medium text-primary hover:underline">
                       {o.codigo}
                     </Link>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={STATUS_VARIANTS[o.status] ?? 'outline'}>
-                      {o.status}
-                    </Badge>
+                    <OsStatusPill status={o.status} size="sm" />
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {o.tecnico_id

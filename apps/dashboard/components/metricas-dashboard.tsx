@@ -28,17 +28,35 @@ interface KpiProps {
   label: string
   value: string | number
   icon: React.ComponentType<{ className?: string }>
+  tone?: 'primary' | 'info' | 'warning' | 'success' | 'muted'
 }
 
-function Kpi({ label, value, icon: Icon }: KpiProps) {
+const KPI_TONE: Record<NonNullable<KpiProps['tone']>, string> = {
+  primary: 'bg-primary/[0.10] text-primary',
+  info: 'bg-info/[0.12] text-info',
+  warning: 'bg-warning/[0.15] text-warning',
+  success: 'bg-success/[0.12] text-success',
+  muted: 'bg-muted text-muted-foreground',
+}
+
+function Kpi({ label, value, icon: Icon, tone = 'muted' }: KpiProps) {
   return (
-    <Card>
-      <CardContent className="flex items-center justify-between p-6">
-        <div>
-          <div className="text-xs uppercase text-muted-foreground">{label}</div>
-          <div className="mt-2 text-3xl font-semibold">{value}</div>
+    <Card className="transition-shadow hover:shadow-md">
+      <CardContent className="flex items-start justify-between gap-3 p-5">
+        <div className="min-w-0">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </div>
+          <div
+            className="mt-2 text-3xl font-semibold leading-none"
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+          >
+            {value}
+          </div>
         </div>
-        <Icon className="h-8 w-8 text-muted-foreground/40" />
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ${KPI_TONE[tone]}`}>
+          <Icon className="h-4 w-4" />
+        </div>
       </CardContent>
     </Card>
   )
@@ -209,8 +227,15 @@ function BarChartTecnicos({ ranking }: { ranking: RankingTecnicoOut[] }) {
                 {t.os}
               </div>
             </div>
-            <div className="w-16 text-right text-xs text-muted-foreground">
-              {t.csat !== null ? `⭐ ${t.csat.toFixed(1)}` : '—'}
+            <div className="flex w-16 items-center justify-end gap-1 text-xs text-muted-foreground">
+              {t.csat !== null ? (
+                <>
+                  <Star className="h-3 w-3 fill-warning text-warning" />
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>{t.csat.toFixed(1)}</span>
+                </>
+              ) : (
+                '—'
+              )}
             </div>
           </div>
         )
@@ -252,17 +277,18 @@ export function MetricasDashboard() {
     <div className="space-y-6">
       {/* KPIs estáticos */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Kpi label="Conversas aguardando" value={m.conversas_aguardando} icon={Clock} />
-        <Kpi label="Conversas em humano" value={m.conversas_humano} icon={MessageSquare} />
-        <Kpi label="Mensagens 24h" value={m.msgs_24h} icon={BarChart3} />
-        <Kpi label="OS abertas" value={m.os_abertas} icon={Wrench} />
-        <Kpi label="OS concluídas 24h" value={m.os_concluidas_24h} icon={CheckCircle2} />
+        <Kpi label="Conversas aguardando" value={m.conversas_aguardando} icon={Clock} tone="warning" />
+        <Kpi label="Conversas em humano" value={m.conversas_humano} icon={MessageSquare} tone="info" />
+        <Kpi label="Mensagens 24h" value={m.msgs_24h} icon={BarChart3} tone="info" />
+        <Kpi label="OS abertas" value={m.os_abertas} icon={Wrench} tone="warning" />
+        <Kpi label="OS concluídas 24h" value={m.os_concluidas_24h} icon={CheckCircle2} tone="success" />
         <Kpi
           label="CSAT médio (30d)"
           value={m.csat_avg_30d !== null ? m.csat_avg_30d.toFixed(2) : '—'}
           icon={Star}
+          tone="primary"
         />
-        <Kpi label="Leads novos (7d)" value={m.leads_novos_7d} icon={UserPlus} />
+        <Kpi label="Leads novos (7d)" value={m.leads_novos_7d} icon={UserPlus} tone="primary" />
       </div>
 
       {/* Tendência diária */}

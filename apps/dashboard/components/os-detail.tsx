@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react'
 import { CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Badge } from '@/components/ui/badge'
+import { OsStatusPill } from './os-status-pill'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -93,7 +93,7 @@ export function OsDetail({ id }: { id: string }) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>{data.codigo}</CardTitle>
-            <Badge variant={isConcluida ? 'secondary' : 'default'}>{data.status}</Badge>
+            <OsStatusPill status={data.status} />
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
