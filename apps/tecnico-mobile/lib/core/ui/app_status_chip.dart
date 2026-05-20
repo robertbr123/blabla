@@ -17,8 +17,8 @@ class AppStatusChip extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final color = switch (tone) {
       AppStatusTone.info => scheme.primary,
-      AppStatusTone.success => const Color(0xFF2E7D5B),
-      AppStatusTone.warning => const Color(0xFFC18A2D),
+      AppStatusTone.success => scheme.tertiary,
+      AppStatusTone.warning => scheme.secondary,
       AppStatusTone.danger => scheme.error,
       AppStatusTone.neutral => scheme.onSurfaceVariant,
     };

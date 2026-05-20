@@ -2,24 +2,28 @@ import 'package:flutter/material.dart';
 
 const brandCommand = Color(0xFF17324D);
 const brandCommandLight = Color(0xFF395572);
+const brandCommandDark = Color(0xFF7FA4C5);
 const brandAccent = Color(0xFFC18A2D);
 const brandAccentSoft = Color(0xFFE6C98B);
+const brandAccentDark = Color(0xFFE0C17A);
 const brandWarm = Color(0xFFF6F1E8);
 const brandSurface = Color(0xFFFFFCF8);
 const brandSurfaceHigh = Color(0xFFEFE7DA);
 const brandLine = Color(0xFFD7CCBC);
 const brandSuccess = Color(0xFF2E7D5B);
+const brandSuccessDark = Color(0xFF73BC97);
 const brandDanger = Color(0xFFB04A3A);
+const brandDangerDark = Color(0xFFF0A292);
 
-// Legacy aliases kept for existing screens that still import old names.
-const brandGreen = brandAccent;
-const brandGreenLight = brandAccentSoft;
-const brandInk = brandCommand;
-const brandCream = brandWarm;
-const brandBlue = brandCommand;
-const brandCyan = brandCommandLight;
-const brandBlueDark = Color(0xFF7FA4C5);
-const brandCyanDark = Color(0xFFAFC7DE);
+// Legacy aliases kept stable for existing imports.
+const brandGreen = Color(0xFF16A34A);
+const brandGreenLight = Color(0xFF22C55E);
+const brandInk = Color(0xFF0E1729);
+const brandCream = Color(0xFFF8F5EE);
+const brandBlue = brandGreen;
+const brandCyan = brandGreenLight;
+const brandBlueDark = Color(0xFF4ADE80);
+const brandCyanDark = Color(0xFF34D399);
 
 ThemeData buildLightTheme() {
   const scheme = ColorScheme(
@@ -60,17 +64,17 @@ ThemeData buildLightTheme() {
 ThemeData buildDarkTheme() {
   const scheme = ColorScheme(
     brightness: Brightness.dark,
-    primary: brandBlueDark,
+    primary: brandCommandDark,
     onPrimary: Color(0xFF0E2135),
     primaryContainer: Color(0xFF1E3854),
     onPrimaryContainer: Color(0xFFD9E4EF),
-    secondary: brandCyanDark,
-    onSecondary: Color(0xFF2F2310),
+    secondary: brandAccentDark,
+    onSecondary: Color(0xFF33250B),
     secondaryContainer: Color(0xFF70531D),
     onSecondaryContainer: Color(0xFFF4E5C9),
-    tertiary: Color(0xFF73BC97),
+    tertiary: brandSuccessDark,
     onTertiary: Color(0xFF092B1E),
-    error: Color(0xFFF0A292),
+    error: brandDangerDark,
     onError: Color(0xFF4E180F),
     errorContainer: Color(0xFF6E2E23),
     onErrorContainer: Color(0xFFF7DDD7),
