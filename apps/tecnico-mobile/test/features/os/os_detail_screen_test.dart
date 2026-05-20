@@ -124,6 +124,24 @@ Future<void> _pumpOfflineOsDetail(
   await tester.pumpAndSettle();
 }
 
+Future<void> _scrollUntilVisible(WidgetTester tester, Finder finder) async {
+  await tester.dragUntilVisible(
+    finder,
+    find.byType(Scrollable).first,
+    const Offset(0, -240),
+  );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _scrollBackUntilVisible(WidgetTester tester, Finder finder) async {
+  await tester.dragUntilVisible(
+    finder,
+    find.byType(Scrollable).first,
+    const Offset(0, 240),
+  );
+  await tester.pumpAndSettle();
+}
+
 void main() {
   late ConnectivityPlatform originalConnectivityPlatform;
   late PermissionHandlerPlatform originalPermissionPlatform;
@@ -160,11 +178,34 @@ void main() {
     expect(find.text('Iniciar visita (com GPS)'), findsOneWidget);
     expect(find.text('Concluir OS'), findsNothing);
 
+    await _scrollUntilVisible(
+      tester,
+      find.text('Iniciar visita (com GPS)'),
+    );
     await tester.tap(find.text('Iniciar visita (com GPS)'));
     await tester.pumpAndSettle();
 
     expect(find.text('Iniciar visita (com GPS)'), findsNothing);
     expect(find.text('Concluir OS'), findsOneWidget);
+  });
+
+  testWidgets('os detail groups actions and context in separate sections',
+      (tester) async {
+    final db = _testDatabase();
+    addTearDown(db.close);
+
+    ConnectivityPlatform.instance =
+        _FakeConnectivityPlatform(const [ConnectivityResult.none]);
+    await _pumpOfflineOsDetail(
+      tester,
+      db: db,
+      status: 'em_andamento',
+    );
+
+    expect(find.textContaining('Status'), findsOneWidget);
+    await _scrollUntilVisible(tester, find.text('Fotos'));
+    expect(find.textContaining('Fotos'), findsOneWidget);
+    expect(find.textContaining('Ações'), findsOneWidget);
   });
 
   testWidgets('offline concluir updates screen state immediately',
@@ -182,10 +223,12 @@ void main() {
 
     expect(find.text('Concluir OS'), findsOneWidget);
 
+    await _scrollUntilVisible(tester, find.text('Concluir OS'));
     await tester.tap(find.text('Concluir OS'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Concluir'));
     await tester.pumpAndSettle();
+    await _scrollBackUntilVisible(tester, find.text('Concluída'));
 
     expect(find.text('Concluir OS'), findsNothing);
     expect(find.text('Iniciar visita (com GPS)'), findsNothing);
@@ -210,6 +253,10 @@ void main() {
       status: 'pendente',
     );
 
+    await _scrollUntilVisible(
+      tester,
+      find.text('Iniciar visita (com GPS)'),
+    );
     await tester.tap(find.text('Iniciar visita (com GPS)'));
     await tester.pumpAndSettle();
 
@@ -231,10 +278,12 @@ void main() {
       status: 'em_andamento',
     );
 
+    await _scrollUntilVisible(tester, find.text('Concluir OS'));
     await tester.tap(find.text('Concluir OS'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Concluir'));
     await tester.pumpAndSettle();
+    await _scrollBackUntilVisible(tester, find.text('Concluída'));
 
     expect(find.text('Concluir OS'), findsNothing);
     expect(find.text('Concluída'), findsOneWidget);

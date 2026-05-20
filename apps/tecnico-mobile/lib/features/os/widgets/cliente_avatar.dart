@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme.dart';
+
 /// Avatar circular com inicial(is) do cliente. Cor estavel derivada do nome
 /// (mesmo cliente sempre tem mesma cor).
 class ClienteAvatar extends StatelessWidget {
@@ -12,26 +14,43 @@ class ClienteAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final iniciais = _iniciais(nome);
     final color = _corDoNome(nome);
+    final scheme = Theme.of(context).colorScheme;
 
-    return Container(
-      width: size,
-      height: size,
+    return DecoratedBox(
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [color, _escurecer(color, 0.12)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.18),
+            blurRadius: size * 0.36,
+            offset: Offset(0, size * 0.12),
+          ),
+        ],
       ),
-      alignment: Alignment.center,
-      child: Text(
-        iniciais,
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w700,
-          fontSize: size * 0.40,
-          letterSpacing: 0.2,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            colors: [color, _escurecer(color, 0.12)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          border: Border.all(
+            color: scheme.surface.withValues(alpha: 0.88),
+            width: size * 0.05,
+          ),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          iniciais,
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: size * 0.40,
+            letterSpacing: 0.2,
+          ),
         ),
       ),
     );
@@ -49,14 +68,14 @@ class ClienteAvatar extends StatelessWidget {
   }
 
   static const _palette = <Color>[
-    Color(0xFF2563eb), // blue
-    Color(0xFF06b6d4), // cyan
-    Color(0xFF16a34a), // green
-    Color(0xFFf59e0b), // amber
-    Color(0xFFef4444), // red
-    Color(0xFF8b5cf6), // violet
-    Color(0xFFec4899), // pink
-    Color(0xFF14b8a6), // teal
+    brandCommand,
+    brandCommandLight,
+    brandSuccess,
+    brandAccent,
+    brandDanger,
+    Color(0xFF7E6AAB),
+    Color(0xFFB15E78),
+    Color(0xFF3B8F84),
   ];
 
   static Color _corDoNome(String? nome) {

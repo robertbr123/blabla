@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useState } from 'react'
-import { Trash2, Wrench, X } from 'lucide-react'
+import { MessageSquare, Trash2, Wrench, X } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,7 @@ import { useCanais, useConversas, useDeleteConversa, useEncerrar } from '@/lib/a
 import type { ConversaListItem } from '@/lib/api/types'
 import { DialogAbrirOsFromConversa } from './dialog-abrir-os-from-conversa'
 import { ConversaSlaTimer } from './conversa-sla-timer'
+import { ConversaStatusPill } from './conversa-status-pill'
 
 function ConversaRowActions({
   c,
@@ -68,13 +69,6 @@ function ConversaRowActions({
       </Button>
     </div>
   )
-}
-
-const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  bot: 'secondary',
-  aguardando: 'destructive',
-  humano: 'default',
-  encerrada: 'outline',
 }
 
 /** Formata "5511987654321@s.whatsapp.net" -> "(11) 9 8765-4321". */
@@ -157,27 +151,32 @@ export function ConversaList() {
         </p>
       )}
 
-      {data && (
-        <div className="rounded-md border bg-card">
+      {data && data.items.length === 0 && (
+        <div className="rounded-md border bg-card p-12 text-center">
+          <MessageSquare className="mx-auto h-10 w-10 text-muted-foreground/50" />
+          <h3 className="mt-3 text-sm font-medium">Nenhuma conversa encontrada</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {q || status || canalId
+              ? 'Ajuste os filtros para ver outras conversas.'
+              : 'Quando alguém mandar mensagem no WhatsApp, aparece aqui.'}
+          </p>
+        </div>
+      )}
+
+      {data && data.items.length > 0 && (
+        <div className="rounded-md border bg-card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b text-left text-xs uppercase text-muted-foreground">
+            <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Estado</th>
-                <th className="px-4 py-3">Última msg</th>
-                <th className="px-4 py-3">Fila / SLA</th>
-                <th className="px-4 py-3">Ações</th>
+                <th className="px-4 py-2.5 font-semibold">Cliente</th>
+                <th className="px-4 py-2.5 font-semibold">Status</th>
+                <th className="px-4 py-2.5 font-semibold">Estado</th>
+                <th className="px-4 py-2.5 font-semibold">Última msg</th>
+                <th className="px-4 py-2.5 font-semibold">Fila / SLA</th>
+                <th className="px-4 py-2.5 font-semibold">Ações</th>
               </tr>
             </thead>
             <tbody>
-              {data.items.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="p-6 text-center text-muted-foreground">
-                    Nenhuma conversa
-                  </td>
-                </tr>
-              )}
               {data.items.map((c) => {
                 const telefone = formatWhatsappBr(c.whatsapp)
                 const tituloFull = c.cliente_nome ?? telefone
@@ -185,17 +184,19 @@ export function ConversaList() {
                 const subtitulo = c.cliente_nome ? telefone : null
                 const canal = c.canal_id ? canalById.get(c.canal_id) : null
                 return (
-                <tr key={c.id} className="border-b last:border-b-0 hover:bg-muted/50">
+                <tr key={c.id} className="border-b last:border-b-0 transition-colors hover:bg-accent/40">
                   <td className="px-4 py-3">
                     <Link
                       href={`/conversas/${c.id}`}
-                      className="font-medium hover:underline"
+                      className="font-medium text-primary hover:underline"
                       title={tituloFull}
                     >
                       {titulo}
                     </Link>
                     {subtitulo && (
-                      <div className="text-xs text-muted-foreground">{subtitulo}</div>
+                      <div className="text-xs text-muted-foreground" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                        {subtitulo}
+                      </div>
                     )}
                     {canal && canais && canais.length > 1 && (
                       <Badge variant="outline" className="mt-1 text-[10px]">
@@ -204,9 +205,7 @@ export function ConversaList() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={STATUS_VARIANTS[c.status] ?? 'outline'}>
-                      {c.status}
-                    </Badge>
+                    <ConversaStatusPill status={c.status} size="sm" />
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{c.estado}</td>
                   <td className="px-4 py-3 text-muted-foreground">

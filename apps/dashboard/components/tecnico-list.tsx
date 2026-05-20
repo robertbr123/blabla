@@ -1,9 +1,10 @@
 'use client'
 import Link from 'next/link'
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, Wrench } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Select } from '@/components/ui/select'
 import { useTecnicos } from '@/lib/api/queries'
 
@@ -41,27 +42,31 @@ export function TecnicoList() {
         </p>
       )}
 
-      {data && (
-        <div className="rounded-md border bg-card">
+      {data && data.items.length === 0 && (
+        <EmptyState
+          icon={Wrench}
+          title="Nenhum técnico cadastrado"
+          description={
+            ativoFilter
+              ? 'Mude o filtro para ver técnicos inativos ou todos.'
+              : 'Cadastre técnicos para atribuí-los a ordens de serviço.'
+          }
+        />
+      )}
+      {data && data.items.length > 0 && (
+        <div className="rounded-md border bg-card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b text-left text-xs uppercase text-muted-foreground">
+            <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">Nome</th>
-                <th className="px-4 py-3">WhatsApp</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">GPS</th>
+                <th className="px-4 py-2.5 font-semibold">Nome</th>
+                <th className="px-4 py-2.5 font-semibold">WhatsApp</th>
+                <th className="px-4 py-2.5 font-semibold">Status</th>
+                <th className="px-4 py-2.5 font-semibold">GPS</th>
               </tr>
             </thead>
             <tbody>
-              {data.items.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="p-6 text-center text-muted-foreground">
-                    Nenhum técnico
-                  </td>
-                </tr>
-              )}
               {data.items.map((t) => (
-                <tr key={t.id} className="border-b last:border-b-0 hover:bg-muted/50">
+                <tr key={t.id} className="border-b last:border-b-0 transition-colors hover:bg-accent/40">
                   <td className="px-4 py-3">
                     <Link href={`/tecnicos/${t.id}`} className="font-medium hover:underline">
                       {t.nome}

@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { AlertCircle, Clock } from 'lucide-react'
 
 function elapsed(since: string): string {
   const ms = Date.now() - new Date(since).getTime()
@@ -29,17 +30,19 @@ export function ConversaSlaTimer({
     return () => clearInterval(id)
   }, [transferredAt, slaMinutes])
 
+  const tone = exceeded
+    ? 'bg-destructive/[0.12] text-destructive ring-destructive/30'
+    : 'bg-warning/[0.15] text-warning ring-warning/30'
+  const Icon = exceeded ? AlertCircle : Clock
+
   return (
     <div
-      className={`rounded-md border px-3 py-2 text-center text-sm font-mono ${
-        exceeded
-          ? 'border-destructive bg-destructive/10 text-destructive'
-          : 'border-yellow-400 bg-yellow-50 dark:bg-yellow-950/20 text-yellow-700 dark:text-yellow-400'
-      }`}
+      className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${tone}`}
+      title={exceeded ? `SLA de ${slaMinutes}min excedido` : `SLA ${slaMinutes}min`}
+      role={exceeded ? 'alert' : undefined}
     >
-      <p className="text-xs opacity-70">Aguardando há</p>
-      <p className="font-semibold">{display}</p>
-      {exceeded && <p className="text-xs">⚠️ SLA excedido</p>}
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{display}</span>
     </div>
   )
 }

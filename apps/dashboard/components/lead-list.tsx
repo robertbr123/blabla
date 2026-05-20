@@ -1,9 +1,10 @@
 'use client'
 import Link from 'next/link'
 import { useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, UserPlus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { useLeads } from '@/lib/api/queries'
@@ -56,28 +57,29 @@ export function LeadList() {
         </p>
       )}
 
-      {data && (
-        <div className="rounded-md border bg-card">
+      {data && data.items.length === 0 && (
+        <EmptyState
+          icon={UserPlus}
+          title="Nenhum lead encontrado"
+          description="Leads chegam quando alguém demonstra interesse pelo WhatsApp. Você também pode cadastrar manualmente."
+        />
+      )}
+
+      {data && data.items.length > 0 && (
+        <div className="rounded-md border bg-card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="border-b text-left text-xs uppercase text-muted-foreground">
+            <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
-                <th className="px-4 py-3">Nome</th>
-                <th className="px-4 py-3">WhatsApp</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Interesse</th>
-                <th className="px-4 py-3">Criado</th>
+                <th className="px-4 py-2.5 font-semibold">Nome</th>
+                <th className="px-4 py-2.5 font-semibold">WhatsApp</th>
+                <th className="px-4 py-2.5 font-semibold">Status</th>
+                <th className="px-4 py-2.5 font-semibold">Interesse</th>
+                <th className="px-4 py-2.5 font-semibold">Criado</th>
               </tr>
             </thead>
             <tbody>
-              {data.items.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="p-6 text-center text-muted-foreground">
-                    Nenhum lead
-                  </td>
-                </tr>
-              )}
               {data.items.map((l) => (
-                <tr key={l.id} className="border-b last:border-b-0 hover:bg-muted/50">
+                <tr key={l.id} className="border-b last:border-b-0 transition-colors hover:bg-accent/40">
                   <td className="px-4 py-3">
                     <Link href={`/leads/${l.id}`} className="font-medium hover:underline">
                       {l.nome}

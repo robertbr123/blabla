@@ -4,12 +4,17 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/location/location_service.dart';
 import '../../core/sync/outbox_repo.dart';
 import '../../core/sync/sync_service.dart';
+import '../../core/ui/app_section_header.dart';
+import '../../core/ui/app_status_chip.dart';
+import '../../core/ui/app_surfaces.dart';
 import 'os_data.dart';
+import 'widgets/cliente_avatar.dart';
 
 class OsDetailScreen extends ConsumerWidget {
   final String id;
@@ -18,7 +23,9 @@ class OsDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(osDetailProvider(id));
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: scheme.surfaceContainerLowest,
       appBar: AppBar(
         title: const Text('Detalhe da OS'),
         actions: [
@@ -53,75 +60,39 @@ class _Body extends ConsumerWidget {
     final podeIniciar = isPendente;
 
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
         pendingAsync.when(
           data: (n) => n > 0
-              ? Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Colors.orange.withValues(alpha: 0.35),
-                    ),
-                  ),
-                  child: Row(children: [
-                    const Icon(Icons.cloud_upload,
-                        size: 18, color: Color(0xFFd97706)),
-                    const SizedBox(width: 6),
-                    Text('$n item(ns) aguardando upload',
-                        style: const TextStyle(
-                          color: Color(0xFFb45309),
-                          fontWeight: FontWeight.w600,
-                        )),
-                  ]),
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _PendingSyncBanner(count: n),
                 )
               : const SizedBox.shrink(),
           loading: () => const SizedBox.shrink(),
           error: (_, __) => const SizedBox.shrink(),
         ),
-        _Header(os: os),
+        _StatusSection(os: os),
         const SizedBox(height: 12),
-        _Secao(
-          icone: Icons.place_outlined,
-          titulo: 'Endereço',
-          conteudo: os['endereco']?.toString() ?? '—',
+        _ContextSection(
+          endereco: os['endereco']?.toString() ?? '—',
+          problema: os['problema']?.toString() ?? '—',
+          plano: os['plano'] as String?,
+          login: os['pppoe_login'] as String?,
+          senha: os['pppoe_senha'] as String?,
         ),
-        _Secao(
-          icone: Icons.report_problem_outlined,
-          titulo: 'Problema relatado',
-          conteudo: os['problema']?.toString() ?? '—',
+        const SizedBox(height: 12),
+        _ActionsSection(
+          canStart: podeIniciar,
+          canConclude: podeConcluir,
+          onStart: () => _iniciar(context, ref),
+          onConclude: () => _abrirConcluirSheet(context, ref),
         ),
-        if (os['plano'] != null ||
-            os['pppoe_login'] != null ||
-            os['pppoe_senha'] != null)
-          _PppoeCard(
-            plano: os['plano'] as String?,
-            login: os['pppoe_login'] as String?,
-            senha: os['pppoe_senha'] as String?,
-          ),
-        const SizedBox(height: 24),
-        if (podeIniciar)
-          FilledButton.icon(
-            icon: const Icon(Icons.play_arrow),
-            label: const Text('Iniciar visita (com GPS)'),
-            onPressed: () => _iniciar(context, ref),
-          ),
-        if (podeConcluir) ...[
-          FilledButton.tonalIcon(
-            icon: const Icon(Icons.photo_camera),
-            label: const Text('Tirar foto'),
-            onPressed: () => _tirarFoto(context, ref),
-          ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            icon: const Icon(Icons.check),
-            label: const Text('Concluir OS'),
-            onPressed: () => _abrirConcluirSheet(context, ref),
-          ),
-        ],
+        const SizedBox(height: 12),
+        _PhotosSection(
+          canTakePhoto: podeConcluir,
+          onTakePhoto: () => _tirarFoto(context, ref),
+        ),
       ],
     );
   }
@@ -367,262 +338,419 @@ class _ConcluirSheetState extends ConsumerState<_ConcluirSheet> {
   }
 }
 
-class _Header extends StatelessWidget {
+class _PendingSyncBanner extends StatelessWidget {
+  final int count;
+
+  const _PendingSyncBanner({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFFd97706);
+
+    return AppSurfaceCard(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.cloud_upload_rounded,
+              size: 18,
+              color: accent,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              '$count item(ns) aguardando upload',
+              style: const TextStyle(
+                color: Color(0xFFb45309),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusSection extends StatelessWidget {
   final Map<String, dynamic> os;
-  const _Header({required this.os});
+
+  const _StatusSection({required this.os});
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final status = (os['status'] ?? '') as String;
-    final c = _statusInfo(status);
+    final statusInfo = _StatusInfo.of((os['status'] ?? '') as String);
     final nome = (os['nome_cliente'] as String?) ?? 'Cliente —';
     final codigo = (os['codigo'] ?? '') as String;
+    final agendamento = _parseDate(os['agendamento_at']?.toString());
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            c.color.withValues(alpha: 0.12),
-            c.color.withValues(alpha: 0.04),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: c.color.withValues(alpha: 0.25)),
-      ),
+    return AppSurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const AppSectionHeader(
+            title: 'Status da OS',
+            subtitle: 'Panorama rápido da visita e do agendamento.',
+          ),
+          const SizedBox(height: 16),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                codigo,
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: c.color.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: c.color.withValues(alpha: 0.4)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+              ClienteAvatar(nome: nome, size: 56),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(c.icon, size: 13, color: c.color),
-                    const SizedBox(width: 5),
                     Text(
-                      c.label,
+                      nome,
                       style: TextStyle(
-                        color: c.color,
-                        fontSize: 12,
+                        color: scheme.onSurface,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      codigo,
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w600,
+                        color: scheme.onSurfaceVariant,
+                        letterSpacing: 0.3,
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 12),
+              AppStatusChip(
+                label: statusInfo.label,
+                tone: statusInfo.tone,
+              ),
             ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            nome,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: scheme.onSurface,
-              height: 1.15,
-            ),
-          ),
-          const SizedBox(height: 4),
-          if (os['agendamento_at'] != null)
-            Row(
-              children: [
-                Icon(Icons.event, size: 14, color: scheme.onSurfaceVariant),
-                const SizedBox(width: 5),
-                Text(
-                  os['agendamento_at']
-                      .toString()
-                      .substring(0, 16)
-                      .replaceAll('T', ' às '),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: scheme.onSurfaceVariant,
-                  ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _DetailMetaPill(
+                icon: statusInfo.icon,
+                label: statusInfo.label,
+                color: statusInfo.color,
+              ),
+              if (agendamento != null)
+                _DetailMetaPill(
+                  icon: Icons.event_rounded,
+                  label: DateFormat("dd/MM 'às' HH:mm")
+                      .format(agendamento.toLocal()),
                 ),
-              ],
-            ),
+            ],
+          ),
         ],
       ),
     );
   }
+}
 
-  static ({String label, Color color, IconData icon}) _statusInfo(String s) {
-    switch (s) {
-      case 'pendente':
-        return (
-          label: 'Pendente',
-          color: const Color(0xFFf59e0b),
-          icon: Icons.hourglass_top
-        );
-      case 'em_andamento':
-        return (
-          label: 'Em andamento',
-          color: const Color(0xFF2563eb),
-          icon: Icons.directions_run
-        );
-      case 'concluida':
-        return (
-          label: 'Concluída',
-          color: const Color(0xFF16a34a),
-          icon: Icons.check_circle
-        );
-      case 'cancelada':
-        return (
-          label: 'Cancelada',
-          color: const Color(0xFF6b7280),
-          icon: Icons.cancel
-        );
-      default:
-        return (
-          label: s,
-          color: const Color(0xFF6b7280),
-          icon: Icons.help_outline
-        );
-    }
+class _ContextSection extends StatelessWidget {
+  final String endereco;
+  final String problema;
+  final String? plano;
+  final String? login;
+  final String? senha;
+
+  const _ContextSection({
+    required this.endereco,
+    required this.problema,
+    required this.plano,
+    required this.login,
+    required this.senha,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppSurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppSectionHeader(
+            title: 'Contexto',
+            subtitle: 'Dados do local e do atendimento reportado.',
+          ),
+          const SizedBox(height: 16),
+          _DetailField(
+            icon: Icons.place_outlined,
+            title: 'Endereço',
+            content: endereco,
+          ),
+          const SizedBox(height: 16),
+          _DetailField(
+            icon: Icons.report_problem_outlined,
+            title: 'Problema relatado',
+            content: problema,
+          ),
+          if (plano != null || login != null || senha != null) ...[
+            const SizedBox(height: 18),
+            const Divider(height: 1),
+            const SizedBox(height: 18),
+            _ConnectionBlock(plano: plano, login: login, senha: senha),
+          ],
+        ],
+      ),
+    );
   }
 }
 
-class _Secao extends StatelessWidget {
-  final IconData icone;
-  final String titulo;
-  final String conteudo;
-  const _Secao({
-    required this.icone,
-    required this.titulo,
-    required this.conteudo,
+class _ActionsSection extends StatelessWidget {
+  final bool canStart;
+  final bool canConclude;
+  final VoidCallback onStart;
+  final VoidCallback onConclude;
+
+  const _ActionsSection({
+    required this.canStart,
+    required this.canConclude,
+    required this.onStart,
+    required this.onConclude,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icone, size: 16, color: scheme.onSurfaceVariant),
-                const SizedBox(width: 6),
-                Text(
-                  titulo.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 11,
-                    letterSpacing: 0.5,
-                    fontWeight: FontWeight.w700,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+
+    return AppSurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppSectionHeader(
+            title: 'Ações',
+            subtitle: canStart || canConclude
+                ? 'Próximo passo operacional disponível para esta OS.'
+                : 'Esta OS não tem ações operacionais pendentes.',
+          ),
+          const SizedBox(height: 16),
+          if (canStart)
+            FilledButton.icon(
+              icon: const Icon(Icons.play_arrow_rounded),
+              label: const Text('Iniciar visita (com GPS)'),
+              onPressed: onStart,
             ),
-            const SizedBox(height: 6),
+          if (canConclude)
+            FilledButton.icon(
+              icon: const Icon(Icons.check_rounded),
+              label: const Text('Concluir OS'),
+              onPressed: onConclude,
+            ),
+          if (!canStart && !canConclude)
             Text(
-              conteudo,
-              style: const TextStyle(fontSize: 14.5, height: 1.4),
+              'O atendimento já foi encerrado ou não exige uma próxima ação.',
+              style: TextStyle(
+                color: scheme.onSurfaceVariant,
+                height: 1.4,
+              ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
 }
 
-class _PppoeCard extends StatelessWidget {
-  final String? plano;
-  final String? login;
-  final String? senha;
-  const _PppoeCard({this.plano, this.login, this.senha});
+class _PhotosSection extends StatelessWidget {
+  final bool canTakePhoto;
+  final VoidCallback onTakePhoto;
+
+  const _PhotosSection({
+    required this.canTakePhoto,
+    required this.onTakePhoto,
+  });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.router, size: 16, color: scheme.onSurfaceVariant),
-                const SizedBox(width: 6),
-                Text(
-                  'CONEXÃO',
-                  style: TextStyle(
-                    fontSize: 11,
-                    letterSpacing: 0.5,
-                    fontWeight: FontWeight.w700,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+
+    return AppSurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppSectionHeader(
+            title: 'Fotos',
+            subtitle: canTakePhoto
+                ? 'Registre evidências do atendimento antes da conclusão.'
+                : 'As fotos ficam disponíveis quando a visita está em andamento.',
+          ),
+          const SizedBox(height: 16),
+          if (canTakePhoto)
+            FilledButton.tonalIcon(
+              icon: const Icon(Icons.photo_camera_rounded),
+              label: const Text('Tirar foto'),
+              onPressed: onTakePhoto,
+            )
+          else
+            Text(
+              'Inicie a visita para liberar o registro de fotos de campo.',
+              style: TextStyle(
+                color: scheme.onSurfaceVariant,
+                height: 1.4,
+              ),
             ),
-            const SizedBox(height: 8),
-            if (plano != null) _kv(context, 'Plano', plano!),
-            if (login != null) _kv(context, 'Login', login!, mono: true),
-            if (senha != null) _kv(context, 'Senha', senha!, mono: true),
-          ],
-        ),
+        ],
       ),
     );
   }
+}
 
-  Widget _kv(BuildContext context, String k, String v, {bool mono = false}) {
+class _DetailField extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String content;
+
+  const _DetailField({
+    required this.icon,
+    required this.title,
+    required this.content,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 18, color: scheme.onSurfaceVariant),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                content,
+                style: TextStyle(
+                  color: scheme.onSurface,
+                  fontSize: 15,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ConnectionBlock extends StatelessWidget {
+  final String? plano;
+  final String? login;
+  final String? senha;
+
+  const _ConnectionBlock({
+    required this.plano,
+    required this.login,
+    required this.senha,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.router_rounded,
+                size: 16, color: scheme.onSurfaceVariant),
+            const SizedBox(width: 8),
+            Text(
+              'Conexão',
+              style: TextStyle(
+                color: scheme.onSurface,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (plano != null) _ConnectionRow(label: 'Plano', value: plano!),
+        if (login != null)
+          _ConnectionRow(label: 'Login', value: login!, mono: true),
+        if (senha != null)
+          _ConnectionRow(label: 'Senha', value: senha!, mono: true),
+      ],
+    );
+  }
+}
+
+class _ConnectionRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool mono;
+
+  const _ConnectionRow({
+    required this.label,
+    required this.value,
+    this.mono = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 70,
+            width: 72,
             child: Text(
-              k,
+              label,
               style: TextStyle(
                 fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                color: scheme.onSurfaceVariant,
               ),
             ),
           ),
           Expanded(
             child: SelectableText(
-              v,
+              value,
               style: TextStyle(
                 fontSize: 14,
                 fontFamily: mono ? 'monospace' : null,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -630,6 +758,103 @@ class _PppoeCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _DetailMetaPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color? color;
+
+  const _DetailMetaPill({
+    required this.icon,
+    required this.label,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final resolvedColor = color ?? scheme.onSurfaceVariant;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: resolvedColor.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: resolvedColor),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: resolvedColor,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusInfo {
+  final String label;
+  final Color color;
+  final IconData icon;
+  final AppStatusTone tone;
+
+  const _StatusInfo(this.label, this.color, this.icon, this.tone);
+
+  static _StatusInfo of(String status) {
+    switch (status) {
+      case 'pendente':
+        return const _StatusInfo(
+          'Pendente',
+          Color(0xFFf59e0b),
+          Icons.hourglass_top_rounded,
+          AppStatusTone.warning,
+        );
+      case 'em_andamento':
+        return const _StatusInfo(
+          'Em andamento',
+          Color(0xFF2563eb),
+          Icons.directions_run_rounded,
+          AppStatusTone.info,
+        );
+      case 'concluida':
+        return const _StatusInfo(
+          'Concluída',
+          Color(0xFF16a34a),
+          Icons.check_circle_rounded,
+          AppStatusTone.success,
+        );
+      case 'cancelada':
+        return const _StatusInfo(
+          'Cancelada',
+          Color(0xFF6b7280),
+          Icons.cancel_rounded,
+          AppStatusTone.neutral,
+        );
+      default:
+        return _StatusInfo(
+          status,
+          const Color(0xFF6b7280),
+          Icons.help_outline_rounded,
+          AppStatusTone.neutral,
+        );
+    }
+  }
+}
+
+DateTime? _parseDate(String? value) {
+  if (value == null || value.isEmpty) {
+    return null;
+  }
+  return DateTime.tryParse(value);
 }
 
 class _Erro extends StatelessWidget {
