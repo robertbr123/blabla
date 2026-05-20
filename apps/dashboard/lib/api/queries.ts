@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import { apiFetch } from './client'
 import { getAccessToken } from '@/lib/api/token'
 import type {
@@ -973,16 +973,19 @@ export interface ClientesCampoFilter {
 }
 
 export function useClientesCampo(filter: ClientesCampoFilter = {}) {
-  const params = new URLSearchParams()
-  if (filter.q) params.set('q', filter.q)
-  if (filter.city) params.set('city', filter.city)
-  if (filter.sgp_status) params.set('sgp_status', filter.sgp_status)
-  if (filter.cursor) params.set('cursor', filter.cursor)
-  const qs = params.toString()
-  return useQuery<import('./types').CursorPage<import('./types').ClienteCampoListItem>>({
+  return useInfiniteQuery<import('./types').CursorPage<import('./types').ClienteCampoListItem>>({
     queryKey: ['clientes-campo', filter],
-    queryFn: () =>
-      apiFetch(`/api/v1/clientes-campo${qs ? `?${qs}` : ''}`),
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams()
+      if (filter.q) params.set('q', filter.q)
+      if (filter.city) params.set('city', filter.city)
+      if (filter.sgp_status) params.set('sgp_status', filter.sgp_status)
+      params.set('limit', '200')
+      if (pageParam) params.set('cursor', pageParam as string)
+      return apiFetch(`/api/v1/clientes-campo?${params.toString()}`)
+    },
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
   })
 }
 

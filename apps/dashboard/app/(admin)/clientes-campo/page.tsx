@@ -32,13 +32,20 @@ export default function ClientesCampoPage() {
   const [showImport, setShowImport] = useState(false)
   const [showDetail, setShowDetail] = useState<string | null>(null)
 
-  const { data, isLoading, error } = useClientesCampo({
+  const {
+    data,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useClientesCampo({
     q: busca || undefined,
     sgp_status: filtroSgp === 'all' ? undefined : filtroSgp,
   })
   const deleteCliente = useDeleteClienteCampo()
 
-  const items = data?.items ?? []
+  const items = data?.pages.flatMap((p) => p.items) ?? []
   const synced = items.filter((c) => c.sgp_synced_at).length
   const pending = items.filter((c) => !c.sgp_synced_at).length
 
@@ -233,6 +240,24 @@ export default function ClientesCampoPage() {
               ))}
             </tbody>
           </table>
+          {(hasNextPage || isFetchingNextPage) && (
+            <div className="flex items-center justify-center gap-3 border-t bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {items.length} carregado{items.length === 1 ? '' : 's'}
+                {hasNextPage ? ' · há mais' : ''}
+              </span>
+              {hasNextPage && (
+                <button
+                  type="button"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  className="rounded-md border border-border bg-background px-3 py-1 font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50"
+                >
+                  {isFetchingNextPage ? 'Carregando…' : 'Carregar mais'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
