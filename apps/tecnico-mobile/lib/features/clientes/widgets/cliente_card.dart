@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/ui/app_status_chip.dart';
+import '../../../core/ui/app_surfaces.dart';
 import '../../os/widgets/cliente_avatar.dart';
 import '../cliente_data.dart';
 
@@ -20,107 +22,128 @@ class ClienteCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final synced = item.sgpSyncedAt != null;
 
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(
-          color: scheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ClienteAvatar(nome: item.nome, size: 48),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            item.nome,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              height: 1.2,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: AppSurfaceCard(
+        padding: EdgeInsets.zero,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClienteAvatar(nome: item.nome, size: 52),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.nome,
+                                  style: TextStyle(
+                                    color: scheme.onSurface,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.15,
+                                    letterSpacing: -0.2,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 5),
+                                Text(
+                                  _maskCpf(item.cpf),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: scheme.onSurfaceVariant,
+                                    fontFamily: 'monospace',
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                              ],
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        _SgpBadge(synced: synced),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.credit_card,
-                            size: 12, color: scheme.onSurfaceVariant),
-                        const SizedBox(width: 4),
-                        Text(
-                          _maskCpf(item.cpf),
+                          const SizedBox(width: 8),
+                          AppStatusChip(
+                            label: synced ? 'SGP OK' : 'Pendente SGP',
+                            tone: synced
+                                ? AppStatusTone.success
+                                : AppStatusTone.warning,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _MetaRow(
+                        icon: Icons.place_outlined,
+                        child: Text(
+                          _enderecoCurto(item),
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             color: scheme.onSurfaceVariant,
-                            fontFamily: 'monospace',
+                            height: 1.35,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Icon(Icons.place_outlined,
-                            size: 12, color: scheme.onSurfaceVariant),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            _enderecoCurto(item),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: scheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _Pill(
+                              icon: Icons.wifi,
+                              label: item.planNome.length > 30
+                                  ? '${item.planNome.substring(0, 30)}…'
+                                  : item.planNome,
+                              color: const Color(0xFF2563eb),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                            _Pill(
+                              icon: Icons.engineering_outlined,
+                              label: item.installerNome,
+                              color: const Color(0xFF17324D),
+                            ),
+                            if (destaqueInstaladoPorMim)
+                              const _Pill(
+                                icon: Icons.verified_user_outlined,
+                                label: 'instalei eu',
+                                color: Color(0xFF16a34a),
+                              ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        _Pill(
-                          icon: Icons.wifi,
-                          label: item.planNome.length > 28
-                              ? '${item.planNome.substring(0, 28)}…'
-                              : item.planNome,
-                          color: const Color(0xFF2563eb),
-                        ),
-                        if (destaqueInstaladoPorMim)
-                          const _Pill(
-                            icon: Icons.engineering,
-                            label: 'instalei eu',
-                            color: Color(0xFF16a34a),
-                          ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-            ],
+                const SizedBox(width: 12),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -150,39 +173,30 @@ class ClienteCard extends StatelessWidget {
   }
 }
 
-class _SgpBadge extends StatelessWidget {
-  final bool synced;
-  const _SgpBadge({required this.synced});
+class _MetaRow extends StatelessWidget {
+  final IconData icon;
+  final Widget child;
+
+  const _MetaRow({
+    required this.icon,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final color = synced ? const Color(0xFF16a34a) : const Color(0xFFf59e0b);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            synced ? Icons.cloud_done : Icons.cloud_off,
-            size: 10,
-            color: color,
-          ),
-          const SizedBox(width: 3),
-          Text(
-            synced ? 'SGP' : 'pendente',
-            style: TextStyle(
-              fontSize: 10,
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
+    final scheme = Theme.of(context).colorScheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          icon,
+          size: 14,
+          color: scheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: 6),
+        Expanded(child: child),
+      ],
     );
   }
 }
@@ -196,20 +210,20 @@ class _Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 11, color: color),
-          const SizedBox(width: 4),
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 5),
           Text(
             label,
             style: TextStyle(
-              fontSize: 10.5,
+              fontSize: 11,
               color: color,
               fontWeight: FontWeight.w600,
             ),

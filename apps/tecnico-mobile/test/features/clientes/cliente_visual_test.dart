@@ -1,0 +1,259 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:permission_handler_platform_interface/permission_handler_platform_interface.dart';
+import 'package:tecnico_mobile/core/theme.dart';
+import 'package:tecnico_mobile/core/ui/app_surfaces.dart';
+import 'package:tecnico_mobile/features/clientes/cliente_data.dart';
+import 'package:tecnico_mobile/features/clientes/cliente_detail_screen.dart';
+import 'package:tecnico_mobile/features/clientes/cliente_form_data.dart';
+import 'package:tecnico_mobile/features/clientes/cliente_novo_screen.dart';
+import 'package:tecnico_mobile/features/clientes/clientes_list_screen.dart';
+import 'package:tecnico_mobile/features/estoque/estoque_data.dart';
+
+class _FakePermissionHandlerPlatform extends PermissionHandlerPlatform {
+  _FakePermissionHandlerPlatform(this.status);
+
+  final PermissionStatus status;
+
+  @override
+  Future<PermissionStatus> checkPermissionStatus(Permission permission) async {
+    return status;
+  }
+
+  @override
+  Future<ServiceStatus> checkServiceStatus(Permission permission) async {
+    return ServiceStatus.disabled;
+  }
+
+  @override
+  Future<bool> openAppSettings() async => true;
+
+  @override
+  Future<Map<Permission, PermissionStatus>> requestPermissions(
+    List<Permission> permissions,
+  ) async {
+    return {
+      for (final permission in permissions) permission: status,
+    };
+  }
+
+  @override
+  Future<bool> shouldShowRequestPermissionRationale(
+    Permission permission,
+  ) async {
+    return false;
+  }
+}
+
+ClienteListItem _listItem({
+  required String id,
+  required String nome,
+  DateTime? sgpSyncedAt,
+}) {
+  return ClienteListItem(
+    id: id,
+    cpf: '12345678901',
+    nome: nome,
+    address: 'Rua das Palmeiras',
+    number: '120',
+    neighborhood: 'Centro',
+    city: 'Manaus',
+    planNome: 'Fibra 500 Mega',
+    installerNome: 'Técnico 1',
+    sgpSyncedAt: sgpSyncedAt,
+    sgpId: sgpSyncedAt == null ? null : 'sgp-$id',
+    createdAt: DateTime(2026, 5, 20),
+  );
+}
+
+ClienteCampo _cliente() {
+  return ClienteCampo(
+    id: 'cliente-1',
+    cpf: '12345678901',
+    nome: 'Marina Silva',
+    dob: DateTime(1992, 4, 10),
+    telefone: '92999998888',
+    email: 'marina@example.com',
+    cep: '69000000',
+    address: 'Rua das Palmeiras',
+    number: '120',
+    complement: 'Apto 12',
+    neighborhood: 'Centro',
+    city: 'Manaus',
+    state: 'AM',
+    planId: 1,
+    planNome: 'Fibra 500 Mega',
+    pppoeUser: 'marina.silva',
+    pppoePass: 'senha123',
+    dueDate: 20,
+    installerUserId: 'tech-1',
+    installerNome: 'Técnico 1',
+    serial: 'ONU-123456',
+    contrato: 'CTR-001',
+    observation: 'Cliente prefere contato por WhatsApp.',
+    latitude: -3.1019,
+    longitude: -60.025,
+    locationAccuracy: 12,
+    fotos: const [],
+    registrationDate: DateTime(2026, 5, 12),
+    sgpSyncedAt: DateTime(2026, 5, 19),
+    sgpId: 'sgp-1',
+    createdAt: DateTime(2026, 5, 12),
+    updatedAt: DateTime(2026, 5, 20),
+  );
+}
+
+Future<void> pumpClientesList(WidgetTester tester) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        clientesListProvider.overrideWith(
+          (ref) async => ClienteListPage(
+            items: [
+              _listItem(
+                id: 'cliente-1',
+                nome: 'Marina Silva',
+                sgpSyncedAt: DateTime(2026, 5, 19),
+              ),
+              _listItem(id: 'cliente-2', nome: 'Carlos Souza'),
+            ],
+          ),
+        ),
+      ],
+      child: MaterialApp(
+        theme: buildLightTheme(),
+        home: const ClientesListScreen(),
+      ),
+    ),
+  );
+
+  await tester.pumpAndSettle();
+}
+
+Future<void> pumpClienteDetail(WidgetTester tester) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        clienteDetailProvider('cliente-1').overrideWith((ref) async {
+          return _cliente();
+        }),
+        clienteOsHistoricoProvider('cliente-1').overrideWith((ref) async {
+          return [
+            ClienteOsHistorico(
+              id: 'os-1',
+              codigo: 'OS-100',
+              status: 'concluida',
+              problema: 'Sem sinal',
+              criadaEm: DateTime(2026, 5, 18),
+              concluidaEm: DateTime(2026, 5, 19),
+            ),
+          ];
+        }),
+        clienteMateriaisProvider('cliente-1').overrideWith((ref) async {
+          return const <MaterialUsado>[];
+        }),
+      ],
+      child: MaterialApp(
+        theme: buildLightTheme(),
+        home: const ClienteDetailScreen(id: 'cliente-1'),
+      ),
+    ),
+  );
+
+  await tester.pumpAndSettle();
+}
+
+Future<void> pumpNovoCliente(WidgetTester tester) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        planosProvider.overrideWith((ref) async {
+          return [
+            SgpPlano(
+              id: 1,
+              grupo: 'Fibra',
+              descricao: 'Fibra 500 Mega',
+              preco: 129.9,
+              download: 512000,
+              upload: 256000,
+            ),
+          ];
+        }),
+        estoqueSaldoProvider.overrideWith((ref) async {
+          return [
+            EstoqueLinha(
+              itemId: 'item-1',
+              sku: 'ONU-01',
+              nome: 'ONU Wi-Fi 6',
+              categoria: 'ONU',
+              serializado: true,
+              saldo: 2,
+            ),
+          ];
+        }),
+      ],
+      child: MaterialApp(
+        theme: buildLightTheme(),
+        home: const ClienteNovoScreen(),
+      ),
+    ),
+  );
+
+  await tester.pumpAndSettle();
+}
+
+void main() {
+  late PermissionHandlerPlatform originalPermissionPlatform;
+
+  setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    originalPermissionPlatform = PermissionHandlerPlatform.instance;
+  });
+
+  setUp(() {
+    PermissionHandlerPlatform.instance =
+        _FakePermissionHandlerPlatform(PermissionStatus.denied);
+  });
+
+  tearDown(() {
+    PermissionHandlerPlatform.instance = originalPermissionPlatform;
+  });
+
+  testWidgets('clientes list shows premium search and section header',
+      (tester) async {
+    await pumpClientesList(tester);
+
+    expect(find.text('Clientes'), findsOneWidget);
+    expect(find.text('Base de clientes'), findsOneWidget);
+    expect(find.byIcon(Icons.search), findsOneWidget);
+    expect(find.byType(AppSurfaceCard), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('cliente detail groups hero and data into premium surfaces',
+      (tester) async {
+    await pumpClienteDetail(tester);
+    final detailScroll = find.byType(Scrollable).first;
+
+    expect(find.text('Resumo do cliente'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Histórico de OS'),
+      300,
+      scrollable: detailScroll,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Histórico de OS'), findsOneWidget);
+    expect(find.byType(AppSurfaceCard), findsAtLeastNWidgets(2));
+  });
+
+  testWidgets('novo cliente shows elevated step container', (tester) async {
+    await pumpNovoCliente(tester);
+
+    expect(find.text('Novo cliente'), findsOneWidget);
+    expect(find.text('Cadastro guiado'), findsOneWidget);
+    expect(find.byType(AppSurfaceCard), findsAtLeastNWidgets(2));
+  });
+}

@@ -8,6 +8,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/location/location_service.dart';
+import '../../core/ui/app_section_header.dart';
+import '../../core/ui/app_status_chip.dart';
+import '../../core/ui/app_surfaces.dart';
 import '../../core/util/cpf_validator.dart';
 import '../../core/util/viacep.dart';
 import '../estoque/estoque_data.dart';
@@ -230,7 +233,10 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: scheme.surfaceContainerLowest,
       appBar: AppBar(
         title: const Text('Novo cliente'),
         actions: [
@@ -242,64 +248,145 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
         ],
       ),
       body: SafeArea(
-        child: Stepper(
-          physics: const ClampingScrollPhysics(),
-          currentStep: _step,
-          onStepTapped: (i) {
-            if (i < _step) setState(() => _step = i);
-          },
-          controlsBuilder: (ctx, details) {
-            // Botoes precisam de Expanded dentro do Row porque o theme
-            // global do app define FilledButton.minimumSize com largura
-            // infinita — sem Expanded, dispara BoxConstraints(w=Infinity).
-            return Padding(
-              padding: const EdgeInsets.only(top: 16),
-              child: Row(
-                children: [
-                  if (_step > 0) ...[
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+              child: AppSurfaceCard(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => setState(() => _step -= 1),
-                        child: const Text('Voltar'),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const AppSectionHeader(
+                            title: 'Cadastro guiado',
+                            subtitle:
+                                'Organize os dados pessoais, a conexão e a instalação em 3 etapas objetivas.',
+                          ),
+                          const SizedBox(height: 14),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              AppStatusChip(
+                                label: 'Etapa ${_step + 1} de 3',
+                                tone: AppStatusTone.info,
+                              ),
+                              AppStatusChip(
+                                label: _gpsCapturing
+                                    ? 'GPS em segundo plano'
+                                    : _gps == null
+                                        ? 'GPS indisponível'
+                                        : 'GPS capturado',
+                                tone: _gpsCapturing
+                                    ? AppStatusTone.info
+                                    : _gps == null
+                                        ? AppStatusTone.warning
+                                        : AppStatusTone.success,
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 12),
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Center(
+                        child: _GpsChip(
+                          gps: _gps,
+                          capturing: _gpsCapturing,
+                        ),
+                      ),
+                    ),
                   ],
-                  if (_step < 2)
-                    Expanded(
-                      flex: 2,
-                      child: FilledButton(
-                        onPressed: () {
-                          final erro =
-                              _step == 0 ? _validaStep1() : _validaStep2();
-                          if (erro != null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(erro)),
-                            );
-                            return;
-                          }
-                          setState(() => _step += 1);
-                        },
-                        child: const Text('Continuar'),
-                      ),
-                    ),
-                  if (_step == 2)
-                    Expanded(
-                      flex: 2,
-                      child: FilledButton.icon(
-                        icon: const Icon(Icons.check),
-                        onPressed: _enviando ? null : _enviar,
-                        label: Text(_enviando ? 'Salvando…' : 'Salvar cliente'),
-                      ),
-                    ),
-                ],
+                ),
               ),
-            );
-          },
-          steps: [
-            _stepDados(),
-            _stepEnderecoPlano(),
-            _stepInstalacao(),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: AppSurfaceCard(
+                  padding: EdgeInsets.zero,
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      dividerColor: Colors.transparent,
+                    ),
+                    child: Stepper(
+                      physics: const ClampingScrollPhysics(),
+                      margin: EdgeInsets.zero,
+                      currentStep: _step,
+                      onStepTapped: (i) {
+                        if (i < _step) setState(() => _step = i);
+                      },
+                      controlsBuilder: (ctx, details) {
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 16),
+                          child: Row(
+                            children: [
+                              if (_step > 0) ...[
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () => setState(() => _step -= 1),
+                                    child: const Text('Voltar'),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              if (_step < 2)
+                                Expanded(
+                                  flex: 2,
+                                  child: FilledButton(
+                                    onPressed: () {
+                                      final erro = _step == 0
+                                          ? _validaStep1()
+                                          : _validaStep2();
+                                      if (erro != null) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(content: Text(erro)),
+                                        );
+                                        return;
+                                      }
+                                      setState(() => _step += 1);
+                                    },
+                                    child: const Text('Continuar'),
+                                  ),
+                                ),
+                              if (_step == 2)
+                                Expanded(
+                                  flex: 2,
+                                  child: FilledButton.icon(
+                                    icon: const Icon(Icons.check),
+                                    onPressed: _enviando ? null : _enviar,
+                                    label: Text(
+                                      _enviando
+                                          ? 'Salvando…'
+                                          : 'Salvar cliente',
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                      steps: [
+                        _stepDados(),
+                        _stepEnderecoPlano(),
+                        _stepInstalacao(),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -312,88 +399,90 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
       title: const Text('Dados'),
       isActive: _step >= 0,
       state: _step > 0 ? StepState.complete : StepState.indexed,
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            controller: _cpf,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              labelText: 'CPF / CNPJ',
-              prefixIcon: const Icon(Icons.credit_card),
-              suffixIcon: _cpf.text.isEmpty
-                  ? null
-                  : Icon(
-                      cpfValido ? Icons.check_circle : Icons.error,
-                      color: cpfValido ? Colors.green : Colors.red,
-                    ),
-              errorText: cpfValido ? null : 'Dígitos verificadores inválidos',
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _nome,
-            textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(
-              labelText: 'Nome completo',
-              prefixIcon: Icon(Icons.person_outline),
-            ),
-          ),
-          const SizedBox(height: 12),
-          InkWell(
-            onTap: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: _dob ?? DateTime(1990, 1, 1),
-                firstDate: DateTime(1900),
-                lastDate: DateTime.now(),
-              );
-              if (picked != null) setState(() => _dob = picked);
-            },
-            child: InputDecorator(
-              decoration: const InputDecoration(
-                labelText: 'Data de nascimento',
-                prefixIcon: Icon(Icons.cake_outlined),
+      content: _StepPanel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _cpf,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'CPF / CNPJ',
+                prefixIcon: const Icon(Icons.credit_card),
+                suffixIcon: _cpf.text.isEmpty
+                    ? null
+                    : Icon(
+                        cpfValido ? Icons.check_circle : Icons.error,
+                        color: cpfValido ? Colors.green : Colors.red,
+                      ),
+                errorText: cpfValido ? null : 'Dígitos verificadores inválidos',
               ),
-              child: Text(
-                _dob != null
-                    ? DateFormat('dd/MM/yyyy').format(_dob!)
-                    : 'Selecione…',
-                style: TextStyle(
-                  color: _dob != null
-                      ? null
-                      : Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _nome,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Nome completo',
+                prefixIcon: Icon(Icons.person_outline),
+              ),
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _dob ?? DateTime(1990, 1, 1),
+                  firstDate: DateTime(1900),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) setState(() => _dob = picked);
+              },
+              child: InputDecorator(
+                decoration: const InputDecoration(
+                  labelText: 'Data de nascimento',
+                  prefixIcon: Icon(Icons.cake_outlined),
+                ),
+                child: Text(
+                  _dob != null
+                      ? DateFormat('dd/MM/yyyy').format(_dob!)
+                      : 'Selecione…',
+                  style: TextStyle(
+                    color: _dob != null
+                        ? null
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _telefone,
-            keyboardType: TextInputType.phone,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(11),
-            ],
-            decoration: const InputDecoration(
-              labelText: 'Telefone (com DDD)',
-              prefixIcon: Icon(Icons.phone_iphone),
-              hintText: 'Ex: 92999998888',
+            const SizedBox(height: 12),
+            TextField(
+              controller: _telefone,
+              keyboardType: TextInputType.phone,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(11),
+              ],
+              decoration: const InputDecoration(
+                labelText: 'Telefone (com DDD)',
+                prefixIcon: Icon(Icons.phone_iphone),
+                hintText: 'Ex: 92999998888',
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
-              labelText: 'Email (opcional)',
-              prefixIcon: Icon(Icons.email_outlined),
-              hintText: 'cliente@exemplo.com',
+            const SizedBox(height: 12),
+            TextField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Email (opcional)',
+                prefixIcon: Icon(Icons.email_outlined),
+                hintText: 'cliente@exemplo.com',
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -403,149 +492,151 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
       title: const Text('Endereço & Plano'),
       isActive: _step >= 1,
       state: _step > 1 ? StepState.complete : StepState.indexed,
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            controller: _cep,
-            keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(8),
-            ],
-            onChanged: _onCepChanged,
-            decoration: InputDecoration(
-              labelText: 'CEP',
-              prefixIcon: const Icon(Icons.markunread_mailbox_outlined),
-              suffixIcon: _cepBuscando
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: SizedBox(
-                        height: 16,
-                        width: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  : null,
-              helperText: 'Autocompleta endereço',
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: TextField(
-                  controller: _address,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    labelText: 'Endereço',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 1,
-                child: TextField(
-                  controller: _number,
-                  keyboardType: TextInputType.text,
-                  decoration: const InputDecoration(labelText: 'N°'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _complement,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
-              labelText: 'Complemento (opcional)',
-              hintText: 'Apto, bloco…',
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _neighborhood,
-            textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(labelText: 'Bairro'),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: TextField(
-                  controller: _city,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(labelText: 'Cidade'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 1,
-                child: TextField(
-                  controller: _state,
-                  textCapitalization: TextCapitalization.characters,
-                  inputFormatters: [LengthLimitingTextInputFormatter(2)],
-                  decoration: const InputDecoration(labelText: 'UF'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _PlanoSelector(
-            selecionado: _planoSelecionado,
-            onSelect: (p) => setState(() {
-              _planoSelecionado = p;
-            }),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _pppoeUser,
-                  decoration: const InputDecoration(
-                    labelText: 'PPPoE login',
-                    prefixIcon: Icon(Icons.key),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: TextField(
-                  controller: _pppoePass,
-                  decoration: const InputDecoration(
-                    labelText: 'PPPoE senha',
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              const Icon(Icons.calendar_today, size: 18),
-              const SizedBox(width: 8),
-              const Text('Vencimento'),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Wrap(
-                  spacing: 8,
-                  children: [10, 20, 30]
-                      .map(
-                        (day) => ChoiceChip(
-                          label: Text('Dia $day'),
-                          selected: _dueDate == day,
-                          onSelected: (_) => setState(() => _dueDate = day),
+      content: _StepPanel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _cep,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(8),
+              ],
+              onChanged: _onCepChanged,
+              decoration: InputDecoration(
+                labelText: 'CEP',
+                prefixIcon: const Icon(Icons.markunread_mailbox_outlined),
+                suffixIcon: _cepBuscando
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       )
-                      .toList(),
-                ),
+                    : null,
+                helperText: 'Autocompleta endereço',
               ),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: TextField(
+                    controller: _address,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(
+                      labelText: 'Endereço',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 1,
+                  child: TextField(
+                    controller: _number,
+                    keyboardType: TextInputType.text,
+                    decoration: const InputDecoration(labelText: 'N°'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _complement,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                labelText: 'Complemento (opcional)',
+                hintText: 'Apto, bloco…',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _neighborhood,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(labelText: 'Bairro'),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: TextField(
+                    controller: _city,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: const InputDecoration(labelText: 'Cidade'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 1,
+                  child: TextField(
+                    controller: _state,
+                    textCapitalization: TextCapitalization.characters,
+                    inputFormatters: [LengthLimitingTextInputFormatter(2)],
+                    decoration: const InputDecoration(labelText: 'UF'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _PlanoSelector(
+              selecionado: _planoSelecionado,
+              onSelect: (p) => setState(() {
+                _planoSelecionado = p;
+              }),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _pppoeUser,
+                    decoration: const InputDecoration(
+                      labelText: 'PPPoE login',
+                      prefixIcon: Icon(Icons.key),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    controller: _pppoePass,
+                    decoration: const InputDecoration(
+                      labelText: 'PPPoE senha',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(Icons.calendar_today, size: 18),
+                const SizedBox(width: 8),
+                const Text('Vencimento'),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Wrap(
+                    spacing: 8,
+                    children: [10, 20, 30]
+                        .map(
+                          (day) => ChoiceChip(
+                            label: Text('Dia $day'),
+                            selected: _dueDate == day,
+                            onSelected: (_) => setState(() => _dueDate = day),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -554,74 +645,77 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
     return Step(
       title: const Text('Instalação'),
       isActive: _step >= 2,
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // GPS status
-          _GpsCard(gps: _gps, capturing: _gpsCapturing, onRetry: _capturarGps),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _serial,
-            decoration: const InputDecoration(
-              labelText: 'Serial do equipamento (ONU)',
-              prefixIcon: Icon(Icons.qr_code_2),
-            ),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _contrato,
-            decoration: const InputDecoration(
-              labelText: 'Contrato (opcional)',
-              prefixIcon: Icon(Icons.description_outlined),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _MateriaisSelector(
-            qtdPorItem: _materiaisQtd,
-            serialPorItem: _materiaisSerial,
-            onChange: () => setState(() {}),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _observation,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              labelText: 'Observação (opcional)',
-            ),
-          ),
-          if (_erroEnvio != null) ...[
+      content: _StepPanel(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // GPS status
+            _GpsCard(
+                gps: _gps, capturing: _gpsCapturing, onRetry: _capturarGps),
             const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .errorContainer
-                    .withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(8),
+            TextField(
+              controller: _serial,
+              decoration: const InputDecoration(
+                labelText: 'Serial do equipamento (ONU)',
+                prefixIcon: Icon(Icons.qr_code_2),
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.error_outline,
-                      size: 18, color: Theme.of(context).colorScheme.error),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _erroEnvio!,
-                      style: const TextStyle(fontSize: 12),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _contrato,
+              decoration: const InputDecoration(
+                labelText: 'Contrato (opcional)',
+                prefixIcon: Icon(Icons.description_outlined),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _MateriaisSelector(
+              qtdPorItem: _materiaisQtd,
+              serialPorItem: _materiaisSerial,
+              onChange: () => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _observation,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Observação (opcional)',
+              ),
+            ),
+            if (_erroEnvio != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .errorContainer
+                      .withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.error_outline,
+                        size: 18, color: Theme.of(context).colorScheme.error),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _erroEnvio!,
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+            ],
+            const SizedBox(height: 8),
+            const Text(
+              'Após salvar, você poderá anexar fotos da instalação.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
-          const SizedBox(height: 8),
-          const Text(
-            'Após salvar, você poderá anexar fotos da instalação.',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -638,7 +732,7 @@ class _GpsChip extends StatelessWidget {
   Widget build(BuildContext context) {
     if (capturing) {
       return const Padding(
-        padding: EdgeInsets.all(12),
+        padding: EdgeInsets.all(8),
         child: SizedBox(
           height: 14,
           width: 14,
@@ -655,6 +749,27 @@ class _GpsChip extends StatelessWidget {
     return const Padding(
       padding: EdgeInsets.symmetric(horizontal: 8),
       child: Icon(Icons.location_on, size: 18, color: Colors.green),
+    );
+  }
+}
+
+class _StepPanel extends StatelessWidget {
+  final Widget child;
+
+  const _StepPanel({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(22),
+      ),
+      child: child,
     );
   }
 }

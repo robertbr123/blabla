@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/ui/app_section_header.dart';
+import '../../core/ui/app_status_chip.dart';
+import '../../core/ui/app_surfaces.dart';
 import 'cliente_data.dart';
 import 'widgets/cliente_card.dart';
 
@@ -11,8 +14,7 @@ class ClientesListScreen extends ConsumerStatefulWidget {
   const ClientesListScreen({super.key});
 
   @override
-  ConsumerState<ClientesListScreen> createState() =>
-      _ClientesListScreenState();
+  ConsumerState<ClientesListScreen> createState() => _ClientesListScreenState();
 }
 
 class _ClientesListScreenState extends ConsumerState<ClientesListScreen> {
@@ -28,6 +30,7 @@ class _ClientesListScreenState extends ConsumerState<ClientesListScreen> {
   }
 
   void _onBuscaChanged(String v) {
+    setState(() {});
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), () {
       ref.read(clienteListFilterProvider.notifier).state =
@@ -59,57 +62,92 @@ class _ClientesListScreenState extends ConsumerState<ClientesListScreen> {
       ),
       body: Column(
         children: [
-          // Barra de busca
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-            child: TextField(
-              controller: _busca,
-              onChanged: _onBuscaChanged,
-              decoration: InputDecoration(
-                prefixIcon: const Icon(Icons.search, size: 20),
-                hintText: 'Buscar por cidade, bairro, serial…',
-                isDense: true,
-                suffixIcon: _busca.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear, size: 18),
-                        onPressed: () {
-                          _busca.clear();
-                          _onBuscaChanged('');
-                        },
-                      )
-                    : null,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+            child: AppSurfaceCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const AppSectionHeader(
+                    title: 'Base de clientes',
+                    subtitle:
+                        'Busque por cidade, bairro ou serial e acompanhe o status SGP sem sair da fila.',
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _busca,
+                    onChanged: _onBuscaChanged,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      hintText: 'Buscar por cidade, bairro, serial…',
+                      isDense: true,
+                      suffixIcon: _busca.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () {
+                                _busca.clear();
+                                _onBuscaChanged('');
+                              },
+                            )
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      AppStatusChip(
+                        label: _sgpFilter == 'synced'
+                            ? 'Somente sincronizados'
+                            : _sgpFilter == 'pending'
+                                ? 'Somente pendentes SGP'
+                                : 'Todos os clientes',
+                        tone: _sgpFilter == 'pending'
+                            ? AppStatusTone.warning
+                            : _sgpFilter == 'synced'
+                                ? AppStatusTone.success
+                                : AppStatusTone.info,
+                      ),
+                      _SummaryPill(
+                        icon: Icons.people_alt_outlined,
+                        label:
+                            '${async.maybeWhen(data: (page) => page.items.length, orElse: () => 0)} visíveis',
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    height: 44,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        _FilterChip(
+                          label: 'Todos',
+                          selected: _sgpFilter == null,
+                          onTap: () => _toggleSgp(null),
+                        ),
+                        const SizedBox(width: 8),
+                        _FilterChip(
+                          label: 'Sincronizado',
+                          icon: Icons.cloud_done,
+                          color: const Color(0xFF16a34a),
+                          selected: _sgpFilter == 'synced',
+                          onTap: () => _toggleSgp('synced'),
+                        ),
+                        const SizedBox(width: 8),
+                        _FilterChip(
+                          label: 'Pendente SGP',
+                          icon: Icons.cloud_off,
+                          color: const Color(0xFFf59e0b),
+                          selected: _sgpFilter == 'pending',
+                          onTap: () => _toggleSgp('pending'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ),
-          // Chips de filtro SGP
-          SizedBox(
-            height: 44,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              children: [
-                _FilterChip(
-                  label: 'Todos',
-                  selected: _sgpFilter == null,
-                  onTap: () => _toggleSgp(null),
-                ),
-                const SizedBox(width: 6),
-                _FilterChip(
-                  label: 'Sincronizado',
-                  icon: Icons.cloud_done,
-                  color: const Color(0xFF16a34a),
-                  selected: _sgpFilter == 'synced',
-                  onTap: () => _toggleSgp('synced'),
-                ),
-                const SizedBox(width: 6),
-                _FilterChip(
-                  label: 'Pendente SGP',
-                  icon: Icons.cloud_off,
-                  color: const Color(0xFFf59e0b),
-                  selected: _sgpFilter == 'pending',
-                  onTap: () => _toggleSgp('pending'),
-                ),
-              ],
             ),
           ),
           Expanded(
@@ -129,7 +167,7 @@ class _ClientesListScreenState extends ConsumerState<ClientesListScreen> {
                   onRefresh: () async => ref.invalidate(clientesListProvider),
                   child: ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.only(top: 4, bottom: 88),
+                    padding: const EdgeInsets.only(top: 2, bottom: 88),
                     itemCount: page.items.length,
                     itemBuilder: (_, i) {
                       final c = page.items[i];
@@ -141,6 +179,44 @@ class _ClientesListScreenState extends ConsumerState<ClientesListScreen> {
                   ),
                 );
               },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryPill extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _SummaryPill({
+    required this.icon,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -173,7 +249,7 @@ class _FilterChip extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: selected
                 ? activeColor.withValues(alpha: 0.13)
@@ -188,7 +264,11 @@ class _FilterChip extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 14, color: selected ? activeColor : scheme.onSurfaceVariant),
+                Icon(
+                  icon,
+                  size: 14,
+                  color: selected ? activeColor : scheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 5),
               ],
               Text(
@@ -212,23 +292,32 @@ class _VazioView extends StatelessWidget {
   const _VazioView({required this.hasSearch});
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 32, 16, 24),
       children: [
-        const SizedBox(height: 80),
-        Icon(
-          hasSearch ? Icons.search_off : Icons.person_off,
-          size: 56,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-        const SizedBox(height: 12),
-        Text(
-          hasSearch
-              ? 'Nenhum cliente encontrado com esses filtros.'
-              : 'Nenhum cliente cadastrado ainda.\nToque em "Novo" pra começar.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+        AppSurfaceCard(
+          child: Column(
+            children: [
+              Icon(
+                hasSearch ? Icons.search_off : Icons.person_off,
+                size: 56,
+                color: scheme.onSurfaceVariant,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                hasSearch
+                    ? 'Nenhum cliente encontrado com esses filtros.'
+                    : 'Nenhum cliente cadastrado ainda.\nToque em "Novo" pra começar.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant,
+                  height: 1.4,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -242,15 +331,24 @@ class _ErroView extends StatelessWidget {
   const _ErroView({required this.e, required this.onRetry});
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        const Icon(Icons.error_outline, size: 56),
-        const SizedBox(height: 12),
-        Text(e.toString(), textAlign: TextAlign.center),
-        const SizedBox(height: 12),
-        FilledButton(onPressed: onRetry, child: const Text('Tentar de novo')),
-      ]),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 32, 16, 24),
+      children: [
+        AppSurfaceCard(
+          child: Column(
+            children: [
+              const Icon(Icons.error_outline, size: 56),
+              const SizedBox(height: 12),
+              Text(e.toString(), textAlign: TextAlign.center),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: onRetry,
+                child: const Text('Tentar de novo'),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

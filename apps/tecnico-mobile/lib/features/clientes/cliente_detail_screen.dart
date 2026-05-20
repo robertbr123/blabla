@@ -4,6 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart' show launchUrl;
 
+import '../../core/ui/app_section_header.dart';
+import '../../core/ui/app_status_chip.dart';
+import '../../core/ui/app_surfaces.dart';
+import '../os/widgets/cliente_avatar.dart';
 import 'cliente_data.dart';
 import 'widgets/cliente_fotos.dart';
 import 'widgets/cliente_materiais.dart';
@@ -15,7 +19,9 @@ class ClienteDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(clienteDetailProvider(id));
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: scheme.surfaceContainerLowest,
       appBar: AppBar(
         title: const Text('Cliente'),
         actions: [
@@ -31,8 +37,10 @@ class ClienteDetailScreen extends ConsumerWidget {
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Padding(
-          padding: const EdgeInsets.all(24),
-          child: Center(child: Text('Erro: $e')),
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+          child: AppSurfaceCard(
+            child: Center(child: Text('Erro: $e')),
+          ),
         ),
         data: (c) => _Body(cliente: c),
       ),
@@ -49,59 +57,77 @@ class _Body extends ConsumerWidget {
     final osAsync = ref.watch(clienteOsHistoricoProvider(cliente.id));
 
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
-        _Header(cliente: cliente),
+        AppSurfaceCard(child: _Header(cliente: cliente)),
         const SizedBox(height: 12),
         _SecaoEndereco(cliente: cliente),
+        const SizedBox(height: 12),
         _SecaoConexao(cliente: cliente),
+        const SizedBox(height: 12),
         _SecaoInstalacao(cliente: cliente),
+        const SizedBox(height: 12),
         ClienteMateriaisSection(clienteId: cliente.id),
-        if (cliente.observation != null && cliente.observation!.isNotEmpty)
+        if (cliente.observation != null && cliente.observation!.isNotEmpty) ...[
+          const SizedBox(height: 12),
           _SecaoSimples(
             icone: Icons.notes,
             titulo: 'Observação',
             conteudo: cliente.observation!,
           ),
+        ],
+        const SizedBox(height: 12),
         ClienteFotosSection(cliente: cliente),
         const SizedBox(height: 12),
-        const _SecaoTitulo('Histórico de OS'),
-        osAsync.when(
-          loading: () => const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (_, __) => const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('Não consegui carregar o histórico.',
-                style: TextStyle(color: Colors.grey)),
-          ),
-          data: (lista) {
-            if (lista.isEmpty) {
-              return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
+        AppSurfaceCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const AppSectionHeader(
+                title: 'Histórico de OS',
+                subtitle:
+                    'Ordens vinculadas a este cliente para consulta rápida em campo.',
+              ),
+              const SizedBox(height: 16),
+              osAsync.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator()),
                 ),
-                child: Text(
-                  cliente.sgpSyncedAt == null
-                      ? 'Cliente ainda não está no SGP — sem histórico de OS.'
-                      : 'Sem OS registradas pra esse cliente.',
+                error: (_, __) => Text(
+                  'Não consegui carregar o histórico.',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
-              );
-            }
-            return Column(
-              children: lista.map((os) => _OsTile(os: os)).toList(),
-            );
-          },
+                data: (lista) {
+                  if (lista.isEmpty) {
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color:
+                            Theme.of(context).colorScheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Text(
+                        cliente.sgpSyncedAt == null
+                            ? 'Cliente ainda não está no SGP, então o histórico de OS ainda não apareceu por aqui.'
+                            : 'Sem OS registradas para este cliente.',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          height: 1.4,
+                        ),
+                      ),
+                    );
+                  }
+                  return Column(
+                    children: lista.map((os) => _OsTile(os: os)).toList(),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -116,102 +142,129 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final synced = cliente.sgpSyncedAt != null;
-    final color = synced ? const Color(0xFF16a34a) : const Color(0xFFf59e0b);
     final telBr = _formatPhone(cliente.telefone);
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: scheme.brightness == Brightness.dark
-              ? const [Color(0xFF1e293b), Color(0xFF0f172a)]
-              : const [Color(0xFFf8fafc), Color(0xFFe2e8f0)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AppSectionHeader(
+          title: 'Resumo do cliente',
+          subtitle:
+              'Contato, sincronização e contexto principal da instalação.',
         ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: scheme.brightness == Brightness.dark
+                  ? const [Color(0xFF1e293b), Color(0xFF0f172a)]
+                  : const [Color(0xFFEAF0F6), Color(0xFFF8F5EE)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  cliente.nome,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    height: 1.15,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClienteAvatar(nome: cliente.nome, size: 60),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          cliente.nome,
+                          style: TextStyle(
+                            color: scheme.onSurface,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                            height: 1.1,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          cliente.planNome,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: scheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  AppStatusChip(
+                    label: synced ? 'SGP sincronizado' : 'Pendente SGP',
+                    tone:
+                        synced ? AppStatusTone.success : AppStatusTone.warning,
+                  ),
+                ],
               ),
+              const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: color.withValues(alpha: 0.35)),
+                  color: scheme.surface.withValues(alpha: 0.82),
+                  borderRadius: BorderRadius.circular(18),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(
-                      synced ? Icons.cloud_done : Icons.cloud_off,
-                      size: 12,
-                      color: color,
+                    _KvCopyable(
+                      icon: Icons.credit_card,
+                      label: _formatCpf(cliente.cpf),
+                      valueToCopy: cliente.cpf,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      synced ? 'SGP' : 'pendente',
-                      style: TextStyle(
-                        color: color,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                    _KvCopyable(
+                      icon: Icons.phone_iphone,
+                      label: telBr,
+                      valueToCopy: cliente.telefone,
+                      onTap: () =>
+                          launchUrl(Uri.parse('tel:+55${cliente.telefone}')),
+                    ),
+                    if (cliente.email != null &&
+                        cliente.email!.trim().isNotEmpty)
+                      _KvCopyable(
+                        icon: Icons.email_outlined,
+                        label: cliente.email!,
+                        valueToCopy: cliente.email!,
+                        onTap: () =>
+                            launchUrl(Uri.parse('mailto:${cliente.email!}')),
                       ),
-                    ),
+                    if (cliente.dob.year > 1900)
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.cake_outlined,
+                            size: 14,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            DateFormat('dd/MM/yyyy').format(cliente.dob),
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          _KvCopyable(
-            icon: Icons.credit_card,
-            label: _formatCpf(cliente.cpf),
-            valueToCopy: cliente.cpf,
-          ),
-          _KvCopyable(
-            icon: Icons.phone_iphone,
-            label: telBr,
-            valueToCopy: cliente.telefone,
-            onTap: () => launchUrl(Uri.parse('tel:+55${cliente.telefone}')),
-          ),
-          if (cliente.email != null && cliente.email!.trim().isNotEmpty)
-            _KvCopyable(
-              icon: Icons.email_outlined,
-              label: cliente.email!,
-              valueToCopy: cliente.email!,
-              onTap: () => launchUrl(Uri.parse('mailto:${cliente.email!}')),
-            ),
-          if (cliente.dob.year > 1900)
-            Row(
-              children: [
-                Icon(Icons.cake_outlined,
-                    size: 14, color: scheme.onSurfaceVariant),
-                const SizedBox(width: 6),
-                Text(
-                  DateFormat('dd/MM/yyyy').format(cliente.dob),
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -380,37 +433,37 @@ class _SecaoBase extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icone, size: 16, color: scheme.onSurfaceVariant),
-                const SizedBox(width: 6),
-                Text(
-                  titulo.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 11,
-                    letterSpacing: 0.5,
-                    fontWeight: FontWeight.w700,
-                    color: scheme.onSurfaceVariant,
-                  ),
+    return AppSurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            child,
-          ],
-        ),
+                alignment: Alignment.center,
+                child: Icon(icone, size: 18, color: scheme.primary),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                titulo,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface,
+                  letterSpacing: -0.1,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
       ),
     );
   }
@@ -550,26 +603,6 @@ class _KvCopyable extends StatelessWidget {
   }
 }
 
-class _SecaoTitulo extends StatelessWidget {
-  final String texto;
-  const _SecaoTitulo(this.texto);
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
-      child: Text(
-        texto,
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          letterSpacing: 0.3,
-        ),
-      ),
-    );
-  }
-}
-
 class _OsTile extends StatelessWidget {
   final ClienteOsHistorico os;
   const _OsTile({required this.os});
@@ -584,60 +617,87 @@ class _OsTile extends StatelessWidget {
       'cancelada' => const Color(0xFF6b7280),
       _ => scheme.onSurfaceVariant,
     };
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 6),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
       ),
-      child: ListTile(
-        leading: Container(
-          width: 4,
-          height: 40,
-          decoration: BoxDecoration(
-            color: cor,
-            borderRadius: BorderRadius.circular(2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 4,
+            height: 44,
+            decoration: BoxDecoration(
+              color: cor,
+              borderRadius: BorderRadius.circular(999),
+            ),
           ),
-        ),
-        title: Row(
-          children: [
-            Text(os.codigo,
-                style: const TextStyle(
-                    fontFamily: 'monospace', fontWeight: FontWeight.w600)),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-              decoration: BoxDecoration(
-                color: cor.withValues(alpha: 0.13),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                os.status,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: cor,
-                  fontWeight: FontWeight.w600,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    Text(
+                      os.codigo,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: cor.withValues(alpha: 0.13),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        os.status,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: cor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 8),
+                Text(
+                  os.problema,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: scheme.onSurfaceVariant,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (os.concluidaEm != null) ...[
+            const SizedBox(width: 12),
+            Text(
+              DateFormat('dd/MM').format(os.concluidaEm!),
+              style: TextStyle(
+                fontSize: 11,
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
-        ),
-        subtitle: Text(
-          os.problema,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12),
-        ),
-        trailing: os.concluidaEm != null
-            ? Text(
-                DateFormat('dd/MM').format(os.concluidaEm!),
-                style: TextStyle(
-                  fontSize: 11,
-                  color: scheme.onSurfaceVariant,
-                ),
-              )
-            : null,
+        ],
       ),
     );
   }
