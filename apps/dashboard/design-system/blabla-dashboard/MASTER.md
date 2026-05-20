@@ -1,208 +1,106 @@
-# Design System Master File
+# BlaBla Dashboard — Design System (Master)
 
-> **LOGIC:** When building a specific page, first check `design-system/pages/[page-name].md`.
-> If that file exists, its rules **override** this Master file.
-> If not, strictly follow the rules below.
+> Source of Truth global. Páginas específicas podem sobrescrever em `design-system/blabla-dashboard/pages/[page].md`.
 
----
+Promovido em 2026-05-20 a partir do preview em `/design-preview`.
 
-**Project:** BlaBla Dashboard
-**Generated:** 2026-05-20 00:47:26
-**Category:** Analytics Dashboard
+## Pattern: Data-Dense Dashboard
 
----
+- Padding mínimo, grid eficiente, KPI cards + tabelas + charts
+- Filtros sempre visíveis, drill-down via row click
+- Mobile: agrupar / esconder colunas secundárias
+- Best for: BI, admin, operações, analytics
 
-## Global Rules
+## Brand
 
-### Color Palette
+Logo: `apps/tecnico-mobile/assets/branding/logo_horizontal_{light,dark}.png` (compartilhado entre mobile e dashboard).
 
-| Role | Hex | CSS Variable |
-|------|-----|--------------|
-| Primary | `#1E40AF` | `--color-primary` |
-| On Primary | `#FFFFFF` | `--color-on-primary` |
-| Secondary | `#3B82F6` | `--color-secondary` |
-| Accent/CTA | `#D97706` | `--color-accent` |
-| Background | `#F8FAFC` | `--color-background` |
-| Foreground | `#1E3A8A` | `--color-foreground` |
-| Muted | `#E9EEF6` | `--color-muted` |
-| Border | `#DBEAFE` | `--color-border` |
-| Destructive | `#DC2626` | `--color-destructive` |
-| Ring | `#1E40AF` | `--color-ring` |
+## Colors (HSL — compatível com shadcn)
 
-**Color Notes:** Blue data + amber highlights [Accent adjusted from #F59E0B for WCAG 3:1]
+### Light
 
-### Typography
+| Token | HSL | Hex aprox | Uso |
+|---|---|---|---|
+| `--primary` | `160 84% 39%` | `#10B981` emerald-500 | Marca · CTA · item ativo |
+| `--primary-foreground` | `0 0% 100%` | `#FFFFFF` | Texto sobre primary |
+| `--accent` | `160 84% 96%` | emerald-50 | Hover sutil, item ativo light |
+| `--accent-foreground` | `160 84% 25%` | emerald-800 | Texto sobre accent |
+| `--success` | `160 84% 39%` | mesmo do primary | Status positivo |
+| `--warning` | `38 92% 50%` | `#F59E0B` amber-500 | Atenção, em andamento |
+| `--info` | `217 91% 60%` | `#3B82F6` blue-500 | Informativo, aberto |
+| `--destructive` | `0 84.2% 60.2%` | `#EF4444` red-500 | Erro, cancelado |
+| `--ring` | `160 84% 39%` | emerald | Focus visible |
 
-- **Heading Font:** Fira Code
-- **Body Font:** Fira Sans
-- **Mood:** dashboard, data, analytics, code, technical, precise
-- **Google Fonts:** [Fira Code + Fira Sans](https://fonts.google.com/share?selection.family=Fira+Code:wght@400;500;600;700|Fira+Sans:wght@300;400;500;600;700)
+Base neutra (`--background`, `--foreground`, `--muted`, `--border`) mantida slate — funciona melhor com data-dense.
 
-**CSS Import:**
-```css
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
-```
+### Dark
 
-### Spacing Variables
+Card sutilmente mais claro que background (`222.2 47% 7%` vs `222.2 84% 4.9%`) pra dar profundidade sem precisar de shadow. Primary fica mais saturado (`160 84% 45%`) pra manter presença.
 
-| Token | Value | Usage |
-|-------|-------|-------|
-| `--space-xs` | `4px` / `0.25rem` | Tight gaps |
-| `--space-sm` | `8px` / `0.5rem` | Icon gaps, inline spacing |
-| `--space-md` | `16px` / `1rem` | Standard padding |
-| `--space-lg` | `24px` / `1.5rem` | Section padding |
-| `--space-xl` | `32px` / `2rem` | Large gaps |
-| `--space-2xl` | `48px` / `3rem` | Section margins |
-| `--space-3xl` | `64px` / `4rem` | Hero padding |
+## Typography — Inter (Minimal Swiss)
 
-### Shadow Depths
+Validado pelo plugin: "Minimal Swiss" pairing (Inter only) é o padrão pra dashboards/admin/design systems.
 
-| Level | Value | Usage |
-|-------|-------|-------|
-| `--shadow-sm` | `0 1px 2px rgba(0,0,0,0.05)` | Subtle lift |
-| `--shadow-md` | `0 4px 6px rgba(0,0,0,0.1)` | Cards, buttons |
-| `--shadow-lg` | `0 10px 15px rgba(0,0,0,0.1)` | Modals, dropdowns |
-| `--shadow-xl` | `0 20px 25px rgba(0,0,0,0.15)` | Hero images, featured cards |
+| Token | Size / line / weight | Uso |
+|---|---|---|
+| display | 30/36 · 700 | Título de página |
+| h1 | 24/32 · 600 | Seção principal |
+| h2 | 18/28 · 600 | Card title, subsecção |
+| h3 | 14/20 · 600 | Label, header de tabela |
+| body | 14/20 · 400 | Texto default |
+| small | 12/16 · 400 | Caption, helper, badge |
 
----
+**Tabular nums** aplicado globalmente em `table` e em qualquer elemento com class `.tabular` ou `[data-numeric]` via `globals.css`. KPIs e valores monetários sempre tabular.
 
-## Component Specs
+## Effects
 
-### Buttons
+- Hover row em tabelas: bg `--accent`
+- Hover card: `shadow-md` (subtle elevation)
+- Transitions: 150-200ms (`ease-out` entering, default para hover)
+- Focus ring: 2px emerald com offset-2
 
-```css
-/* Primary Button */
-.btn-primary {
-  background: #D97706;
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
+## Status pills (a11y · WCAG)
 
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
+Sempre **ícone + texto**. Cor sozinha NÃO comunica.
 
-/* Secondary Button */
-.btn-secondary {
-  background: transparent;
-  color: #1E40AF;
-  border: 2px solid #1E40AF;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
-  transition: all 200ms ease;
-  cursor: pointer;
-}
-```
+| Status OS | Ícone (lucide) | Tone | Token |
+|---|---|---|---|
+| Aberto | `Clock` | info | blue |
+| Em andamento | `PlayCircle` | warning | amber |
+| Concluída | `CheckCircle2` | success | emerald |
+| Cancelada | `XCircle` | destructive | red |
 
-### Cards
+Visual: bg `tone / 0.12`, text `tone`, ring-inset `tone / 0.3`.
 
-```css
-.card {
-  background: #F8FAFC;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: var(--shadow-md);
-  transition: all 200ms ease;
-  cursor: pointer;
-}
+## Spacing & Layout
 
-.card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
-```
+- Sistema 4/8pt (Tailwind default)
+- Container: `max-w-7xl mx-auto` no main (com escape `data-fullbleed` para tabelas largas)
+- Sidebar: `w-60` mantido na Fase 2 + agrupamento em seções
 
-### Inputs
+## Avoid
 
-```css
-.input {
-  padding: 12px 16px;
-  border: 1px solid #E2E8F0;
-  border-radius: 8px;
-  font-size: 16px;
-  transition: border-color 200ms ease;
-}
+- Emojis como ícones → usar `lucide-react`
+- Status só com cor → sempre ícone + texto
+- Tabelas sem tabular nums → desalinha colunas numéricas
+- Hover sem feedback visual
+- Animações > 300ms em micro-interações
 
-.input:focus {
-  border-color: #1E40AF;
-  outline: none;
-  box-shadow: 0 0 0 3px #1E40AF20;
-}
-```
+## Pre-delivery checklist (cada PR de UI)
 
-### Modals
+- [ ] Sem emoji como ícone
+- [ ] Hover states com transition 150-200ms
+- [ ] Light: texto >=4.5:1
+- [ ] Dark: texto >=4.5:1 (testar separado, não inferir do light)
+- [ ] Focus visible em todos elementos interativos
+- [ ] `prefers-reduced-motion` respeitado
+- [ ] Responsivo: 375 / 768 / 1024 / 1440
+- [ ] Cursor pointer em elementos clicáveis não-button
+- [ ] Status sempre com ícone + texto
+- [ ] Valores numéricos com tabular nums
 
-```css
-.modal-overlay {
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-}
+## Próximas fases
 
-.modal {
-  background: white;
-  border-radius: 16px;
-  padding: 32px;
-  box-shadow: var(--shadow-xl);
-  max-width: 500px;
-  width: 90%;
-}
-```
-
----
-
-## Style Guidelines
-
-**Style:** Data-Dense Dashboard
-
-**Keywords:** Multiple charts/widgets, data tables, KPI cards, minimal padding, grid layout, space-efficient, maximum data visibility
-
-**Best For:** Business intelligence dashboards, financial analytics, enterprise reporting, operational dashboards, data warehousing
-
-**Key Effects:** Hover tooltips, chart zoom on click, row highlighting on hover, smooth filter animations, data loading spinners
-
-### Page Pattern
-
-**Pattern Name:** Real-Time / Operations Landing
-
-- **Conversion Strategy:** For ops/security/iot products. Demo or sandbox link. Trust signals.
-- **CTA Placement:** Primary CTA in nav + After metrics
-- **Section Order:** 1. Hero (product + live preview or status), 2. Key metrics/indicators, 3. How it works, 4. CTA (Start trial / Contact)
-
----
-
-## Anti-Patterns (Do NOT Use)
-
-- ❌ Ornate design
-- ❌ No filtering
-
-### Additional Forbidden Patterns
-
-- ❌ **Emojis as icons** — Use SVG icons (Heroicons, Lucide, Simple Icons)
-- ❌ **Missing cursor:pointer** — All clickable elements must have cursor:pointer
-- ❌ **Layout-shifting hovers** — Avoid scale transforms that shift layout
-- ❌ **Low contrast text** — Maintain 4.5:1 minimum contrast ratio
-- ❌ **Instant state changes** — Always use transitions (150-300ms)
-- ❌ **Invisible focus states** — Focus states must be visible for a11y
-
----
-
-## Pre-Delivery Checklist
-
-Before delivering any UI code, verify:
-
-- [ ] No emojis used as icons (use SVG instead)
-- [ ] All icons from consistent icon set (Heroicons/Lucide)
-- [ ] `cursor-pointer` on all clickable elements
-- [ ] Hover states with smooth transitions (150-300ms)
-- [ ] Light mode: text contrast 4.5:1 minimum
-- [ ] Focus states visible for keyboard navigation
-- [ ] `prefers-reduced-motion` respected
-- [ ] Responsive: 375px, 768px, 1024px, 1440px
-- [ ] No content hidden behind fixed navbars
-- [ ] No horizontal scroll on mobile
+- Fase 2 — Shell (sidebar agrupada + logo + topbar com breadcrumb/Cmd+K)
+- Fase 3 — Componentes (OS, métricas, conversas, empty states)
+- Fase 4 — a11y pass + dark mode review

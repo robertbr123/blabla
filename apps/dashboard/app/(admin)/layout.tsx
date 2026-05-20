@@ -19,7 +19,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <NavSidebar role={me.role} />
       <div className="flex flex-1 flex-col">
         <Topbar email={me.email} name={me.name} role={me.role} />
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="flex-1 overflow-auto">
+          <div className="mx-auto max-w-7xl px-6 py-6">{children}</div>
+        </main>
       </div>
     </div>
   )
