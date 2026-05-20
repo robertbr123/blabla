@@ -9,17 +9,20 @@ class LoginResult {
   final String accessToken;
   final String userId;
   final String role;
+  final String? nome;
 
   LoginResult({
     required this.accessToken,
     required this.userId,
     required this.role,
+    required this.nome,
   });
 
   factory LoginResult.fromJson(Map<String, dynamic> j) => LoginResult(
         accessToken: j['access_token'] as String,
         userId: j['user_id'] as String,
         role: j['role'] as String,
+        nome: (j['nome'] ?? j['name'] ?? j['user_name']) as String?,
       );
 }
 
@@ -62,3 +65,31 @@ final hasTokenProvider = FutureProvider<bool>((ref) async {
 final sessionSnapshotProvider = FutureProvider<SessionSnapshot?>((ref) async {
   return readSessionSnapshot();
 });
+
+String _resolveDisplayName({
+  required String email,
+  required LoginResult loginResult,
+}) {
+  final raw = loginResult.nome?.trim();
+  if (raw != null && raw.isNotEmpty) {
+    return raw;
+  }
+
+  final localPart = email.split('@').first.trim();
+  if (localPart.isEmpty) {
+    return 'Técnico';
+  }
+
+  return localPart
+      .split(RegExp(r'[._-]+'))
+      .where((part) => part.isNotEmpty)
+      .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+      .join(' ');
+}
+
+String resolveLoginDisplayName({
+  required String email,
+  required LoginResult loginResult,
+}) {
+  return _resolveDisplayName(email: email, loginResult: loginResult);
+}

@@ -47,10 +47,18 @@ class _ReentryScreenState extends ConsumerState<ReentryScreen> {
       body: SafeArea(
         child: sessionAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, __) => const Center(child: Text('Sessão indisponível.')),
+          error: (_, __) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) context.go('/os');
+            });
+            return const Center(child: CircularProgressIndicator());
+          },
           data: (session) {
             if (session == null) {
-              return const Center(child: Text('Sessão indisponível.'));
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) context.go('/os');
+              });
+              return const Center(child: CircularProgressIndicator());
             }
 
             return Center(
