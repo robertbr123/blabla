@@ -9,6 +9,8 @@ from ondeline_api.db.crypto import encrypt_pii, hash_pii
 from ondeline_api.db.models.business import (
     Cliente,
     Manutencao,
+    Notificacao,
+    NotificacaoTipo,
     OrdemServico,
     OsStatus,
 )
@@ -73,6 +75,38 @@ async def test_followup_os_skip_recent(db_session: AsyncSession) -> None:
     await schedule_followup_os(db_session)
     final_count = await schedule_followup_os(db_session)
     assert final_count == 0
+
+
+async def test_followup_os_schedules_same_os_only_once(db_session: AsyncSession) -> None:
+    cliente = await _make_cliente(db_session)
+    os_ = OrdemServico(
+        codigo=f"OS-{uuid4().hex[:6]}",
+        cliente_id=cliente.id,
+        problema="x",
+        endereco="y",
+        status=OsStatus.CONCLUIDA,
+        concluida_em=datetime.now(tz=UTC) - timedelta(hours=25),
+    )
+    db_session.add(os_)
+    await db_session.flush()
+
+    first_count = await schedule_followup_os(db_session)
+    second_count = await schedule_followup_os(db_session)
+
+    rows = list(
+        (
+            await db_session.execute(
+                select(Notificacao).where(Notificacao.tipo == NotificacaoTipo.OS_CONCLUIDA)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    assert first_count == 1
+    assert second_count == 0
+    assert len(rows) == 1
+    assert (rows[0].payload or {}).get("os_id") == str(os_.id)
 
 
 async def test_broadcast_manutencao_targets_cidade_clientes(db_session: AsyncSession) -> None:

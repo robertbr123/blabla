@@ -42,11 +42,11 @@ def test_nao_retorna_escalar() -> None:
     assert any(a.kind is ActionKind.FOLLOWUP_OS_ESCALAR for a in d.actions)
 
 
-def test_ambiguo_chama_llm() -> None:
+def test_ambiguo_nao_repergunta_followup() -> None:
     d = Fsm.transition(
         estado=ConversaEstado.AGUARDA_FOLLOWUP_OS,
         status=ConversaStatus.BOT,
         event=_event("e as duas horas quanto vai demorar"),
     )
     assert d.new_estado is ConversaEstado.AGUARDA_FOLLOWUP_OS
-    assert any(a.kind is ActionKind.LLM_TURN for a in d.actions)
+    assert d.actions == []

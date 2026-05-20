@@ -1,4 +1,4 @@
-"""NotificacaoRepo — CRUD + dedup por (cliente_id, tipo, agendada_para)."""
+"""NotificacaoRepo — CRUD + dedup por agendamento e eventos idempotentes."""
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -35,6 +35,21 @@ class NotificacaoRepo:
         )
         return (await self._session.execute(stmt)).scalar_one_or_none() is not None
 
+    async def already_scheduled_followup_os(
+        self,
+        *,
+        cliente_id: UUID,
+        os_id: UUID,
+    ) -> bool:
+        stmt = select(Notificacao.id).where(
+            and_(
+                Notificacao.cliente_id == cliente_id,
+                Notificacao.tipo == NotificacaoTipo.OS_CONCLUIDA,
+                Notificacao.payload["os_id"].as_string() == str(os_id),
+            )
+        )
+        return (await self._session.execute(stmt)).scalar_one_or_none() is not None
+
     async def schedule(
         self,
         *,
@@ -57,6 +72,26 @@ class NotificacaoRepo:
         self._session.add(n)
         await self._session.flush()
         return n
+
+    async def schedule_followup_os_once(
+        self,
+        *,
+        cliente_id: UUID,
+        os_id: UUID,
+        agendada_para: datetime,
+        payload: dict[str, Any],
+    ) -> Notificacao | None:
+        if await self.already_scheduled_followup_os(
+            cliente_id=cliente_id,
+            os_id=os_id,
+        ):
+            return None
+        return await self.schedule(
+            cliente_id=cliente_id,
+            tipo=NotificacaoTipo.OS_CONCLUIDA,
+            agendada_para=agendada_para,
+            payload=payload,
+        )
 
     async def list_due(self, *, now: datetime, limit: int = 100) -> list[Notificacao]:
         stmt = (

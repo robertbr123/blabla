@@ -118,11 +118,12 @@ class Fsm:
                     new_status=ConversaStatus.AGUARDANDO,
                     actions=[Action(kind=ActionKind.FOLLOWUP_OS_ESCALAR)],
                 )
-            # ambiguo: LLM decide
+            # Ambíguo: não reengatilha a mesma pergunta. Mantém o follow-up
+            # aguardando uma resposta clara do cliente, sem novo prompt ativo.
             return FsmDecision(
                 new_estado=ConversaEstado.AGUARDA_FOLLOWUP_OS,
                 new_status=ConversaStatus.BOT,
-                actions=[Action(kind=ActionKind.LLM_TURN)],
+                actions=[],
             )
 
         # encerrada: reabre + LLM cuida da nova interacao desde o inicio

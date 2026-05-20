@@ -218,7 +218,8 @@ async def schedule_followup_os(session: AsyncSession, *, minutes_after: int = 10
     """Schedule OS_CONCLUIDA notification for OSes finished >=`minutes_after` ago.
 
     Default 10 minutos — janela curta pra captar o cliente ainda com a
-    experiencia fresca na cabeca. Dedup do Notificacao garante 1 envio por OS.
+    experiencia fresca na cabeca. O follow-up é idempotente por `os_id`:
+    uma OS concluída só agenda a pergunta inicial uma vez.
     """
     from ondeline_api.db.models.business import OrdemServico, OsStatus
 
@@ -237,9 +238,9 @@ async def schedule_followup_os(session: AsyncSession, *, minutes_after: int = 10
     for os_ in rows:
         if os_.cliente_id is None:
             continue
-        n = await repo.schedule(
+        n = await repo.schedule_followup_os_once(
             cliente_id=os_.cliente_id,
-            tipo=NotificacaoTipo.OS_CONCLUIDA,
+            os_id=os_.id,
             agendada_para=when,
             payload={
                 "codigo": os_.codigo,
