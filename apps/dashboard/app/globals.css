@@ -66,4 +66,19 @@
   * { @apply border-border; }
   body { @apply bg-background text-foreground; font-feature-settings: 'cv11', 'ss01'; }
   .tabular, table, [data-numeric] { font-variant-numeric: tabular-nums; }
+
+  /* Pular para o conteúdo: visível apenas no foco do teclado. */
+  .skip-to-main {
+    @apply fixed left-3 top-3 z-50 -translate-y-20 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow-md transition-transform;
+  }
+  .skip-to-main:focus { @apply translate-y-0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

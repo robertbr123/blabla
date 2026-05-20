@@ -747,6 +747,7 @@ function ResponderBox({
             onClick={() => fileRef.current?.click()}
             disabled={uploading || pending}
             title="Anexar imagem, PDF, áudio ou vídeo"
+            aria-label="Anexar arquivo"
           >
             {uploading ? (
               <span className="text-xs">…</span>

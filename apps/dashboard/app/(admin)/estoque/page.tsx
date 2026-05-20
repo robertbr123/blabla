@@ -323,6 +323,7 @@ export default function EstoquePage() {
                             size="icon"
                             onClick={() => setItemEditando(it)}
                             title="Editar"
+                            aria-label={`Editar item ${it.nome}`}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -333,6 +334,7 @@ export default function EstoquePage() {
                             onClick={() => void handleExcluir(it)}
                             title="Excluir"
                             disabled={deleteItem.isPending}
+                            aria-label={`Excluir item ${it.nome}`}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

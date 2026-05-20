@@ -181,6 +181,7 @@ export function TecnicoDetail({ id }: { id: string }) {
                   className="h-6 w-6"
                   onClick={() => removeArea.mutate({ cidade: a.cidade, rua: a.rua })}
                   disabled={removeArea.isPending}
+                  aria-label={`Remover área ${a.cidade} / ${a.rua}`}
                 >
                   <X className="h-3 w-3" />
                 </Button>

@@ -24,6 +24,7 @@ function DeleteButton({ osId }: { osId: string }) {
       onClick={handleDelete}
       disabled={deleteOs.isPending}
       title="Excluir OS"
+      aria-label="Excluir OS"
     >
       <Trash2 className="h-3.5 w-3.5" />
     </Button>
@@ -136,6 +137,7 @@ export function OsList({ onNovaOs }: { onNovaOs?: () => void } = {}) {
                           className="h-7 w-7"
                           onClick={() => setReatribuirOsId(o.id)}
                           title="Reatribuir técnico"
+                          aria-label="Reatribuir técnico"
                         >
                           <UserCog className="h-3.5 w-3.5" />
                         </Button>

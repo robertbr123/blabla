@@ -15,11 +15,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
   return (
     <div className="flex min-h-screen">
+      <a href="#main-content" className="skip-to-main">
+        Pular para o conteúdo
+      </a>
       <TokenInitializer token={accessToken} />
       <NavSidebar role={me.role} />
       <div className="flex flex-1 flex-col">
         <Topbar email={me.email} name={me.name} role={me.role} />
-        <main className="flex-1 overflow-auto">
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto">
           <div className="mx-auto max-w-7xl px-6 py-6">{children}</div>
         </main>
       </div>
