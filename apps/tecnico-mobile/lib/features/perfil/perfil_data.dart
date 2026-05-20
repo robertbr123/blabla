@@ -61,6 +61,26 @@ class Perfil {
         estatisticas: PerfilEstatisticas.fromJson(
             j['estatisticas'] as Map<String, dynamic>),
       );
+
+  bool get hasFoto => fotoB64 != null && fotoB64!.trim().isNotEmpty;
+
+  String get availabilityLabel => ativo ? 'Ativo' : 'Inativo';
+
+  String get roleLabel {
+    final trimmed = role.trim();
+    return trimmed.isEmpty ? 'Técnico' : trimmed;
+  }
+
+  String? get contatoWhatsapp {
+    final trimmed = whatsapp?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    return trimmed;
+  }
+
+  bool get hasLastGpsSnapshot {
+    final trimmed = lastGpsTs?.trim();
+    return trimmed != null && trimmed.isNotEmpty;
+  }
 }
 
 final perfilLocalRepoProvider = Provider<PerfilLocalRepo>((ref) {

@@ -9,7 +9,9 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/auth/auth_repository.dart';
 import '../../core/auth/session_cleanup.dart';
 import '../../core/push/fcm_service.dart';
-import '../../core/theme.dart';
+import '../../core/ui/app_section_header.dart';
+import '../../core/ui/app_status_chip.dart';
+import '../../core/ui/app_surfaces.dart';
 import '../os/widgets/cliente_avatar.dart';
 import 'perfil_data.dart';
 
@@ -43,36 +45,46 @@ class PerfilScreen extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
             children: [
-              _HeaderCard(perfil: p),
-              const SizedBox(height: 16),
-              _Estatisticas(stats: p.estatisticas),
-              const SizedBox(height: 16),
-              _Secao(titulo: 'Conta', children: [
-                _ItemAcao(
-                  icone: Icons.lock_outline,
-                  titulo: 'Mudar senha',
-                  onTap: () => _abrirMudarSenha(context, ref),
-                ),
-                _ItemAcao(
-                  icone: Icons.logout,
-                  titulo: 'Sair',
-                  destrutivo: true,
-                  onTap: () => _sair(context, ref),
-                ),
-              ]),
-              const SizedBox(height: 16),
-              _Secao(titulo: 'Sobre', children: [
-                _ItemInfo(
-                  icone: Icons.smartphone,
-                  label: 'Versão',
-                  value: '0.1.0',
-                ),
-                _ItemInfo(
-                  icone: Icons.business,
-                  label: 'Empresa',
-                  value: 'Linket',
-                ),
-              ]),
+              AppSurfaceCard(child: _HeaderCard(perfil: p)),
+              const SizedBox(height: 12),
+              AppSurfaceCard(child: _Estatisticas(stats: p.estatisticas)),
+              const SizedBox(height: 12),
+              _Secao(
+                titulo: 'Conta',
+                subtitulo:
+                    'Atualize credenciais e encerre sua sessão com segurança.',
+                children: [
+                  _ItemAcao(
+                    icone: Icons.lock_outline,
+                    titulo: 'Mudar senha',
+                    onTap: () => _abrirMudarSenha(context, ref),
+                  ),
+                  _ItemAcao(
+                    icone: Icons.logout,
+                    titulo: 'Sair',
+                    destrutivo: true,
+                    onTap: () => _sair(context, ref),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const _Secao(
+                titulo: 'Sobre',
+                subtitulo:
+                    'Informações da versão e da operação vinculada a este app.',
+                children: [
+                  _ItemInfo(
+                    icone: Icons.smartphone,
+                    label: 'Versão',
+                    value: '0.1.0',
+                  ),
+                  _ItemInfo(
+                    icone: Icons.business,
+                    label: 'Empresa',
+                    value: 'Linket',
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -146,7 +158,7 @@ class _HeaderCardState extends ConsumerState<_HeaderCard> {
               title: const Text('Escolher da galeria'),
               onTap: () => Navigator.of(context).pop(ImageSource.gallery),
             ),
-            if (widget.perfil.fotoB64 != null)
+            if (widget.perfil.hasFoto)
               ListTile(
                 leading: Icon(Icons.delete_outline,
                     color: Theme.of(context).colorScheme.error),
@@ -212,141 +224,132 @@ class _HeaderCardState extends ConsumerState<_HeaderCard> {
     final scheme = Theme.of(context).colorScheme;
     final p = widget.perfil;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: scheme.brightness == Brightness.dark
-              ? const [Color(0xFF1e293b), Color(0xFF0f172a)]
-              : const [Color(0xFFf8fafc), Color(0xFFe2e8f0)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const AppSectionHeader(
+          title: 'Perfil em campo',
+          subtitle: 'Foto, contato e status operacional da sua sessão atual.',
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
-      child: Row(
-        children: [
-          Stack(
+        const SizedBox(height: 16),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: scheme.brightness == Brightness.dark
+                  ? const [Color(0xFF1e293b), Color(0xFF0f172a)]
+                  : const [Color(0xFFEAF0F6), Color(0xFFF8F5EE)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              GestureDetector(
-                onTap: _uploading ? null : _trocarFoto,
-                child: ClipOval(
-                  child: SizedBox(
-                    width: 72,
-                    height: 72,
-                    child: p.fotoB64 != null
-                        ? Image.memory(
-                            base64Decode(p.fotoB64!),
-                            width: 72,
-                            height: 72,
-                            fit: BoxFit.cover,
-                          )
-                        : ClienteAvatar(nome: p.nome, size: 72),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child: GestureDetector(
-                  onTap: _uploading ? null : _trocarFoto,
-                  child: Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: scheme.primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: scheme.surface, width: 2),
+              Stack(
+                children: [
+                  GestureDetector(
+                    onTap: _uploading ? null : _trocarFoto,
+                    child: ClipOval(
+                      child: SizedBox(
+                        width: 72,
+                        height: 72,
+                        child: p.hasFoto
+                            ? Image.memory(
+                                base64Decode(p.fotoB64!),
+                                width: 72,
+                                height: 72,
+                                fit: BoxFit.cover,
+                              )
+                            : ClienteAvatar(nome: p.nome, size: 72),
+                      ),
                     ),
-                    child: _uploading
-                        ? const SizedBox(
-                            height: 12,
-                            width: 12,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.camera_alt,
-                            size: 14, color: Colors.white),
                   ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: GestureDetector(
+                      onTap: _uploading ? null : _trocarFoto,
+                      child: Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: scheme.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: scheme.surface, width: 2),
+                        ),
+                        child: _uploading
+                            ? const SizedBox(
+                                height: 12,
+                                width: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.camera_alt,
+                                size: 14, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      p.nome,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: scheme.onSurface,
+                        height: 1.15,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    _ContatoLinha(
+                      icon: Icons.email_outlined,
+                      value: p.email,
+                    ),
+                    if (p.contatoWhatsapp != null) ...[
+                      const SizedBox(height: 4),
+                      _ContatoLinha(
+                        icon: Icons.phone_iphone,
+                        value: p.contatoWhatsapp!,
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        AppStatusChip(
+                          label: p.availabilityLabel,
+                          tone: p.ativo
+                              ? AppStatusTone.success
+                              : AppStatusTone.warning,
+                        ),
+                        AppStatusChip(
+                          label: p.roleLabel,
+                          tone: AppStatusTone.info,
+                        ),
+                        if (p.hasLastGpsSnapshot)
+                          const AppStatusChip(
+                            label: 'GPS recente',
+                            tone: AppStatusTone.neutral,
+                          ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  p.nome,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: scheme.onSurface,
-                    height: 1.15,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.email_outlined,
-                        size: 13, color: scheme.onSurfaceVariant),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        p.email,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                if (p.whatsapp != null)
-                  Row(
-                    children: [
-                      Icon(Icons.phone_iphone,
-                          size: 13, color: scheme.onSurfaceVariant),
-                      const SizedBox(width: 4),
-                      Text(
-                        p.whatsapp!,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                const SizedBox(height: 6),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: p.ativo
-                        ? const Color(0xFF16a34a).withValues(alpha: 0.15)
-                        : scheme.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    p.ativo ? 'Ativo · ${p.role}' : 'Inativo',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: p.ativo
-                          ? const Color(0xFF15803d)
-                          : scheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -357,8 +360,16 @@ class _Estatisticas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const AppSectionHeader(
+          title: 'Sua atividade recente',
+          subtitle:
+              'Acompanhe a fila atual, o andamento das ordens e a percepção do atendimento.',
+        ),
+        const SizedBox(height: 16),
         Row(
           children: [
             _StatCard(
@@ -371,7 +382,7 @@ class _Estatisticas extends StatelessWidget {
             _StatCard(
               label: 'Em andamento',
               value: '${stats.osEmAndamento}',
-              color: brandBlue,
+              color: scheme.primary,
               icon: Icons.directions_run,
             ),
           ],
@@ -420,9 +431,8 @@ class _StatCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: scheme.surface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: scheme.outlineVariant),
+          color: scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(18),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -462,34 +472,34 @@ class _StatCard extends StatelessWidget {
 
 class _Secao extends StatelessWidget {
   final String titulo;
+  final String? subtitulo;
   final List<Widget> children;
-  const _Secao({required this.titulo, required this.children});
+  const _Secao({
+    required this.titulo,
+    this.subtitulo,
+    required this.children,
+  });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: scheme.outlineVariant),
-      ),
+    return AppSurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Text(
-              titulo.toUpperCase(),
-              style: TextStyle(
-                fontSize: 11,
-                letterSpacing: 0.6,
-                fontWeight: FontWeight.w700,
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
+          AppSectionHeader(
+            title: titulo,
+            subtitle: subtitulo,
           ),
-          ...children,
+          const SizedBox(height: 12),
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 1,
+                color: scheme.outlineVariant.withValues(alpha: 0.6),
+              ),
+            children[i],
+          ],
         ],
       ),
     );
@@ -513,8 +523,15 @@ class _ItemAcao extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final color = destrutivo ? scheme.error : scheme.onSurface;
     return ListTile(
-      leading: Icon(icone, color: color),
-      title: Text(titulo, style: TextStyle(color: color)),
+      contentPadding: EdgeInsets.zero,
+      leading: _LeadingIcon(icon: icone, color: color),
+      title: Text(
+        titulo,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
       trailing: Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
       onTap: onTap,
     );
@@ -535,8 +552,18 @@ class _ItemInfo extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return ListTile(
-      leading: Icon(icone, color: scheme.onSurfaceVariant),
-      title: Text(label),
+      contentPadding: EdgeInsets.zero,
+      leading: _LeadingIcon(
+        icon: icone,
+        color: scheme.onSurfaceVariant,
+      ),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: scheme.onSurface,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
       trailing: Text(
         value,
         style: TextStyle(
@@ -544,6 +571,59 @@ class _ItemInfo extends StatelessWidget {
           color: scheme.onSurfaceVariant,
         ),
       ),
+    );
+  }
+}
+
+class _ContatoLinha extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  const _ContatoLinha({
+    required this.icon,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Icon(icon, size: 13, color: scheme.onSurfaceVariant),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              color: scheme.onSurfaceVariant,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LeadingIcon extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  const _LeadingIcon({
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      alignment: Alignment.center,
+      child: Icon(icon, color: color, size: 20),
     );
   }
 }
