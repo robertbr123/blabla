@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/theme.dart';
 import '../../../core/ui/app_status_chip.dart';
@@ -10,20 +9,17 @@ class HomeHero extends StatelessWidget {
     required this.total,
     required this.pendentes,
     required this.andamento,
-    this.nextAt,
+    required this.scheduleLabel,
   });
 
   final int total;
   final int pendentes;
   final int andamento;
-  final DateTime? nextAt;
+  final String scheduleLabel;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final nextLabel = nextAt == null
-        ? 'Sem horário travado'
-        : 'Próxima visita ${DateFormat('HH:mm').format(nextAt!.toLocal())}';
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -116,7 +112,7 @@ class HomeHero extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      nextLabel,
+                      scheduleLabel,
                       style: textTheme.bodyMedium?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,

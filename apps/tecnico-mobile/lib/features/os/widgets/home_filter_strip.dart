@@ -87,30 +87,38 @@ class HomeFilterStrip extends StatelessWidget {
         itemBuilder: (context, index) {
           final filter = filters[index];
           final isSelected = filter == selected;
-          return InkWell(
+          return Semantics(
             key: ValueKey('home-filter-${filter.name}'),
-            borderRadius: BorderRadius.circular(999),
-            onTap: () => onSelected(filter),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? scheme.primary.withValues(alpha: 0.10)
-                    : scheme.surface,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: isSelected ? scheme.primary : scheme.outlineVariant,
+            container: true,
+            button: true,
+            selected: isSelected,
+            label: 'Filtro ${filter.label}',
+            hint: isSelected ? 'Filtro ativo' : 'Toque para filtrar',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(999),
+              onTap: () => onSelected(filter),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? scheme.primary.withValues(alpha: 0.10)
+                      : scheme.surface,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: isSelected ? scheme.primary : scheme.outlineVariant,
+                  ),
                 ),
-              ),
-              child: Center(
-                child: Text(
-                  filter.label,
-                  style: TextStyle(
-                    color:
-                        isSelected ? scheme.primary : scheme.onSurfaceVariant,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
+                child: Center(
+                  child: Text(
+                    filter.label,
+                    style: TextStyle(
+                      color:
+                          isSelected ? scheme.primary : scheme.onSurfaceVariant,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),

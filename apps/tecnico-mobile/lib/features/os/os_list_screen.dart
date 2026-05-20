@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/auth/auth_repository.dart';
 import '../../core/auth/session_cleanup.dart';
@@ -102,126 +103,150 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
 
           return RefreshIndicator(
             onRefresh: () async => ref.invalidate(osListStreamProvider),
-            child: ListView(
+            child: CustomScrollView(
+              key: const ValueKey('os-home-scroll'),
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.only(top: 8, bottom: 24),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                  child: HomeHero(
-                    total: items.length,
-                    pendentes: counts['pendente'] ?? 0,
-                    andamento: counts['em_andamento'] ?? 0,
-                    nextAt: _nextScheduledAt(items),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: HomeHero(
+                      total: items.length,
+                      pendentes: counts['pendente'] ?? 0,
+                      andamento: counts['em_andamento'] ?? 0,
+                      scheduleLabel: _buildHeroScheduleLabel(items),
+                    ),
                   ),
                 ),
-                if (pendingSync case AsyncData(:final value)
-                    when value > 0) ...[
-                  Padding(
+                if (pendingSync case AsyncData(:final value) when value > 0)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: _OfflineQueueBanner(count: value),
+                    ),
+                  ),
+                SliverToBoxAdapter(
+                  child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    child: _OfflineQueueBanner(count: value),
-                  ),
-                ],
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: AppSectionHeader(
-                    title: 'Pulso operacional',
-                    subtitle:
-                        'Atalhos rápidos para a fila que precisa da sua atenção.',
+                    child: AppSectionHeader(
+                      title: 'Pulso operacional',
+                      subtitle:
+                          'Atalhos rápidos para a fila que precisa da sua atenção.',
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 160,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    children: [
-                      HomeSummaryCard(
-                        key: const ValueKey('home-summary-pendentes'),
-                        label: 'Pendentes',
-                        value: counts['pendente'] ?? 0,
-                        subtitle: 'Aguardando visita',
-                        icon: Icons.hourglass_top_rounded,
-                        color: brandAccent,
-                        selected: _selectedFilter == OsHomeFilter.pendente,
-                        onTap: () => _selectFilter(OsHomeFilter.pendente),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: SizedBox(
+                      height: 160,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        children: [
+                          HomeSummaryCard(
+                            key: const ValueKey('home-summary-pendentes'),
+                            label: 'Pendentes',
+                            value: counts['pendente'] ?? 0,
+                            subtitle: 'Aguardando visita',
+                            icon: Icons.hourglass_top_rounded,
+                            color: brandAccent,
+                            selected: _selectedFilter == OsHomeFilter.pendente,
+                            onTap: () => _selectFilter(OsHomeFilter.pendente),
+                          ),
+                          const SizedBox(width: 12),
+                          HomeSummaryCard(
+                            key: const ValueKey('home-summary-andamento'),
+                            label: 'Em andamento',
+                            value: counts['em_andamento'] ?? 0,
+                            subtitle: 'Visitas em curso',
+                            icon: Icons.route_rounded,
+                            color: scheme.primary,
+                            selected: _selectedFilter == OsHomeFilter.andamento,
+                            onTap: () => _selectFilter(OsHomeFilter.andamento),
+                          ),
+                          const SizedBox(width: 12),
+                          HomeSummaryCard(
+                            key: const ValueKey('home-summary-concluidas'),
+                            label: 'Concluídas',
+                            value: counts['concluida'] ?? 0,
+                            subtitle: 'Encerradas hoje',
+                            icon: Icons.check_circle_rounded,
+                            color: scheme.tertiary,
+                            selected: _selectedFilter == OsHomeFilter.concluida,
+                            onTap: () => _selectFilter(OsHomeFilter.concluida),
+                          ),
+                          const SizedBox(width: 12),
+                          HomeSummaryCard(
+                            key: const ValueKey('home-summary-canceladas'),
+                            label: 'Canceladas',
+                            value: counts['cancelada'] ?? 0,
+                            subtitle: 'Exigem revisão',
+                            icon: Icons.cancel_rounded,
+                            color: scheme.error,
+                            selected: _selectedFilter == OsHomeFilter.cancelada,
+                            onTap: () => _selectFilter(OsHomeFilter.cancelada),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      HomeSummaryCard(
-                        key: const ValueKey('home-summary-andamento'),
-                        label: 'Em andamento',
-                        value: counts['em_andamento'] ?? 0,
-                        subtitle: 'Visitas em curso',
-                        icon: Icons.route_rounded,
-                        color: scheme.primary,
-                        selected: _selectedFilter == OsHomeFilter.andamento,
-                        onTap: () => _selectFilter(OsHomeFilter.andamento),
-                      ),
-                      const SizedBox(width: 12),
-                      HomeSummaryCard(
-                        key: const ValueKey('home-summary-concluidas'),
-                        label: 'Concluídas',
-                        value: counts['concluida'] ?? 0,
-                        subtitle: 'Encerradas hoje',
-                        icon: Icons.check_circle_rounded,
-                        color: scheme.tertiary,
-                        selected: _selectedFilter == OsHomeFilter.concluida,
-                        onTap: () => _selectFilter(OsHomeFilter.concluida),
-                      ),
-                      const SizedBox(width: 12),
-                      HomeSummaryCard(
-                        key: const ValueKey('home-summary-canceladas'),
-                        label: 'Canceladas',
-                        value: counts['cancelada'] ?? 0,
-                        subtitle: 'Exigem revisão',
-                        icon: Icons.cancel_rounded,
-                        color: scheme.error,
-                        selected: _selectedFilter == OsHomeFilter.cancelada,
-                        onTap: () => _selectFilter(OsHomeFilter.cancelada),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                  child: HomeFilterStrip(
-                    filters: _filters,
-                    selected: _selectedFilter,
-                    onSelected: _selectFilter,
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                    child: HomeFilterStrip(
+                      filters: _filters,
+                      selected: _selectedFilter,
+                      onSelected: _selectFilter,
+                    ),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-                  child: AppSectionHeader(
-                    title: _selectedFilter.listTitle,
-                    subtitle: _selectedFilter.listSubtitle(filtered.length),
-                    actionLabel:
-                        _selectedFilter == OsHomeFilter.todas ? null : 'Todas',
-                    onAction: _selectedFilter == OsHomeFilter.todas
-                        ? null
-                        : () => _selectFilter(OsHomeFilter.todas),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                    child: AppSectionHeader(
+                      title: _selectedFilter.listTitle,
+                      subtitle: _selectedFilter.listSubtitle(filtered.length),
+                      actionLabel: _selectedFilter == OsHomeFilter.todas
+                          ? null
+                          : 'Todas',
+                      onAction: _selectedFilter == OsHomeFilter.todas
+                          ? null
+                          : () => _selectFilter(OsHomeFilter.todas),
+                    ),
                   ),
                 ),
                 if (filtered.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    child: _EstadoVazio(
-                      filter: _selectedFilter,
-                      onRefresh: () => ref.invalidate(osListStreamProvider),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                      child: _EstadoVazio(
+                        filter: _selectedFilter,
+                        onRefresh: () => ref.invalidate(osListStreamProvider),
+                      ),
                     ),
                   )
                 else
-                  ...filtered.map(
-                    (it) => OsCard(
-                      id: it.id,
-                      codigo: it.codigo,
-                      status: it.status,
-                      problema: it.problema,
-                      endereco: it.endereco,
-                      nomeCliente: it.nomeCliente,
-                      agendamentoAt: it.agendamentoAt,
-                      onTap: () => context.push('/os/${it.id}'),
+                  SliverPadding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final it = filtered[index];
+                          return OsCard(
+                            id: it.id,
+                            codigo: it.codigo,
+                            status: it.status,
+                            problema: it.problema,
+                            endereco: it.endereco,
+                            nomeCliente: it.nomeCliente,
+                            agendamentoAt: it.agendamentoAt,
+                            onTap: () => context.push('/os/${it.id}'),
+                          );
+                        },
+                        childCount: filtered.length,
+                      ),
                     ),
                   ),
               ],
@@ -260,13 +285,28 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
     return m;
   }
 
-  DateTime? _nextScheduledAt(List<_OsItem> items) {
+  String _buildHeroScheduleLabel(List<_OsItem> items) {
+    final now = DateTime.now();
+    DateTime? nextFuture;
+    var hasSchedule = false;
+
     for (final item in items) {
-      if (item.agendamentoAt != null) {
-        return item.agendamentoAt;
+      final scheduledAt = item.agendamentoAt?.toLocal();
+      if (scheduledAt == null) continue;
+      hasSchedule = true;
+      if (scheduledAt.isBefore(now)) continue;
+      if (nextFuture == null || scheduledAt.isBefore(nextFuture)) {
+        nextFuture = scheduledAt;
       }
     }
-    return null;
+
+    if (nextFuture != null) {
+      return 'Próxima visita ${DateFormat('HH:mm').format(nextFuture)}';
+    }
+    if (hasSchedule) {
+      return 'Sem próximas visitas agendadas';
+    }
+    return 'Sem horário travado';
   }
 
   Future<void> _logout() async {
