@@ -6,12 +6,11 @@ class _FakeLocalAuthPlatform extends LocalAuthPlatform {
   _FakeLocalAuthPlatform({
     required this.supportsBiometrics,
     required this.supportsDevice,
-    this.authenticateResult = true,
   });
 
   final bool supportsBiometrics;
   final bool supportsDevice;
-  final bool authenticateResult;
+  final bool authenticateResult = true;
 
   String? lastLocalizedReason;
   AuthenticationOptions? lastOptions;

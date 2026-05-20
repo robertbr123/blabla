@@ -261,17 +261,18 @@ def _processar_foto(raw: bytes) -> str:
     """
     import base64
     import io
+    from typing import Any, cast
 
-    from PIL import Image  # type: ignore[import-not-found]
+    from PIL import Image
 
-    img = Image.open(io.BytesIO(raw))
+    img: Any = Image.open(io.BytesIO(raw))
     if img.mode in ("RGBA", "LA", "P"):
         bg = Image.new("RGB", img.size, (255, 255, 255))
         bg.paste(img, mask=img.split()[-1] if "A" in img.mode else None)
         img = bg
     elif img.mode != "RGB":
         img = img.convert("RGB")
-    img.thumbnail((256, 256), Image.LANCZOS)
+    img.thumbnail((256, 256), cast(Any, Image.Resampling.LANCZOS))
     out = io.BytesIO()
     img.save(out, format="JPEG", quality=85, optimize=True)
     return base64.b64encode(out.getvalue()).decode("ascii")

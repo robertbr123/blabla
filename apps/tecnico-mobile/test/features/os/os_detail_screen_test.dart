@@ -63,20 +63,6 @@ class _FakePermissionHandlerPlatform extends PermissionHandlerPlatform {
 
 AppDatabase _testDatabase() => AppDatabase.forTesting(NativeDatabase.memory());
 
-Map<String, dynamic> _sampleOs({required String status}) {
-  return {
-    'id': 'os-1',
-    'codigo': 'OS-001',
-    'status': status,
-    'problema': 'Sem sinal',
-    'endereco': 'Rua A, 100',
-    'nome_cliente': 'Cliente Teste',
-    'agendamento_at': '2026-05-19T09:00:00Z',
-    'criada_em': '2026-05-18T12:00:00Z',
-    'concluida_em': null,
-  };
-}
-
 Dio _offlineDio() {
   final dio = Dio();
   dio.httpClientAdapter = _OfflineAdapter();
