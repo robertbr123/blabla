@@ -10,7 +10,8 @@ Estrategia:
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime, time as _time
+from datetime import UTC, datetime
+from datetime import time as _time
 from typing import Any
 
 import structlog
