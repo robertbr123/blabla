@@ -4,9 +4,10 @@ App nativo Android/iOS para os técnicos da Ondeline. Substitui o PWA Next.js (`
 
 ## Por que Flutter
 
-- **Offline real**: SQLite + outbox sync. Técnico em campo sem sinal continua trabalhando — fotos, conclusões e GPS ficam em fila e sobem quando reconecta.
+- **Offline real no campo**: SQLite + outbox sync. Técnico em campo sem sinal continua trabalhando com OS, estoque e perfil já cacheados; ações offline sobem quando reconecta.
 - **Push FCM nativo**: notificação de nova OS atribuída mesmo com app fechado (web push iOS é instável).
 - **Câmera + GPS sem dor**: permissões nativas, foto antes/depois, GPS contínuo do trajeto.
+- **Reentrada biométrica no iPhone**: depois do primeiro login, o app pode reentrar com Face ID.
 - **Performance**: scroll suave, animações nativas, splash, ícone — sensação de app de verdade.
 
 ## Stack
@@ -18,6 +19,7 @@ App nativo Android/iOS para os técnicos da Ondeline. Substitui o PWA Next.js (`
 | Nav | go_router |
 | DB local | drift + sqlite3 |
 | Auth storage | flutter_secure_storage |
+| Biometria | local_auth |
 | Push | firebase_messaging + flutter_local_notifications |
 | Câmera | image_picker |
 | GPS | geolocator |
@@ -33,17 +35,20 @@ lib/
 │   │   ├── api_client.dart          — Dio + JWT interceptor
 │   │   └── endpoints.dart
 │   ├── auth/
-│   │   ├── auth_repository.dart     — login/logout/me
-│   │   └── auth_storage.dart        — secure storage do token
+│   │   ├── auth_repository.dart     — login/logout remoto
+│   │   ├── auth_state.dart          — gate e refresh de sessão
+│   │   ├── auth_storage.dart        — secure storage do token
+│   │   └── session_cleanup.dart     — limpeza total local no logout/401
 │   ├── db/
-│   │   ├── database.dart            — drift schema (OS + outbox)
+│   │   ├── database.dart            — drift schema (OS + outbox + caches)
 │   │   └── tables.dart
 │   ├── sync/
 │   │   └── sync_service.dart        — fila offline + reenvio
 │   └── theme.dart
 ├── features/
 │   ├── auth/
-│   │   └── login_screen.dart
+│   │   ├── login_screen.dart
+│   │   └── reentry_screen.dart
 │   └── os/
 │       ├── os_list_screen.dart
 │       ├── os_detail_screen.dart
@@ -88,8 +93,10 @@ flutter run --dart-define=API_URL=https://api.ondeline.dev
 Já existem (autenticação como técnico):
 
 - `POST /auth/login` — login
-- `GET /auth/me` — perfil
+- `POST /auth/logout` — logout
+- `GET /api/v1/tecnico/me/perfil` — perfil
 - `GET /api/v1/tecnico/me/os` — OSs atribuídas
+- `GET /api/v1/tecnico/me/estoque/saldo` — estoque do técnico
 - `POST /api/v1/tecnico/me/os/{id}/iniciar` — iniciar visita (GPS)
 - `POST /api/v1/tecnico/me/os/{id}/concluir` — concluir
 - `POST /api/v1/tecnico/me/os/{id}/foto` — upload foto
@@ -103,18 +110,30 @@ A criar (próximos PRs):
 
 - [x] Scaffold de pastas + pubspec
 - [x] Auth flow (login + token storage)
+- [x] Reentrada biométrica com Face ID
 - [x] Lista de OS + detalhe (online)
-- [ ] Drift DB com OS cached + outbox table
-- [ ] Sync service (background fetch + retry)
+- [x] Drift DB com OS cached + outbox table
+- [x] Sync service (retry com backoff persistido)
+- [x] Cache offline de estoque
+- [x] Cache offline de perfil
+- [x] Atualização otimista de OS offline
+- [x] Logout com limpeza total local
 - [ ] Câmera antes/depois
 - [ ] GPS contínuo durante visita (track trajeto)
 - [ ] FCM push: nova OS, OS reaberta
-- [ ] Estoque do técnico (offline)
 - [ ] Checklist de conclusão (offline)
 - [ ] Tema dark
 - [ ] Splash + ícone
 - [ ] CI: `flutter build apk --release`
 - [ ] Deploy: GitHub Actions + Play Store / TestFlight
+
+## Estado atual do offline
+
+- Login inicial ainda exige rede.
+- Depois do login, o app mantém snapshot local de OS, estoque e perfil.
+- `Iniciar`, `concluir` e upload de foto entram em fila offline com retry persistido.
+- A UI de OS aplica atualização otimista local para evitar ação repetida enquanto a sync não volta.
+- Logout manual apaga token, sessão biométrica, cache local e outbox.
 
 ## Testar API local sem deploy
 

@@ -176,10 +176,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ),
                             const SizedBox(height: 18),
-                            Wrap(
+                            const Wrap(
                               spacing: 10,
                               runSpacing: 10,
-                              children: const [
+                              children: [
                                 _LoginHighlight(
                                   icon: Icons.wifi_off_rounded,
                                   label: 'Fluxo offline pronto',

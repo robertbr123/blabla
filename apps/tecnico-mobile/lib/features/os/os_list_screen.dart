@@ -3,11 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_repository.dart';
-import '../../core/auth/auth_storage.dart';
 import '../../core/auth/session_cleanup.dart';
 import '../../core/push/fcm_service.dart';
 import '../../core/sync/sync_service.dart';
-import '../clientes/cliente_data.dart';
 import 'os_data.dart';
 import 'widgets/os_card.dart';
 

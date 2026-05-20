@@ -10,7 +10,6 @@ import 'package:tecnico_mobile/core/db/database.dart';
 import 'package:tecnico_mobile/core/db/estoque_repo.dart';
 import 'package:tecnico_mobile/core/db/os_repo.dart';
 import 'package:tecnico_mobile/core/db/perfil_repo.dart';
-import 'package:tecnico_mobile/core/sync/outbox_kind.dart';
 import 'package:tecnico_mobile/core/sync/outbox_repo.dart';
 
 AppDatabase testDatabase() => AppDatabase.forTesting(NativeDatabase.memory());

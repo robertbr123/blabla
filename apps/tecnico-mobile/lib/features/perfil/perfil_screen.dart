@@ -7,12 +7,9 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/auth/auth_repository.dart';
-import '../../core/auth/auth_storage.dart';
 import '../../core/auth/session_cleanup.dart';
 import '../../core/push/fcm_service.dart';
 import '../../core/theme.dart';
-import '../clientes/cliente_data.dart';
-import '../os/os_data.dart';
 import '../os/widgets/cliente_avatar.dart';
 import 'perfil_data.dart';
 
