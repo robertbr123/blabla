@@ -1012,6 +1012,24 @@ export function useMarcarSyncSgp() {
   })
 }
 
+export function usePatchClienteCampo(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: Partial<import('./types').ClienteCampoOut>) =>
+      apiFetch<import('./types').ClienteCampoOut>(
+        `/api/v1/clientes-campo/${id}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(patch),
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clientes-campo'] })
+      qc.invalidateQueries({ queryKey: ['cliente-campo', id] })
+    },
+  })
+}
+
 export function useDeleteClienteCampo() {
   const qc = useQueryClient()
   return useMutation({

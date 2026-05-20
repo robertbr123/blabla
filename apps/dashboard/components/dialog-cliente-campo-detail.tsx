@@ -1,33 +1,113 @@
 'use client'
-import { CheckCircle2, CloudOff, MapPin, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { CheckCircle2, CloudOff, ExternalLink, MapPin, Pencil, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { useClienteCampoDetail } from '@/lib/api/queries'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { useClienteCampoDetail, usePatchClienteCampo } from '@/lib/api/queries'
+import type { ClienteCampoOut } from '@/lib/api/types'
 
 interface Props {
   id: string
   onClose: () => void
 }
 
+type EditPatch = Partial<Omit<ClienteCampoOut, 'id' | 'cpf' | 'dob' | 'created_at' | 'updated_at' | 'sgp_synced_at' | 'sgp_id' | 'fotos'>>
+
 export function DialogClienteCampoDetail({ id, onClose }: Props) {
   const { data: c, isLoading, error } = useClienteCampoDetail(id)
+  const patch = usePatchClienteCampo(id)
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState<EditPatch>({})
+
+  // Reset form quando cliente carrega ou modo edição muda
+  useEffect(() => {
+    if (c && editing) {
+      setForm({
+        nome: c.nome,
+        telefone: c.telefone,
+        cep: c.cep,
+        address: c.address,
+        number: c.number,
+        complement: c.complement,
+        neighborhood: c.neighborhood,
+        city: c.city,
+        state: c.state,
+        plan_nome: c.plan_nome,
+        pppoe_user: c.pppoe_user,
+        pppoe_pass: c.pppoe_pass,
+        due_date: c.due_date,
+        installer_nome: c.installer_nome,
+        serial: c.serial,
+        contrato: c.contrato,
+        observation: c.observation,
+        latitude: c.latitude,
+        longitude: c.longitude,
+      })
+    }
+  }, [c, editing])
+
+  function setField<K extends keyof EditPatch>(k: K, v: EditPatch[K]) {
+    setForm((f) => ({ ...f, [k]: v }))
+  }
+
+  async function handleSave() {
+    // Limpa strings vazias → null pra campos opcionais
+    const payload: EditPatch = {}
+    for (const [k, v] of Object.entries(form)) {
+      if (typeof v === 'string' && v.trim() === '') {
+        ;(payload as Record<string, unknown>)[k] = null
+      } else {
+        ;(payload as Record<string, unknown>)[k] = v
+      }
+    }
+    try {
+      await patch.mutateAsync(payload)
+      toast.success('Cliente atualizado.')
+      setEditing(false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao salvar')
+    }
+  }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-y-auto py-4">
-      <div className="w-full max-w-2xl rounded-lg border bg-card p-6 shadow-lg space-y-4 mx-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 overflow-y-auto py-4"
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div className="w-full max-w-3xl rounded-lg border bg-card p-6 shadow-lg space-y-4 mx-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold truncate">
               {c?.nome ?? 'Carregando…'}
             </h2>
             {c && (
-              <p className="text-xs text-muted-foreground font-mono">
+              <p className="text-xs text-muted-foreground font-mono" style={{ fontVariantNumeric: 'tabular-nums' }}>
                 {fmtCpf(c.cpf)}
               </p>
             )}
           </div>
-          <Button size="icon" variant="ghost" onClick={onClose} aria-label="Fechar">
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1 shrink-0">
+            {c && !editing && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setEditing(true)}
+                className="gap-1.5"
+              >
+                <Pencil className="h-3.5 w-3.5" /> Editar
+              </Button>
+            )}
+            <Button size="icon" variant="ghost" onClick={onClose} aria-label="Fechar">
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {isLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
@@ -39,105 +119,178 @@ export function DialogClienteCampoDetail({ id, onClose }: Props) {
 
         {c && (
           <>
+            {/* SGP status pill */}
             <div className="flex items-center gap-2">
               {c.sgp_synced_at ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                <span className="inline-flex items-center gap-1 rounded-full bg-success/[0.12] px-2.5 py-1 text-xs font-medium text-success ring-1 ring-inset ring-success/30">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   Sincronizado SGP{c.sgp_id ? ` · ${c.sgp_id}` : ''}
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+                <span className="inline-flex items-center gap-1 rounded-full bg-warning/[0.15] px-2.5 py-1 text-xs font-medium text-warning ring-1 ring-inset ring-warning/30">
                   <CloudOff className="h-3.5 w-3.5" />
                   Pendente SGP
                 </span>
               )}
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Telefone" value={fmtPhone(c.telefone)} />
-              <Field label="Nascimento" value={fmtDate(c.dob)} />
-              <Field label="Plano" value={c.plan_nome} />
-              <Field label="Vencimento" value={`dia ${c.due_date}`} />
-              <Field
-                label="PPPoE login"
-                value={c.pppoe_user ?? '—'}
-                mono
-                copyable={!!c.pppoe_user}
-              />
-              <Field
-                label="PPPoE senha"
-                value={c.pppoe_pass ?? '—'}
-                mono
-                copyable={!!c.pppoe_pass}
-              />
-              <Field
-                label="Serial"
-                value={c.serial ?? '—'}
-                mono
-                copyable={!!c.serial}
-              />
-              <Field label="Contrato" value={c.contrato ?? '—'} />
-              <Field label="Instalador" value={c.installer_nome} />
-              <Field label="Registrado em" value={fmtDate(c.registration_date)} />
-            </div>
-
-            <div className="rounded-md border bg-muted/30 p-3 space-y-1">
-              <div className="text-xs uppercase text-muted-foreground">
-                Endereço
-              </div>
-              <p className="text-sm">
-                {c.address}, {c.number}
-                {c.complement ? ` (${c.complement})` : ''}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {c.neighborhood ? `${c.neighborhood} · ` : ''}
-                {c.city}
-                {c.state ? ` / ${c.state}` : ''}
-                {c.cep ? ` · CEP ${c.cep}` : ''}
-              </p>
-              {c.latitude != null && c.longitude != null && (
-                <a
-                  href={`https://maps.google.com/?q=${c.latitude},${c.longitude}`}
-                  target="_blank"
-                  rel="noopener"
-                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                >
-                  <MapPin className="h-3 w-3" />
-                  {c.latitude.toFixed(6)}, {c.longitude.toFixed(6)}
-                </a>
-              )}
-            </div>
-
-            {c.observation && (
-              <div className="rounded-md border bg-muted/30 p-3">
-                <div className="text-xs uppercase text-muted-foreground mb-1">
-                  Observação
+            {/* Conteúdo: read-only OU formulário */}
+            {!editing ? (
+              <>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Telefone" value={fmtPhone(c.telefone)} />
+                  <Field label="Nascimento" value={fmtDate(c.dob)} />
+                  <Field label="Plano" value={c.plan_nome} />
+                  <Field label="Vencimento" value={`dia ${c.due_date}`} />
+                  <Field label="PPPoE login" value={c.pppoe_user ?? '—'} mono copyable={!!c.pppoe_user} />
+                  <Field label="PPPoE senha" value={c.pppoe_pass ?? '—'} mono copyable={!!c.pppoe_pass} />
+                  <Field label="Serial / MAC" value={c.serial ?? '—'} mono copyable={!!c.serial} />
+                  <Field label="Contrato" value={c.contrato ?? '—'} />
+                  <Field label="Instalador" value={c.installer_nome} />
+                  <Field label="Registrado em" value={fmtDate(c.registration_date)} />
                 </div>
-                <p className="text-sm whitespace-pre-wrap">{c.observation}</p>
-              </div>
-            )}
 
-            {c.fotos && c.fotos.length > 0 && (
-              <div>
-                <div className="text-xs uppercase text-muted-foreground mb-2">
-                  {c.fotos.length} foto(s) anexada(s)
+                <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Endereço
+                  </div>
+                  <p className="text-sm">
+                    {c.address}, {c.number}
+                    {c.complement ? ` (${c.complement})` : ''}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {c.neighborhood ? `${c.neighborhood} · ` : ''}
+                    {c.city}
+                    {c.state ? ` / ${c.state}` : ''}
+                    {c.cep ? ` · CEP ${c.cep}` : ''}
+                  </p>
                 </div>
+
+                {c.latitude != null && c.longitude != null && (
+                  <div className="rounded-md border overflow-hidden">
+                    <iframe
+                      title="Mapa do cliente"
+                      src={mapEmbedUrl(c.latitude, c.longitude)}
+                      className="h-64 w-full"
+                      loading="lazy"
+                    />
+                    <div className="flex items-center justify-between bg-muted/30 px-3 py-2 text-xs">
+                      <span className="flex items-center gap-1 text-muted-foreground" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                        <MapPin className="h-3 w-3" />
+                        {c.latitude.toFixed(6)}, {c.longitude.toFixed(6)}
+                        {c.location_accuracy != null && (
+                          <span className="ml-2">· precisão ±{Math.round(c.location_accuracy)}m</span>
+                        )}
+                      </span>
+                      <a
+                        href={`https://maps.google.com/?q=${c.latitude},${c.longitude}`}
+                        target="_blank"
+                        rel="noopener"
+                        className="inline-flex items-center gap-1 text-primary hover:underline"
+                      >
+                        Abrir no Google Maps <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {c.observation && (
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+                      Observação
+                    </div>
+                    <p className="text-sm whitespace-pre-wrap">{c.observation}</p>
+                  </div>
+                )}
+
+                {c.fotos && c.fotos.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {c.fotos.length} foto(s) anexada(s) · acessíveis pelo app do técnico.
+                  </p>
+                )}
+              </>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  void handleSave()
+                }}
+                className="space-y-4"
+              >
                 <p className="text-xs text-muted-foreground">
-                  Acessível no app do técnico ou via{' '}
-                  <code className="font-mono text-[11px]">
-                    /api/v1/clientes-campo/{c.id}/foto/&lt;idx&gt;
-                  </code>
+                  CPF e data de nascimento não podem ser alterados. Para corrigi-los, crie um novo cadastro.
                 </p>
-              </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <FormField label="Nome" value={form.nome ?? ''} onChange={(v) => setField('nome', v)} maxLength={255} />
+                  <FormField label="Telefone" value={form.telefone ?? ''} onChange={(v) => setField('telefone', v)} maxLength={15} />
+                  <FormField label="Plano" value={form.plan_nome ?? ''} onChange={(v) => setField('plan_nome', v)} maxLength={255} />
+                  <FormField
+                    label="Vencimento (10-30)"
+                    type="number"
+                    value={form.due_date != null ? String(form.due_date) : ''}
+                    onChange={(v) => setField('due_date', v ? Number(v) : undefined)}
+                  />
+                  <FormField label="PPPoE login" value={form.pppoe_user ?? ''} onChange={(v) => setField('pppoe_user', v)} maxLength={100} mono />
+                  <FormField label="PPPoE senha" value={form.pppoe_pass ?? ''} onChange={(v) => setField('pppoe_pass', v)} maxLength={100} mono />
+                  <FormField label="Serial / MAC" value={form.serial ?? ''} onChange={(v) => setField('serial', v)} maxLength={100} mono />
+                  <FormField label="Contrato" value={form.contrato ?? ''} onChange={(v) => setField('contrato', v)} maxLength={20} />
+                  <FormField label="Instalador" value={form.installer_nome ?? ''} onChange={(v) => setField('installer_nome', v)} maxLength={255} />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <FormField label="Endereço" value={form.address ?? ''} onChange={(v) => setField('address', v)} maxLength={255} />
+                  <FormField label="Número" value={form.number ?? ''} onChange={(v) => setField('number', v)} maxLength={10} />
+                  <FormField label="Complemento" value={form.complement ?? ''} onChange={(v) => setField('complement', v)} maxLength={255} />
+                  <FormField label="Bairro" value={form.neighborhood ?? ''} onChange={(v) => setField('neighborhood', v)} maxLength={100} />
+                  <FormField label="Cidade" value={form.city ?? ''} onChange={(v) => setField('city', v)} maxLength={100} />
+                  <FormField label="UF (2 letras)" value={form.state ?? ''} onChange={(v) => setField('state', v.toUpperCase())} maxLength={2} />
+                  <FormField label="CEP" value={form.cep ?? ''} onChange={(v) => setField('cep', v)} maxLength={10} />
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <FormField
+                    label="Latitude"
+                    type="number"
+                    value={form.latitude != null ? String(form.latitude) : ''}
+                    onChange={(v) => setField('latitude', v ? Number(v) : null)}
+                  />
+                  <FormField
+                    label="Longitude"
+                    type="number"
+                    value={form.longitude != null ? String(form.longitude) : ''}
+                    onChange={(v) => setField('longitude', v ? Number(v) : null)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="observation" className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Observação
+                  </Label>
+                  <Textarea
+                    id="observation"
+                    value={form.observation ?? ''}
+                    onChange={(e) => setField('observation', e.target.value)}
+                    rows={3}
+                    className="mt-1"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2 border-t">
+                  <Button type="button" variant="outline" onClick={() => setEditing(false)} disabled={patch.isPending}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={patch.isPending}>
+                    {patch.isPending ? 'Salvando…' : 'Salvar'}
+                  </Button>
+                </div>
+              </form>
             )}
           </>
         )}
 
-        <div className="flex justify-end pt-2">
-          <Button variant="outline" onClick={onClose}>
-            Fechar
-          </Button>
-        </div>
+        {!editing && (
+          <div className="flex justify-end pt-2">
+            <Button variant="outline" onClick={onClose}>
+              Fechar
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -161,6 +314,7 @@ function Field({
         copyable
           ? () => {
               navigator.clipboard.writeText(value).catch(() => {})
+              toast.success('Copiado.')
             }
           : undefined
       }
@@ -169,9 +323,51 @@ function Field({
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
         {label}
       </div>
-      <div className={`text-sm ${mono ? 'font-mono' : ''}`}>{value}</div>
+      <div className={`text-sm ${mono ? 'font-mono' : ''}`} style={mono ? { fontVariantNumeric: 'tabular-nums' } : undefined}>
+        {value}
+      </div>
     </div>
   )
+}
+
+function FormField({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  maxLength,
+  mono = false,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  type?: 'text' | 'number'
+  maxLength?: number
+  mono?: boolean
+}) {
+  const id = `f-${label.toLowerCase().replace(/[^a-z0-9]/g, '-')}`
+  return (
+    <div>
+      <Label htmlFor={id} className="text-[10px] uppercase tracking-wide text-muted-foreground">
+        {label}
+      </Label>
+      <Input
+        id={id}
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        maxLength={maxLength}
+        className={`mt-1 ${mono ? 'font-mono' : ''}`}
+      />
+    </div>
+  )
+}
+
+function mapEmbedUrl(lat: number, lng: number): string {
+  // OpenStreetMap embed (sem API key). Bounding box ~600m em volta do ponto.
+  const d = 0.003
+  const bbox = `${lng - d},${lat - d},${lng + d},${lat + d}`
+  return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lng}`
 }
 
 function fmtCpf(cpf: string): string {
