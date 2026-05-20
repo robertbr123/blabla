@@ -231,33 +231,43 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
             if (i < _step) setState(() => _step = i);
           },
           controlsBuilder: (ctx, details) {
+            // Botoes precisam de Expanded dentro do Row porque o theme
+            // global do app define FilledButton.minimumSize com largura
+            // infinita — sem Expanded, dispara BoxConstraints(w=Infinity).
             return Padding(
               padding: const EdgeInsets.only(top: 16),
               child: Row(
                 children: [
-                  if (_step > 0)
-                    OutlinedButton(
-                      onPressed: () => setState(() => _step -= 1),
-                      child: const Text('Voltar'),
+                  if (_step > 0) ...[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => setState(() => _step -= 1),
+                        child: const Text('Voltar'),
+                      ),
                     ),
-                  const SizedBox(width: 8),
+                    const SizedBox(width: 8),
+                  ],
                   if (_step < 2)
-                    FilledButton(
-                      onPressed: () {
-                        final erro =
-                            _step == 0 ? _validaStep1() : _validaStep2();
-                        if (erro != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(erro)),
-                          );
-                          return;
-                        }
-                        setState(() => _step += 1);
-                      },
-                      child: const Text('Continuar'),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        onPressed: () {
+                          final erro =
+                              _step == 0 ? _validaStep1() : _validaStep2();
+                          if (erro != null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(erro)),
+                            );
+                            return;
+                          }
+                          setState(() => _step += 1);
+                        },
+                        child: const Text('Continuar'),
+                      ),
                     ),
                   if (_step == 2)
                     Expanded(
+                      flex: 2,
                       child: FilledButton.icon(
                         icon: const Icon(Icons.check),
                         onPressed: _enviando ? null : _enviar,
