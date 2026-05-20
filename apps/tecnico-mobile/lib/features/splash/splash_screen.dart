@@ -43,15 +43,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   Future<void> _navegarQuandoPronto() async {
     // Tempo minimo de splash pra o user ver o logo.
     final tick = Future<void>.delayed(const Duration(milliseconds: 1200));
-    final has = await ref.read(hasTokenProvider.future);
-    final session = await ref.read(sessionSnapshotProvider.future);
+
+    // Defensivo: se leitura do storage travar, nao deixa o app pendurado.
+    // Em qualquer falha, manda pro /login (caminho mais seguro).
+    bool has = false;
+    bool biometric = false;
+    try {
+      has = await ref
+          .read(hasTokenProvider.future)
+          .timeout(const Duration(seconds: 5), onTimeout: () => false);
+      final session = await ref
+          .read(sessionSnapshotProvider.future)
+          .timeout(const Duration(seconds: 5), onTimeout: () => null);
+      biometric = session?.biometricEnabled ?? false;
+    } catch (e) {
+      debugPrint('splash._navegarQuandoPronto falhou: $e');
+    }
+
     await tick;
     if (!mounted) return;
     if (!has) {
       context.go('/login');
       return;
     }
-    if (session?.biometricEnabled ?? false) {
+    if (biometric) {
       context.go('/reentry');
       return;
     }

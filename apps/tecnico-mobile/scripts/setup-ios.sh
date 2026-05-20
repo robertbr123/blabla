@@ -84,6 +84,8 @@ keys = {
         'BlaBla precisa acessar suas fotos pra você anexar imagens à OS ou ao perfil.',
     'NSPhotoLibraryAddUsageDescription':
         'BlaBla pode salvar fotos da OS no seu rolo de câmera.',
+    'NSFaceIDUsageDescription':
+        'BlaBla usa o Face ID pra te identificar rapidamente ao reabrir o app.',
 }
 
 added = []

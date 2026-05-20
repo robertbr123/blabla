@@ -18,14 +18,26 @@ final routerProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
       // Splash decide pra onde mandar — nao redireciona.
       if (loc == '/splash') return null;
-      final has = await ref.read(hasTokenProvider.future);
-      final session = await ref.read(sessionSnapshotProvider.future);
+      // Defensivo: storage com timeout pra nao travar a navegacao.
+      bool has = false;
+      try {
+        has = await ref
+            .read(hasTokenProvider.future)
+            .timeout(const Duration(seconds: 3), onTimeout: () => false);
+      } catch (_) {}
+      bool biometric = false;
+      try {
+        final session = await ref
+            .read(sessionSnapshotProvider.future)
+            .timeout(const Duration(seconds: 3), onTimeout: () => null);
+        biometric = session?.biometricEnabled ?? false;
+      } catch (_) {}
       final goingToLogin = loc == '/login';
       final goingToReentry = loc == '/reentry';
       if (!has) {
         return goingToLogin ? null : '/login';
       }
-      if (goingToReentry && !(session?.biometricEnabled ?? false)) {
+      if (goingToReentry && !biometric) {
         return '/os';
       }
       return null;
