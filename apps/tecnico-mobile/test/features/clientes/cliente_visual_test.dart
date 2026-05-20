@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:tecnico_mobile/core/theme.dart';
 import 'package:tecnico_mobile/core/ui/app_surfaces.dart';
@@ -224,6 +225,35 @@ void main() {
     expect(find.text('Base de clientes'), findsOneWidget);
     expect(find.byIcon(Icons.search), findsOneWidget);
     expect(find.byType(AppSurfaceCard), findsAtLeastNWidgets(1));
+  });
+
+  testWidgets('clientes list shows offline guidance when fetch has no cache',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          clientesListProvider.overrideWith(
+            (ref) async => throw DioException(
+              requestOptions: RequestOptions(path: '/api/v1/clientes-campo'),
+              type: DioExceptionType.connectionError,
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: buildLightTheme(),
+          home: const ClientesListScreen(),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sem conexão para atualizar clientes'), findsOneWidget);
+    expect(
+      find.textContaining('Sem rede e sem cache disponível'),
+      findsOneWidget,
+    );
+    expect(find.text('Tentar novamente'), findsOneWidget);
   });
 
   testWidgets('cliente detail groups hero and data into premium surfaces',

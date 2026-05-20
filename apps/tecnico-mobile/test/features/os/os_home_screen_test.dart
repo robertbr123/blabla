@@ -6,6 +6,7 @@ import 'package:tecnico_mobile/core/sync/sync_service.dart';
 import 'package:tecnico_mobile/core/theme.dart';
 import 'package:tecnico_mobile/features/os/os_data.dart';
 import 'package:tecnico_mobile/features/os/os_list_screen.dart';
+import 'package:tecnico_mobile/features/os/widgets/home_filter_strip.dart';
 import 'package:tecnico_mobile/features/shell/main_shell.dart';
 
 Map<String, dynamic> _row({
@@ -109,6 +110,45 @@ void main() {
     expect(find.text('OS-002'), findsNothing);
   });
 
+  testWidgets('home shows premium empty state when selected queue is empty',
+      (tester) async {
+    final now = DateTime.now();
+
+    await _pumpHome(
+      tester,
+      rows: [
+        _row(
+          id: 'os-3',
+          codigo: 'OS-003',
+          status: 'concluida',
+          cliente: 'Cliente C',
+          criadaEm: now.subtract(const Duration(days: 1)),
+        ),
+      ],
+      pendingCount: 0,
+    );
+
+    final mainScroll = find
+        .descendant(
+          of: find.byKey(const ValueKey('os-home-scroll')),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+
+    await tester.scrollUntilVisible(
+      find.text('Tudo em dia por aqui'),
+      250,
+      scrollable: mainScroll,
+    );
+
+    expect(find.text('Tudo em dia por aqui'), findsOneWidget);
+    expect(
+      find.textContaining('Nenhuma OS pendente precisa da sua atenção agora'),
+      findsOneWidget,
+    );
+    expect(find.text('Atualizar'), findsOneWidget);
+  });
+
   testWidgets(
       'home hero uses the next future schedule when overdue items exist',
       (tester) async {
@@ -178,7 +218,22 @@ void main() {
       150,
       scrollable: mainScroll,
     );
-    await tester.tap(find.byKey(const ValueKey('home-filter-andamento')));
+    final horizontalFilterScroll = find.descendant(
+      of: find.byType(HomeFilterStrip),
+      matching: find.byType(Scrollable),
+    );
+    await tester.drag(
+      horizontalFilterScroll,
+      const Offset(-220, 0),
+      warnIfMissed: false,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey('home-filter-andamento')),
+        matching: find.byType(InkWell),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('OS-001'), findsNothing);

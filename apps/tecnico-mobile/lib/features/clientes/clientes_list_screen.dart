@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/ui/app_section_header.dart';
+import '../../core/ui/app_state_panel.dart';
 import '../../core/ui/app_status_chip.dart';
 import '../../core/ui/app_surfaces.dart';
 import 'cliente_data.dart';
@@ -152,7 +153,13 @@ class _ClientesListScreenState extends ConsumerState<ClientesListScreen> {
           ),
           Expanded(
             child: async.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const _StateBody(
+                child: AppStatePanel.loading(
+                  title: 'Carregando clientes',
+                  message:
+                      'Atualizando a base do dia para você buscar cidade, serial e status SGP sem ruído.',
+                ),
+              ),
               error: (e, _) => _ErroView(
                 e: e,
                 onRetry: () => ref.invalidate(clientesListProvider),
@@ -292,33 +299,17 @@ class _VazioView extends StatelessWidget {
   const _VazioView({required this.hasSearch});
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 32, 16, 24),
       children: [
-        AppSurfaceCard(
-          child: Column(
-            children: [
-              Icon(
-                hasSearch ? Icons.search_off : Icons.person_off,
-                size: 56,
-                color: scheme.onSurfaceVariant,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                hasSearch
-                    ? 'Nenhum cliente encontrado com esses filtros.'
-                    : 'Nenhum cliente cadastrado ainda.\nToque em "Novo" pra começar.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: scheme.onSurfaceVariant,
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
+        AppStatePanel.empty(
+          title:
+              hasSearch ? 'Nenhum cliente encontrado' : 'Base vazia por aqui',
+          message: hasSearch
+              ? 'Ajuste a busca ou os filtros SGP para ampliar a lista visível.'
+              : 'Nenhum cliente foi sincronizado ainda. Toque em "Novo" para começar um cadastro em campo.',
+          icon: hasSearch ? Icons.search_off_rounded : Icons.person_off_rounded,
         ),
       ],
     );
@@ -331,24 +322,44 @@ class _ErroView extends StatelessWidget {
   const _ErroView({required this.e, required this.onRetry});
   @override
   Widget build(BuildContext context) {
+    final panel = isOfflineException(e)
+        ? AppStatePanel.offline(
+            title: 'Sem conexão para atualizar clientes',
+            message:
+                'Sem rede e sem cache disponível para essa lista. Tente novamente quando o sinal voltar.',
+            actionLabel: 'Tentar novamente',
+            onAction: onRetry,
+          )
+        : AppStatePanel.error(
+            title: 'Não foi possível carregar clientes',
+            message:
+                'A lista não respondeu como esperado. Atualize novamente para retomar a busca do dia.',
+            actionLabel: 'Tentar novamente',
+            onAction: onRetry,
+          );
+
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 32, 16, 24),
-      children: [
-        AppSurfaceCard(
-          child: Column(
-            children: [
-              const Icon(Icons.error_outline, size: 56),
-              const SizedBox(height: 12),
-              Text(e.toString(), textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              FilledButton(
-                onPressed: onRetry,
-                child: const Text('Tentar de novo'),
-              ),
-            ],
-          ),
+      children: [panel],
+    );
+  }
+}
+
+class _StateBody extends StatelessWidget {
+  final Widget child;
+  const _StateBody({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: child,
         ),
-      ],
+      ),
     );
   }
 }

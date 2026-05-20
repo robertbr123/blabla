@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:async';
 import 'package:tecnico_mobile/core/theme.dart';
 import 'package:tecnico_mobile/core/ui/app_surfaces.dart';
 import 'package:tecnico_mobile/features/estoque/estoque_data.dart';
@@ -47,6 +48,32 @@ Future<void> pumpEstoque(
 }
 
 void main() {
+  testWidgets('estoque shows premium loading state while saldo is pending',
+      (tester) async {
+    final completer = Completer<List<EstoqueLinha>>();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          estoqueSaldoProvider.overrideWith((ref) => completer.future),
+        ],
+        child: MaterialApp(
+          theme: buildLightTheme(),
+          home: const EstoqueScreen(),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(find.text('Carregando estoque'), findsOneWidget);
+    expect(
+      find.text('Conferindo saldo e categorias para sua próxima visita.'),
+      findsOneWidget,
+    );
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+  });
+
   testWidgets('estoque shows summary surface and premium filters',
       (tester) async {
     await pumpEstoque(tester);

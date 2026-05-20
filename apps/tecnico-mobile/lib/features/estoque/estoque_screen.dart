@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/ui/app_section_header.dart';
+import '../../core/ui/app_state_panel.dart';
 import '../../core/ui/app_status_chip.dart';
 import '../../core/ui/app_surfaces.dart';
 import 'estoque_data.dart';
@@ -41,7 +42,12 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
         ],
       ),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const _StateBody(
+          child: AppStatePanel.loading(
+            title: 'Carregando estoque',
+            message: 'Conferindo saldo e categorias para sua próxima visita.',
+          ),
+        ),
         error: (e, _) => _Erro(
           e: e,
           onRetry: () => ref.invalidate(estoqueSaldoProvider),
@@ -367,42 +373,16 @@ class _Vazio extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 2, 16, 24),
       children: [
-        AppSurfaceCard(
-          child: Column(
-            children: [
-              Icon(
-                Icons.inventory_2_outlined,
-                size: 52,
-                color: scheme.onSurfaceVariant,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Nenhum item encontrado.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onSurface,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                hasActiveRefinement
-                    ? 'Ajuste a busca ou desative o filtro para revisar todo o material disponível.'
-                    : 'Nenhum item de estoque foi disponibilizado para este técnico até o momento.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: scheme.onSurfaceVariant,
-                  height: 1.4,
-                ),
-              ),
-            ],
-          ),
+        AppStatePanel.empty(
+          title: 'Nenhum item encontrado.',
+          message: hasActiveRefinement
+              ? 'Ajuste a busca ou desative o filtro para revisar todo o material disponível.'
+              : 'Nenhum item de estoque foi disponibilizado para este técnico até o momento.',
+          icon: Icons.inventory_2_outlined,
         ),
       ],
     );
@@ -416,21 +396,38 @@ class _Erro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: AppSurfaceCard(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 56),
-            const SizedBox(height: 12),
-            Text(e.toString(), textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: onRetry,
-              child: const Text('Tentar de novo'),
-            ),
-          ],
+    final panel = isOfflineException(e)
+        ? AppStatePanel.offline(
+            title: 'Sem conexão para atualizar estoque',
+            message:
+                'Sem rede e sem snapshot local disponível para este saldo. Tente novamente quando o sinal voltar.',
+            actionLabel: 'Tentar novamente',
+            onAction: onRetry,
+          )
+        : AppStatePanel.error(
+            title: 'Não foi possível carregar o estoque',
+            message:
+                'O saldo não respondeu como esperado. Atualize novamente para revisar seus materiais.',
+            actionLabel: 'Tentar novamente',
+            onAction: onRetry,
+          );
+
+    return _StateBody(child: panel);
+  }
+}
+
+class _StateBody extends StatelessWidget {
+  final Widget child;
+  const _StateBody({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: child,
         ),
       ),
     );

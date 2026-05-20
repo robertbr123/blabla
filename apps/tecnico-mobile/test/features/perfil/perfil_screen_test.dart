@@ -101,6 +101,30 @@ void main() {
     expect(find.byType(AppSurfaceCard), findsAtLeastNWidgets(3));
   });
 
+  testWidgets('perfil shows contextual error copy for unexpected failures',
+      (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          perfilProvider.overrideWith((ref) async => throw Exception('boom')),
+        ],
+        child: MaterialApp(
+          theme: buildLightTheme(),
+          home: const PerfilScreen(),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    expect(find.text('Não foi possível carregar seu perfil'), findsOneWidget);
+    expect(
+      find.text('Revise a conexão e tente novamente em instantes.'),
+      findsOneWidget,
+    );
+    expect(find.text('Tentar novamente'), findsOneWidget);
+  });
+
   testWidgets('closing photo sheet without an action does not remove the photo',
       (tester) async {
     final fakeActions = _FakePerfilActions();

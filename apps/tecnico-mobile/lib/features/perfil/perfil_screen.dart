@@ -10,6 +10,7 @@ import '../../core/auth/auth_repository.dart';
 import '../../core/auth/session_cleanup.dart';
 import '../../core/push/fcm_service.dart';
 import '../../core/ui/app_section_header.dart';
+import '../../core/ui/app_state_panel.dart';
 import '../../core/ui/app_status_chip.dart';
 import '../../core/ui/app_surfaces.dart';
 import '../os/widgets/cliente_avatar.dart';
@@ -35,7 +36,13 @@ class PerfilScreen extends ConsumerWidget {
         ],
       ),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const _StateBody(
+          child: AppStatePanel.loading(
+            title: 'Carregando seu perfil',
+            message:
+                'Preparando foto, status operacional e atalhos da sua conta.',
+          ),
+        ),
         error: (e, _) => _Erro(
           e: e,
           onRetry: () => ref.invalidate(perfilProvider),
@@ -824,15 +831,39 @@ class _Erro extends StatelessWidget {
   const _Erro({required this.e, required this.onRetry});
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        const Icon(Icons.error_outline, size: 56),
-        const SizedBox(height: 12),
-        Text(e.toString(), textAlign: TextAlign.center),
-        const SizedBox(height: 12),
-        FilledButton(onPressed: onRetry, child: const Text('Tentar de novo')),
-      ]),
+    final panel = isOfflineException(e)
+        ? AppStatePanel.offline(
+            title: 'Sem conexão para atualizar seu perfil',
+            message:
+                'Sem rede e sem snapshot local disponível para esta conta. Tente novamente quando o sinal estabilizar.',
+            actionLabel: 'Tentar novamente',
+            onAction: onRetry,
+          )
+        : AppStatePanel.error(
+            title: 'Não foi possível carregar seu perfil',
+            message: 'Revise a conexão e tente novamente em instantes.',
+            actionLabel: 'Tentar novamente',
+            onAction: onRetry,
+          );
+
+    return _StateBody(child: panel);
+  }
+}
+
+class _StateBody extends StatelessWidget {
+  final Widget child;
+  const _StateBody({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: child,
+        ),
+      ),
     );
   }
 }

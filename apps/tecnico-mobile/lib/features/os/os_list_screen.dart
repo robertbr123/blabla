@@ -7,6 +7,7 @@ import '../../core/auth/auth_repository.dart';
 import '../../core/auth/session_cleanup.dart';
 import '../../core/theme.dart';
 import '../../core/ui/app_section_header.dart';
+import '../../core/ui/app_state_panel.dart';
 import '../../core/ui/app_surfaces.dart';
 import '../../core/push/fcm_service.dart';
 import '../../core/sync/sync_service.dart';
@@ -88,7 +89,13 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
         ],
       ),
       body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const _StateBody(
+          child: AppStatePanel.loading(
+            title: 'Atualizando sua fila',
+            message:
+                'Buscando o panorama mais recente das OS para abrir seu turno com contexto.',
+          ),
+        ),
         error: (e, _) => _Erro(
           e: e,
           onRetry: () => ref.invalidate(osListStreamProvider),
@@ -379,55 +386,42 @@ class _EstadoVazio extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String title;
     String texto;
     IconData icone;
     switch (filter) {
       case OsHomeFilter.todas:
+        title = 'Nenhuma OS disponível';
         texto = 'Nenhuma OS atribuída a você.';
         icone = Icons.inbox_outlined;
         break;
       case OsHomeFilter.pendente:
-        texto = 'Nenhuma OS pendente.';
+        title = 'Tudo em dia por aqui';
+        texto = 'Nenhuma OS pendente precisa da sua atenção agora.';
         icone = Icons.check_circle_outline;
         break;
       case OsHomeFilter.andamento:
-        texto = 'Nenhuma OS em andamento.';
+        title = 'Sem visitas em andamento';
+        texto = 'Sua fila ativa está livre no momento.';
         icone = Icons.directions_run;
         break;
       case OsHomeFilter.concluida:
-        texto = 'Nenhuma OS concluída ainda.';
+        title = 'Sem OS concluídas ainda';
+        texto = 'As conclusões do dia vão aparecer aqui assim que fecharem.';
         icone = Icons.check_circle_outline;
         break;
       case OsHomeFilter.cancelada:
-        texto = 'Nenhuma OS cancelada.';
+        title = 'Nenhuma OS cancelada';
+        texto = 'Quando houver cancelamentos para revisar, eles aparecem aqui.';
         icone = Icons.cancel_outlined;
         break;
     }
-    return AppSurfaceCard(
-      padding: const EdgeInsets.fromLTRB(20, 32, 20, 32),
-      child: Column(
-        children: [
-          Icon(
-            icone,
-            size: 56,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            texto,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            onPressed: onRefresh,
-            icon: const Icon(Icons.refresh),
-            label: const Text('Atualizar'),
-          ),
-        ],
-      ),
+    return AppStatePanel.empty(
+      title: title,
+      message: texto,
+      icon: icone,
+      actionLabel: 'Atualizar',
+      onAction: onRefresh,
     );
   }
 }
@@ -439,15 +433,40 @@ class _Erro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        const Icon(Icons.error_outline, size: 56),
-        const SizedBox(height: 12),
-        Text(e.toString(), textAlign: TextAlign.center),
-        const SizedBox(height: 12),
-        FilledButton(onPressed: onRetry, child: const Text('Tentar de novo')),
-      ]),
+    final panel = isOfflineException(e)
+        ? AppStatePanel.offline(
+            title: 'Sem conexão para atualizar a fila',
+            message:
+                'A última sincronização não chegou agora. Revise sua conexão e tente novamente em instantes.',
+            actionLabel: 'Tentar novamente',
+            onAction: onRetry,
+          )
+        : AppStatePanel.error(
+            title: 'Não foi possível carregar sua fila',
+            message:
+                'Algo impediu a atualização das OS. Tente novamente para retomar o painel operacional.',
+            actionLabel: 'Tentar novamente',
+            onAction: onRetry,
+          );
+
+    return _StateBody(child: panel);
+  }
+}
+
+class _StateBody extends StatelessWidget {
+  final Widget child;
+  const _StateBody({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 440),
+          child: child,
+        ),
+      ),
     );
   }
 }

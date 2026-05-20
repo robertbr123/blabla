@@ -135,6 +135,12 @@ A criar (próximos PRs):
 - A UI de OS aplica atualização otimista local para evitar ação repetida enquanto a sync não volta.
 - Logout manual apaga token, sessão biométrica, cache local e outbox.
 
+## iPhone visual refresh status
+
+- iPhone visual refresh with premium home-first dashboard.
+- Refined bottom navigation and shared visual system across OS, clientes, estoque e perfil.
+- Consistent loading, offline and empty states nas telas principais.
+
 ## Testar API local sem deploy
 
 ```bash

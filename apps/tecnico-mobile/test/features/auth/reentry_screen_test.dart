@@ -126,14 +126,14 @@ void main() {
     expect(find.byType(TextField), findsNWidgets(2));
   });
 
-  testWidgets('splash routes to os when token has no biometric snapshot',
+  testWidgets('splash routes to home when token has no biometric snapshot',
       (tester) async {
     await tester.pumpWidget(_buildRouterApp(hasToken: true));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1300));
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('OS'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Home'), findsOneWidget);
     expect(find.text('Entrar com Face ID'), findsNothing);
   });
 
