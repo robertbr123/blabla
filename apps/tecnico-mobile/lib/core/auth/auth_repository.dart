@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/api_client.dart';
 import 'auth_storage.dart';
+import 'session_state.dart';
 
 class LoginResult {
   final String accessToken;
@@ -56,4 +57,8 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
 final hasTokenProvider = FutureProvider<bool>((ref) async {
   final t = await readAccessToken();
   return t != null && t.isNotEmpty;
+});
+
+final sessionSnapshotProvider = FutureProvider<SessionSnapshot?>((ref) async {
+  return readSessionSnapshot();
 });

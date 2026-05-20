@@ -44,9 +44,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     // Tempo minimo de splash pra o user ver o logo.
     final tick = Future<void>.delayed(const Duration(milliseconds: 1200));
     final has = await ref.read(hasTokenProvider.future);
+    final session = await ref.read(sessionSnapshotProvider.future);
     await tick;
     if (!mounted) return;
-    context.go(has ? '/os' : '/login');
+    if (!has) {
+      context.go('/login');
+      return;
+    }
+    if (session?.biometricEnabled ?? false) {
+      context.go('/reentry');
+      return;
+    }
+    context.go('/os');
   }
 
   @override

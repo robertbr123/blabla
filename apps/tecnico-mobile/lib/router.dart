@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/auth/auth_repository.dart';
 import 'features/auth/login_screen.dart';
+import 'features/auth/reentry_screen.dart';
 import 'features/clientes/cliente_detail_screen.dart';
 import 'features/clientes/cliente_novo_screen.dart';
 import 'features/os/os_detail_screen.dart';
@@ -18,14 +19,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Splash decide pra onde mandar — nao redireciona.
       if (loc == '/splash') return null;
       final has = await ref.read(hasTokenProvider.future);
+      final session = await ref.read(sessionSnapshotProvider.future);
       final goingToLogin = loc == '/login';
-      if (!has && !goingToLogin) return '/login';
-      if (has && goingToLogin) return '/os';
+      final goingToReentry = loc == '/reentry';
+      if (!has) {
+        return goingToLogin ? null : '/login';
+      }
+      if (goingToReentry && !(session?.biometricEnabled ?? false)) {
+        return '/os';
+      }
       return null;
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(path: '/reentry', builder: (_, __) => const ReentryScreen()),
       GoRoute(
         path: '/os',
         builder: (_, __) => const MainShell(initialTab: 0),
@@ -52,8 +60,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/clientes/:id',
-        builder: (_, st) =>
-            ClienteDetailScreen(id: st.pathParameters['id']!),
+        builder: (_, st) => ClienteDetailScreen(id: st.pathParameters['id']!),
       ),
     ],
     errorBuilder: (_, st) => Scaffold(
