@@ -3,11 +3,13 @@ import 'package:go_router/go_router.dart';
 
 import 'core/auth/auth_state.dart';
 import 'features/auth/login_screen.dart';
-import 'features/home/home_placeholder_screen.dart';
 import 'features/onboarding/onboarding_biometric_screen.dart';
 import 'features/onboarding/onboarding_cpf_screen.dart';
 import 'features/onboarding/onboarding_otp_screen.dart';
 import 'features/onboarding/onboarding_password_screen.dart';
+import 'features/perfil/editar_perfil_screen.dart';
+import 'features/perfil/mudar_senha_screen.dart';
+import 'features/shell/main_shell.dart';
 import 'features/splash/splash_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -61,9 +63,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/onboarding/biometric',
         builder: (_, __) => const OnboardingBiometricScreen(),
       ),
+      GoRoute(path: '/home', builder: (_, __) => const MainShell()),
       GoRoute(
-        path: '/home',
-        builder: (_, __) => const HomePlaceholderScreen(),
+        path: '/perfil/editar',
+        builder: (_, state) {
+          final extra = state.extra as Map<String, String>?;
+          return EditarPerfilScreen(
+            campo: extra?['campo'] ?? 'telefone',
+            valor: extra?['valor'] ?? '',
+          );
+        },
+      ),
+      GoRoute(
+        path: '/perfil/mudar-senha',
+        builder: (_, __) => const MudarSenhaScreen(),
       ),
     ],
   );

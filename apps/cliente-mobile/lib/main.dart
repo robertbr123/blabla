@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/branding/brand_theme.dart';
+import 'core/theme/theme_mode_controller.dart';
 import 'router.dart';
 
 @pragma('vm:entry-point')
@@ -28,12 +29,13 @@ class ClienteApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(themeModeProvider);
     return MaterialApp.router(
       title: 'Ondeline',
       debugShowCheckedModeBanner: false,
       theme: BrandTheme.light(),
       darkTheme: BrandTheme.dark(),
-      themeMode: ThemeMode.system,
+      themeMode: themeMode,
       routerConfig: router,
     );
   }

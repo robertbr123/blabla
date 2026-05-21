@@ -1,0 +1,95 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../core/api/me_repository.dart';
+import '../../core/branding/brand_tokens.dart';
+
+class EditarPerfilScreen extends ConsumerStatefulWidget {
+  const EditarPerfilScreen({
+    super.key,
+    required this.campo,
+    required this.valor,
+  });
+  final String campo; // 'telefone' | 'email'
+  final String valor;
+
+  @override
+  ConsumerState<EditarPerfilScreen> createState() => _EditarPerfilScreenState();
+}
+
+class _EditarPerfilScreenState extends ConsumerState<EditarPerfilScreen> {
+  late final TextEditingController _ctrl;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.valor);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    setState(() => _loading = true);
+    try {
+      final repo = ref.read(meRepositoryProvider);
+      if (widget.campo == 'telefone') {
+        await repo.patchMe(telefone: _ctrl.text);
+      } else {
+        await repo.patchMe(email: _ctrl.text);
+      }
+      ref.invalidate(meProvider);
+      if (!mounted) return;
+      context.pop();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Falha ao salvar')),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label = widget.campo == 'telefone' ? 'Telefone' : 'Email';
+    final keyboardType = widget.campo == 'telefone'
+        ? TextInputType.phone
+        : TextInputType.emailAddress;
+    return Scaffold(
+      appBar: AppBar(title: Text(label)),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(BrandTokens.spaceLg),
+          child: Column(
+            children: [
+              TextField(
+                controller: _ctrl,
+                keyboardType: keyboardType,
+                autofocus: true,
+                decoration: InputDecoration(labelText: label),
+              ),
+              const Spacer(),
+              FilledButton(
+                onPressed: _loading ? null : _save,
+                child: _loading
+                    ? const SizedBox(
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Salvar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
