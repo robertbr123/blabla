@@ -1,30 +1,31 @@
 import 'package:flutter/material.dart';
 
-/// Design tokens do app do cliente final. Paleta fintech-style.
+/// Design tokens do app do cliente final. Paleta da logo Ondeline:
+/// ciano + azul marinho profundo.
 class BrandTokens {
   BrandTokens._();
 
-  // Cores principais
-  static const Color primary = Color(0xFF3A2A6B); // Roxo profundo
-  static const Color primaryDark = Color(0xFF241A47);
-  static const Color accent = Color(0xFF1FB378); // Verde-menta
-  static const Color accentDark = Color(0xFF158B5A);
+  // Cores principais — derivadas da logo
+  static const Color primary = Color(0xFF14B8B0); // Ciano Ondeline
+  static const Color primaryDark = Color(0xFF0B1F3A); // Azul marinho fundo da logo
+  static const Color accent = Color(0xFF14B8B0);
+  static const Color accentDark = Color(0xFF0F8F89);
 
   // Neutros (light)
-  static const Color background = Color(0xFFF7F6FB);
+  static const Color background = Color(0xFFF4F8FA);
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color textPrimary = Color(0xFF1A1430);
-  static const Color textSecondary = Color(0xFF6B6480);
-  static const Color divider = Color(0xFFEDEAF3);
+  static const Color textPrimary = Color(0xFF0B1F3A);
+  static const Color textSecondary = Color(0xFF5B6F8A);
+  static const Color divider = Color(0xFFE3EBF0);
 
-  // Neutros (dark)
-  static const Color backgroundDark = Color(0xFF0F0B1F);
-  static const Color surfaceDark = Color(0xFF1A1530);
-  static const Color textPrimaryDark = Color(0xFFF5F2FF);
-  static const Color textSecondaryDark = Color(0xFF9C95B8);
+  // Neutros (dark) — usa o azul marinho da logo como fundo
+  static const Color backgroundDark = Color(0xFF051329);
+  static const Color surfaceDark = Color(0xFF0B1F3A);
+  static const Color textPrimaryDark = Color(0xFFEFF7F8);
+  static const Color textSecondaryDark = Color(0xFF8FA3BD);
 
   // Status
-  static const Color success = Color(0xFF1FB378);
+  static const Color success = Color(0xFF14B8B0);
   static const Color warning = Color(0xFFE8A33D);
   static const Color danger = Color(0xFFE0455A);
   static const Color info = Color(0xFF3B82F6);
@@ -46,7 +47,7 @@ class BrandTokens {
   // Sombras
   static final List<BoxShadow> shadowSoft = [
     BoxShadow(
-      color: primary.withOpacity(0.06),
+      color: primaryDark.withOpacity(0.10),
       blurRadius: 24,
       offset: const Offset(0, 8),
     ),
@@ -54,7 +55,7 @@ class BrandTokens {
 
   static final List<BoxShadow> shadowCard = [
     BoxShadow(
-      color: primary.withOpacity(0.04),
+      color: primaryDark.withOpacity(0.05),
       blurRadius: 16,
       offset: const Offset(0, 4),
     ),

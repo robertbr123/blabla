@@ -31,7 +31,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: BrandTokens.primary,
+      backgroundColor: BrandTokens.primaryDark,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -40,17 +40,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               width: 84,
               height: 84,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: BrandTokens.primary,
                 borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
               ),
               alignment: Alignment.center,
-              child: const Text(
-                'O',
-                style: TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.w900,
-                  color: BrandTokens.primary,
-                ),
+              child: const Icon(
+                Icons.wifi,
+                size: 44,
+                color: Colors.white,
               ),
             ),
             const SizedBox(height: BrandTokens.spaceLg),
