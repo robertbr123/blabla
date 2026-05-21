@@ -38,7 +38,7 @@ class HomeHero extends StatelessWidget {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -62,7 +62,7 @@ class HomeHero extends StatelessWidget {
                         '$pendentes pendentes, $andamento em andamento.',
                         style: textTheme.bodyMedium?.copyWith(
                           color: Colors.white.withValues(alpha: 0.82),
-                          height: 1.4,
+                          height: 1.25,
                         ),
                       ),
                     ],
@@ -74,7 +74,7 @@ class HomeHero extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -84,7 +84,7 @@ class HomeHero extends StatelessWidget {
                     icon: Icons.flash_on_rounded,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: _HeroMetric(
                     label: 'Rota em curso',
@@ -94,9 +94,9 @@ class HomeHero extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(18),
@@ -155,7 +155,7 @@ class _HeroMetric extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: brandAccentSoft, size: 18),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           Text(
             value,
             style: textTheme.headlineSmall?.copyWith(
@@ -163,7 +163,7 @@ class _HeroMetric extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 1),
           Text(
             label,
             style: textTheme.bodySmall?.copyWith(

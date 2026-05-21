@@ -129,7 +129,7 @@ void main() {
     );
 
     expect(find.text('OS-001'), findsOneWidget);
-    expect(find.text('OS-002'), findsNothing);
+    expect(find.text('OS-002'), findsOneWidget);
   });
 
   testWidgets('home shows premium empty state when selected queue is empty',
@@ -307,7 +307,7 @@ void main() {
       summarySemantics.properties.button,
       isTrue,
     );
-    expect(summarySemantics.properties.selected, isTrue);
+    expect(summarySemantics.properties.selected, isFalse);
     expect(
       summarySemantics.properties.label,
       'Resumo Pendentes, 1, Aguardando visita',
@@ -326,22 +326,22 @@ void main() {
     );
 
     var filterSemantics = tester.widget<Semantics>(
-      find.byKey(const ValueKey('home-filter-pendente')),
+      find.byKey(const ValueKey('home-filter-todas')),
     );
     expect(filterSemantics.properties.button, isTrue);
     expect(filterSemantics.properties.selected, isTrue);
-    expect(filterSemantics.properties.label, 'Filtro Pendentes');
+    expect(filterSemantics.properties.label, 'Filtro Todas');
 
     await tester.scrollUntilVisible(
-      find.byKey(const ValueKey('home-filter-todas')),
+      find.byKey(const ValueKey('home-filter-pendente')),
       300,
       scrollable: mainScroll,
     );
-    await tester.tap(find.byKey(const ValueKey('home-filter-todas')));
+    await tester.tap(find.byKey(const ValueKey('home-filter-pendente')));
     await tester.pumpAndSettle();
 
     filterSemantics = tester.widget<Semantics>(
-      find.byKey(const ValueKey('home-filter-todas')),
+      find.byKey(const ValueKey('home-filter-pendente')),
     );
     expect(filterSemantics.properties.selected, isTrue);
     handle.dispose();

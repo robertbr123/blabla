@@ -63,7 +63,7 @@ class OsListScreen extends ConsumerStatefulWidget {
 
 class _OsListScreenState extends ConsumerState<OsListScreen> {
   static const _filters = OsHomeFilter.values;
-  OsHomeFilter _selectedFilter = OsHomeFilter.pendente;
+  OsHomeFilter _selectedFilter = OsHomeFilter.todas;
 
   @override
   Widget build(BuildContext context) {
@@ -134,7 +134,7 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
                   ),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: AppSectionHeader(
                       title: 'Pulso operacional',
                       subtitle:
@@ -144,9 +144,9 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.only(top: 8),
                     child: SizedBox(
-                      height: 160,
+                      height: 124,
                       child: ListView(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -201,7 +201,7 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: HomeFilterStrip(
                       filters: _filters,
                       selected: _selectedFilter,
@@ -211,7 +211,7 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                     child: AppSectionHeader(
                       title: _selectedFilter.listTitle,
                       subtitle: _selectedFilter.listSubtitle(filtered.length),

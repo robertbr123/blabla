@@ -25,7 +25,7 @@ class HomeSummaryCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return SizedBox(
-      width: 176,
+      width: 158,
       child: Semantics(
         key: ValueKey('home-summary-semantics-$label'),
         container: true,
@@ -38,7 +38,7 @@ class HomeSummaryCard extends StatelessWidget {
           onTap: onTap,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: selected ? color.withValues(alpha: 0.12) : scheme.surface,
               borderRadius: BorderRadius.circular(24),
@@ -61,13 +61,13 @@ class HomeSummaryCard extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      height: 32,
-                      width: 32,
+                      height: 28,
+                      width: 28,
                       decoration: BoxDecoration(
                         color: color.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Icon(icon, size: 17, color: color),
+                      child: Icon(icon, size: 15, color: color),
                     ),
                     const Spacer(),
                     if (selected)
@@ -84,28 +84,28 @@ class HomeSummaryCard extends StatelessWidget {
                     Text(
                       '$value',
                       style: TextStyle(
-                        fontSize: 26,
+                        fontSize: 22,
                         fontWeight: FontWeight.w800,
                         color: scheme.onSurface,
                         letterSpacing: -0.5,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 1),
                     Text(
                       label,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w700,
                         color: scheme.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 1),
                     Text(
                       subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 10.5,
                         height: 1.2,
                         color: scheme.onSurfaceVariant,
                       ),
