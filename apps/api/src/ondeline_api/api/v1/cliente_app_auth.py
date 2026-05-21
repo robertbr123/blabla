@@ -116,7 +116,7 @@ def _cliente_access_seconds() -> int:
 @router.post("/register/start", response_model=RegisterStartOut)
 @limiter.limit(_RL_OTP)
 async def register_start(
-    request: Request,  # noqa: ARG001 — usado pelo slowapi
+    request: Request,
     body: RegisterStartIn,
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> RegisterStartOut:
@@ -164,7 +164,7 @@ async def register_start(
 @router.post("/register/verify", response_model=RegisterVerifyOut)
 @limiter.limit(_RL_AUTH)
 async def register_verify(
-    request: Request,  # noqa: ARG001
+    request: Request,
     body: RegisterVerifyIn,
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> RegisterVerifyOut:
@@ -187,7 +187,7 @@ async def register_verify(
 @router.post("/register/password", response_model=TokenOut)
 @limiter.limit(_RL_AUTH)
 async def register_password(
-    request: Request,  # noqa: ARG001
+    request: Request,
     body: RegisterPasswordIn,
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> TokenOut:
@@ -208,7 +208,7 @@ async def register_password(
 @router.post("/login", response_model=TokenOut)
 @limiter.limit(_RL_AUTH)
 async def login(
-    request: Request,  # noqa: ARG001
+    request: Request,
     body: LoginIn,
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> TokenOut:
@@ -234,7 +234,7 @@ async def login(
 @router.post("/forgot", status_code=status.HTTP_202_ACCEPTED)
 @limiter.limit(_RL_OTP)
 async def forgot(
-    request: Request,  # noqa: ARG001
+    request: Request,
     body: ForgotIn,
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> dict[str, str]:

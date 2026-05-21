@@ -39,7 +39,6 @@ def test_decode_staff_rejects_cliente_token() -> None:
 def test_decode_staff_accepts_legacy_token_without_kind() -> None:
     """Tokens emitidos antes da claim `kind` (sem o campo) ainda valem como staff."""
     import jwt as pyjwt
-
     from ondeline_api.auth.jwt import ALGO, _secret
 
     payload = {

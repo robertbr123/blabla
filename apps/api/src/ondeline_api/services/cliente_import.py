@@ -24,9 +24,11 @@ from ondeline_api.api.schemas.cliente_cadastro import (
 )
 from ondeline_api.db.crypto import encrypt_pii, hash_pii
 from ondeline_api.db.models.business import ClienteCadastro
-from ondeline_api.repositories.cliente_cadastro import normalize_nome
 from ondeline_api.db.models.identity import User
-from ondeline_api.repositories.cliente_cadastro import ClienteCadastroRepo
+from ondeline_api.repositories.cliente_cadastro import (
+    ClienteCadastroRepo,
+    normalize_nome,
+)
 
 log = structlog.get_logger(__name__)
 
