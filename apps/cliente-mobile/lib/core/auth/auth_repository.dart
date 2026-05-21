@@ -110,7 +110,13 @@ class AuthRepository {
     if (code == 429) {
       return 'Muitas tentativas. Tente novamente em alguns minutos';
     }
-    return 'Falha de conexao. Tente novamente.';
+    // Sem response — devolve causa especifica pra debugar.
+    // Em prod (Fase 7) volta a ser generico.
+    final type = e.type.name;
+    final base = e.requestOptions.baseUrl;
+    final path = e.requestOptions.path;
+    final msg = e.message ?? e.error?.toString() ?? 'sem detalhe';
+    return 'Falha [$type] $base$path: $msg';
   }
 }
 
