@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/ui/app_section_header.dart';
+import '../../core/branding/brand_kpi_card.dart';
+import '../../core/branding/brand_status_pill.dart' show BrandTone;
 import '../../core/ui/app_state_panel.dart';
-import '../../core/ui/app_status_chip.dart';
 import '../../core/ui/app_surfaces.dart';
 import 'estoque_data.dart';
 
@@ -31,12 +31,17 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
     final query = _searchCtrl.text.trim().toLowerCase();
 
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
+      backgroundColor: scheme.surface,
       appBar: AppBar(
-        title: const Text('Estoque'),
+        toolbarHeight: 48,
+        backgroundColor: scheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
+            tooltip: 'Atualizar',
             onPressed: () => ref.invalidate(estoqueSaldoProvider),
           ),
         ],
@@ -69,98 +74,88 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
 
           return Column(
             children: [
+              // KPI strip — 3 cards compactos, sem padding extra de card-wrapper
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-                child: AppSurfaceCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const AppSectionHeader(
-                        title: 'Visão do estoque',
-                        subtitle:
-                            'Consulte saldo, categorias e filtros rápidos antes de sair para a próxima visita.',
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: BrandKpiCard(
+                        label: 'Itens',
+                        value: '$totalItens',
+                        icon: Icons.inventory_2_outlined,
+                        tone: BrandTone.info,
                       ),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          AppStatusChip(
-                            label: '$totalItens itens disponíveis',
-                            tone: AppStatusTone.info,
-                          ),
-                          AppStatusChip(
-                            label: '$categorias categorias ativas',
-                            tone: AppStatusTone.warning,
-                          ),
-                          AppStatusChip(
-                            label: _soComSaldo
-                                ? 'Somente com saldo'
-                                : 'Todos os materiais',
-                            tone: _soComSaldo
-                                ? AppStatusTone.success
-                                : AppStatusTone.neutral,
-                          ),
-                        ],
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: BrandKpiCard(
+                        label: 'Categorias',
+                        value: '$categorias',
+                        icon: Icons.category_outlined,
+                        tone: BrandTone.warning,
                       ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          _Resumo(
-                            label: 'Itens em estoque',
-                            value: '$totalItens',
-                            icon: Icons.inventory_2_outlined,
-                            color: scheme.primary,
-                          ),
-                          const SizedBox(width: 12),
-                          _Resumo(
-                            label: 'Categorias',
-                            value: '$categorias',
-                            icon: Icons.category_outlined,
-                            color: scheme.secondary,
-                          ),
-                        ],
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: BrandKpiCard(
+                        label: 'Visíveis',
+                        value: '${filtradas.length}',
+                        icon: Icons.visibility_outlined,
+                        tone: BrandTone.success,
                       ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _searchCtrl,
-                        onChanged: (_) => setState(() {}),
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.search, size: 20),
-                          hintText: 'Buscar por nome, SKU ou categoria',
-                          isDense: true,
-                          suffixIcon: _searchCtrl.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 18),
-                                  onPressed: () {
-                                    _searchCtrl.clear();
-                                    setState(() {});
-                                  },
-                                )
-                              : null,
+                    ),
+                  ],
+                ),
+              ),
+              // Search + filter — sem card, mais respiração
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _searchCtrl,
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        hintText: 'Buscar por nome, SKU ou categoria',
+                        isDense: true,
+                        suffixIcon: _searchCtrl.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  _searchCtrl.clear();
+                                  setState(() {});
+                                },
+                              )
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        FilterChip(
+                          label: const Text('Apenas com saldo'),
+                          selected: _soComSaldo,
+                          onSelected: (v) => setState(() => _soComSaldo = v),
+                          visualDensity: VisualDensity.compact,
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          FilterChip(
-                            label: const Text('Apenas com saldo'),
-                            selected: _soComSaldo,
-                            onSelected: (v) => setState(() => _soComSaldo = v),
-                          ),
-                          const Spacer(),
-                          Text(
-                            '${filtradas.length} ${filtradas.length == 1 ? "item visível" : "itens visíveis"}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: scheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w600,
+                        const Spacer(),
+                        if (hasActiveRefinement)
+                          TextButton.icon(
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              setState(() => _soComSaldo = false);
+                            },
+                            icon: const Icon(Icons.clear_all, size: 16),
+                            label: const Text('Limpar'),
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
                             ),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
               Expanded(
@@ -187,67 +182,6 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-class _Resumo extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-  const _Resumo({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              alignment: Alignment.center,
-              child: Icon(icon, size: 20, color: color),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                color: scheme.onSurface,
-                height: 1,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11.5,
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

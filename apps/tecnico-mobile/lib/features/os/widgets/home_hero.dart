@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme.dart';
+import '../../../core/branding/brand_tokens.dart';
 import '../../../core/ui/app_status_chip.dart';
 
 class HomeHero extends StatelessWidget {
@@ -24,14 +24,14 @@ class HomeHero extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [brandCommand, brandCommandLight],
+          colors: [BrandTokens.emerald600, BrandTokens.emerald500],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: brandCommand.withValues(alpha: 0.24),
+            color: BrandTokens.emerald600.withValues(alpha: 0.24),
             blurRadius: 28,
             offset: const Offset(0, 18),
           ),
@@ -107,7 +107,7 @@ class HomeHero extends StatelessWidget {
                   const Icon(
                     Icons.schedule_rounded,
                     size: 18,
-                    color: brandAccentSoft,
+                    color: Colors.white,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -154,7 +154,7 @@ class _HeroMetric extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: brandAccentSoft, size: 18),
+          Icon(icon, color: Colors.white, size: 18),
           const SizedBox(height: 10),
           Text(
             value,

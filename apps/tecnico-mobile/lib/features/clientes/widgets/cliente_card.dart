@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/ui/app_status_chip.dart';
+import '../../../core/branding/brand_status_pill.dart';
 import '../../../core/ui/app_surfaces.dart';
 import '../../os/widgets/cliente_avatar.dart';
 import '../cliente_data.dart';
@@ -73,11 +73,13 @@ class ClienteCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          AppStatusChip(
-                            label: synced ? 'SGP OK' : 'Pendente SGP',
-                            tone: synced
-                                ? AppStatusTone.success
-                                : AppStatusTone.warning,
+                          BrandStatusPill(
+                            label: synced ? 'SGP OK' : 'Pendente',
+                            icon: synced
+                                ? Icons.cloud_done_outlined
+                                : Icons.cloud_off_outlined,
+                            tone: synced ? BrandTone.success : BrandTone.warning,
+                            size: BrandPillSize.sm,
                           ),
                         ],
                       ),

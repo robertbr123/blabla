@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_repository.dart';
-import '../../core/theme.dart';
+import '../../core/branding/brand_tokens.dart';
 
 /// Splash mostrado por ~1.2s enquanto o app boot (sync, firebase, etc).
 /// Decide pra onde mandar baseado em hasTokenProvider.
@@ -76,7 +76,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: brandInk,
+      // Slate-900 fixo — splash sempre escuro pra contraste com logo branco.
+      backgroundColor: const Color(0xFF0F172A),
       body: SafeArea(
         child: Stack(
           children: [
@@ -146,8 +147,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       height: 24,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(brandGreenLight),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            BrandTokens.emerald400),
                       ),
                     ),
                     SizedBox(height: 12),

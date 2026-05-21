@@ -403,6 +403,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                               ),
                             ),
+                            const SizedBox(height: 8),
+                            Center(
+                              child: TextButton.icon(
+                                onPressed: () =>
+                                    context.go('/design-preview'),
+                                icon: const Icon(Icons.palette_outlined, size: 14),
+                                label: const Text('Preview novo design'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: scheme.onSurfaceVariant
+                                      .withValues(alpha: 0.6),
+                                  textStyle: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ],

@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/auth/auth_repository.dart';
+import 'core/branding/brand_theme.dart';
 import 'core/push/fcm_service.dart';
 import 'core/sync/sync_service.dart';
-import 'core/theme.dart';
 import 'router.dart';
 
 /// Background isolate — top-level por exigencia do firebase_messaging.
@@ -59,10 +59,20 @@ class _TecnicoAppState extends ConsumerState<TecnicoApp> {
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
       title: 'BlaBla Técnico',
-      theme: buildLightTheme(),
-      darkTheme: buildDarkTheme(),
+      theme: buildBrandTheme(Brightness.light),
+      darkTheme: buildBrandTheme(Brightness.dark),
       routerConfig: router,
       debugShowCheckedModeBanner: false,
+      builder: (context, child) {
+        // Toque em qualquer lugar fora de um TextField fecha o teclado.
+        // `HitTestBehavior.translucent` deixa eventos passarem pros filhos
+        // (clicks em botões, list tiles, etc continuam funcionando).
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }

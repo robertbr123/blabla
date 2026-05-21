@@ -12,8 +12,8 @@ import '../../core/api/api_client.dart';
 import '../../core/location/location_service.dart';
 import '../../core/sync/outbox_repo.dart';
 import '../../core/sync/sync_service.dart';
+import '../../core/branding/brand_status_pill.dart';
 import '../../core/ui/app_section_header.dart';
-import '../../core/ui/app_status_chip.dart';
 import '../../core/ui/app_surfaces.dart';
 import 'os_data.dart';
 import 'widgets/cliente_avatar.dart';
@@ -510,8 +510,9 @@ class _StatusSection extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              AppStatusChip(
+              BrandStatusPill(
                 label: statusInfo.label,
+                icon: statusInfo.icon,
                 tone: statusInfo.tone,
               ),
             ],
@@ -1028,22 +1029,27 @@ class _DetailMetaPill extends StatelessWidget {
 
 class _StatusInfo {
   final String label;
-  final AppStatusTone tone;
+  final IconData icon;
+  final BrandTone tone;
 
-  const _StatusInfo(this.label, this.tone);
+  const _StatusInfo(this.label, this.icon, this.tone);
 
   static _StatusInfo of(String status) {
     switch (status) {
       case 'pendente':
-        return const _StatusInfo('Pendente', AppStatusTone.warning);
+        return const _StatusInfo(
+            'Pendente', Icons.hourglass_top_outlined, BrandTone.info);
       case 'em_andamento':
-        return const _StatusInfo('Em andamento', AppStatusTone.info);
+        return const _StatusInfo(
+            'Em andamento', Icons.play_circle_outline, BrandTone.warning);
       case 'concluida':
-        return const _StatusInfo('Concluída', AppStatusTone.success);
+        return const _StatusInfo(
+            'Concluída', Icons.check_circle_outline, BrandTone.success);
       case 'cancelada':
-        return const _StatusInfo('Cancelada', AppStatusTone.neutral);
+        return const _StatusInfo(
+            'Cancelada', Icons.cancel_outlined, BrandTone.danger);
       default:
-        return _StatusInfo(status, AppStatusTone.neutral);
+        return _StatusInfo(status, Icons.help_outline, BrandTone.neutral);
     }
   }
 }

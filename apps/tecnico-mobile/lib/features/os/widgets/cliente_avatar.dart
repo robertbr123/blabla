@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme.dart';
+import '../../../core/branding/brand_tokens.dart';
 
 /// Avatar circular com inicial(is) do cliente. Cor estavel derivada do nome
 /// (mesmo cliente sempre tem mesma cor).
@@ -67,12 +67,13 @@ class ClienteAvatar extends StatelessWidget {
     return (first + last).toUpperCase();
   }
 
+  // Paleta estável pra hashing — emerald + slate + cores neutras saturadas.
   static const _palette = <Color>[
-    brandCommand,
-    brandCommandLight,
-    brandSuccess,
-    brandAccent,
-    brandDanger,
+    BrandTokens.emerald500,
+    BrandTokens.emerald600,
+    Color(0xFF3B82F6), // blue-500
+    Color(0xFFF59E0B), // amber-500
+    Color(0xFFEF4444), // red-500
     Color(0xFF7E6AAB),
     Color(0xFFB15E78),
     Color(0xFF3B8F84),

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../core/auth/auth_repository.dart';
 import '../../core/auth/session_cleanup.dart';
-import '../../core/theme.dart';
+import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/app_section_header.dart';
 import '../../core/ui/app_state_panel.dart';
 import '../../core/ui/app_surfaces.dart';
@@ -13,7 +12,6 @@ import '../../core/push/fcm_service.dart';
 import '../../core/sync/sync_service.dart';
 import 'os_data.dart';
 import 'widgets/home_filter_strip.dart';
-import 'widgets/home_hero.dart';
 import 'widgets/home_summary_card.dart';
 import 'widgets/os_card.dart';
 
@@ -72,9 +70,13 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
+      backgroundColor: scheme.surface,
       appBar: AppBar(
-        title: const Text('Home'),
+        toolbarHeight: 48,
+        backgroundColor: scheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -114,27 +116,16 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
               key: const ValueKey('os-home-scroll'),
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    child: HomeHero(
-                      total: items.length,
-                      pendentes: counts['pendente'] ?? 0,
-                      andamento: counts['em_andamento'] ?? 0,
-                      scheduleLabel: _buildHeroScheduleLabel(items),
-                    ),
-                  ),
-                ),
                 if (pendingSync case AsyncData(:final value) when value > 0)
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                       child: _OfflineQueueBanner(count: value),
                     ),
                   ),
-                SliverToBoxAdapter(
+                const SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
                     child: AppSectionHeader(
                       title: 'Pulso operacional',
                       subtitle:
@@ -157,7 +148,7 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
                             value: counts['pendente'] ?? 0,
                             subtitle: 'Aguardando visita',
                             icon: Icons.hourglass_top_rounded,
-                            color: brandAccent,
+                            color: BrandTokens.warningLight,
                             selected: _selectedFilter == OsHomeFilter.pendente,
                             onTap: () => _selectFilter(OsHomeFilter.pendente),
                           ),
@@ -292,30 +283,6 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
     return m;
   }
 
-  String _buildHeroScheduleLabel(List<_OsItem> items) {
-    final now = DateTime.now();
-    DateTime? nextFuture;
-    var hasSchedule = false;
-
-    for (final item in items) {
-      final scheduledAt = item.agendamentoAt?.toLocal();
-      if (scheduledAt == null) continue;
-      hasSchedule = true;
-      if (scheduledAt.isBefore(now)) continue;
-      if (nextFuture == null || scheduledAt.isBefore(nextFuture)) {
-        nextFuture = scheduledAt;
-      }
-    }
-
-    if (nextFuture != null) {
-      return 'Próxima visita ${DateFormat('HH:mm').format(nextFuture)}';
-    }
-    if (hasSchedule) {
-      return 'Sem próximas visitas agendadas';
-    }
-    return 'Sem horário travado';
-  }
-
   Future<void> _logout() async {
     try {
       await ref.read(fcmServiceProvider).revoke();
@@ -340,13 +307,13 @@ class _OfflineQueueBanner extends StatelessWidget {
             height: 36,
             width: 36,
             decoration: BoxDecoration(
-              color: brandAccent.withValues(alpha: 0.14),
+              color: BrandTokens.infoLight.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(
+            child: const Icon(
               Icons.cloud_upload_rounded,
               size: 18,
-              color: brandAccent,
+              color: BrandTokens.infoLight,
             ),
           ),
           const SizedBox(width: 12),

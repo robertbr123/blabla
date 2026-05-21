@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/ui/app_status_chip.dart';
+import '../../../core/branding/brand_status_pill.dart';
+import '../../../core/branding/brand_tokens.dart';
 import '../../../core/ui/app_surfaces.dart';
 import 'cliente_avatar.dart';
 
@@ -79,9 +80,11 @@ class OsCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    AppStatusChip(
+                    BrandStatusPill(
                       label: statusStyle.label,
+                      icon: statusStyle.icon,
                       tone: statusStyle.tone,
+                      size: BrandPillSize.sm,
                     ),
                   ],
                 ),
@@ -154,48 +157,42 @@ class OsCard extends StatelessWidget {
 
 class _StatusStyle {
   final String label;
-  final Color color;
   final IconData icon;
-  final AppStatusTone tone;
+  final BrandTone tone;
 
-  const _StatusStyle(this.label, this.color, this.icon, this.tone);
+  const _StatusStyle(this.label, this.icon, this.tone);
 
   static _StatusStyle of(String status) {
     switch (status) {
       case 'pendente':
         return const _StatusStyle(
           'Pendente',
-          Color(0xFFf59e0b),
-          Icons.hourglass_top,
-          AppStatusTone.warning,
+          Icons.hourglass_top_outlined,
+          BrandTone.info,
         );
       case 'em_andamento':
         return const _StatusStyle(
           'Em andamento',
-          Color(0xFF2563eb),
-          Icons.directions_run,
-          AppStatusTone.info,
+          Icons.play_circle_outline,
+          BrandTone.warning,
         );
       case 'concluida':
         return const _StatusStyle(
           'Concluída',
-          Color(0xFF16a34a),
-          Icons.check_circle,
-          AppStatusTone.success,
+          Icons.check_circle_outline,
+          BrandTone.success,
         );
       case 'cancelada':
         return const _StatusStyle(
           'Cancelada',
-          Color(0xFF6b7280),
-          Icons.cancel,
-          AppStatusTone.neutral,
+          Icons.cancel_outlined,
+          BrandTone.danger,
         );
       default:
         return _StatusStyle(
           status,
-          const Color(0xFF6b7280),
           Icons.help_outline,
-          AppStatusTone.neutral,
+          BrandTone.neutral,
         );
     }
   }
@@ -237,6 +234,7 @@ class _Agendamento extends StatelessWidget {
     final now = DateTime.now();
     final local = at.toLocal();
     final diff = local.difference(now);
+    final brand = context.brand;
     final scheme = Theme.of(context).colorScheme;
 
     String label;
@@ -246,19 +244,19 @@ class _Agendamento extends StatelessWidget {
     if (diff.isNegative && (-diff).inHours > 24) {
       final dias = (-diff).inDays;
       label = 'Atrasada $dias ${dias == 1 ? "dia" : "dias"}';
-      color = const Color(0xFFdc2626);
+      color = brand.danger;
       icon = Icons.warning_amber_rounded;
     } else if (diff.isNegative) {
       label = 'Atrasada ${(-diff).inHours}h';
-      color = const Color(0xFFdc2626);
+      color = brand.danger;
       icon = Icons.warning_amber_rounded;
     } else if (_sameDay(local, now)) {
       label = 'Hoje ${DateFormat('HH:mm').format(local)}';
-      color = const Color(0xFFd97706);
+      color = brand.warning;
       icon = Icons.today_rounded;
     } else if (_sameDay(local, now.add(const Duration(days: 1)))) {
       label = 'Amanhã ${DateFormat('HH:mm').format(local)}';
-      color = const Color(0xFF2563eb);
+      color = brand.info;
       icon = Icons.event_rounded;
     } else {
       label = DateFormat("dd/MM 'às' HH:mm").format(local);

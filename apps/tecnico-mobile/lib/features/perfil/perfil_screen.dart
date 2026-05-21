@@ -8,13 +8,37 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../core/auth/auth_repository.dart';
 import '../../core/auth/session_cleanup.dart';
+import '../../core/branding/brand_kpi_card.dart';
+import '../../core/branding/brand_status_pill.dart';
+import '../../core/branding/brand_tokens.dart';
 import '../../core/push/fcm_service.dart';
-import '../../core/ui/app_section_header.dart';
 import '../../core/ui/app_state_panel.dart';
-import '../../core/ui/app_status_chip.dart';
-import '../../core/ui/app_surfaces.dart';
 import '../os/widgets/cliente_avatar.dart';
 import 'perfil_data.dart';
+
+// Estado do easter egg da versão — 3 taps em <1.2s revelam o autor.
+int _versionTapCount = 0;
+DateTime? _versionFirstTap;
+
+void _maybeRevealEasterEgg(BuildContext context) {
+  final now = DateTime.now();
+  if (_versionFirstTap == null ||
+      now.difference(_versionFirstTap!) > const Duration(milliseconds: 1200)) {
+    _versionFirstTap = now;
+    _versionTapCount = 1;
+    return;
+  }
+  _versionTapCount++;
+  if (_versionTapCount >= 3) {
+    _versionTapCount = 0;
+    _versionFirstTap = null;
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.7),
+      builder: (_) => const _AutorEasterEggDialog(),
+    );
+  }
+}
 
 class PerfilScreen extends ConsumerWidget {
   const PerfilScreen({super.key});
@@ -25,12 +49,17 @@ class PerfilScreen extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
+      backgroundColor: scheme.surface,
       appBar: AppBar(
-        title: const Text('Meu perfil'),
+        toolbarHeight: 48,
+        backgroundColor: scheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
+            tooltip: 'Atualizar',
             onPressed: () => ref.invalidate(perfilProvider),
           ),
         ],
@@ -39,59 +68,49 @@ class PerfilScreen extends ConsumerWidget {
         loading: () => const _StateBody(
           child: AppStatePanel.loading(
             title: 'Carregando seu perfil',
-            message:
-                'Preparando foto, status operacional e atalhos da sua conta.',
+            message: 'Preparando foto, status e estatísticas.',
           ),
         ),
-        error: (e, _) => _Erro(
+        error: (e, _) => _ErroView(
           e: e,
           onRetry: () => ref.invalidate(perfilProvider),
         ),
         data: (p) => RefreshIndicator(
           onRefresh: () async => ref.invalidate(perfilProvider),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
             children: [
-              AppSurfaceCard(child: _HeaderCard(perfil: p)),
-              const SizedBox(height: 12),
-              AppSurfaceCard(child: _Estatisticas(stats: p.estatisticas)),
-              const SizedBox(height: 12),
-              _Secao(
-                titulo: 'Conta',
-                subtitulo:
-                    'Atualize credenciais e encerre sua sessão com segurança.',
-                children: [
-                  _ItemAcao(
-                    icone: Icons.lock_outline,
-                    titulo: 'Mudar senha',
-                    onTap: () => _abrirMudarSenha(context, ref),
-                  ),
-                  _ItemAcao(
-                    icone: Icons.logout,
-                    titulo: 'Sair',
-                    destrutivo: true,
-                    onTap: () => _sair(context, ref),
-                  ),
-                ],
+              _Header(perfil: p),
+              const SizedBox(height: 20),
+              _SectionTitle('Atividade do mês'),
+              const SizedBox(height: 8),
+              _StatsGrid(stats: p.estatisticas),
+              const SizedBox(height: 20),
+              _SectionTitle('Conta'),
+              const SizedBox(height: 8),
+              _ActionTile(
+                icon: Icons.lock_outline,
+                title: 'Mudar senha',
+                onTap: () => _openMudarSenha(context),
               ),
-              const SizedBox(height: 12),
-              const _Secao(
-                titulo: 'Sobre',
-                subtitulo:
-                    'Informações da versão e da operação vinculada a este app.',
-                children: [
-                  _ItemInfo(
-                    icone: Icons.smartphone,
-                    label: 'Versão',
-                    value: '0.1.0',
-                  ),
-                  _ItemInfo(
-                    icone: Icons.business,
-                    label: 'Empresa',
-                    value: 'Linket',
-                  ),
-                ],
+              const SizedBox(height: 8),
+              _ActionTile(
+                icon: Icons.logout,
+                title: 'Sair',
+                destructive: true,
+                onTap: () => _logout(context, ref),
               ),
+              const SizedBox(height: 20),
+              _SectionTitle('Sobre'),
+              const SizedBox(height: 8),
+              _InfoTile(
+                icon: Icons.smartphone,
+                label: 'Versão',
+                value: '0.1.0',
+                onTap: () => _maybeRevealEasterEgg(context),
+              ),
+              const SizedBox(height: 8),
+              const _InfoTile(icon: Icons.business, label: 'Empresa', value: 'Linket'),
             ],
           ),
         ),
@@ -99,7 +118,7 @@ class PerfilScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _abrirMudarSenha(BuildContext context, WidgetRef ref) {
+  Future<void> _openMudarSenha(BuildContext context) {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -107,13 +126,14 @@ class PerfilScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _sair(BuildContext context, WidgetRef ref) async {
+  Future<void> _logout(BuildContext context, WidgetRef ref) async {
     final confirma = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Sair?'),
-        content:
-            const Text('Você terá que fazer login de novo pra acessar o app.'),
+        content: const Text(
+          'Você terá que fazer login de novo pra acessar o app.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -127,7 +147,6 @@ class PerfilScreen extends ConsumerWidget {
       ),
     );
     if (confirma != true) return;
-
     try {
       await ref.read(fcmServiceProvider).revoke();
     } catch (_) {}
@@ -137,21 +156,23 @@ class PerfilScreen extends ConsumerWidget {
   }
 }
 
-class _HeaderCard extends ConsumerStatefulWidget {
+// ── Header ──────────────────────────────────────────────────
+
+class _Header extends ConsumerStatefulWidget {
   final Perfil perfil;
-  const _HeaderCard({required this.perfil});
+  const _Header({required this.perfil});
 
   @override
-  ConsumerState<_HeaderCard> createState() => _HeaderCardState();
+  ConsumerState<_Header> createState() => _HeaderState();
 }
 
-enum _PhotoSheetAction { camera, gallery, remove }
+enum _PhotoAction { camera, gallery, remove }
 
-class _HeaderCardState extends ConsumerState<_HeaderCard> {
+class _HeaderState extends ConsumerState<_Header> {
   bool _uploading = false;
 
-  Future<void> _trocarFoto() async {
-    final action = await showModalBottomSheet<_PhotoSheetAction>(
+  Future<void> _changePhoto() async {
+    final action = await showModalBottomSheet<_PhotoAction>(
       context: context,
       builder: (_) => SafeArea(
         child: Column(
@@ -160,81 +181,62 @@ class _HeaderCardState extends ConsumerState<_HeaderCard> {
             ListTile(
               leading: const Icon(Icons.photo_camera),
               title: const Text('Tirar foto'),
-              onTap: () => Navigator.of(context).pop(_PhotoSheetAction.camera),
+              onTap: () => Navigator.of(context).pop(_PhotoAction.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
               title: const Text('Escolher da galeria'),
-              onTap: () => Navigator.of(context).pop(_PhotoSheetAction.gallery),
+              onTap: () => Navigator.of(context).pop(_PhotoAction.gallery),
             ),
             if (widget.perfil.hasFoto)
               ListTile(
                 leading: Icon(Icons.delete_outline,
                     color: Theme.of(context).colorScheme.error),
-                title: Text(
-                  'Remover foto atual',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-                onTap: () =>
-                    Navigator.of(context).pop(_PhotoSheetAction.remove),
+                title: Text('Remover foto atual',
+                    style: TextStyle(
+                        color: Theme.of(context).colorScheme.error)),
+                onTap: () => Navigator.of(context).pop(_PhotoAction.remove),
               ),
             const SizedBox(height: 8),
           ],
         ),
       ),
     );
-    if (!mounted) return;
+    if (action == null || !mounted) return;
 
-    if (action == null) return;
-
-    if (action == _PhotoSheetAction.remove) {
+    if (action == _PhotoAction.remove) {
       setState(() => _uploading = true);
       try {
         await ref.read(perfilActionsProvider).removerFoto();
         ref.invalidate(perfilProvider);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Foto removida.')),
-          );
-        }
+        _toast('Foto removida.');
       } finally {
         if (mounted) setState(() => _uploading = false);
       }
       return;
     }
 
-    final source = switch (action) {
-      _PhotoSheetAction.camera => ImageSource.camera,
-      _PhotoSheetAction.gallery => ImageSource.gallery,
-      _PhotoSheetAction.remove => null,
-    };
-    if (source == null) return;
-
-    final picker = ImagePicker();
-    final x = await picker.pickImage(
-      source: source,
-      imageQuality: 90,
-      maxWidth: 1200,
-    );
+    final source = action == _PhotoAction.camera
+        ? ImageSource.camera
+        : ImageSource.gallery;
+    final x = await ImagePicker()
+        .pickImage(source: source, imageQuality: 90, maxWidth: 1200);
     if (x == null || !mounted) return;
     setState(() => _uploading = true);
     try {
       await ref.read(perfilActionsProvider).uploadFoto(x.path);
       ref.invalidate(perfilProvider);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Foto atualizada.')),
-        );
-      }
+      _toast('Foto atualizada.');
     } on DioException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Falhou: ${e.message ?? e.type.name}')),
-        );
-      }
+      _toast('Falhou: ${e.message ?? e.type.name}');
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
+  }
+
+  void _toast(String m) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
   }
 
   @override
@@ -242,127 +244,103 @@ class _HeaderCardState extends ConsumerState<_HeaderCard> {
     final scheme = Theme.of(context).colorScheme;
     final p = widget.perfil;
 
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AppSectionHeader(
-          title: 'Perfil em campo',
-          subtitle: 'Foto, contato e status operacional da sua sessão atual.',
-        ),
-        const SizedBox(height: 16),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: scheme.brightness == Brightness.dark
-                  ? const [Color(0xFF1e293b), Color(0xFF0f172a)]
-                  : const [Color(0xFFEAF0F6), Color(0xFFF8F5EE)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+        Stack(
+          children: [
+            GestureDetector(
+              onTap: _uploading ? null : _changePhoto,
+              child: ClipOval(
+                child: SizedBox(
+                  width: 72,
+                  height: 72,
+                  child: p.hasFoto
+                      ? Image.memory(
+                          base64Decode(p.fotoB64!),
+                          width: 72,
+                          height: 72,
+                          fit: BoxFit.cover,
+                        )
+                      : ClienteAvatar(nome: p.nome, size: 72),
+                ),
+              ),
             ),
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: Row(
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: GestureDetector(
+                onTap: _uploading ? null : _changePhoto,
+                child: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: scheme.primary,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: scheme.surface, width: 2),
+                  ),
+                  child: _uploading
+                      ? const SizedBox(
+                          height: 12,
+                          width: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.camera_alt,
+                          size: 14, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Stack(
-                children: [
-                  GestureDetector(
-                    onTap: _uploading ? null : _trocarFoto,
-                    child: ClipOval(
-                      child: SizedBox(
-                        width: 72,
-                        height: 72,
-                        child: p.hasFoto
-                            ? Image.memory(
-                                base64Decode(p.fotoB64!),
-                                width: 72,
-                                height: 72,
-                                fit: BoxFit.cover,
-                              )
-                            : ClienteAvatar(nome: p.nome, size: 72),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: GestureDetector(
-                      onTap: _uploading ? null : _trocarFoto,
-                      child: Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
-                          color: scheme.primary,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: scheme.surface, width: 2),
-                        ),
-                        child: _uploading
-                            ? const SizedBox(
-                                height: 12,
-                                width: 12,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Icon(Icons.camera_alt,
-                                size: 14, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      p.nome,
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: scheme.onSurface,
-                        height: 1.15,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    _ContatoLinha(
-                      icon: Icons.email_outlined,
-                      value: p.email,
-                    ),
-                    if (p.contatoWhatsapp != null) ...[
-                      const SizedBox(height: 4),
-                      _ContatoLinha(
-                        icon: Icons.phone_iphone,
-                        value: p.contatoWhatsapp!,
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        AppStatusChip(
-                          label: p.availabilityLabel,
-                          tone: p.ativo
-                              ? AppStatusTone.success
-                              : AppStatusTone.warning,
-                        ),
-                        AppStatusChip(
-                          label: p.roleLabel,
-                          tone: AppStatusTone.info,
-                        ),
-                        if (p.hasRecentGpsSnapshot())
-                          const AppStatusChip(
-                            label: 'GPS recente',
-                            tone: AppStatusTone.neutral,
-                          ),
-                      ],
-                    ),
-                  ],
+              Text(
+                p.nome,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface,
+                  height: 1.2,
                 ),
+              ),
+              const SizedBox(height: 6),
+              _ContactRow(icon: Icons.email_outlined, value: p.email),
+              if (p.contatoWhatsapp != null) ...[
+                const SizedBox(height: 2),
+                _ContactRow(icon: Icons.phone_iphone, value: p.contatoWhatsapp!),
+              ],
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  BrandStatusPill(
+                    label: p.availabilityLabel,
+                    icon: p.ativo
+                        ? Icons.check_circle_outline
+                        : Icons.pause_circle_outline,
+                    tone: p.ativo ? BrandTone.success : BrandTone.warning,
+                    size: BrandPillSize.sm,
+                  ),
+                  BrandStatusPill(
+                    label: p.roleLabel,
+                    icon: Icons.badge_outlined,
+                    tone: BrandTone.info,
+                    size: BrandPillSize.sm,
+                  ),
+                  if (p.hasRecentGpsSnapshot())
+                    const BrandStatusPill(
+                      label: 'GPS recente',
+                      icon: Icons.location_on_outlined,
+                      tone: BrandTone.neutral,
+                      size: BrandPillSize.sm,
+                    ),
+                ],
               ),
             ],
           ),
@@ -372,56 +350,58 @@ class _HeaderCardState extends ConsumerState<_HeaderCard> {
   }
 }
 
-class _Estatisticas extends StatelessWidget {
+// ── Stats ───────────────────────────────────────────────────
+
+class _StatsGrid extends StatelessWidget {
   final PerfilEstatisticas stats;
-  const _Estatisticas({required this.stats});
+  const _StatsGrid({required this.stats});
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const AppSectionHeader(
-          title: 'Sua atividade recente',
-          subtitle:
-              'Acompanhe a fila atual, o andamento das ordens e a percepção do atendimento.',
-        ),
-        const SizedBox(height: 16),
         Row(
           children: [
-            _StatCard(
-              label: 'Pendentes',
-              value: '${stats.osPendentes}',
-              color: const Color(0xFFf59e0b),
-              icon: Icons.hourglass_top,
+            Expanded(
+              child: BrandKpiCard(
+                label: 'Pendentes',
+                value: '${stats.osPendentes}',
+                icon: Icons.hourglass_top_outlined,
+                tone: BrandTone.warning,
+              ),
             ),
-            const SizedBox(width: 10),
-            _StatCard(
-              label: 'Em andamento',
-              value: '${stats.osEmAndamento}',
-              color: scheme.primary,
-              icon: Icons.directions_run,
+            const SizedBox(width: 8),
+            Expanded(
+              child: BrandKpiCard(
+                label: 'Em andamento',
+                value: '${stats.osEmAndamento}',
+                icon: Icons.directions_run,
+                tone: BrandTone.info,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Row(
           children: [
-            _StatCard(
-              label: 'Concluídas (mês)',
-              value: '${stats.osConcluidasMes}',
-              color: const Color(0xFF16a34a),
-              icon: Icons.check_circle,
+            Expanded(
+              child: BrandKpiCard(
+                label: 'Concluídas (mês)',
+                value: '${stats.osConcluidasMes}',
+                icon: Icons.check_circle_outline,
+                tone: BrandTone.success,
+              ),
             ),
-            const SizedBox(width: 10),
-            _StatCard(
-              label: 'CSAT médio',
-              value: stats.csatAvgMes != null
-                  ? stats.csatAvgMes!.toStringAsFixed(1)
-                  : '—',
-              color: const Color(0xFF8b5cf6),
-              icon: Icons.star,
+            const SizedBox(width: 8),
+            Expanded(
+              child: BrandKpiCard(
+                label: 'CSAT médio',
+                value: stats.csatAvgMes != null
+                    ? stats.csatAvgMes!.toStringAsFixed(1)
+                    : '—',
+                icon: Icons.star_outline,
+                tone: BrandTone.success,
+              ),
             ),
           ],
         ),
@@ -430,176 +410,31 @@ class _Estatisticas extends StatelessWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color color;
-  final IconData icon;
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.color,
-    required this.icon,
-  });
+// ── Reusable bits ───────────────────────────────────────────
+
+class _SectionTitle extends StatelessWidget {
+  final String text;
+  const _SectionTitle(this.text);
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: color, size: 18),
-                const Spacer(),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: scheme.onSurface,
-                    height: 1,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11.5,
-                color: scheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Secao extends StatelessWidget {
-  final String titulo;
-  final String? subtitulo;
-  final List<Widget> children;
-  const _Secao({
-    required this.titulo,
-    this.subtitulo,
-    required this.children,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return AppSurfaceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AppSectionHeader(
-            title: titulo,
-            subtitle: subtitulo,
-          ),
-          const SizedBox(height: 12),
-          for (var i = 0; i < children.length; i++) ...[
-            if (i > 0)
-              Divider(
-                height: 1,
-                color: scheme.outlineVariant.withValues(alpha: 0.6),
-              ),
-            children[i],
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ItemAcao extends StatelessWidget {
-  final IconData icone;
-  final String titulo;
-  final VoidCallback onTap;
-  final bool destrutivo;
-  const _ItemAcao({
-    required this.icone,
-    required this.titulo,
-    required this.onTap,
-    this.destrutivo = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final color = destrutivo ? scheme.error : scheme.onSurface;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: _LeadingIcon(icon: icone, color: color),
-      title: Text(
-        titulo,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      trailing: Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-      onTap: onTap,
-    );
-  }
-}
-
-class _ItemInfo extends StatelessWidget {
-  final IconData icone;
-  final String label;
-  final String value;
-  const _ItemInfo({
-    required this.icone,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: _LeadingIcon(
-        icon: icone,
+    return Text(
+      text.toUpperCase(),
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.6,
         color: scheme.onSurfaceVariant,
       ),
-      title: Text(
-        label,
-        style: TextStyle(
-          color: scheme.onSurface,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      trailing: Text(
-        value,
-        style: TextStyle(
-          fontWeight: FontWeight.w600,
-          color: scheme.onSurfaceVariant,
-        ),
-      ),
     );
   }
 }
 
-class _ContatoLinha extends StatelessWidget {
+class _ContactRow extends StatelessWidget {
   final IconData icon;
   final String value;
-  const _ContatoLinha({
-    required this.icon,
-    required this.value,
-  });
+  const _ContactRow({required this.icon, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -611,10 +446,7 @@ class _ContatoLinha extends StatelessWidget {
         Expanded(
           child: Text(
             value,
-            style: TextStyle(
-              fontSize: 12,
-              color: scheme.onSurfaceVariant,
-            ),
+            style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -623,28 +455,315 @@ class _ContatoLinha extends StatelessWidget {
   }
 }
 
-class _LeadingIcon extends StatelessWidget {
+class _ActionTile extends StatelessWidget {
   final IconData icon;
-  final Color color;
-  const _LeadingIcon({
+  final String title;
+  final VoidCallback onTap;
+  final bool destructive;
+  const _ActionTile({
     required this.icon,
-    required this.color,
+    required this.title,
+    required this.onTap,
+    this.destructive = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 38,
-      height: 38,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(14),
+    final scheme = Theme.of(context).colorScheme;
+    final color = destructive ? scheme.error : scheme.onSurface;
+    return Material(
+      color: scheme.surfaceContainer,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: scheme.outlineVariant),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 18, color: color),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ),
+              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
       ),
-      alignment: Alignment.center,
-      child: Icon(icon, color: color, size: 20),
     );
   }
 }
+
+class _InfoTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+  const _InfoTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, size: 18, color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(label,
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: scheme.onSurface)),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+    if (onTap == null) return content;
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: content,
+      ),
+    );
+  }
+}
+
+// ── Easter egg ──────────────────────────────────────────────
+
+class _AutorEasterEggDialog extends StatefulWidget {
+  const _AutorEasterEggDialog();
+
+  @override
+  State<_AutorEasterEggDialog> createState() => _AutorEasterEggDialogState();
+}
+
+class _AutorEasterEggDialogState extends State<_AutorEasterEggDialog>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+  late final Animation<double> _glow;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    )..forward();
+    _scale = CurvedAnimation(parent: _ctrl, curve: Curves.easeOutBack);
+    _glow = CurvedAnimation(parent: _ctrl, curve: Curves.easeIn);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final brand = context.brand;
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+      child: ScaleTransition(
+        scale: Tween<double>(begin: 0.6, end: 1.0).animate(_scale),
+        child: AnimatedBuilder(
+          animation: _glow,
+          builder: (_, child) => Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: brand.success.withValues(alpha: 0.4 * _glow.value),
+                  blurRadius: 60,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+            child: child,
+          ),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  scheme.surfaceContainerHigh,
+                  scheme.surfaceContainer,
+                ],
+              ),
+              border: Border.all(
+                color: brand.success.withValues(alpha: 0.4),
+                width: 1.5,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [brand.success, scheme.primary],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: brand.success.withValues(alpha: 0.5),
+                        blurRadius: 24,
+                        spreadRadius: -2,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.code_rounded,
+                    color: Colors.white,
+                    size: 36,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'feito com ♥ por',
+                  style: TextStyle(
+                    fontSize: 11,
+                    letterSpacing: 1.8,
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                ShaderMask(
+                  shaderCallback: (rect) => LinearGradient(
+                    colors: [brand.success, scheme.primary, brand.info],
+                  ).createShader(rect),
+                  child: const Text(
+                    'Robert Albino',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -0.5,
+                      height: 1.1,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'autor do BlaBla Técnico',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: brand.success.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: brand.success.withValues(alpha: 0.30),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.bolt_rounded,
+                          size: 14, color: brand.success),
+                      const SizedBox(width: 6),
+                      Text(
+                        'v0.1.0 · build emerald',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: brand.success,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: TextButton.styleFrom(
+                    foregroundColor: scheme.onSurfaceVariant,
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  child: const Text('fechar'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Mudar senha sheet ───────────────────────────────────────
 
 class _MudarSenhaSheet extends ConsumerStatefulWidget {
   const _MudarSenhaSheet();
@@ -656,8 +775,8 @@ class _MudarSenhaSheetState extends ConsumerState<_MudarSenhaSheet> {
   final _atual = TextEditingController();
   final _nova = TextEditingController();
   final _confirma = TextEditingController();
-  bool _mostrar = false;
-  bool _enviando = false;
+  bool _show = false;
+  bool _sending = false;
   String? _erro;
 
   @override
@@ -668,31 +787,30 @@ class _MudarSenhaSheetState extends ConsumerState<_MudarSenhaSheet> {
     super.dispose();
   }
 
-  Future<void> _enviar() async {
-    final atual = _atual.text;
-    final nova = _nova.text;
-    final conf = _confirma.text;
-    if (nova.length < 8) {
+  Future<void> _submit() async {
+    final a = _atual.text;
+    final n = _nova.text;
+    final c = _confirma.text;
+    if (n.length < 8) {
       setState(() => _erro = 'Nova senha deve ter pelo menos 8 caracteres.');
       return;
     }
-    if (nova != conf) {
+    if (n != c) {
       setState(() => _erro = 'Confirmação não bate com a nova senha.');
       return;
     }
-    if (nova == atual) {
+    if (n == a) {
       setState(() => _erro = 'Nova senha deve ser diferente da atual.');
       return;
     }
     setState(() {
-      _enviando = true;
+      _sending = true;
       _erro = null;
     });
     try {
-      await ref.read(perfilActionsProvider).mudarSenha(
-            atual: atual,
-            nova: nova,
-          );
+      await ref
+          .read(perfilActionsProvider)
+          .mudarSenha(atual: a, nova: n);
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -708,13 +826,14 @@ class _MudarSenhaSheetState extends ConsumerState<_MudarSenhaSheet> {
               'Erro ao mudar senha.';
       setState(() => _erro = msg);
     } finally {
-      if (mounted) setState(() => _enviando = false);
+      if (mounted) setState(() => _sending = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: EdgeInsets.only(
         bottom: mq.viewInsets.bottom + 16,
@@ -732,20 +851,18 @@ class _MudarSenhaSheetState extends ConsumerState<_MudarSenhaSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade400,
+                  color: scheme.outlineVariant,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Mudar senha',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            const Text('Mudar senha',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
             const SizedBox(height: 16),
             TextField(
               controller: _atual,
-              obscureText: !_mostrar,
+              obscureText: !_show,
               decoration: const InputDecoration(
                 labelText: 'Senha atual',
                 prefixIcon: Icon(Icons.lock_outline),
@@ -754,22 +871,22 @@ class _MudarSenhaSheetState extends ConsumerState<_MudarSenhaSheet> {
             const SizedBox(height: 10),
             TextField(
               controller: _nova,
-              obscureText: !_mostrar,
+              obscureText: !_show,
               decoration: InputDecoration(
                 labelText: 'Nova senha',
                 helperText: 'Pelo menos 8 caracteres',
                 prefixIcon: const Icon(Icons.lock_reset),
                 suffixIcon: IconButton(
-                  icon:
-                      Icon(_mostrar ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _mostrar = !_mostrar),
+                  icon: Icon(_show ? Icons.visibility_off : Icons.visibility),
+                  tooltip: _show ? 'Ocultar' : 'Mostrar',
+                  onPressed: () => setState(() => _show = !_show),
                 ),
               ),
             ),
             const SizedBox(height: 10),
             TextField(
               controller: _confirma,
-              obscureText: !_mostrar,
+              obscureText: !_show,
               decoration: const InputDecoration(
                 labelText: 'Confirmar nova senha',
                 prefixIcon: Icon(Icons.lock_reset),
@@ -780,23 +897,20 @@ class _MudarSenhaSheetState extends ConsumerState<_MudarSenhaSheet> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .errorContainer
-                      .withValues(alpha: 0.5),
+                  color: scheme.errorContainer.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   children: [
                     Icon(Icons.error_outline,
-                        size: 18, color: Theme.of(context).colorScheme.error),
+                        size: 18, color: scheme.error),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _erro!,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Theme.of(context).colorScheme.onErrorContainer,
+                          color: scheme.onErrorContainer,
                         ),
                       ),
                     ),
@@ -806,8 +920,8 @@ class _MudarSenhaSheetState extends ConsumerState<_MudarSenhaSheet> {
             ],
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: _enviando ? null : _enviar,
-              child: _enviando
+              onPressed: _sending ? null : _submit,
+              child: _sending
                   ? const SizedBox(
                       height: 20,
                       width: 20,
@@ -825,17 +939,20 @@ class _MudarSenhaSheetState extends ConsumerState<_MudarSenhaSheet> {
   }
 }
 
-class _Erro extends StatelessWidget {
+// ── Error/loading wrappers ───────────────────────────────────
+
+class _ErroView extends StatelessWidget {
   final Object e;
   final VoidCallback onRetry;
-  const _Erro({required this.e, required this.onRetry});
+  const _ErroView({required this.e, required this.onRetry});
+
   @override
   Widget build(BuildContext context) {
     final panel = isOfflineException(e)
         ? AppStatePanel.offline(
             title: 'Sem conexão para atualizar seu perfil',
             message:
-                'Sem rede e sem snapshot local disponível para esta conta. Tente novamente quando o sinal estabilizar.',
+                'Sem rede e sem snapshot local. Tente novamente quando o sinal estabilizar.',
             actionLabel: 'Tentar novamente',
             onAction: onRetry,
           )
@@ -845,7 +962,6 @@ class _Erro extends StatelessWidget {
             actionLabel: 'Tentar novamente',
             onAction: onRetry,
           );
-
     return _StateBody(child: panel);
   }
 }

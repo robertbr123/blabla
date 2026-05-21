@@ -4,10 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/ui/app_section_header.dart';
+import '../../core/branding/brand_kpi_card.dart';
+import '../../core/branding/brand_status_pill.dart' show BrandTone;
 import '../../core/ui/app_state_panel.dart';
-import '../../core/ui/app_status_chip.dart';
-import '../../core/ui/app_surfaces.dart';
 import 'cliente_data.dart';
 import 'widgets/cliente_card.dart';
 
@@ -51,104 +50,101 @@ class _ClientesListScreenState extends ConsumerState<ClientesListScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
+      backgroundColor: scheme.surface,
       appBar: AppBar(
-        title: const Text('Clientes'),
+        toolbarHeight: 48,
+        backgroundColor: scheme.surface,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
+            tooltip: 'Atualizar',
             onPressed: () => ref.invalidate(clientesListProvider),
           ),
         ],
       ),
       body: Column(
         children: [
+          // KPI única — Pendentes SGP (só o que importa pro técnico em campo)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
-            child: AppSurfaceCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const AppSectionHeader(
-                    title: 'Base de clientes',
-                    subtitle:
-                        'Busque por cidade, bairro ou serial e acompanhe o status SGP sem sair da fila.',
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Builder(builder: (_) {
+              final visiveis = async.maybeWhen(
+                  data: (page) => page.items.length, orElse: () => 0);
+              final pendentes = async.maybeWhen(
+                  data: (page) =>
+                      page.items.where((c) => c.sgpSyncedAt == null).length,
+                  orElse: () => 0);
+              return BrandKpiCard(
+                label: 'Pendentes de sincronização',
+                value: '$pendentes',
+                icon: Icons.cloud_off_outlined,
+                tone: pendentes > 0 ? BrandTone.warning : BrandTone.success,
+                onTap: visiveis > 0
+                    ? () {
+                        // Ao tocar na KPI, ativa filtro "Pendente SGP".
+                        _toggleSgp(_sgpFilter == 'pending' ? null : 'pending');
+                      }
+                    : null,
+              );
+            }),
+          ),
+          // Search + filtros (sem card wrapper)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _busca,
+                  onChanged: _onBuscaChanged,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    hintText: 'Buscar por nome, CPF, cidade, serial…',
+                    isDense: true,
+                    suffixIcon: _busca.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () {
+                              _busca.clear();
+                              _onBuscaChanged('');
+                            },
+                          )
+                        : null,
                   ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _busca,
-                    onChanged: _onBuscaChanged,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search, size: 20),
-                      hintText: 'Buscar por cidade, bairro, serial…',
-                      isDense: true,
-                      suffixIcon: _busca.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 18),
-                              onPressed: () {
-                                _busca.clear();
-                                _onBuscaChanged('');
-                              },
-                            )
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 36,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
                     children: [
-                      AppStatusChip(
-                        label: _sgpFilter == 'synced'
-                            ? 'Somente sincronizados'
-                            : _sgpFilter == 'pending'
-                                ? 'Somente pendentes SGP'
-                                : 'Todos os clientes',
-                        tone: _sgpFilter == 'pending'
-                            ? AppStatusTone.warning
-                            : _sgpFilter == 'synced'
-                                ? AppStatusTone.success
-                                : AppStatusTone.info,
+                      _FilterChip(
+                        label: 'Todos',
+                        selected: _sgpFilter == null,
+                        onTap: () => _toggleSgp(null),
                       ),
-                      _SummaryPill(
-                        icon: Icons.people_alt_outlined,
-                        label:
-                            '${async.maybeWhen(data: (page) => page.items.length, orElse: () => 0)} visíveis',
+                      const SizedBox(width: 8),
+                      _FilterChip(
+                        label: 'Sincronizado',
+                        icon: Icons.cloud_done,
+                        color: scheme.primary,
+                        selected: _sgpFilter == 'synced',
+                        onTap: () => _toggleSgp('synced'),
+                      ),
+                      const SizedBox(width: 8),
+                      _FilterChip(
+                        label: 'Pendente SGP',
+                        icon: Icons.cloud_off,
+                        color: const Color(0xFFF59E0B),
+                        selected: _sgpFilter == 'pending',
+                        onTap: () => _toggleSgp('pending'),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    height: 44,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        _FilterChip(
-                          label: 'Todos',
-                          selected: _sgpFilter == null,
-                          onTap: () => _toggleSgp(null),
-                        ),
-                        const SizedBox(width: 8),
-                        _FilterChip(
-                          label: 'Sincronizado',
-                          icon: Icons.cloud_done,
-                          color: const Color(0xFF16a34a),
-                          selected: _sgpFilter == 'synced',
-                          onTap: () => _toggleSgp('synced'),
-                        ),
-                        const SizedBox(width: 8),
-                        _FilterChip(
-                          label: 'Pendente SGP',
-                          icon: Icons.cloud_off,
-                          color: const Color(0xFFf59e0b),
-                          selected: _sgpFilter == 'pending',
-                          onTap: () => _toggleSgp('pending'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -186,44 +182,6 @@ class _ClientesListScreenState extends ConsumerState<ClientesListScreen> {
                   ),
                 );
               },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SummaryPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _SummaryPill({
-    required this.icon,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: scheme.onSurfaceVariant),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: scheme.onSurfaceVariant,
             ),
           ),
         ],

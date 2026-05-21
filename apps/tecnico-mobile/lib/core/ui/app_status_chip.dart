@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../branding/brand_tokens.dart';
+
 enum AppStatusTone { neutral, info, success, warning, danger }
 
+/// Chip semântico legado — agora usa tokens da marca (success/warning/info/danger).
+/// Mantido pra compatibilidade com call sites existentes. Pra novos componentes,
+/// use `BrandStatusPill` (com ícone).
 class AppStatusChip extends StatelessWidget {
   const AppStatusChip({
     super.key,
@@ -14,12 +19,13 @@ class AppStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.brand;
     final scheme = Theme.of(context).colorScheme;
     final color = switch (tone) {
-      AppStatusTone.info => scheme.primary,
-      AppStatusTone.success => scheme.tertiary,
-      AppStatusTone.warning => scheme.secondary,
-      AppStatusTone.danger => scheme.error,
+      AppStatusTone.info => brand.info,
+      AppStatusTone.success => brand.success,
+      AppStatusTone.warning => brand.warning,
+      AppStatusTone.danger => brand.danger,
       AppStatusTone.neutral => scheme.onSurfaceVariant,
     };
 
@@ -28,13 +34,13 @@ class AppStatusChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
+        border: Border.all(color: color.withValues(alpha: 0.30)),
       ),
       child: Text(
         label,
         style: TextStyle(
           fontSize: 12,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w600,
           color: color,
           letterSpacing: 0.1,
         ),

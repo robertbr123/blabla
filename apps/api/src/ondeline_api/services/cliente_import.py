@@ -24,6 +24,7 @@ from ondeline_api.api.schemas.cliente_cadastro import (
 )
 from ondeline_api.db.crypto import encrypt_pii, hash_pii
 from ondeline_api.db.models.business import ClienteCadastro
+from ondeline_api.repositories.cliente_cadastro import normalize_nome
 from ondeline_api.db.models.identity import User
 from ondeline_api.repositories.cliente_cadastro import ClienteCadastroRepo
 
@@ -86,6 +87,7 @@ async def import_rows(
             if existente is not None:
                 # UPDATE: atualiza campos editaveis, preserva cpf_hash + dob.
                 existente.nome_encrypted = encrypt_pii(row.name.strip())
+                existente.nome_normalized = normalize_nome(row.name)
                 existente.telefone_encrypted = encrypt_pii(tel_digits)
                 existente.cep = row.cep
                 existente.address = row.address.strip()
@@ -131,6 +133,7 @@ async def import_rows(
                 cpf_hash=cpf_hash,
                 cpf_encrypted=encrypt_pii(cpf_digits),
                 nome_encrypted=encrypt_pii(row.name.strip()),
+                nome_normalized=normalize_nome(row.name),
                 dob=row.dob,
                 telefone_encrypted=encrypt_pii(tel_digits),
                 cep=row.cep,

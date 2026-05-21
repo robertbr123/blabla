@@ -5,9 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart' show launchUrl;
 
+import '../../core/branding/brand_status_pill.dart';
 import '../../core/ui/app_section_header.dart';
 import '../../core/ui/app_state_panel.dart';
-import '../../core/ui/app_status_chip.dart';
 import '../../core/ui/app_surfaces.dart';
 import '../os/widgets/cliente_avatar.dart';
 import 'cliente_data.dart';
@@ -179,7 +179,7 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   ClienteAvatar(nome: cliente.nome, size: 60),
                   const SizedBox(width: 14),
@@ -187,19 +187,29 @@ class _Header extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Nome auto-encolhe para caber, mantendo 1-2 linhas no máximo.
                         Text(
                           cliente.nome,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: scheme.onSurface,
-                            fontSize: 24,
+                            // Tamanho responsivo ao comprimento do nome
+                            fontSize: cliente.nome.length > 28
+                                ? 18
+                                : cliente.nome.length > 22
+                                    ? 20
+                                    : 22,
                             fontWeight: FontWeight.w800,
-                            height: 1.1,
+                            height: 1.15,
                             letterSpacing: -0.3,
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 4),
                         Text(
                           cliente.planNome,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 13,
                             color: scheme.onSurfaceVariant,
@@ -209,13 +219,16 @@ class _Header extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  AppStatusChip(
-                    label: synced ? 'SGP sincronizado' : 'Pendente SGP',
-                    tone:
-                        synced ? AppStatusTone.success : AppStatusTone.warning,
-                  ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              // Pill em linha separada — não compete com o nome
+              BrandStatusPill(
+                label: synced ? 'SGP sincronizado' : 'Pendente SGP',
+                icon: synced
+                    ? Icons.cloud_done_outlined
+                    : Icons.cloud_off_outlined,
+                tone: synced ? BrandTone.success : BrandTone.warning,
               ),
               const SizedBox(height: 16),
               Container(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/branding/brand_bottom_nav.dart';
 import '../clientes/clientes_list_screen.dart';
 import '../estoque/estoque_screen.dart';
 import '../os/os_list_screen.dart';
@@ -9,6 +10,9 @@ import '../perfil/perfil_screen.dart';
 
 /// Shell com BottomNavigationBar — 4 tabs: OS / Estoque / Clientes / Perfil.
 /// Detalhes (OS, Cliente, etc) abrem por cima do shell (push).
+///
+/// Troca de aba é puramente local (PageController) — não chama `context.go`
+/// pra não empilhar transição de rota por cima da animação do PageView.
 class MainShell extends ConsumerStatefulWidget {
   final int initialTab;
   const MainShell({super.key, this.initialTab = 0});
@@ -27,8 +31,6 @@ class _MainShellState extends ConsumerState<MainShell> {
     ClientesListScreen(),
     PerfilScreen(),
   ];
-
-  static const _rotas = ['/os', '/estoque', '/clientes', '/perfil'];
 
   @override
   void initState() {
@@ -53,9 +55,21 @@ class _MainShellState extends ConsumerState<MainShell> {
     super.dispose();
   }
 
+  Future<void> _select(int index) async {
+    if (index == _index) return;
+    setState(() => _index = index);
+    if (!_pageController.hasClients) return;
+    await _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBody: true,
       body: PageView(
         controller: _pageController,
         physics: const NeverScrollableScrollPhysics(),
@@ -66,45 +80,37 @@ class _MainShellState extends ConsumerState<MainShell> {
         children: _telas,
       ),
       floatingActionButton: _index == 2
-          ? FloatingActionButton.extended(
-              onPressed: () => context.push('/clientes/novo'),
-              icon: const Icon(Icons.person_add),
-              label: const Text('Novo'),
+          ? Padding(
+              padding: const EdgeInsets.only(bottom: 64),
+              child: FloatingActionButton.extended(
+                onPressed: () => context.push('/clientes/novo'),
+                icon: const Icon(Icons.person_add),
+                label: const Text('Novo'),
+              ),
             )
           : null,
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: BrandBottomNav(
         selectedIndex: _index,
-        animationDuration: const Duration(milliseconds: 420),
-        onDestinationSelected: (index) async {
-          if (index == _index) return;
-          setState(() => _index = index);
-          await _pageController.animateToPage(
-            index,
-            duration: const Duration(milliseconds: 320),
-            curve: Curves.easeOutCubic,
-          );
-          if (!mounted) return;
-          context.go(_rotas[index]);
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Home',
+        onSelect: _select,
+        items: const [
+          BrandNavItem(
+            icon: Icons.assignment_outlined,
+            selectedIcon: Icons.assignment_rounded,
+            label: 'OS',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.inventory_2_outlined),
-            selectedIcon: Icon(Icons.inventory_2),
+          BrandNavItem(
+            icon: Icons.inventory_2_outlined,
+            selectedIcon: Icons.inventory_2_rounded,
             label: 'Estoque',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
+          BrandNavItem(
+            icon: Icons.people_outline,
+            selectedIcon: Icons.people_rounded,
             label: 'Clientes',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
+          BrandNavItem(
+            icon: Icons.person_outline,
+            selectedIcon: Icons.person_rounded,
             label: 'Perfil',
           ),
         ],

@@ -7,6 +7,7 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/reentry_screen.dart';
 import 'features/clientes/cliente_detail_screen.dart';
 import 'features/clientes/cliente_novo_screen.dart';
+import 'features/design_preview/design_preview_screen.dart';
 import 'features/os/os_detail_screen.dart';
 import 'features/shell/main_shell.dart';
 import 'features/splash/splash_screen.dart';
@@ -19,6 +20,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
       // Splash decide pra onde mandar — nao redireciona.
       if (loc == '/splash') return null;
+      // Preview de design — acesso livre, sem auth.
+      if (loc == '/design-preview') return null;
       // Defensivo: storage com timeout pra nao travar a navegacao.
       bool has = false;
       try {
@@ -46,6 +49,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(
+        path: '/design-preview',
+        builder: (_, __) => const DesignPreviewScreen(),
+      ),
       GoRoute(path: '/reentry', builder: (_, __) => const ReentryScreen()),
       GoRoute(
         path: '/os',

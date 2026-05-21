@@ -53,7 +53,10 @@ from ondeline_api.db.crypto import decrypt_pii, encrypt_pii, hash_pii
 from ondeline_api.db.models.business import ClienteCadastro
 from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db
-from ondeline_api.repositories.cliente_cadastro import ClienteCadastroRepo
+from ondeline_api.repositories.cliente_cadastro import (
+    ClienteCadastroRepo,
+    normalize_nome,
+)
 from ondeline_api.services.sgp_planos import listar_planos_sgp
 from ondeline_api.workers.runtime import get_redis
 
@@ -148,6 +151,34 @@ def _to_list_item(c: ClienteCadastro) -> ClienteCampoListItem:
 # ── List + busca ─────────────────────────────────────────────
 
 
+async def _technician_cities(
+    session: AsyncSession, user: User
+) -> list[str] | None:
+    """Lista de cidades das áreas do técnico logado.
+
+    - Retorna None pra ADMIN/ATENDENTE (= sem filtro)
+    - Retorna lista (pode ser vazia) pra TECNICO
+    """
+    if user.role != Role.TECNICO:
+        return None
+    from sqlalchemy import select as _select
+
+    from ondeline_api.db.models.business import Tecnico, TecnicoArea
+
+    # Achar Tecnico pelo user_id
+    tec_row = (
+        await session.execute(_select(Tecnico).where(Tecnico.user_id == user.id))
+    ).scalar_one_or_none()
+    if tec_row is None:
+        return []
+    areas_rows = (
+        await session.execute(
+            _select(TecnicoArea.cidade).where(TecnicoArea.tecnico_id == tec_row.id)
+        )
+    ).scalars().all()
+    return sorted({c for c in areas_rows if c})
+
+
 @router.get(
     "",
     response_model=CursorPage[ClienteCampoListItem],
@@ -155,6 +186,7 @@ def _to_list_item(c: ClienteCadastro) -> ClienteCampoListItem:
 )
 async def list_clientes_campo(
     session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
     cursor: CursorParam = None,
     limit: LimitParam = None,
     q: Annotated[str | None, Query()] = None,
@@ -165,11 +197,13 @@ async def list_clientes_campo(
     installer_user_id: Annotated[UUID | None, Query()] = None,
 ) -> CursorPage[ClienteCampoListItem]:
     repo = ClienteCadastroRepo(session)
+    cities = await _technician_cities(session, user)
     rows, next_cur = await repo.list_paginated(
         q=q,
         city=city,
         sgp_status=sgp_status,
         installer_user_id=installer_user_id,
+        cities=cities,
         cursor=parse_cursor(cursor),
         limit=parse_limit(limit),
     )
@@ -185,9 +219,14 @@ async def list_clientes_campo(
 )
 async def get_stats(
     session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
 ) -> dict[str, int]:
-    """Totais agregados (não paginados): total, synced, pending."""
-    return await ClienteCadastroRepo(session).count_stats()
+    """Totais agregados (não paginados): total, synced, pending.
+
+    Pra técnico, conta só os clientes das cidades das suas áreas.
+    """
+    cities = await _technician_cities(session, user)
+    return await ClienteCadastroRepo(session).count_stats(cities=cities)
 
 
 @router.get(
@@ -385,6 +424,7 @@ async def create_cliente_campo(
         cpf_hash=cpf_hash,
         cpf_encrypted=encrypt_pii(cpf_digits),
         nome_encrypted=encrypt_pii(body.nome.strip()),
+        nome_normalized=normalize_nome(body.nome),
         dob=body.dob,
         telefone_encrypted=encrypt_pii(tel_digits),
         email_encrypted=encrypt_pii(body.email.strip()) if body.email else None,
@@ -470,7 +510,9 @@ async def patch_cliente_campo(
     data = body.model_dump(exclude_unset=True)
     # Campos de PII reencriptados
     if "nome" in data:
-        cliente.nome_encrypted = encrypt_pii(data.pop("nome").strip())
+        novo_nome = data.pop("nome").strip()
+        cliente.nome_encrypted = encrypt_pii(novo_nome)
+        cliente.nome_normalized = normalize_nome(novo_nome)
     if "telefone" in data:
         tel_digits = _only_digits(data.pop("telefone"))
         if len(tel_digits) < 10:

@@ -683,6 +683,10 @@ class ClienteCadastro(Base):
     cpf_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     cpf_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
     nome_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    # Versão lowercase + unaccent do nome SÓ para indexação de busca (PII em texto).
+    # Trade-off: nome já é decifrado e exibido em listas; ter cópia normalizada
+    # pra busca é aceitável pra UX e equivalente à exposição existente.
+    nome_normalized: Mapped[str | None] = mapped_column(String(255), nullable=True)
     dob: Mapped[date] = mapped_column(Date, nullable=False)
     telefone_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
     email_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
