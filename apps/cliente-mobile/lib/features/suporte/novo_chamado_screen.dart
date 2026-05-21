@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/os_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/haptics.dart';
 
 /// Wizard 3 steps: tipo -> detalhes -> confirma.
 class NovoChamadoScreen extends ConsumerStatefulWidget {
@@ -123,6 +124,7 @@ class _NovoChamadoScreenState extends ConsumerState<NovoChamadoScreen> {
           );
       ref.invalidate(osListProvider);
       if (!mounted) return;
+      await Haptics.success();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Chamado aberto. Em breve entramos em contato.')),
       );

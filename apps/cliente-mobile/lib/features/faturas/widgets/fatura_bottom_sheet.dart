@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/api/dto.dart';
 import '../../../core/api/faturas_repository.dart';
 import '../../../core/branding/brand_tokens.dart';
+import '../../../core/ui/haptics.dart';
 
 class FaturaBottomSheet extends ConsumerWidget {
   const FaturaBottomSheet({super.key, required this.fatura});
@@ -87,6 +88,7 @@ class FaturaBottomSheet extends ConsumerWidget {
       final codigo =
           await ref.read(faturasRepositoryProvider).getPix(fatura.id);
       await Clipboard.setData(ClipboardData(text: codigo));
+      await Haptics.medium();
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Codigo PIX copiado')),

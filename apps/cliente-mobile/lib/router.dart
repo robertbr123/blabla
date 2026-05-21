@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/auth/auth_state.dart';
 import 'features/auth/login_screen.dart';
+import 'features/legal/legal_screen.dart';
 import 'features/onboarding/onboarding_biometric_screen.dart';
 import 'features/onboarding/onboarding_cpf_screen.dart';
 import 'features/onboarding/onboarding_otp_screen.dart';
@@ -82,6 +83,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/suporte/novo',
         builder: (_, __) => const NovoChamadoScreen(),
+      ),
+      GoRoute(
+        path: '/legal/termos',
+        builder: (_, __) => const LegalScreen(
+          title: 'Termos de Uso',
+          body: termosUsoBody,
+        ),
+      ),
+      GoRoute(
+        path: '/legal/privacidade',
+        builder: (_, __) => const LegalScreen(
+          title: 'Politica de Privacidade',
+          body: politicaPrivacidadeBody,
+        ),
       ),
     ],
   );

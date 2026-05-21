@@ -49,6 +49,15 @@ class MeRepository {
       return false;
     }
   }
+
+  Future<bool> deleteMe() async {
+    try {
+      await _dio.delete('$_base/me');
+      return true;
+    } on DioException {
+      return false;
+    }
+  }
 }
 
 final meRepositoryProvider = Provider<MeRepository>(

@@ -91,6 +91,18 @@ class PerfilScreen extends ConsumerWidget {
                 ),
               ),
             ]),
+            _Section(title: 'Sobre', children: [
+              _Tile(
+                icon: Icons.description_outlined,
+                label: 'Termos de Uso',
+                onTap: () => context.push('/legal/termos'),
+              ),
+              _Tile(
+                icon: Icons.privacy_tip_outlined,
+                label: 'Politica de Privacidade',
+                onTap: () => context.push('/legal/privacidade'),
+              ),
+            ]),
             const SizedBox(height: BrandTokens.spaceLg),
             OutlinedButton.icon(
               icon: const Icon(Icons.logout),
@@ -101,9 +113,51 @@ class PerfilScreen extends ConsumerWidget {
                 if (context.mounted) context.go('/onboarding/cpf');
               },
             ),
+            const SizedBox(height: BrandTokens.spaceSm),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: BrandTokens.danger),
+              onPressed: () => _confirmDelete(context, ref),
+              child: const Text('Excluir minha conta'),
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Excluir minha conta?'),
+      content: const Text(
+        'Esta acao e definitiva. Seu acesso ao app sera revogado e seus dados pessoais anonimizados.\n\nVoce continua sendo cliente da Ondeline e podera criar uma nova conta no app a qualquer momento.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancelar'),
+        ),
+        TextButton(
+          style: TextButton.styleFrom(foregroundColor: BrandTokens.danger),
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Excluir'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true) return;
+
+  final success = await ref.read(meRepositoryProvider).deleteMe();
+  if (!context.mounted) return;
+  if (success) {
+    await ref.read(authRepositoryProvider).logout();
+    ref.read(authRefreshProvider).bump();
+    if (context.mounted) context.go('/onboarding/cpf');
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Falha ao excluir. Tente de novo.')),
     );
   }
 }

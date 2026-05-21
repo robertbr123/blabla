@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_repository.dart';
 import '../../core/auth/auth_state.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/haptics.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -46,9 +47,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _loading = false);
     switch (r) {
       case AuthOk():
+        await Haptics.success();
         ref.read(authRefreshProvider).bump();
         context.go('/home');
       case AuthError(:final message):
+        await Haptics.error();
         _toast(message);
     }
   }

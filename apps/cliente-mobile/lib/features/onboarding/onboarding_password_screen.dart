@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_repository.dart';
 import '../../core/auth/auth_state.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/haptics.dart';
 
 class OnboardingPasswordScreen extends ConsumerStatefulWidget {
   const OnboardingPasswordScreen({
@@ -55,9 +57,11 @@ class _OnboardingPasswordScreenState
     setState(() => _loading = false);
     switch (r) {
       case AuthOk():
+        await Haptics.success();
         ref.read(authRefreshProvider).bump();
         context.go('/onboarding/biometric');
       case AuthError(:final message):
+        await Haptics.error();
         _toast(message);
     }
   }
@@ -109,6 +113,41 @@ class _OnboardingPasswordScreenState
                     const InputDecoration(labelText: 'Confirme a senha'),
               ),
               const Spacer(),
+              Padding(
+                padding: const EdgeInsets.only(bottom: BrandTokens.spaceSm),
+                child: Text.rich(
+                  TextSpan(
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: BrandTokens.textSecondary,
+                        ),
+                    children: [
+                      const TextSpan(
+                          text: 'Ao criar a conta, voce concorda com os '),
+                      TextSpan(
+                        text: 'Termos de Uso',
+                        style: const TextStyle(
+                          color: BrandTokens.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () => context.push('/legal/termos'),
+                      ),
+                      const TextSpan(text: ' e a '),
+                      TextSpan(
+                        text: 'Politica de Privacidade',
+                        style: const TextStyle(
+                          color: BrandTokens.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () => context.push('/legal/privacidade'),
+                      ),
+                      const TextSpan(text: '.'),
+                    ],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
               FilledButton(
                 onPressed: _loading ? null : _continue,
                 child: _loading
