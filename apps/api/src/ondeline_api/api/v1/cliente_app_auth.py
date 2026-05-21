@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt as pyjwt
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.adapters.evolution import EvolutionAdapter
@@ -117,6 +117,7 @@ def _cliente_access_seconds() -> int:
 @limiter.limit(_RL_OTP)
 async def register_start(
     request: Request,
+    response: Response,
     body: RegisterStartIn,
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> RegisterStartOut:
@@ -165,6 +166,7 @@ async def register_start(
 @limiter.limit(_RL_AUTH)
 async def register_verify(
     request: Request,
+    response: Response,
     body: RegisterVerifyIn,
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> RegisterVerifyOut:
@@ -188,6 +190,7 @@ async def register_verify(
 @limiter.limit(_RL_AUTH)
 async def register_password(
     request: Request,
+    response: Response,
     body: RegisterPasswordIn,
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> TokenOut:
@@ -209,6 +212,7 @@ async def register_password(
 @limiter.limit(_RL_AUTH)
 async def login(
     request: Request,
+    response: Response,
     body: LoginIn,
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> TokenOut:
@@ -235,6 +239,7 @@ async def login(
 @limiter.limit(_RL_OTP)
 async def forgot(
     request: Request,
+    response: Response,
     body: ForgotIn,
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> dict[str, str]:

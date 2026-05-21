@@ -177,8 +177,9 @@ async def test_isolation_cliente_token_rejected_by_staff_endpoint(
 ) -> None:
     """Token de cliente NUNCA pode acessar endpoint staff."""
     cliente_token = jwt_mod.encode_cliente_access_token(uuid4())
+    # Router de staff `/auth` (não `/api/v1/auth`); GET /auth/me precisa de staff token.
     r = await client.get(
-        "/api/v1/auth/me",
+        "/auth/me",
         headers={"Authorization": f"Bearer {cliente_token}"},
     )
     assert r.status_code == 401
