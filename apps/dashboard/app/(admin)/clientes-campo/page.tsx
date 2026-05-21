@@ -1,15 +1,16 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   CloudOff,
   CloudUpload,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Download,
   MapPin,
   Trash2,
   Users,
 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -18,12 +19,14 @@ import { DialogImportarClientesCsv } from '@/components/dialog-importar-clientes
 import { DialogClienteCampoDetail } from '@/components/dialog-cliente-campo-detail'
 import {
   useClientesCampo,
+  useClientesCampoStats,
   useDeleteClienteCampo,
 } from '@/lib/api/queries'
 import type { ClienteCampoListItem } from '@/lib/api/types'
 import { cn } from '@/lib/utils'
 
 type FiltroSgp = 'all' | 'synced' | 'pending'
+const PAGE_SIZE = 50
 
 export default function ClientesCampoPage() {
   const [busca, setBusca] = useState('')
@@ -32,22 +35,37 @@ export default function ClientesCampoPage() {
   const [showImport, setShowImport] = useState(false)
   const [showDetail, setShowDetail] = useState<string | null>(null)
 
-  const {
-    data,
-    isLoading,
-    error,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useClientesCampo({
+  // Pilha de cursors: posição 0 = primeira página (cursor undefined).
+  // Avançar empurra next_cursor; voltar dá pop.
+  const [cursorStack, setCursorStack] = useState<(string | undefined)[]>([undefined])
+  const currentCursor = cursorStack[cursorStack.length - 1]
+  const pageNum = cursorStack.length
+
+  // Resetar paginação quando filtros mudam
+  useEffect(() => {
+    setCursorStack([undefined])
+  }, [busca, filtroSgp])
+
+  const { data, isLoading, error, isFetching } = useClientesCampo({
     q: busca || undefined,
     sgp_status: filtroSgp === 'all' ? undefined : filtroSgp,
+    cursor: currentCursor,
   })
+  const { data: stats } = useClientesCampoStats()
   const deleteCliente = useDeleteClienteCampo()
 
-  const items = data?.pages.flatMap((p) => p.items) ?? []
-  const synced = items.filter((c) => c.sgp_synced_at).length
-  const pending = items.filter((c) => !c.sgp_synced_at).length
+  const items = data?.items ?? []
+  const hasNext = !!data?.next_cursor
+  const hasPrev = cursorStack.length > 1
+
+  function goNext() {
+    if (data?.next_cursor) {
+      setCursorStack([...cursorStack, data.next_cursor])
+    }
+  }
+  function goPrev() {
+    if (hasPrev) setCursorStack(cursorStack.slice(0, -1))
+  }
 
   async function handleDelete(c: ClienteCampoListItem) {
     if (
@@ -64,22 +82,19 @@ export default function ClientesCampoPage() {
     }
   }
 
+  // Range visível desta página: ex "1-50 de 953"
+  const start = (pageNum - 1) * PAGE_SIZE + 1
+  const end = (pageNum - 1) * PAGE_SIZE + items.length
+  const total = stats?.total ?? 0
+
   return (
     <div className="space-y-6">
       {showSync && (
-        <DialogMarcarSyncSgp
-          cliente={showSync}
-          onClose={() => setShowSync(null)}
-        />
+        <DialogMarcarSyncSgp cliente={showSync} onClose={() => setShowSync(null)} />
       )}
-      {showImport && (
-        <DialogImportarClientesCsv onClose={() => setShowImport(false)} />
-      )}
+      {showImport && <DialogImportarClientesCsv onClose={() => setShowImport(false)} />}
       {showDetail && (
-        <DialogClienteCampoDetail
-          id={showDetail}
-          onClose={() => setShowDetail(null)}
-        />
+        <DialogClienteCampoDetail id={showDetail} onClose={() => setShowDetail(null)} />
       )}
 
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -98,23 +113,18 @@ export default function ClientesCampoPage() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Kpi
-          label="Total"
-          value={items.length}
-          icon={Users}
-          color="text-blue-700"
-        />
+        <Kpi label="Total" value={stats?.total ?? 0} icon={Users} tone="info" />
         <Kpi
           label="Sincronizados c/ SGP"
-          value={synced}
+          value={stats?.synced ?? 0}
           icon={CheckCircle2}
-          color="text-emerald-700"
+          tone="success"
         />
         <Kpi
           label="Pendentes"
-          value={pending}
+          value={stats?.pending ?? 0}
           icon={CloudOff}
-          color="text-amber-700"
+          tone="warning"
         />
       </div>
 
@@ -126,21 +136,17 @@ export default function ClientesCampoPage() {
           className="max-w-sm"
         />
         <div className="flex gap-1">
-          <FiltroChip
-            label="Todos"
-            active={filtroSgp === 'all'}
-            onClick={() => setFiltroSgp('all')}
-          />
+          <FiltroChip label="Todos" active={filtroSgp === 'all'} onClick={() => setFiltroSgp('all')} />
           <FiltroChip
             label="Sincronizado"
             active={filtroSgp === 'synced'}
-            color="text-emerald-700 border-emerald-400 bg-emerald-50"
+            tone="success"
             onClick={() => setFiltroSgp('synced')}
           />
           <FiltroChip
             label="Pendente SGP"
             active={filtroSgp === 'pending'}
-            color="text-amber-700 border-amber-400 bg-amber-50"
+            tone="warning"
             onClick={() => setFiltroSgp('pending')}
           />
         </div>
@@ -154,159 +160,208 @@ export default function ClientesCampoPage() {
       )}
 
       {data && (
-        <div className="overflow-x-auto rounded-md border bg-card">
-          <table className="w-full text-sm">
-            <thead className="border-b text-left text-xs uppercase text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3">Cliente</th>
-                <th className="px-4 py-3">CPF</th>
-                <th className="px-4 py-3">Endereço</th>
-                <th className="px-4 py-3">Cidade</th>
-                <th className="px-4 py-3">Plano</th>
-                <th className="px-4 py-3">Instalador</th>
-                <th className="px-4 py-3">SGP</th>
-                <th className="px-4 py-3 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 && (
+        <div className="overflow-hidden rounded-md border bg-card">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
-                  <td colSpan={8} className="p-6 text-center text-muted-foreground">
-                    Nenhum cliente cadastrado{busca || filtroSgp !== 'all' ? ' com esses filtros' : ' ainda'}.
-                  </td>
+                  <th className="px-4 py-2.5 font-semibold">Cliente</th>
+                  <th className="px-4 py-2.5 font-semibold">CPF</th>
+                  <th className="px-4 py-2.5 font-semibold">Endereço</th>
+                  <th className="px-4 py-2.5 font-semibold">Cidade</th>
+                  <th className="px-4 py-2.5 font-semibold">Plano</th>
+                  <th className="px-4 py-2.5 font-semibold">Instalador</th>
+                  <th className="px-4 py-2.5 font-semibold">SGP</th>
+                  <th className="px-4 py-2.5 font-semibold text-right">Ações</th>
                 </tr>
-              )}
-              {items.map((c) => (
-                <tr
-                  key={c.id}
-                  className="border-b last:border-b-0 hover:bg-muted/50 cursor-pointer"
-                  onClick={() => setShowDetail(c.id)}
-                >
-                  <td className="px-4 py-3 font-medium">{c.nome}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{fmtCpf(c.cpf)}</td>
-                  <td className="px-4 py-3 text-xs">
-                    {c.address}, {c.number}
-                    {c.neighborhood ? ` · ${c.neighborhood}` : ''}
-                  </td>
-                  <td className="px-4 py-3 text-xs">
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      {c.city}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs">{c.plan_nome}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">
-                    {c.installer_nome}
-                  </td>
-                  <td className="px-4 py-3">
-                    {c.sgp_synced_at ? (
-                      <Badge className="gap-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                        <CheckCircle2 className="h-3 w-3" />
-                        {c.sgp_id ?? 'sync'}
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="gap-1 border-amber-400 text-amber-700">
-                        <CloudOff className="h-3 w-3" />
-                        Pendente
-                      </Badge>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    <div className="inline-flex gap-1">
-                      {!c.sgp_synced_at && (
+              </thead>
+              <tbody>
+                {items.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="p-6 text-center text-muted-foreground">
+                      Nenhum cliente cadastrado{busca || filtroSgp !== 'all' ? ' com esses filtros' : ' ainda'}.
+                    </td>
+                  </tr>
+                )}
+                {items.map((c) => (
+                  <tr
+                    key={c.id}
+                    className="border-b last:border-b-0 cursor-pointer transition-colors hover:bg-accent/40"
+                    onClick={() => setShowDetail(c.id)}
+                  >
+                    <td className="px-4 py-3 font-medium">{c.nome}</td>
+                    <td className="px-4 py-3 font-mono text-xs" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {fmtCpf(c.cpf)}
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      {c.address}, {c.number}
+                      {c.neighborhood ? ` · ${c.neighborhood}` : ''}
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {c.city}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs">{c.plan_nome}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {c.installer_nome}
+                    </td>
+                    <td className="px-4 py-3">
+                      {c.sgp_synced_at ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-success/[0.12] px-2 py-0.5 text-xs font-medium text-success ring-1 ring-inset ring-success/30">
+                          <CheckCircle2 className="h-3 w-3" />
+                          {c.sgp_id ?? 'sync'}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-warning/[0.15] px-2 py-0.5 text-xs font-medium text-warning ring-1 ring-inset ring-warning/30">
+                          <CloudOff className="h-3 w-3" />
+                          Pendente
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="inline-flex gap-1">
+                        {!c.sgp_synced_at && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setShowSync(c)}
+                            title="Marcar como sincronizado"
+                            aria-label={`Marcar ${c.nome} como sincronizado com SGP`}
+                            className="h-8 gap-1"
+                          >
+                            <CloudUpload className="h-3.5 w-3.5" />
+                            Marcar SGP
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => setShowSync(c)}
-                          title="Marcar como sincronizado"
-                          className="h-8 gap-1"
+                          className="h-8 text-destructive hover:text-destructive"
+                          onClick={() => handleDelete(c)}
+                          title="Excluir"
+                          aria-label={`Excluir ${c.nome}`}
                         >
-                          <CloudUpload className="h-3.5 w-3.5" />
-                          Marcar SGP
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 text-destructive hover:text-destructive"
-                        onClick={() => handleDelete(c)}
-                        title="Excluir"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {(hasNextPage || isFetchingNextPage) && (
-            <div className="flex items-center justify-center gap-3 border-t bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
-              <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-                {items.length} carregado{items.length === 1 ? '' : 's'}
-                {hasNextPage ? ' · há mais' : ''}
-              </span>
-              {hasNextPage && (
-                <button
-                  type="button"
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                  className="rounded-md border border-border bg-background px-3 py-1 font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50"
-                >
-                  {isFetchingNextPage ? 'Carregando…' : 'Carregar mais'}
-                </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Paginação anterior/próximo */}
+          <div className="flex items-center justify-between gap-3 border-t bg-muted/20 px-4 py-2.5 text-xs">
+            <span className="text-muted-foreground" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {items.length > 0 ? (
+                <>
+                  {start}–{end}
+                  {total > 0 && filtroSgp === 'all' && !busca ? ` de ${total}` : ''} · página {pageNum}
+                </>
+              ) : (
+                'Nenhum resultado'
               )}
+              {isFetching && <span className="ml-2 opacity-70">atualizando…</span>}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={goPrev}
+                disabled={!hasPrev || isFetching}
+                aria-label="Página anterior"
+                className="h-8 gap-1"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Anterior
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={goNext}
+                disabled={!hasNext || isFetching}
+                aria-label="Próxima página"
+                className="h-8 gap-1"
+              >
+                Próximo
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>
   )
 }
 
+const KPI_TONE: Record<'info' | 'success' | 'warning', string> = {
+  info: 'bg-info/[0.12] text-info',
+  success: 'bg-success/[0.12] text-success',
+  warning: 'bg-warning/[0.15] text-warning',
+}
+
 function Kpi({
   label,
   value,
   icon: Icon,
-  color,
+  tone = 'info',
 }: {
   label: string
   value: number
   icon: React.ComponentType<{ className?: string }>
-  color: string
+  tone?: keyof typeof KPI_TONE
 }) {
   return (
-    <Card>
-      <CardContent className="flex items-center justify-between p-5">
-        <div>
-          <div className="text-xs uppercase text-muted-foreground">{label}</div>
-          <div className="mt-1 text-3xl font-bold">{value}</div>
+    <Card className="transition-shadow hover:shadow-md">
+      <CardContent className="flex items-start justify-between gap-3 p-5">
+        <div className="min-w-0">
+          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </div>
+          <div
+            className="mt-2 text-3xl font-semibold leading-none"
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+          >
+            {value}
+          </div>
         </div>
-        <Icon className={cn('h-7 w-7', color)} />
+        <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-md', KPI_TONE[tone])}>
+          <Icon className="h-4 w-4" />
+        </div>
       </CardContent>
     </Card>
   )
 }
 
+const CHIP_TONE: Record<'success' | 'warning', string> = {
+  success: 'bg-success/[0.12] text-success ring-success/30',
+  warning: 'bg-warning/[0.15] text-warning ring-warning/30',
+}
+
 function FiltroChip({
   label,
   active,
-  color,
+  tone,
   onClick,
 }: {
   label: string
   active: boolean
-  color?: string
+  tone?: keyof typeof CHIP_TONE
   onClick: () => void
 }) {
   return (
     <button
       onClick={onClick}
       className={cn(
-        'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+        'rounded-full border px-3 py-1.5 text-xs font-medium ring-1 ring-inset transition-colors',
         active
-          ? color ?? 'bg-primary text-primary-foreground border-primary'
-          : 'border-border text-muted-foreground hover:bg-muted',
+          ? tone
+            ? CHIP_TONE[tone]
+            : 'bg-primary text-primary-foreground ring-primary border-primary'
+          : 'border-border ring-transparent text-muted-foreground hover:bg-muted',
       )}
     >
       {label}

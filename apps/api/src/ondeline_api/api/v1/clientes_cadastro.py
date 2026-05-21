@@ -178,6 +178,17 @@ async def list_clientes_campo(
 
 
 @router.get(
+    "/stats",
+    dependencies=[_role_any],
+)
+async def get_stats(
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, int]:
+    """Totais agregados (não paginados): total, synced, pending."""
+    return await ClienteCadastroRepo(session).count_stats()
+
+
+@router.get(
     "/by-cpf/{cpf}",
     response_model=ClienteCampoOut,
     dependencies=[_role_any],

@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import desc, or_, select
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.db.models.business import ClienteCadastro
@@ -79,6 +79,18 @@ class ClienteCadastroRepo:
             next_cursor = rows[limit].created_at
             rows = rows[:limit]
         return rows, next_cursor
+
+    async def count_stats(self) -> dict[str, int]:
+        """Conta totais agregados: total, synced (com SGP), pending (sem SGP)."""
+        synced_expr = func.count().filter(ClienteCadastro.sgp_synced_at.is_not(None))
+        pending_expr = func.count().filter(ClienteCadastro.sgp_synced_at.is_(None))
+        stmt = select(
+            func.count().label("total"),
+            synced_expr.label("synced"),
+            pending_expr.label("pending"),
+        ).where(ClienteCadastro.deleted_at.is_(None))
+        row = (await self._s.execute(stmt)).one()
+        return {"total": int(row.total), "synced": int(row.synced), "pending": int(row.pending)}
 
     async def create(self, cliente: ClienteCadastro) -> ClienteCadastro:
         self._s.add(cliente)

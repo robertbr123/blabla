@@ -973,19 +973,24 @@ export interface ClientesCampoFilter {
 }
 
 export function useClientesCampo(filter: ClientesCampoFilter = {}) {
-  return useInfiniteQuery<import('./types').CursorPage<import('./types').ClienteCampoListItem>>({
+  const params = new URLSearchParams()
+  if (filter.q) params.set('q', filter.q)
+  if (filter.city) params.set('city', filter.city)
+  if (filter.sgp_status) params.set('sgp_status', filter.sgp_status)
+  params.set('limit', '50')
+  if (filter.cursor) params.set('cursor', filter.cursor)
+  const qs = params.toString()
+  return useQuery<import('./types').CursorPage<import('./types').ClienteCampoListItem>>({
     queryKey: ['clientes-campo', filter],
-    initialPageParam: undefined as string | undefined,
-    queryFn: ({ pageParam }) => {
-      const params = new URLSearchParams()
-      if (filter.q) params.set('q', filter.q)
-      if (filter.city) params.set('city', filter.city)
-      if (filter.sgp_status) params.set('sgp_status', filter.sgp_status)
-      params.set('limit', '200')
-      if (pageParam) params.set('cursor', pageParam as string)
-      return apiFetch(`/api/v1/clientes-campo?${params.toString()}`)
-    },
-    getNextPageParam: (last) => last.next_cursor ?? undefined,
+    queryFn: () => apiFetch(`/api/v1/clientes-campo?${qs}`),
+    placeholderData: (prev) => prev,  // segura UI ao mudar página
+  })
+}
+
+export function useClientesCampoStats() {
+  return useQuery<{ total: number; synced: number; pending: number }>({
+    queryKey: ['clientes-campo-stats'],
+    queryFn: () => apiFetch('/api/v1/clientes-campo/stats'),
   })
 }
 
@@ -1010,6 +1015,7 @@ export function useMarcarSyncSgp() {
       ),
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['clientes-campo'] })
+      qc.invalidateQueries({ queryKey: ['clientes-campo-stats'] })
       qc.invalidateQueries({ queryKey: ['cliente-campo', vars.id] })
     },
   })
@@ -1028,6 +1034,7 @@ export function usePatchClienteCampo(id: string) {
       ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['clientes-campo'] })
+      qc.invalidateQueries({ queryKey: ['clientes-campo-stats'] })
       qc.invalidateQueries({ queryKey: ['cliente-campo', id] })
     },
   })
@@ -1038,7 +1045,10 @@ export function useDeleteClienteCampo() {
   return useMutation({
     mutationFn: (id: string) =>
       apiFetch<void>(`/api/v1/clientes-campo/${id}`, { method: 'DELETE' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['clientes-campo'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clientes-campo'] })
+      qc.invalidateQueries({ queryKey: ['clientes-campo-stats'] })
+    },
   })
 }
 
@@ -1069,6 +1079,9 @@ export function useImportClientesCsv() {
       }
       return (await res.json()) as import('./types').ImportResultOut
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['clientes-campo'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clientes-campo'] })
+      qc.invalidateQueries({ queryKey: ['clientes-campo-stats'] })
+    },
   })
 }

@@ -75,15 +75,15 @@ export function DialogClienteCampoDetail({ id, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 overflow-y-auto py-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       role="dialog"
       aria-modal="true"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="w-full max-w-3xl rounded-lg border bg-card p-6 shadow-lg space-y-4 mx-4">
-        <div className="flex items-start justify-between gap-3">
+      <div className="flex w-full max-w-3xl max-h-[90vh] flex-col overflow-hidden rounded-lg border bg-card shadow-lg">
+        <div className="flex items-start justify-between gap-3 shrink-0 border-b bg-card px-6 py-4">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold truncate">
               {c?.nome ?? 'Carregando…'}
@@ -110,6 +110,7 @@ export function DialogClienteCampoDetail({ id, onClose }: Props) {
             </Button>
           </div>
         </div>
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
 
         {isLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
         {error && (
@@ -293,8 +294,9 @@ export function DialogClienteCampoDetail({ id, onClose }: Props) {
           </>
         )}
 
+        </div>
         {!editing && (
-          <div className="flex justify-end pt-2">
+          <div className="flex justify-end shrink-0 border-t bg-card px-6 py-3">
             <Button variant="outline" onClick={onClose}>
               Fechar
             </Button>
