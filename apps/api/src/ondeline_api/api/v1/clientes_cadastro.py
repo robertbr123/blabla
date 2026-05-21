@@ -156,8 +156,10 @@ async def _technician_cities(
 ) -> list[str] | None:
     """Lista de cidades das áreas do técnico logado.
 
-    - Retorna None pra ADMIN/ATENDENTE (= sem filtro)
-    - Retorna lista (pode ser vazia) pra TECNICO
+    - Retorna `None` (= sem filtro, vê tudo) pra ADMIN/ATENDENTE
+    - Retorna `None` (= sem filtro) pra TECNICO sem registro `Tecnico` linkado
+      ou sem áreas — fallback seguro pra não esconder dados acidentalmente
+    - Retorna lista de cidades quando o técnico TEM áreas configuradas
     """
     if user.role != Role.TECNICO:
         return None
@@ -170,13 +172,16 @@ async def _technician_cities(
         await session.execute(_select(Tecnico).where(Tecnico.user_id == user.id))
     ).scalar_one_or_none()
     if tec_row is None:
-        return []
+        # Técnico não cadastrado na tabela Tecnico → não restringe.
+        return None
     areas_rows = (
         await session.execute(
             _select(TecnicoArea.cidade).where(TecnicoArea.tecnico_id == tec_row.id)
         )
     ).scalars().all()
-    return sorted({c for c in areas_rows if c})
+    cities = sorted({c for c in areas_rows if c})
+    # Sem áreas configuradas → não restringe (admin deve configurar via dashboard).
+    return cities if cities else None
 
 
 @router.get(
