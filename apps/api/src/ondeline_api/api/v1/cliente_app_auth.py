@@ -37,8 +37,12 @@ from ondeline_api.services import cliente_app_otp as otp_svc
 router = APIRouter(prefix="/api/v1/cliente-app/auth", tags=["cliente-app:auth"])
 
 SETUP_TTL_MIN = 10
-_RL_OTP = "5/hour"
-_RL_AUTH = "10/hour"
+# Atras do nginx todos requests chegam do bridge Docker (~172.18.0.1),
+# entao o rate-limit por IP vira global. Bumpando pra valores que ainda
+# protegem de spam mas nao bloqueiam debug nem multiplos usuarios.
+# TODO: trocar pra key por CPF (do body) numa proxima passada.
+_RL_OTP = "60/hour"
+_RL_AUTH = "120/hour"
 
 
 def _evolution() -> EvolutionAdapter:
