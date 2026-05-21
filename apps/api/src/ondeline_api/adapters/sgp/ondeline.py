@@ -43,6 +43,28 @@ def _build_endereco(raw: dict[str, Any] | None) -> EnderecoSgp:
     )
 
 
+def _extract_whatsapp(c: dict[str, Any]) -> str:
+    """Extrai o numero principal de contato.
+
+    Ordem de preferencia:
+    1. campos rasos `celular` / `telefone` (SGP antigo)
+    2. `contatos.celulares[0]` (novo SGP — preferimos celular pra WhatsApp)
+    3. `contatos.telefones[0]` (fallback se nao tiver celular)
+    """
+    flat = c.get("celular") or c.get("telefone")
+    if flat:
+        return str(flat)
+    contatos = c.get("contatos")
+    if isinstance(contatos, dict):
+        celulares = contatos.get("celulares") or []
+        if celulares:
+            return str(celulares[0])
+        telefones = contatos.get("telefones") or []
+        if telefones:
+            return str(telefones[0])
+    return ""
+
+
 def _build_fatura(raw: dict[str, Any]) -> Fatura:
     return Fatura(
         id=str(raw.get("id", "")),
@@ -134,7 +156,7 @@ class SgpOndelineProvider(SgpProvider):
             sgp_id=str(c.get("id", "")),
             nome=str(c.get("nome", "")),
             cpf_cnpj=clean,
-            whatsapp=str(c.get("celular") or c.get("telefone") or ""),
+            whatsapp=_extract_whatsapp(c),
             contratos=contratos,
             endereco=_build_endereco(c.get("endereco")),
             titulos=titulos,
