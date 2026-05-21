@@ -153,15 +153,16 @@ async def test_list_os_returns_only_my_os(app_and_tecnico: Any) -> None:
 
 @pytest.mark.asyncio
 async def test_list_os_status_filter(app_and_tecnico: Any) -> None:
-    """GET /os?status=concluida returns concluida OS (normally excluded)."""
+    """GET /os returns full queue, and ?status still narrows it."""
     client, token, _user, tec, db_session = app_and_tecnico
     cliente = await _make_cliente(db_session)
+    await _make_os(db_session, cliente.id, tec.id, status=OsStatus.PENDENTE)
     await _make_os(db_session, cliente.id, tec.id, status=OsStatus.CONCLUIDA)
 
-    # default filter excludes concluida
+    # default list includes the full queue now
     r = await client.get("/api/v1/tecnico/me/os", headers=_auth(token))
     assert r.status_code == 200
-    assert len(r.json()) == 0
+    assert len(r.json()) == 2
 
     # explicit filter returns it
     r2 = await client.get("/api/v1/tecnico/me/os?status=concluida", headers=_auth(token))

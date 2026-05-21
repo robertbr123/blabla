@@ -75,7 +75,7 @@ class _ClienteFotosSectionState extends ConsumerState<ClienteFotosSection> {
             filePath: x.path,
             tipo: escolha.tipo,
           );
-      ref.invalidate(clienteDetailProvider(widget.cliente.id));
+      await ref.refresh(clienteDetailProvider(widget.cliente.id).future);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Foto enviada.')),
@@ -137,7 +137,7 @@ class _ClienteFotosSectionState extends ConsumerState<ClienteFotosSection> {
       await ref
           .read(clienteFormActionsProvider)
           .removerFoto(clienteId: widget.cliente.id, idx: idx);
-      ref.invalidate(clienteDetailProvider(widget.cliente.id));
+      await ref.refresh(clienteDetailProvider(widget.cliente.id).future);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

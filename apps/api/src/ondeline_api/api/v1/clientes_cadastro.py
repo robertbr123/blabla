@@ -11,6 +11,7 @@ Roles:
 """
 from __future__ import annotations
 
+import logging
 import os
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -57,6 +58,7 @@ from ondeline_api.services.sgp_planos import listar_planos_sgp
 from ondeline_api.workers.runtime import get_redis
 
 router = APIRouter(prefix="/api/v1/clientes-campo", tags=["clientes-campo"])
+logger = logging.getLogger(__name__)
 _role_any = Depends(require_role(Role.TECNICO, Role.ATENDENTE, Role.ADMIN))
 _role_atendente = Depends(require_role(Role.ATENDENTE, Role.ADMIN))
 _role_admin = Depends(require_role(Role.ADMIN))
@@ -536,6 +538,13 @@ async def marcar_sincronizado_sgp(
 _MAX_FOTO_BYTES = 8 * 1024 * 1024  # 8 MB
 _TIPOS_FOTO_VALIDOS = {"serial", "instalacao", "speedtest", "outro"}
 _EXTENSOES_FOTO_VALIDAS = {".jpg", ".jpeg", ".png", ".heic", ".webp"}
+_MIME_BY_EXTENSION = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".heic": "image/heic",
+    ".webp": "image/webp",
+}
 
 
 def _cliente_fotos_dir() -> Path:
@@ -559,6 +568,29 @@ def _is_valid_image_upload(content_type: str | None, filename: str | None) -> bo
         return False
     suffix = Path(filename or "").suffix.lower()
     return suffix in _EXTENSOES_FOTO_VALIDAS
+
+
+def _normalized_image_mime(content_type: str | None, filename: str | None) -> str:
+    mime = (content_type or "").strip().lower()
+    if mime.startswith("image/"):
+        return mime
+    suffix = Path(filename or "").suffix.lower()
+    return _MIME_BY_EXTENSION.get(suffix, "image/jpeg")
+
+
+def _tecnico_can_manage_cliente_fotos(cliente: ClienteCadastro, user: User) -> bool:
+    if user.role != Role.TECNICO:
+        return True
+    if cliente.installer_user_id == user.id:
+        return True
+
+    installer_name = (cliente.installer_nome or "").strip().lower()
+    user_name = (user.name or "").strip().lower()
+    return (
+        cliente.installer_user_id is None
+        and bool(installer_name)
+        and installer_name == user_name
+    )
 
 
 @router.post(
@@ -591,7 +623,7 @@ async def upload_foto_cliente_campo(
     cliente = await repo.get_by_id(cliente_id)
     if cliente is None:
         raise HTTPException(status_code=404, detail="cliente nao encontrado")
-    if user.role == Role.TECNICO and cliente.installer_user_id != user.id:
+    if not _tecnico_can_manage_cliente_fotos(cliente, user):
         raise HTTPException(
             status_code=403,
             detail="tecnico so adiciona foto em cliente que ele cadastrou",
@@ -612,6 +644,16 @@ async def upload_foto_cliente_campo(
         fpath.write_bytes(contents)
         fpath.chmod(0o600)
     except OSError as exc:
+        logger.exception(
+            "falha ao salvar foto de cliente-campo",
+            extra={
+                "cliente_id": str(cliente_id),
+                "user_id": str(user.id),
+                "target_dir": str(target_dir),
+                "filename": fname,
+                "content_type": file.content_type,
+            },
+        )
         raise HTTPException(
             status_code=500,
             detail="falha ao salvar foto no servidor",
@@ -621,11 +663,26 @@ async def upload_foto_cliente_campo(
         "url": str(fpath),
         "ts": datetime.now(tz=UTC).isoformat(),
         "size": len(contents),
-        "mime": file.content_type,
+        "mime": _normalized_image_mime(file.content_type, file.filename),
         "tipo": tipo,
         "uploaded_by": str(user.id),
     }
-    await repo.add_foto(cliente, foto)
+    try:
+        await repo.add_foto(cliente, foto)
+    except Exception as exc:  # pragma: no cover
+        logger.exception(
+            "falha ao persistir metadata de foto de cliente-campo",
+            extra={
+                "cliente_id": str(cliente_id),
+                "user_id": str(user.id),
+                "target_dir": str(target_dir),
+                "filename": fname,
+            },
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="falha ao registrar foto no servidor",
+        ) from exc
     return _to_out(cliente)
 
 
@@ -646,7 +703,7 @@ async def get_foto_cliente_campo(
     if cliente is None:
         raise HTTPException(status_code=404, detail="cliente nao encontrado")
     # Tecnico so ve foto de cliente que ele cadastrou
-    if user.role == Role.TECNICO and cliente.installer_user_id != user.id:
+    if not _tecnico_can_manage_cliente_fotos(cliente, user):
         raise HTTPException(status_code=403, detail="acesso negado")
 
     fotos = cliente.fotos or []
@@ -684,7 +741,7 @@ async def delete_foto_cliente_campo(
     cliente = await repo.get_by_id(cliente_id)
     if cliente is None:
         raise HTTPException(status_code=404, detail="cliente nao encontrado")
-    if user.role == Role.TECNICO and cliente.installer_user_id != user.id:
+    if not _tecnico_can_manage_cliente_fotos(cliente, user):
         raise HTTPException(
             status_code=403,
             detail="tecnico so remove foto de cliente que ele cadastrou",

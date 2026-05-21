@@ -19,6 +19,7 @@ class MainShell extends ConsumerStatefulWidget {
 
 class _MainShellState extends ConsumerState<MainShell> {
   late int _index;
+  late final PageController _pageController;
 
   static const _telas = [
     OsListScreen(),
@@ -33,12 +34,37 @@ class _MainShellState extends ConsumerState<MainShell> {
   void initState() {
     super.initState();
     _index = widget.initialTab;
+    _pageController = PageController(initialPage: _index);
+  }
+
+  @override
+  void didUpdateWidget(covariant MainShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialTab == _index) return;
+    _index = widget.initialTab;
+    if (_pageController.hasClients) {
+      _pageController.jumpToPage(_index);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _index, children: _telas),
+      body: PageView(
+        controller: _pageController,
+        physics: const NeverScrollableScrollPhysics(),
+        onPageChanged: (index) {
+          if (!mounted || index == _index) return;
+          setState(() => _index = index);
+        },
+        children: _telas,
+      ),
       floatingActionButton: _index == 2
           ? FloatingActionButton.extended(
               onPressed: () => context.push('/clientes/novo'),
@@ -48,9 +74,17 @@ class _MainShellState extends ConsumerState<MainShell> {
           : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) {
-          setState(() => _index = i);
-          context.go(_rotas[i]);
+        animationDuration: const Duration(milliseconds: 420),
+        onDestinationSelected: (index) async {
+          if (index == _index) return;
+          setState(() => _index = index);
+          await _pageController.animateToPage(
+            index,
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+          );
+          if (!mounted) return;
+          context.go(_rotas[index]);
         },
         destinations: const [
           NavigationDestination(

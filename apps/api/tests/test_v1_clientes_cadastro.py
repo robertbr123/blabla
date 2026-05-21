@@ -170,3 +170,32 @@ async def test_upload_foto_aceita_octet_stream_quando_extensao_e_imagem(
     assert isinstance(body["fotos"], list)
     assert len(body["fotos"]) == 1
     assert body["fotos"][0]["tipo"] == "instalacao"
+    assert body["fotos"][0]["mime"] == "image/heic"
+
+
+@pytest.mark.asyncio
+async def test_tecnico_pode_enviar_foto_quando_cliente_tem_so_installer_nome(
+    app_and_tecnico: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    client, token, user, _tec, db_session = app_and_tecnico
+    cliente = await _make_cliente_campo(
+        db_session,
+        installer_user_id=None,
+        installer_nome=user.name,
+    )
+    monkeypatch.setenv("CLIENTE_FOTOS_DIR", str(tmp_path / "cliente-fotos"))
+
+    files = {"file": ("instalacao.jpg", b"\x89PNG\r\n\x1a\n", "image/png")}
+    r = await client.post(
+        f"/api/v1/clientes-campo/{cliente.id}/fotos",
+        data={"tipo": "instalacao"},
+        files=files,
+        headers=_auth(token),
+    )
+
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert isinstance(body["fotos"], list)
+    assert len(body["fotos"]) == 1

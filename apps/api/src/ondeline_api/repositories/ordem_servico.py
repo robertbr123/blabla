@@ -105,16 +105,17 @@ class OrdemServicoRepo:
         *,
         status_filter: str | None = None,
     ) -> list[OrdemServico]:
-        """List OS assigned to tecnico. By default excludes concluida/cancelada."""
+        """List OS assigned to tecnico.
+
+        By default returns the full queue for the assigned technician so the
+        mobile home can show concluded/cancelled items together with active
+        work. When `status_filter` is provided, the backend narrows the list.
+        """
         from sqlalchemy import desc, select
 
         stmt = select(OrdemServico).where(OrdemServico.tecnico_id == tecnico_id)
         if status_filter:
             stmt = stmt.where(OrdemServico.status == OsStatus(status_filter))
-        else:
-            stmt = stmt.where(
-                OrdemServico.status.in_([OsStatus.PENDENTE, OsStatus.EM_ANDAMENTO])
-            )
         stmt = stmt.order_by(desc(OrdemServico.criada_em))
         return list((await self._session.execute(stmt)).scalars().all())
 
