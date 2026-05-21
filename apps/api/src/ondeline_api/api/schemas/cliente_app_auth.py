@@ -167,3 +167,32 @@ class PixOut(BaseModel):
 
 class BoletoUrlOut(BaseModel):
     url: str
+
+
+# ════════ Fase 5: OS pelo cliente ════════
+
+
+class OsCreateIn(BaseModel):
+    tipo: str  # sem_internet | mudanca_endereco | troca_plano
+    descricao: str = Field(min_length=0, max_length=2000)
+    payload: dict = Field(default_factory=dict)
+
+    @field_validator("tipo")
+    @classmethod
+    def _check_tipo(cls, v: str) -> str:
+        if v not in {"sem_internet", "mudanca_endereco", "troca_plano"}:
+            raise ValueError("tipo invalido")
+        return v
+
+
+class OsOut(BaseModel):
+    id: str
+    tipo: str
+    descricao: str
+    status: str
+    created_at: str
+    updated_at: str
+
+
+class OsListOut(BaseModel):
+    items: list[OsOut]
