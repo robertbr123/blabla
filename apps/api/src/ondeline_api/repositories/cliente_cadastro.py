@@ -12,6 +12,7 @@ from uuid import UUID
 
 from sqlalchemy import desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql import ColumnElement
 
 from ondeline_api.db.models.business import ClienteCadastro
 
@@ -80,7 +81,7 @@ class ClienteCadastroRepo:
 
             q_like = f"%{q_clean}%"
             q_norm = normalize_nome(q_clean)
-            conditions = [
+            conditions: list[ColumnElement[bool]] = [
                 ClienteCadastro.serial.ilike(q_like),
                 ClienteCadastro.city.ilike(q_like),
                 ClienteCadastro.address.ilike(q_like),

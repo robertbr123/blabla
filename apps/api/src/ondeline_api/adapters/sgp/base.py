@@ -14,7 +14,10 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-from ondeline_api.db.models.business import SgpProvider as SgpProviderEnum
+from ondeline_api.db.models.business import SgpProvider
+
+# Re-export explícito (mypy --no-implicit-reexport)
+SgpProviderEnum = SgpProvider
 
 
 @dataclass(frozen=True, slots=True)
