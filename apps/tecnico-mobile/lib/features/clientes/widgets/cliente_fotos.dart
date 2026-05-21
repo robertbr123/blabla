@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/auth/auth_storage.dart';
-import '../../../core/ui/app_state_panel.dart';
 import '../../../core/ui/app_surfaces.dart';
 import '../cliente_data.dart';
 import '../cliente_form_data.dart';
@@ -75,6 +74,7 @@ class _ClienteFotosSectionState extends ConsumerState<ClienteFotosSection> {
             filePath: x.path,
             tipo: escolha.tipo,
           );
+      // ignore: unused_result
       await ref.refresh(clienteDetailProvider(widget.cliente.id).future);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -137,6 +137,7 @@ class _ClienteFotosSectionState extends ConsumerState<ClienteFotosSection> {
       await ref
           .read(clienteFormActionsProvider)
           .removerFoto(clienteId: widget.cliente.id, idx: idx);
+      // ignore: unused_result
       await ref.refresh(clienteDetailProvider(widget.cliente.id).future);
     } catch (e) {
       if (mounted) {
