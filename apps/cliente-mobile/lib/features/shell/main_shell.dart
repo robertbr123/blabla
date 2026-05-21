@@ -5,7 +5,7 @@ import '../../core/branding/brand_tokens.dart';
 import '../faturas/faturas_screen.dart';
 import '../home/home_screen.dart';
 import '../perfil/perfil_screen.dart';
-import '../suporte/suporte_stub_screen.dart';
+import '../suporte/suporte_screen.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
@@ -20,7 +20,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   static const _tabs = [
     HomeScreen(),
     FaturasScreen(),
-    SuporteStubScreen(),
+    SuporteScreen(),
     PerfilScreen(),
   ];
 

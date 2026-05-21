@@ -9,6 +9,7 @@ import 'features/onboarding/onboarding_otp_screen.dart';
 import 'features/onboarding/onboarding_password_screen.dart';
 import 'features/perfil/editar_perfil_screen.dart';
 import 'features/perfil/mudar_senha_screen.dart';
+import 'features/suporte/novo_chamado_screen.dart';
 import 'features/shell/main_shell.dart';
 import 'features/splash/splash_screen.dart';
 
@@ -77,6 +78,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/perfil/mudar-senha',
         builder: (_, __) => const MudarSenhaScreen(),
+      ),
+      GoRoute(
+        path: '/suporte/novo',
+        builder: (_, __) => const NovoChamadoScreen(),
       ),
     ],
   );

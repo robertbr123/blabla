@@ -142,6 +142,38 @@ class PlanoDto {
   final EnderecoDto enderecoPrincipal;
 }
 
+class OsDto {
+  OsDto({
+    required this.id,
+    required this.tipo,
+    required this.descricao,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  factory OsDto.fromJson(Map<String, dynamic> j) => OsDto(
+        id: j['id'] as String,
+        tipo: j['tipo'] as String,
+        descricao: j['descricao'] as String,
+        status: j['status'] as String,
+        createdAt: DateTime.parse(j['created_at'] as String),
+        updatedAt: DateTime.parse(j['updated_at'] as String),
+      );
+  final String id;
+  final String tipo; // sem_internet|mudanca_endereco|troca_plano
+  final String descricao;
+  final String status; // aberto|em_atendimento|concluido|cancelado
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  String get tipoLabel => switch (tipo) {
+        'sem_internet' => 'Sem internet',
+        'mudanca_endereco' => 'Mudanca de endereco',
+        'troca_plano' => 'Troca de plano',
+        _ => tipo,
+      };
+}
+
 class FaturaDto {
   FaturaDto({
     required this.id,
