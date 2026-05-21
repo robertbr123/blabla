@@ -142,6 +142,40 @@ class PlanoDto {
   final EnderecoDto enderecoPrincipal;
 }
 
+class FaturaDto {
+  FaturaDto({
+    required this.id,
+    required this.valor,
+    required this.vencimento,
+    required this.status,
+    this.diasAtraso = 0,
+    required this.temPdf,
+    required this.temPix,
+  });
+  factory FaturaDto.fromJson(Map<String, dynamic> j) => FaturaDto(
+        id: j['id'] as String,
+        valor: (j['valor'] as num).toDouble(),
+        vencimento: j['vencimento'] as String,
+        status: j['status'] as String,
+        diasAtraso: (j['dias_atraso'] as int?) ?? 0,
+        temPdf: j['tem_pdf'] as bool,
+        temPix: j['tem_pix'] as bool,
+      );
+
+  final String id;
+  final double valor;
+  final String vencimento;
+  final String status;
+  final int diasAtraso;
+  final bool temPdf;
+  final bool temPix;
+
+  bool get isAberto => status == 'aberto';
+  bool get isVencido => isAberto && diasAtraso > 0;
+
+  DateTime get vencimentoDate => DateTime.parse(vencimento);
+}
+
 class AvisoDto {
   AvisoDto({
     required this.id,

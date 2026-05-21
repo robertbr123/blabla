@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/branding/brand_tokens.dart';
-import '../faturas/faturas_stub_screen.dart';
+import '../faturas/faturas_screen.dart';
 import '../home/home_screen.dart';
 import '../perfil/perfil_screen.dart';
 import '../suporte/suporte_stub_screen.dart';
@@ -19,7 +19,7 @@ class _MainShellState extends ConsumerState<MainShell> {
 
   static const _tabs = [
     HomeScreen(),
-    FaturasStubScreen(),
+    FaturasScreen(),
     SuporteStubScreen(),
     PerfilScreen(),
   ];

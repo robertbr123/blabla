@@ -24,6 +24,9 @@ dependencies:
   # Preferencias (cache last-known + theme mode)
   shared_preferences: ^2.3.3
 
+  # Abrir URLs externas (boleto PDF, share)
+  url_launcher: ^6.3.1
+
   # Push (opcional — graceful se firebase_options.dart nao existir)
   firebase_core: ^3.6.0
   firebase_messaging: ^15.1.3
