@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
+import 'package:tecnico_mobile/core/api/api_client.dart';
+import 'package:tecnico_mobile/core/db/database.dart';
 import 'package:tecnico_mobile/core/sync/sync_service.dart';
 import 'package:tecnico_mobile/core/theme.dart';
 import 'package:tecnico_mobile/features/os/os_data.dart';
@@ -56,6 +60,24 @@ List<Map<String, dynamic>> _defaultRows() {
       criadaEm: now.subtract(const Duration(days: 1)),
     ),
   ];
+}
+
+Dio _offlineDio() {
+  final dio = Dio();
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) {
+        handler.reject(
+          DioException(
+            requestOptions: options,
+            type: DioExceptionType.connectionError,
+            error: 'offline',
+          ),
+        );
+      },
+    ),
+  );
+  return dio;
 }
 
 Future<void> _pumpHome(
@@ -147,6 +169,36 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Atualizar'), findsOneWidget);
+  });
+
+  testWidgets('home shows offline panel on cold start without cached os',
+      (tester) async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          dbProvider.overrideWith((ref) => db),
+          apiClientProvider.overrideWith((ref) => _offlineDio()),
+          pendingCountProvider.overrideWith((ref) => Stream<int>.value(0)),
+        ],
+        child: MaterialApp(
+          theme: buildLightTheme(),
+          home: const OsListScreen(),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sem conexão para atualizar a fila'), findsOneWidget);
+    expect(
+      find.textContaining('A última sincronização não chegou agora'),
+      findsOneWidget,
+    );
+    expect(find.text('Tentar novamente'), findsOneWidget);
   });
 
   testWidgets(

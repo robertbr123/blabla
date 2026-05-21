@@ -3,7 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import 'package:drift/native.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:tecnico_mobile/core/api/api_client.dart';
+import 'package:tecnico_mobile/core/db/database.dart';
 import 'package:tecnico_mobile/core/theme.dart';
 import 'package:tecnico_mobile/core/ui/app_surfaces.dart';
 import 'package:tecnico_mobile/features/clientes/cliente_data.dart';
@@ -101,6 +104,24 @@ Future<void> pumpClientesList(WidgetTester tester) async {
   );
 
   await tester.pumpAndSettle();
+}
+
+Dio _offlineDio() {
+  final dio = Dio();
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) {
+        handler.reject(
+          DioException(
+            requestOptions: options,
+            type: DioExceptionType.connectionError,
+            error: 'offline',
+          ),
+        );
+      },
+    ),
+  );
+  return dio;
 }
 
 Future<void> pumpClienteDetail(WidgetTester tester) async {
@@ -229,15 +250,15 @@ void main() {
 
   testWidgets('clientes list shows offline guidance when fetch has no cache',
       (tester) async {
+    final db = AppDatabase.forTesting(NativeDatabase.memory());
+    addTearDown(db.close);
+
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          clientesListProvider.overrideWith(
-            (ref) async => throw DioException(
-              requestOptions: RequestOptions(path: '/api/v1/clientes-campo'),
-              type: DioExceptionType.connectionError,
-            ),
-          ),
+          dbProvider.overrideWith((ref) => db),
+          apiClientProvider.overrideWith((ref) => _offlineDio()),
+          clienteReadUserIdProvider.overrideWith((ref) => () async => 'u9'),
         ],
         child: MaterialApp(
           theme: buildLightTheme(),

@@ -229,6 +229,10 @@ final clienteCadastroRepoProvider = Provider<ClienteCadastroLocalRepo>(
   (ref) => ClienteCadastroLocalRepo(ref.watch(dbProvider)),
 );
 
+final clienteReadUserIdProvider = Provider<Future<String?> Function()>((ref) {
+  return readUserId;
+});
+
 /// Lista cache-first:
 /// 1. Sem filtro → retorna cache imediatamente e refaz fetch em background
 /// 2. Com filtro de busca → vai direto na API (cache so guarda snapshot full)
@@ -238,7 +242,8 @@ final clientesListProvider =
   final filter = ref.watch(clienteListFilterProvider);
   final dio = ref.watch(apiClientProvider);
   final repo = ref.watch(clienteCadastroRepoProvider);
-  final userId = await readUserId();
+  final readCurrentUserId = ref.watch(clienteReadUserIdProvider);
+  final userId = await readCurrentUserId();
 
   final qs = filter.toQueryString();
   final url = '/api/v1/clientes-campo${qs.isNotEmpty ? '?$qs' : ''}';
@@ -270,6 +275,9 @@ final clientesListProvider =
     // Fallback offline: usa cache local (ignora filtro de servidor —
     // aplica busca client-side no caminho de cima quando online).
     final cached = await repo.listAll(userId: userId);
+    if (cached.isEmpty) {
+      rethrow;
+    }
     final q = (filter.q ?? '').toLowerCase();
     final filtered = cached.where((row) {
       if (q.isEmpty) return true;

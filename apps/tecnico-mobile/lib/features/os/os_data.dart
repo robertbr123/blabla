@@ -11,30 +11,28 @@ final _osRepoProvider = Provider<OsLocalRepo>((ref) {
 
 /// Lista de OS — usa cache local (Stream Drift) e refresca em background.
 /// Offline = última snapshot fica visível.
-final osListStreamProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+final osListStreamProvider =
+    StreamProvider<List<Map<String, dynamic>>>((ref) async* {
   final repo = ref.watch(_osRepoProvider);
-  // Fire-and-forget refresh em background.
-  Future<void>.microtask(() async {
-    try {
-      final dio = ref.read(apiClientProvider);
-      final r = await dio.get('/api/v1/tecnico/me/os');
-      final raw = r.data;
-      final List items;
-      if (raw is List) {
-        items = raw;
-      } else if (raw is Map && raw['items'] is List) {
-        items = raw['items'] as List;
-      } else {
-        items = const [];
+  final cached = await repo.listAll();
+
+  if (cached.isNotEmpty) {
+    yield cached;
+    Future<void>.microtask(() async {
+      try {
+        await _refreshOsList(ref, repo);
+      } on DioException {
+        // offline: stream do cache continua respondendo
+      } catch (_) {
+        // ignora demais erros — UI mostra cache
       }
-      await repo.upsertAll(items.cast<Map<String, dynamic>>());
-    } on DioException {
-      // offline: stream do cache continua respondendo
-    } catch (_) {
-      // ignora demais erros — UI mostra cache
-    }
-  });
-  return repo.watchAll();
+    });
+    yield* repo.watchAll().skip(1);
+    return;
+  }
+
+  await _refreshOsList(ref, repo);
+  yield* repo.watchAll();
 });
 
 /// Detalhe de OS — read-through similar.
@@ -57,4 +55,20 @@ final osDetailProvider =
 });
 
 /// Provider expondo o repo pra logout limpar cache.
-final osLocalRepoProvider = Provider<OsLocalRepo>((ref) => ref.watch(_osRepoProvider));
+final osLocalRepoProvider =
+    Provider<OsLocalRepo>((ref) => ref.watch(_osRepoProvider));
+
+Future<void> _refreshOsList(Ref ref, OsLocalRepo repo) async {
+  final dio = ref.read(apiClientProvider);
+  final r = await dio.get('/api/v1/tecnico/me/os');
+  final raw = r.data;
+  final List items;
+  if (raw is List) {
+    items = raw;
+  } else if (raw is Map && raw['items'] is List) {
+    items = raw['items'] as List;
+  } else {
+    items = const [];
+  }
+  await repo.upsertAll(items.cast<Map<String, dynamic>>());
+}

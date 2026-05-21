@@ -5,11 +5,49 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tecnico_mobile/core/db/database.dart';
 import 'package:tecnico_mobile/core/db/estoque_repo.dart';
 import 'package:tecnico_mobile/core/db/perfil_repo.dart';
+import 'package:tecnico_mobile/core/db/os_repo.dart';
+import 'package:tecnico_mobile/core/db/cliente_cadastro_repo.dart';
 import 'package:tecnico_mobile/core/api/api_client.dart';
 import 'package:tecnico_mobile/features/estoque/estoque_data.dart';
 import 'package:tecnico_mobile/features/perfil/perfil_data.dart';
+import 'package:tecnico_mobile/features/os/os_data.dart';
+import 'package:tecnico_mobile/features/clientes/cliente_data.dart';
 
 AppDatabase testDatabase() => AppDatabase.forTesting(NativeDatabase.memory());
+
+Map<String, dynamic> _osRow({
+  required String id,
+  required String codigo,
+  required String status,
+}) {
+  return {
+    'id': id,
+    'codigo': codigo,
+    'status': status,
+    'problema': 'Sem sinal',
+    'endereco': 'Rua A, 100',
+    'nome_cliente': 'Cliente $id',
+    'criada_em': DateTime(2026, 5, 20).toUtc().toIso8601String(),
+  };
+}
+
+Map<String, dynamic> _clienteRow({
+  required String id,
+  required String nome,
+}) {
+  return {
+    'id': id,
+    'cpf': '12345678901',
+    'nome': nome,
+    'address': 'Rua das Palmeiras',
+    'number': '120',
+    'neighborhood': 'Centro',
+    'city': 'Manaus',
+    'plan_nome': 'Fibra 500 Mega',
+    'installer_nome': 'Técnico 1',
+    'created_at': DateTime(2026, 5, 20).toUtc().toIso8601String(),
+  };
+}
 
 void main() {
   test('estoque repo round-trips cached rows', () async {
@@ -107,7 +145,8 @@ void main() {
     expect((await repo.listAll(userId: 'u2')).single['sku'], 'FIBRA');
   });
 
-  test('estoque repo keeps snapshots isolated when multiple users coexist', () async {
+  test('estoque repo keeps snapshots isolated when multiple users coexist',
+      () async {
     final db = testDatabase();
     addTearDown(db.close);
 
@@ -198,7 +237,8 @@ void main() {
     },
   );
 
-  test('estoque provider propagates error when request fails without cache', () async {
+  test('estoque provider propagates error when request fails without cache',
+      () async {
     final db = testDatabase();
     addTearDown(db.close);
 
@@ -256,6 +296,104 @@ void main() {
       ),
     );
   });
+
+  test('os list provider serves cached snapshot when offline', () async {
+    final db = testDatabase();
+    addTearDown(db.close);
+
+    final repo = OsLocalRepo(db);
+    await repo.upsertAll([
+      _osRow(id: 'os-1', codigo: 'OS-001', status: 'pendente'),
+    ]);
+
+    final container = ProviderContainer(
+      overrides: [
+        dbProvider.overrideWith((ref) => db),
+        apiClientProvider.overrideWith((ref) => _offlineDio()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final rows = await container.read(osListStreamProvider.future);
+
+    expect(rows, hasLength(1));
+    expect(rows.single['codigo'], 'OS-001');
+  });
+
+  test('os list provider propagates error on cold start offline without cache',
+      () async {
+    final db = testDatabase();
+    addTearDown(db.close);
+
+    final container = ProviderContainer(
+      overrides: [
+        dbProvider.overrideWith((ref) => db),
+        apiClientProvider.overrideWith((ref) => _offlineDio()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container.read(osListStreamProvider.future),
+      throwsA(isA<DioException>()),
+    );
+  });
+
+  test('clientes list provider serves cached snapshot when offline', () async {
+    final db = testDatabase();
+    addTearDown(db.close);
+
+    final repo = ClienteCadastroLocalRepo(db);
+    await repo.replaceAll(
+      userId: 'u1',
+      rows: [
+        _clienteRow(id: 'cliente-1', nome: 'Cliente U1'),
+      ],
+    );
+    await repo.replaceAll(
+      userId: 'u2',
+      rows: [
+        _clienteRow(id: 'cliente-2', nome: 'Cliente U2'),
+      ],
+    );
+
+    final container = ProviderContainer(
+      overrides: [
+        dbProvider.overrideWith((ref) => db),
+        apiClientProvider.overrideWith((ref) => _offlineDio()),
+        clienteReadUserIdProvider.overrideWith((ref) => () async => 'u2'),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final page = await container.read(clientesListProvider.future);
+
+    expect(page.items, hasLength(1));
+    expect(page.items.single.id, 'cliente-2');
+    expect(page.items.single.nome, 'Cliente U2');
+  });
+
+  test(
+    'clientes list provider propagates error when request fails without cache',
+    () async {
+      final db = testDatabase();
+      addTearDown(db.close);
+
+      final container = ProviderContainer(
+        overrides: [
+          dbProvider.overrideWith((ref) => db),
+          apiClientProvider.overrideWith((ref) => _offlineDio()),
+          clienteReadUserIdProvider.overrideWith((ref) => () async => 'u9'),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await expectLater(
+        container.read(clientesListProvider.future),
+        throwsA(isA<DioException>()),
+      );
+    },
+  );
 
   test(
     'perfil provider serves cached snapshot for current auth user when offline',
@@ -324,7 +462,8 @@ void main() {
               },
             }),
           ),
-          perfilReadUserIdProvider.overrideWith((ref) => () async => 'u-current'),
+          perfilReadUserIdProvider
+              .overrideWith((ref) => () async => 'u-current'),
         ],
       );
       addTearDown(container.dispose);
