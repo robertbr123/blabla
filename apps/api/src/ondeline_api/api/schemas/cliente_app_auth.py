@@ -70,3 +70,75 @@ class ForgotIn(BaseModel):
     @classmethod
     def _check_cpf(cls, v: str) -> str:
         return _normalize_cpf(v)
+
+
+# ════════ Fase 3: Me, Plano, Avisos ════════
+
+
+from datetime import datetime as _Dt  # noqa: E402
+
+
+class MeOut(BaseModel):
+    id: str
+    nome: str
+    cpf_last4: str
+    telefone: str
+    email: str | None = None
+    biometric_enabled: bool
+    plano_nome: str | None = None
+    status_conexao: str | None = None
+
+
+class EnderecoOut(BaseModel):
+    logradouro: str = ""
+    numero: str = ""
+    bairro: str = ""
+    cidade: str = ""
+    uf: str = ""
+    cep: str = ""
+
+
+class ContratoOut(BaseModel):
+    id: str
+    plano: str
+    status: str
+    cidade: str = ""
+    endereco: EnderecoOut = EnderecoOut()
+
+
+class PlanoOut(BaseModel):
+    nome_titular: str
+    contratos: list[ContratoOut]
+    endereco_principal: EnderecoOut
+
+
+class AvisoOut(BaseModel):
+    id: str
+    titulo: str
+    corpo: str
+    severidade: str
+    publicado_em: _Dt
+
+
+class AvisosOut(BaseModel):
+    items: list[AvisoOut]
+
+
+class UpdateMeIn(BaseModel):
+    telefone: str | None = None
+    email: str | None = None
+
+    @field_validator("telefone")
+    @classmethod
+    def _check_tel(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        digits = "".join(c for c in v if c.isdigit())
+        if len(digits) < 10 or len(digits) > 13:
+            raise ValueError("telefone invalido")
+        return digits
+
+
+class ChangePasswordIn(BaseModel):
+    current_password: str = Field(min_length=8, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
