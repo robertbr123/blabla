@@ -19,6 +19,11 @@ macos/
 windows/
 web/
 
+# Mas TRACK estes arquivos customizados (display name, ids, etc).
+# Negacao precisa vir DEPOIS do ignore.
+!android/app/src/main/AndroidManifest.xml
+!ios/Runner/Info.plist
+
 # Firebase
 lib/firebase_options.dart
 google-services.json
