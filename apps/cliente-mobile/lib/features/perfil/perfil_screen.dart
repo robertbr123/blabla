@@ -6,7 +6,6 @@ import '../../core/api/me_repository.dart';
 import '../../core/auth/auth_repository.dart';
 import '../../core/auth/auth_state.dart';
 import '../../core/branding/brand_tokens.dart';
-import '../../core/dev/dev_mode.dart';
 import '../../core/theme/theme_mode_controller.dart';
 
 class PerfilScreen extends ConsumerWidget {
@@ -97,7 +96,6 @@ class PerfilScreen extends ConsumerWidget {
               icon: const Icon(Icons.logout),
               label: const Text('Sair'),
               onPressed: () async {
-                await ref.read(devModeProvider).disable();
                 await ref.read(authRepositoryProvider).logout();
                 ref.read(authRefreshProvider).bump();
                 if (context.mounted) context.go('/onboarding/cpf');

@@ -4,9 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_repository.dart';
-import '../../core/auth/auth_state.dart';
 import '../../core/branding/brand_tokens.dart';
-import '../../core/dev/dev_mode.dart';
 
 class OnboardingCpfScreen extends ConsumerStatefulWidget {
   const OnboardingCpfScreen({super.key});
@@ -102,25 +100,6 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
               TextButton(
                 onPressed: () => context.go('/login'),
                 child: const Text('Ja tenho conta'),
-              ),
-              const SizedBox(height: BrandTokens.spaceLg),
-              const Divider(),
-              const SizedBox(height: BrandTokens.spaceSm),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.bug_report_outlined),
-                label: const Text('Entrar em modo dev (sem rede)'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: BrandTokens.warning,
-                  side: const BorderSide(color: BrandTokens.warning),
-                ),
-                onPressed: _loading
-                    ? null
-                    : () async {
-                        await ref.read(devModeProvider).enable();
-                        ref.read(authRefreshProvider).bump();
-                        if (!mounted) return;
-                        context.go('/home');
-                      },
               ),
             ],
           ),
