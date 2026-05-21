@@ -9,12 +9,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.adapters.sgp.base import ClienteSgp
+from ondeline_api.adapters.sgp.base import Fatura
 from ondeline_api.api.schemas.cliente_app_auth import (
     AvisosOut,
+    BoletoUrlOut,
     ChangePasswordIn,
     ContratoOut,
     EnderecoOut,
+    FaturaOut,
+    FaturasOut,
     MeOut,
+    PixOut,
     PlanoOut,
     UpdateMeIn,
 )
@@ -117,6 +122,70 @@ async def update_me(
     await session.commit()
     sgp = await _sgp_cliente(session, user.cpf_encrypted)
     return _build_me(user, sgp)
+
+
+def _fatura_out(f: Fatura) -> FaturaOut:
+    return FaturaOut(
+        id=f.id,
+        valor=float(f.valor),
+        vencimento=f.vencimento,
+        status=f.status,
+        dias_atraso=int(f.dias_atraso),
+        tem_pdf=bool(f.link_pdf),
+        tem_pix=bool(f.codigo_pix),
+    )
+
+
+@router.get("/faturas", response_model=FaturasOut)
+async def faturas(
+    status: str | None = None,
+    user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> FaturasOut:
+    sgp = await _sgp_cliente(session, user.cpf_encrypted)
+    if sgp is None:
+        return FaturasOut(items=[])
+    titulos = list(sgp.titulos)
+    if status == "abertas":
+        titulos = [t for t in titulos if t.status == "aberto"]
+    elif status == "pagas":
+        titulos = [t for t in titulos if t.status != "aberto"]
+    titulos.sort(key=lambda t: t.vencimento, reverse=True)
+    return FaturasOut(items=[_fatura_out(t) for t in titulos])
+
+
+@router.get("/faturas/{titulo_id}/pix", response_model=PixOut)
+async def fatura_pix(
+    titulo_id: str,
+    user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> PixOut:
+    sgp = await _sgp_cliente(session, user.cpf_encrypted)
+    if sgp is None:
+        raise HTTPException(status_code=404, detail="cliente nao encontrado")
+    for t in sgp.titulos:
+        if t.id == titulo_id:
+            if not t.codigo_pix:
+                raise HTTPException(status_code=404, detail="fatura sem pix")
+            return PixOut(codigo=t.codigo_pix)
+    raise HTTPException(status_code=404, detail="fatura nao encontrada")
+
+
+@router.get("/faturas/{titulo_id}/boleto", response_model=BoletoUrlOut)
+async def fatura_boleto(
+    titulo_id: str,
+    user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> BoletoUrlOut:
+    sgp = await _sgp_cliente(session, user.cpf_encrypted)
+    if sgp is None:
+        raise HTTPException(status_code=404, detail="cliente nao encontrado")
+    for t in sgp.titulos:
+        if t.id == titulo_id:
+            if not t.link_pdf:
+                raise HTTPException(status_code=404, detail="fatura sem pdf")
+            return BoletoUrlOut(url=t.link_pdf)
+    raise HTTPException(status_code=404, detail="fatura nao encontrada")
 
 
 @router.post("/me/password", status_code=204)

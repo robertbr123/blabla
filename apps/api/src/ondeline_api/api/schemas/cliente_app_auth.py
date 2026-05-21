@@ -142,3 +142,28 @@ class UpdateMeIn(BaseModel):
 class ChangePasswordIn(BaseModel):
     current_password: str = Field(min_length=8, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)
+
+
+# ════════ Fase 4: Faturas ════════
+
+
+class FaturaOut(BaseModel):
+    id: str
+    valor: float
+    vencimento: str
+    status: str
+    dias_atraso: int = 0
+    tem_pdf: bool
+    tem_pix: bool
+
+
+class FaturasOut(BaseModel):
+    items: list[FaturaOut]
+
+
+class PixOut(BaseModel):
+    codigo: str
+
+
+class BoletoUrlOut(BaseModel):
+    url: str
