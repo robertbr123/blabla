@@ -435,6 +435,7 @@ async def create_cliente_campo(
             except (ItemNaoExiste, SerialDuplicado, EstoqueError) as e:
                 raise HTTPException(status_code=400, detail=str(e)) from e
 
+    await session.refresh(cliente)
     return _to_out(cliente)
 
 
@@ -490,6 +491,7 @@ async def patch_cliente_campo(
             v = v.upper()
         setattr(cliente, k, v)
     await session.flush()
+    await session.refresh(cliente)
     return _to_out(cliente)
 
 
@@ -529,6 +531,7 @@ async def marcar_sincronizado_sgp(
     if cliente is None:
         raise HTTPException(status_code=404, detail="cliente nao encontrado")
     await repo.marcar_sincronizado(cliente, body.sgp_id.strip())
+    await session.refresh(cliente)
     return _to_out(cliente)
 
 
@@ -683,6 +686,10 @@ async def upload_foto_cliente_campo(
             status_code=500,
             detail="falha ao registrar foto no servidor",
         ) from exc
+    # Após flush(), `updated_at` (server_default=now()) fica expired e seu
+    # acesso em _to_out dispararia lazy-load síncrono → MissingGreenlet.
+    # Recarregar explicitamente em contexto async resolve.
+    await session.refresh(cliente)
     return _to_out(cliente)
 
 
@@ -759,6 +766,7 @@ async def delete_foto_cliente_campo(
                 f.unlink()
     except Exception:
         pass
+    await session.refresh(cliente)
     return _to_out(cliente)
 
 
