@@ -12,6 +12,7 @@ from ondeline_api.adapters.sgp.base import (
     ClienteSgp,
     Contrato,
     EnderecoSgp,
+    Fatura,
 )
 from ondeline_api.db.models.business import SgpProvider as SgpProviderEnum
 from ondeline_api.auth import jwt as jwt_mod
@@ -54,6 +55,24 @@ def fake_sgp() -> ClienteSgp:
             Contrato(id="c1", plano="Fibra 600", status="ativo", cidade="Manaus"),
         ],
         endereco=EnderecoSgp(cidade="Manaus", uf="AM"),
+        titulos=[
+            Fatura(
+                id="t1",
+                valor=129.90,
+                vencimento="2026-06-10",
+                status="aberto",
+                link_pdf="https://sgp.exemplo/boleto/t1.pdf",
+                codigo_pix="00020126...pix-t1",
+            ),
+            Fatura(
+                id="t2",
+                valor=129.90,
+                vencimento="2026-05-10",
+                status="pago",
+                link_pdf="https://sgp.exemplo/boleto/t2.pdf",
+                codigo_pix=None,
+            ),
+        ],
     )
 
 
@@ -151,6 +170,73 @@ async def test_change_password_flow(
         json={"current_password": "SenhaForte123!", "new_password": "NovaSenha456!"},
     )
     assert r.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_faturas_lista_todas(
+    client: AsyncClient, existing_cliente: ClienteAppUser
+) -> None:
+    r = await client.get(
+        "/api/v1/cliente-app/faturas", headers=_auth(existing_cliente)
+    )
+    assert r.status_code == 200, r.text
+    items = r.json()["items"]
+    assert len(items) == 2
+    # Ordem decrescente por vencimento
+    assert items[0]["id"] == "t1"
+    assert items[0]["tem_pix"] is True
+    assert items[1]["tem_pix"] is False
+
+
+@pytest.mark.asyncio
+async def test_faturas_filtro_abertas(
+    client: AsyncClient, existing_cliente: ClienteAppUser
+) -> None:
+    r = await client.get(
+        "/api/v1/cliente-app/faturas?status=abertas",
+        headers=_auth(existing_cliente),
+    )
+    assert r.status_code == 200
+    items = r.json()["items"]
+    assert len(items) == 1
+    assert items[0]["status"] == "aberto"
+
+
+@pytest.mark.asyncio
+async def test_pix_da_fatura_aberta(
+    client: AsyncClient, existing_cliente: ClienteAppUser
+) -> None:
+    r = await client.get(
+        "/api/v1/cliente-app/faturas/t1/pix", headers=_auth(existing_cliente)
+    )
+    assert r.status_code == 200
+    assert r.json()["codigo"].startswith("000201")
+
+
+@pytest.mark.asyncio
+async def test_pix_inexistente_retorna_404(
+    client: AsyncClient, existing_cliente: ClienteAppUser
+) -> None:
+    r = await client.get(
+        "/api/v1/cliente-app/faturas/t2/pix", headers=_auth(existing_cliente)
+    )
+    assert r.status_code == 404  # t2 nao tem codigo_pix
+    r = await client.get(
+        "/api/v1/cliente-app/faturas/inexistente/pix",
+        headers=_auth(existing_cliente),
+    )
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_boleto_url(
+    client: AsyncClient, existing_cliente: ClienteAppUser
+) -> None:
+    r = await client.get(
+        "/api/v1/cliente-app/faturas/t1/boleto", headers=_auth(existing_cliente)
+    )
+    assert r.status_code == 200
+    assert r.json()["url"].endswith(".pdf")
 
 
 @pytest.mark.asyncio
