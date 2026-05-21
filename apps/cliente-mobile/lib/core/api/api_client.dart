@@ -1,7 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../auth/auth_storage.dart';
+import '../dev/dev_mode.dart';
 
 const apiBaseUrl = String.fromEnvironment(
   'API_URL',
@@ -18,6 +20,22 @@ final apiClientProvider = Provider<Dio>((ref) {
 
   dio.interceptors.add(InterceptorsWrapper(
     onRequest: (options, handler) async {
+      // Modo dev — intercepta antes de qualquer rede e devolve mock
+      final p = await SharedPreferences.getInstance();
+      if (p.getBool('dev_mode') == true) {
+        final method = options.method.toUpperCase();
+        final mock = mockResponse(method, options.path);
+        if (mock != null) {
+          return handler.resolve(
+            Response(
+              requestOptions: options,
+              statusCode: method == 'POST' ? 201 : 200,
+              data: mock,
+            ),
+          );
+        }
+      }
+
       final skipAuth = options.extra['skipAuth'] == true;
       if (!skipAuth) {
         final token = await readAccessToken();
