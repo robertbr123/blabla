@@ -10,6 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:permission_handler_platform_interface/permission_handler_platform_interface.dart';
 import 'package:tecnico_mobile/core/api/api_client.dart';
 import 'package:tecnico_mobile/core/db/database.dart';
+import 'package:tecnico_mobile/core/location/location_service.dart';
 import 'package:tecnico_mobile/core/sync/outbox_repo.dart';
 import 'package:tecnico_mobile/core/sync/sync_service.dart';
 import 'package:tecnico_mobile/features/os/os_detail_screen.dart';
@@ -60,6 +61,15 @@ class _FakePermissionHandlerPlatform extends PermissionHandlerPlatform {
   ) async {
     return false;
   }
+}
+
+class _FakeLocationService implements LocationService {
+  _FakeLocationService(this.result);
+
+  final LocationResult? result;
+
+  @override
+  Future<LocationResult?> capture() async => result;
 }
 
 AppDatabase _testDatabase() => AppDatabase.forTesting(NativeDatabase.memory());
@@ -178,7 +188,7 @@ Future<void> _pumpOfflineOsDetail(
           criadaEm: '2026-05-18T12:00:00Z',
           concluidaEm: const Value(null),
           payloadJson:
-              '{"id":"os-1","codigo":"OS-001","status":"$status","problema":"Sem sinal","endereco":"Rua A, 100","nome_cliente":"Cliente Teste","agendamento_at":"2026-05-19T09:00:00Z","criada_em":"2026-05-18T12:00:00Z","concluida_em":null}',
+              '{"id":"os-1","codigo":"OS-001","status":"$status","problema":"Sem sinal","endereco":"Rua A, 100","nome_cliente":"Cliente Teste","agendamento_at":"2026-05-19T09:00:00Z","criada_em":"2026-05-18T12:00:00Z","concluida_em":null,"gps_inicio_lat":-3.1,"gps_inicio_lng":-60.0}',
           syncedAt: DateTime.now(),
         ),
       );
@@ -188,6 +198,9 @@ Future<void> _pumpOfflineOsDetail(
       overrides: [
         dbProvider.overrideWith((ref) => db),
         apiClientProvider.overrideWith((ref) => dio ?? _offlineDio()),
+        locationServiceProvider.overrideWith(
+          (ref) => _FakeLocationService(LocationResult(-3.1, -60.0, 10)),
+        ),
         pendingCountProvider.overrideWith((ref) => Stream<int>.value(0)),
       ],
       child: const MaterialApp(home: OsDetailScreen(id: 'os-1')),
@@ -260,6 +273,24 @@ void main() {
 
     expect(find.text('Iniciar visita (com GPS)'), findsNothing);
     expect(find.text('Concluir OS'), findsOneWidget);
+  });
+
+  testWidgets('os detail shows visit location section when gps exists',
+      (tester) async {
+    final db = _testDatabase();
+    addTearDown(db.close);
+
+    ConnectivityPlatform.instance =
+        _FakeConnectivityPlatform(const [ConnectivityResult.none]);
+    await _pumpOfflineOsDetail(
+      tester,
+      db: db,
+      status: 'pendente',
+    );
+
+    expect(find.text('Localização da visita'), findsOneWidget);
+    expect(find.text('Ponto de início'), findsOneWidget);
+    expect(find.text('Abrir no Mapas'), findsOneWidget);
   });
 
   testWidgets('os detail groups actions and context in separate sections',

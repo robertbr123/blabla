@@ -535,6 +535,7 @@ async def marcar_sincronizado_sgp(
 
 _MAX_FOTO_BYTES = 8 * 1024 * 1024  # 8 MB
 _TIPOS_FOTO_VALIDOS = {"serial", "instalacao", "speedtest", "outro"}
+_EXTENSOES_FOTO_VALIDAS = {".jpg", ".jpeg", ".png", ".heic", ".webp"}
 
 
 def _cliente_fotos_dir() -> Path:
@@ -548,6 +549,16 @@ def _cliente_fotos_dir() -> Path:
     base = Path(configured) if configured else (Path.home() / ".cache" / "ondeline_cliente_fotos")
     base.mkdir(parents=True, exist_ok=True)
     return base
+
+
+def _is_valid_image_upload(content_type: str | None, filename: str | None) -> bool:
+    mime = (content_type or "").strip().lower()
+    if mime.startswith("image/"):
+        return True
+    if mime not in {"", "application/octet-stream"}:
+        return False
+    suffix = Path(filename or "").suffix.lower()
+    return suffix in _EXTENSOES_FOTO_VALIDAS
 
 
 @router.post(
@@ -573,7 +584,7 @@ async def upload_foto_cliente_campo(
             status_code=400,
             detail=f"tipo invalido. Use: {sorted(_TIPOS_FOTO_VALIDOS)}",
         )
-    if not file.content_type or not file.content_type.startswith("image/"):
+    if not _is_valid_image_upload(file.content_type, file.filename):
         raise HTTPException(status_code=400, detail="arquivo deve ser imagem")
 
     repo = ClienteCadastroRepo(session)

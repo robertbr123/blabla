@@ -85,6 +85,17 @@ void main() {
     );
   });
 
+  test('imageUploadFilename preserves the real file extension', () {
+    expect(
+      imageUploadFilename('/tmp/DCIM/IMG_1001.HEIC'),
+      'IMG_1001.HEIC',
+    );
+    expect(
+      imageUploadFilename(''),
+      'foto.jpg',
+    );
+  });
+
   test('planosProvider returns sgp plans when endpoint succeeds', () async {
     final dio = Dio()
       ..httpClientAdapter = _QueuedAdapter([

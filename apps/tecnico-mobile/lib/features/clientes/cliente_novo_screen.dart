@@ -98,7 +98,7 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
 
   Future<void> _capturarGps() async {
     setState(() => _gpsCapturing = true);
-    final loc = await LocationService().capture();
+    final loc = await ref.read(locationServiceProvider).capture();
     if (!mounted) return;
     setState(() {
       _gps = loc;

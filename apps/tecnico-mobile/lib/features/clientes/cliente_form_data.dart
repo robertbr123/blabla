@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 
 import '../../core/api/api_client.dart';
 
@@ -184,8 +185,9 @@ class ClienteFormActions {
     required String filePath,
     required String tipo,
   }) async {
+    final filename = imageUploadFilename(filePath);
     final form = FormData.fromMap({
-      'file': await MultipartFile.fromFile(filePath, filename: 'foto.jpg'),
+      'file': await MultipartFile.fromFile(filePath, filename: filename),
       'tipo': tipo,
     });
     await _dio.post(
@@ -222,6 +224,13 @@ String extractDioMessage(
     return message;
   }
   return fallback;
+}
+
+String imageUploadFilename(String filePath) {
+  final trimmed = filePath.trim();
+  if (trimmed.isEmpty) return 'foto.jpg';
+  final basename = p.basename(trimmed);
+  return basename.isEmpty ? 'foto.jpg' : basename;
 }
 
 List<SgpPlano> _decodeSgpPlanos(Object? data) {

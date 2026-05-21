@@ -30,6 +30,10 @@ class OsOut(OsListItem):
     fotos: list[dict[str, Any]] | None
     csat: int | None
     comentario_cliente: str | None
+    gps_inicio_lat: float | None = None
+    gps_inicio_lng: float | None = None
+    gps_fim_lat: float | None = None
+    gps_fim_lng: float | None = None
     historico_reatribuicoes: list[dict[str, Any]] | None = None
     follow_up_resposta: str | None = None
     follow_up_respondido_em: datetime | None = None

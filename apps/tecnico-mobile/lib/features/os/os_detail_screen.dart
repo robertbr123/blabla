@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/location/location_service.dart';
@@ -82,6 +83,10 @@ class _Body extends ConsumerWidget {
           login: os.readOptionalString('pppoe_login'),
           senha: os.readOptionalString('pppoe_senha'),
         ),
+        if (_visitLocation(os) case final location?) ...[
+          const SizedBox(height: 12),
+          _LocationSection(location: location),
+        ],
         const SizedBox(height: 12),
         _ActionsSection(
           canStart: podeIniciar,
@@ -98,9 +103,38 @@ class _Body extends ConsumerWidget {
     );
   }
 
+  _VisitLocation? _visitLocation(Map<String, dynamic> os) {
+    final endLat = _readDouble(os['gps_fim_lat']);
+    final endLng = _readDouble(os['gps_fim_lng']);
+    if (endLat != null && endLng != null) {
+      return _VisitLocation(
+        lat: endLat,
+        lng: endLng,
+        label: 'Ponto de conclusão',
+      );
+    }
+
+    final startLat = _readDouble(os['gps_inicio_lat']);
+    final startLng = _readDouble(os['gps_inicio_lng']);
+    if (startLat != null && startLng != null) {
+      return _VisitLocation(
+        lat: startLat,
+        lng: startLng,
+        label: 'Ponto de início',
+      );
+    }
+    return null;
+  }
+
+  double? _readDouble(Object? value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
   Future<void> _iniciar(BuildContext context, WidgetRef ref) async {
     _showSnack(context, 'Capturando GPS…');
-    final loc = await LocationService().capture();
+    final loc = await ref.read(locationServiceProvider).capture();
     final body = {
       if (loc != null) 'lat': loc.lat,
       if (loc != null) 'lng': loc.lng,
@@ -215,7 +249,7 @@ class _ConcluirSheetState extends ConsumerState<_ConcluirSheet> {
   Future<void> _enviar() async {
     setState(() => _enviando = true);
     try {
-      final loc = await LocationService().capture();
+      final loc = await ref.read(locationServiceProvider).capture();
       final body = {
         if (_csat != null) 'csat': _csat,
         if (_relatorio.text.trim().isNotEmpty)
@@ -546,6 +580,162 @@ class _ContextSection extends StatelessWidget {
             const SizedBox(height: 18),
             _ConnectionBlock(plano: plano, login: login, senha: senha),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _VisitLocation {
+  final double lat;
+  final double lng;
+  final String label;
+
+  const _VisitLocation({
+    required this.lat,
+    required this.lng,
+    required this.label,
+  });
+}
+
+class _LocationSection extends StatelessWidget {
+  final _VisitLocation location;
+
+  const _LocationSection({required this.location});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final staticMapUri = Uri.https(
+      'staticmap.openstreetmap.de',
+      '/staticmap.php',
+      {
+        'center': '${location.lat},${location.lng}',
+        'zoom': '15',
+        'size': '800x320',
+        'markers': '${location.lat},${location.lng},red-pushpin',
+      },
+    );
+
+    return AppSurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppSectionHeader(
+            title: 'Localização da visita',
+            subtitle:
+                'Use o ponto salvo pela equipe em campo para identificar onde a OS foi executada.',
+          ),
+          const SizedBox(height: 16),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: AspectRatio(
+              aspectRatio: 2.1,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ColoredBox(color: scheme.surfaceContainerLow),
+                  Image.network(
+                    staticMapUri.toString(),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        _MapFallback(location: location),
+                    loadingBuilder: (_, child, progress) {
+                      if (progress == null) return child;
+                      return const Center(
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      location.label,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${location.lat.toStringAsFixed(6)}, ${location.lng.toStringAsFixed(6)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              FilledButton.tonalIcon(
+                onPressed: () => launchUrl(
+                  Uri.parse(
+                    'https://maps.apple.com/?q=${location.lat},${location.lng}',
+                  ),
+                  mode: LaunchMode.externalApplication,
+                ),
+                icon: const Icon(Icons.map_outlined),
+                label: const Text('Abrir no Mapas'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MapFallback extends StatelessWidget {
+  final _VisitLocation location;
+
+  const _MapFallback({required this.location});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      color: scheme.surfaceContainerLow,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.location_pin,
+            size: 34,
+            color: scheme.primary,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Mapa indisponível neste momento',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${location.lat.toStringAsFixed(6)}, ${location.lng.toStringAsFixed(6)}',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
         ],
       ),
     );

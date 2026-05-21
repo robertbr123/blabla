@@ -7,6 +7,7 @@ import 'package:drift/native.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:tecnico_mobile/core/api/api_client.dart';
 import 'package:tecnico_mobile/core/db/database.dart';
+import 'package:tecnico_mobile/core/location/location_service.dart';
 import 'package:tecnico_mobile/core/theme.dart';
 import 'package:tecnico_mobile/core/ui/app_surfaces.dart';
 import 'package:tecnico_mobile/features/clientes/cliente_data.dart';
@@ -161,6 +162,11 @@ Future<void> pumpNovoCliente(WidgetTester tester) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
+        locationServiceProvider.overrideWith(
+          (ref) => _FakeLocationService(
+            LocationResult(-3.1019, -60.025, 12),
+          ),
+        ),
         planosProvider.overrideWith((ref) async {
           return [
             SgpPlano(
@@ -194,6 +200,15 @@ Future<void> pumpNovoCliente(WidgetTester tester) async {
   );
 
   await tester.pumpAndSettle();
+}
+
+class _FakeLocationService implements LocationService {
+  _FakeLocationService(this.result);
+
+  final LocationResult? result;
+
+  @override
+  Future<LocationResult?> capture() async => result;
 }
 
 Future<void> pumpClienteCardDarkTheme(WidgetTester tester) async {
@@ -301,6 +316,7 @@ void main() {
     expect(find.text('Novo cliente'), findsOneWidget);
     expect(find.text('Cadastro guiado'), findsOneWidget);
     expect(find.byType(AppSurfaceCard), findsAtLeastNWidgets(2));
+    expect(find.text('GPS capturado'), findsWidgets);
   });
 
   testWidgets('cliente card uses theme-driven installer accent in dark mode',
