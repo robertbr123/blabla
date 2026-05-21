@@ -34,7 +34,7 @@ from ondeline_api.deps import get_db
 from ondeline_api.repositories import cliente_app_user as repo
 from ondeline_api.services import cliente_app_otp as otp_svc
 
-router = APIRouter(prefix="/cliente-app/auth", tags=["cliente-app:auth"])
+router = APIRouter(prefix="/api/v1/cliente-app/auth", tags=["cliente-app:auth"])
 
 SETUP_TTL_MIN = 10
 _RL_OTP = "5/hour"
