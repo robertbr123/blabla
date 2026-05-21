@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,10 +6,12 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart' show launchUrl;
 
 import '../../core/ui/app_section_header.dart';
+import '../../core/ui/app_state_panel.dart';
 import '../../core/ui/app_status_chip.dart';
 import '../../core/ui/app_surfaces.dart';
 import '../os/widgets/cliente_avatar.dart';
 import 'cliente_data.dart';
+import 'cliente_form_data.dart';
 import 'widgets/cliente_fotos.dart';
 import 'widgets/cliente_materiais.dart';
 
@@ -38,8 +41,14 @@ class ClienteDetailScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Padding(
           padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
-          child: AppSurfaceCard(
-            child: Center(child: Text('Erro: $e')),
+          child: AppStatePanel.error(
+            title: 'Não foi possível carregar este cliente',
+            message:
+                'Os dados de detalhe não responderam como esperado. Atualize novamente em instantes.',
+            detail:
+                e is DioException ? extractDioMessage(e, fallback: '') : null,
+            actionLabel: 'Tentar novamente',
+            onAction: () => ref.invalidate(clienteDetailProvider(id)),
           ),
         ),
         data: (c) => _Body(cliente: c),

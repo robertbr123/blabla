@@ -266,21 +266,21 @@ class _ItemTile extends StatelessWidget {
     return AppSurfaceCard(
       padding: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 48,
-              height: 48,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
                 color: iconBg.bg.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
               ),
               alignment: Alignment.center,
-              child: Icon(iconBg.icon, color: iconBg.bg, size: 24),
+              child: Icon(iconBg.icon, color: iconBg.bg, size: 21),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -292,16 +292,16 @@ class _ItemTile extends StatelessWidget {
                         child: Text(
                           linha.nome,
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 15,
                             fontWeight: FontWeight.w800,
                             color: scheme.onSurface,
                             height: 1.2,
                           ),
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       AppStatusChip(
                         label: temSaldo ? '${linha.saldo} un.' : 'Sem saldo',
                         tone: temSaldo
@@ -310,21 +310,21 @@ class _ItemTile extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     linha.sku,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11.5,
                       color: scheme.onSurfaceVariant,
                       fontWeight: FontWeight.w600,
                       fontFamily: 'monospace',
                       letterSpacing: 0.2,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
-                    runSpacing: 8,
+                    runSpacing: 6,
                     children: [
                       AppStatusChip(
                         label: linha.categoria,

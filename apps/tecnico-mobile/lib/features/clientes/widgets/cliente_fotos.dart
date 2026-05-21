@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/auth/auth_storage.dart';
+import '../../../core/ui/app_state_panel.dart';
+import '../../../core/ui/app_surfaces.dart';
 import '../cliente_data.dart';
 import '../cliente_form_data.dart';
 
@@ -92,6 +94,18 @@ class _ClienteFotosSectionState extends ConsumerState<ClienteFotosSection> {
           ),
         );
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.toString().trim().isEmpty
+                  ? 'Não consegui enviar a foto agora.'
+                  : 'Não consegui enviar a foto agora. ${e.toString()}',
+            ),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -138,15 +152,9 @@ class _ClienteFotosSectionState extends ConsumerState<ClienteFotosSection> {
     final scheme = Theme.of(context).colorScheme;
     final fotos = widget.cliente.fotos ?? const <Map<String, dynamic>>[];
 
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
-      ),
+    return AppSurfaceCard(
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(2),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
