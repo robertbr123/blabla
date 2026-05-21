@@ -14,10 +14,17 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-from ondeline_api.db.models.business import SgpProvider
+from ondeline_api.db.models.business import SgpProvider as SgpProviderEnum
 
-# Re-export explícito (mypy --no-implicit-reexport)
-SgpProviderEnum = SgpProvider
+# Re-export explícito para mypy --no-implicit-reexport.
+# `SgpProvider` (classe abstrata abaixo) é importável diretamente; o enum
+# precisa do alias `SgpProviderEnum` listado em `__all__`.
+__all__ = [
+    "ClienteSgp",
+    "EnderecoSgp",
+    "SgpProvider",
+    "SgpProviderEnum",
+]
 
 
 @dataclass(frozen=True, slots=True)
