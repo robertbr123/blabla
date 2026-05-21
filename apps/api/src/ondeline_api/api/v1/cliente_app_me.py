@@ -188,6 +188,33 @@ async def fatura_boleto(
     raise HTTPException(status_code=404, detail="fatura nao encontrada")
 
 
+@router.delete("/me", status_code=204)
+async def delete_me(
+    user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> None:
+    """LGPD — anonimiza o registro do cliente.
+
+    Mantemos a linha pra preservar FKs (cliente_app_os.cliente_app_user_id,
+    cliente_app_messages, etc) mas zeramos PII. Substituimos cpf_hash por
+    um marker unico pra liberar o indice de unicidade.
+    """
+    marker = f"deleted-{user.id}"
+    user.cpf_hash = marker
+    user.cpf_last4 = "0000"
+    user.cpf_encrypted = encrypt_pii(marker)
+    user.nome_encrypted = encrypt_pii("[conta excluida]")
+    user.telefone_encrypted = encrypt_pii("")
+    user.email_encrypted = None
+    user.password_hash = None
+    user.push_token = None
+    user.biometric_enabled = False
+    user.sgp_id = None
+    user.status = "deleted"
+    await session.flush()
+    await session.commit()
+
+
 @router.post("/me/password", status_code=204)
 async def change_password(
     body: ChangePasswordIn,

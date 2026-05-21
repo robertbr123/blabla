@@ -240,6 +240,25 @@ async def test_boleto_url(
 
 
 @pytest.mark.asyncio
+async def test_delete_me_anonimiza_e_invalida_token(
+    client: AsyncClient, existing_cliente: ClienteAppUser, db_session: AsyncSession
+) -> None:
+    headers = _auth(existing_cliente)
+    r = await client.delete("/api/v1/cliente-app/me", headers=headers)
+    assert r.status_code == 204
+
+    # Mesmo token agora nao acessa (status='deleted')
+    r2 = await client.get("/api/v1/cliente-app/me", headers=headers)
+    assert r2.status_code == 401
+
+    # Linha permanece (FK preservada) mas anonimizada
+    await db_session.refresh(existing_cliente)
+    assert existing_cliente.status == "deleted"
+    assert existing_cliente.cpf_hash.startswith("deleted-")
+    assert existing_cliente.password_hash is None
+
+
+@pytest.mark.asyncio
 async def test_me_rejects_staff_token(client: AsyncClient) -> None:
     from uuid import uuid4
 
