@@ -102,108 +102,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.all(18),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    scheme.surface,
-                                    scheme.surfaceContainerLow,
-                                  ],
-                                ),
-                                borderRadius: BorderRadius.circular(28),
-                                border: Border.all(
-                                  color: scheme.outlineVariant
-                                      .withValues(alpha: 0.65),
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color:
-                                        scheme.shadow.withValues(alpha: 0.08),
-                                    blurRadius: 24,
-                                    offset: const Offset(0, 16),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: scheme.primaryContainer
-                                          .withValues(alpha: 0.9),
-                                      borderRadius: BorderRadius.circular(999),
-                                    ),
-                                    child: Text(
-                                      'LOGIN SEGURO',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        letterSpacing: 1.4,
-                                        fontWeight: FontWeight.w800,
-                                        color: scheme.onPrimaryContainer,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Center(
-                                    child: Image.asset(
-                                      Theme.of(context).brightness ==
-                                              Brightness.dark
-                                          ? 'assets/branding/logo_horizontal_dark.png'
-                                          : 'assets/branding/logo_horizontal_light.png',
-                                      height: 68,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'Painel técnico em campo',
-                                    style: TextStyle(
-                                      fontSize: 25,
-                                      height: 1,
-                                      fontWeight: FontWeight.w900,
-                                      color: scheme.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'Atendimentos, estoque e sync offline sem fricção.',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      height: 1.35,
-                                      color: scheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: [
-                                      _LoginHighlight(
-                                        icon: Icons.wifi_off_rounded,
-                                        label: 'Fluxo offline pronto',
-                                      ),
-                                      _LoginHighlight(
-                                        icon: Icons.inventory_2_outlined,
-                                        label: 'Estoque no aparelho',
-                                      ),
-                                      _LoginHighlight(
-                                        icon: Icons.lock_outline_rounded,
-                                        label: 'Reentrada com Face ID',
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                            const SizedBox(height: 20),
+                            // Logo centralizado, sem card e sem highlights — versão enxuta.
+                            Center(
+                              child: Image.asset(
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? 'assets/branding/logo_horizontal_dark.png'
+                                    : 'assets/branding/logo_horizontal_light.png',
+                                height: 56,
+                                fit: BoxFit.contain,
                               ),
                             ),
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 24),
                             Container(
                               padding:
                                   const EdgeInsets.fromLTRB(18, 18, 18, 16),
@@ -228,49 +138,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.stretch,
                                   children: [
-                                    Row(
-                                      children: [
-                                        Container(
-                                          height: 42,
-                                          width: 42,
-                                          decoration: BoxDecoration(
-                                            color: scheme.surfaceContainer,
-                                            borderRadius:
-                                                BorderRadius.circular(14),
-                                          ),
-                                          child: Icon(
-                                            Icons.badge_outlined,
-                                            color: scheme.primary,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'Acesso do técnico',
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: scheme.onSurface,
-                                                ),
-                                              ),
-                                              Text(
-                                                'Entre com sua conta corporativa.',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color:
-                                                      scheme.onSurfaceVariant,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 16),
                                     TextField(
                                       controller: _email,
                                       keyboardType: TextInputType.emailAddress,
@@ -391,33 +258,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 16),
                             Center(
                               child: Text(
-                                'Linket · app técnico',
+                                'BlaBla · app técnico',
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
                                   color: scheme.onSurfaceVariant
                                       .withValues(alpha: 0.7),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Center(
-                              child: TextButton.icon(
-                                onPressed: () =>
-                                    context.go('/design-preview'),
-                                icon: const Icon(Icons.palette_outlined, size: 14),
-                                label: const Text('Preview novo design'),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: scheme.onSurfaceVariant
-                                      .withValues(alpha: 0.6),
-                                  textStyle: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  visualDensity: VisualDensity.compact,
                                 ),
                               ),
                             ),
@@ -431,44 +280,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             );
           },
         ),
-      ),
-    );
-  }
-}
-
-class _LoginHighlight extends StatelessWidget {
-  const _LoginHighlight({
-    required this.icon,
-    required this.label,
-  });
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: scheme.surface.withValues(alpha: 0.82),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.7)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: scheme.primary),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: scheme.onSurface,
-            ),
-          ),
-        ],
       ),
     );
   }
