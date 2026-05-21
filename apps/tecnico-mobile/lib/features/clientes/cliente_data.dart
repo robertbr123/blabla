@@ -278,14 +278,8 @@ final clientesListProvider =
     if (cached.isEmpty) {
       rethrow;
     }
-    final q = (filter.q ?? '').toLowerCase();
-    final filtered = cached.where((row) {
-      if (q.isEmpty) return true;
-      final nome = (row['nome'] ?? '').toString().toLowerCase();
-      final city = (row['city'] ?? '').toString().toLowerCase();
-      final address = (row['address'] ?? '').toString().toLowerCase();
-      return nome.contains(q) || city.contains(q) || address.contains(q);
-    }).toList();
+    final filtered =
+        cached.where((row) => _matchesOfflineFilter(row, filter)).toList();
     return ClienteListPage(
       items: filtered.map((m) => ClienteListItem.fromJson(m)).toList(),
       nextCursor: null,
@@ -298,7 +292,8 @@ final clienteDetailProvider =
     FutureProvider.autoDispose.family<ClienteCampo, String>((ref, id) async {
   final dio = ref.watch(apiClientProvider);
   final repo = ref.watch(clienteCadastroRepoProvider);
-  final userId = await readUserId();
+  final readCurrentUserId = ref.watch(clienteReadUserIdProvider);
+  final userId = await readCurrentUserId();
 
   try {
     final r = await dio.get('/api/v1/clientes-campo/$id');
@@ -324,6 +319,48 @@ bool _isNetworkError(DioException e) {
       e.type == DioExceptionType.connectionTimeout ||
       e.type == DioExceptionType.sendTimeout ||
       e.type == DioExceptionType.receiveTimeout;
+}
+
+bool _matchesOfflineFilter(
+  Map<String, dynamic> row,
+  ClienteListFilter filter,
+) {
+  final q = (filter.q ?? '').trim().toLowerCase();
+  if (q.isNotEmpty) {
+    final searchable = [
+      row['nome'],
+      row['city'],
+      row['address'],
+      row['neighborhood'],
+      row['serial'],
+    ].map((value) => (value ?? '').toString().toLowerCase());
+    if (!searchable.any((value) => value.contains(q))) {
+      return false;
+    }
+  }
+
+  final cityFilter = (filter.city ?? '').trim().toLowerCase();
+  if (cityFilter.isNotEmpty) {
+    final city = (row['city'] ?? '').toString().toLowerCase();
+    if (!city.contains(cityFilter)) {
+      return false;
+    }
+  }
+
+  if (filter.sgpStatus != null) {
+    final syncedAt = row['sgp_synced_at']?.toString().trim();
+    final sgpId = row['sgp_id']?.toString().trim();
+    final isSynced = (syncedAt != null && syncedAt.isNotEmpty) ||
+        (sgpId != null && sgpId.isNotEmpty);
+    if (filter.sgpStatus == 'synced' && !isSynced) {
+      return false;
+    }
+    if (filter.sgpStatus == 'pending' && isSynced) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 class MaterialUsado {

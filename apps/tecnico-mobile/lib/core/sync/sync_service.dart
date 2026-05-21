@@ -30,6 +30,18 @@ bool shouldAttemptAt(OutboxItemData item, DateTime now) {
   return !now.isBefore(nextRetryAt);
 }
 
+bool isRetryableSyncError(DioException error) {
+  final code = error.response?.statusCode;
+  if (code == null) {
+    return error.type == DioExceptionType.connectionError ||
+        error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.sendTimeout ||
+        error.type == DioExceptionType.receiveTimeout;
+  }
+
+  return code == 408 || code == 429 || code >= 500;
+}
+
 /// Processa a fila offline (OutboxItem) em FIFO com backoff exponencial.
 ///
 /// - Conectividade: usa connectivity_plus pra disparar flush quando rede volta
@@ -156,18 +168,16 @@ class SyncService {
       return true;
     } on DioException catch (e) {
       final code = e.response?.statusCode;
-      final isNetwork = code == null ||
-          e.type == DioExceptionType.connectionError ||
-          e.type == DioExceptionType.connectionTimeout ||
-          e.type == DioExceptionType.sendTimeout ||
-          e.type == DioExceptionType.receiveTimeout;
+      final retryable = isRetryableSyncError(e);
       await _outbox.markAttempt(
         item.id,
         '${e.type.name} status=${code ?? "-"}: ${e.message}',
       );
-      // 4xx (exceto 401/408/429) — não tenta de novo proativamente, mas
-      // proximo flush vai re-tentar respeitando backoff.
-      return !isNetwork;
+      if (!retryable) {
+        await _outbox.markSent(item.id);
+        return true;
+      }
+      return code != null;
     } catch (e) {
       await _outbox.markAttempt(item.id, e.toString());
       return true;

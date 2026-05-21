@@ -23,15 +23,16 @@ class ClienteCadastroLocalRepo {
       final now = DateTime.now();
       await _db.batch((batch) {
         for (final row in rows) {
+          final normalized = normalizeClienteCachedPayload(row, now: now);
           batch.insert(
             _db.clienteCadastroLocal,
             ClienteCadastroLocalCompanion.insert(
               userId: userId,
-              id: (row['id'] ?? '') as String,
-              nome: (row['nome'] ?? '') as String,
-              city: (row['city'] ?? '') as String,
-              planNome: (row['plan_nome'] ?? '') as String,
-              payloadJson: jsonEncode(row),
+              id: (normalized['id'] ?? '') as String,
+              nome: (normalized['nome'] ?? '') as String,
+              city: (normalized['city'] ?? '') as String,
+              planNome: (normalized['plan_nome'] ?? '') as String,
+              payloadJson: jsonEncode(normalized),
               syncedAt: now,
             ),
             mode: InsertMode.insertOrReplace,
@@ -46,14 +47,15 @@ class ClienteCadastroLocalRepo {
     required String userId,
     required Map<String, dynamic> row,
   }) async {
+    final normalized = normalizeClienteCachedPayload(row);
     await _db.into(_db.clienteCadastroLocal).insert(
           ClienteCadastroLocalCompanion.insert(
             userId: userId,
-            id: (row['id'] ?? '') as String,
-            nome: (row['nome'] ?? '') as String,
-            city: (row['city'] ?? '') as String,
-            planNome: (row['plan_nome'] ?? '') as String,
-            payloadJson: jsonEncode(row),
+            id: (normalized['id'] ?? '') as String,
+            nome: (normalized['nome'] ?? '') as String,
+            city: (normalized['city'] ?? '') as String,
+            planNome: (normalized['plan_nome'] ?? '') as String,
+            payloadJson: jsonEncode(normalized),
             syncedAt: DateTime.now(),
           ),
           mode: InsertMode.insertOrReplace,
@@ -68,7 +70,12 @@ class ClienteCadastroLocalRepo {
           ..orderBy([(t) => OrderingTerm.desc(t.syncedAt)]))
         .get();
     return rows
-        .map((r) => jsonDecode(r.payloadJson) as Map<String, dynamic>)
+        .map(
+          (r) => normalizeClienteCachedPayload(
+            jsonDecode(r.payloadJson) as Map<String, dynamic>,
+            now: r.syncedAt,
+          ),
+        )
         .toList();
   }
 
@@ -80,7 +87,10 @@ class ClienteCadastroLocalRepo {
           ..where((t) => t.userId.equals(userId) & t.id.equals(id)))
         .getSingleOrNull();
     if (row == null) return null;
-    return jsonDecode(row.payloadJson) as Map<String, dynamic>;
+    return normalizeClienteCachedPayload(
+      jsonDecode(row.payloadJson) as Map<String, dynamic>,
+      now: row.syncedAt,
+    );
   }
 
   Future<void> clear({required String userId}) async {
@@ -88,4 +98,79 @@ class ClienteCadastroLocalRepo {
           ..where((t) => t.userId.equals(userId)))
         .go();
   }
+}
+
+Map<String, dynamic> normalizeClienteCachedPayload(
+  Map<String, dynamic> row, {
+  DateTime? now,
+}) {
+  final reference = now ?? DateTime.now();
+  final createdAt = _readIsoString(
+    row,
+    ['created_at', 'registration_date', 'updated_at'],
+    fallback: reference.toUtc().toIso8601String(),
+  );
+  final updatedAt = _readIsoString(
+    row,
+    ['updated_at', 'created_at', 'registration_date'],
+    fallback: createdAt,
+  );
+  final registrationDate = _readIsoString(
+    row,
+    ['registration_date', 'created_at', 'updated_at'],
+    fallback: createdAt,
+  );
+
+  return <String, dynamic>{
+    'id': '',
+    'cpf': '',
+    'nome': '',
+    'dob': '1900-01-01T00:00:00Z',
+    'telefone': '',
+    'email': null,
+    'cep': null,
+    'address': '',
+    'number': '',
+    'complement': null,
+    'neighborhood': null,
+    'city': '',
+    'state': null,
+    'plan_id': null,
+    'plan_nome': '',
+    'pppoe_user': null,
+    'pppoe_pass': null,
+    'due_date': 1,
+    'installer_user_id': null,
+    'installer_nome': '',
+    'serial': null,
+    'contrato': null,
+    'observation': null,
+    'latitude': null,
+    'longitude': null,
+    'location_accuracy': null,
+    'fotos': const <Map<String, dynamic>>[],
+    'registration_date': registrationDate,
+    'sgp_synced_at': null,
+    'sgp_id': null,
+    'created_at': createdAt,
+    'updated_at': updatedAt,
+    ...row,
+    'created_at': createdAt,
+    'updated_at': updatedAt,
+    'registration_date': registrationDate,
+  };
+}
+
+String _readIsoString(
+  Map<String, dynamic> row,
+  List<String> keys, {
+  required String fallback,
+}) {
+  for (final key in keys) {
+    final value = row[key]?.toString().trim();
+    if (value != null && value.isNotEmpty) {
+      return value;
+    }
+  }
+  return fallback;
 }

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -108,13 +109,29 @@ class _Body extends ConsumerWidget {
     final svc = ref.read(syncServiceProvider);
     try {
       if (online) {
-        await ref.read(apiClientProvider).post(
-              '/api/v1/tecnico/me/os/$osId/iniciar',
-              data: body,
+        try {
+          await ref.read(apiClientProvider).post(
+                '/api/v1/tecnico/me/os/$osId/iniciar',
+                data: body,
+              );
+          await ref.read(osLocalRepoProvider).markStartedOptimistic(osId);
+          ref.invalidate(osDetailProvider(osId));
+          _showSnack(context, 'OS iniciada ✅');
+        } on DioException catch (e) {
+          if (isRetryableSyncError(e)) {
+            await ref.read(osLocalRepoProvider).markStartedOptimistic(osId);
+            await svc.enqueue(
+              osId: osId,
+              kind: OutboxKind.iniciar,
+              payload: body,
             );
-        await ref.read(osLocalRepoProvider).markStartedOptimistic(osId);
-        ref.invalidate(osDetailProvider(osId));
-        _showSnack(context, 'OS iniciada ✅');
+            ref.invalidate(osDetailProvider(osId));
+            _showSnack(context, 'Falha transitória — enfileirado pra retry.');
+            return;
+          }
+          _showSnack(context, _actionFailureMessage('iniciar', e));
+          return;
+        }
       } else {
         await ref.read(osLocalRepoProvider).markStartedOptimistic(osId);
         await svc.enqueue(
@@ -125,12 +142,8 @@ class _Body extends ConsumerWidget {
         ref.invalidate(osDetailProvider(osId));
         _showSnack(context, 'Sem conexão — enfileirado pra envio depois.');
       }
-    } catch (e) {
-      // Falha online → cai pra fila pra retry
-      await ref.read(osLocalRepoProvider).markStartedOptimistic(osId);
-      await svc.enqueue(osId: osId, kind: OutboxKind.iniciar, payload: body);
-      ref.invalidate(osDetailProvider(osId));
-      _showSnack(context, 'Falha online: enfileirado pra retry. ($e)');
+    } catch (_) {
+      _showSnack(context, 'Não foi possível iniciar a OS agora.');
     }
   }
 
@@ -225,16 +238,22 @@ class _ConcluirSheetState extends ConsumerState<_ConcluirSheet> {
           await ref
               .read(osLocalRepoProvider)
               .markConcludedOptimistic(widget.osId, body);
-        } catch (_) {
-          await ref
-              .read(osLocalRepoProvider)
-              .markConcludedOptimistic(widget.osId, body);
-          await svc.enqueue(
-            osId: widget.osId,
-            kind: OutboxKind.concluir,
-            payload: body,
-          );
-          completionMessage = 'Falha online — conclusão enfileirada pra retry.';
+        } on DioException catch (e) {
+          if (isRetryableSyncError(e)) {
+            await ref
+                .read(osLocalRepoProvider)
+                .markConcludedOptimistic(widget.osId, body);
+            await svc.enqueue(
+              osId: widget.osId,
+              kind: OutboxKind.concluir,
+              payload: body,
+            );
+            completionMessage =
+                'Falha transitória — conclusão enfileirada pra retry.';
+          } else {
+            _Body._showSnack(context, _actionFailureMessage('concluir', e));
+            return;
+          }
         }
       } else {
         await ref
@@ -252,6 +271,10 @@ class _ConcluirSheetState extends ConsumerState<_ConcluirSheet> {
       if (mounted) {
         Navigator.of(context).pop();
         _Body._showSnack(context, completionMessage);
+      }
+    } catch (_) {
+      if (mounted) {
+        _Body._showSnack(context, 'Não foi possível concluir a OS agora.');
       }
     } finally {
       if (mounted) setState(() => _enviando = false);
@@ -340,6 +363,19 @@ class _ConcluirSheetState extends ConsumerState<_ConcluirSheet> {
       ),
     );
   }
+}
+
+String _actionFailureMessage(String action, DioException error) {
+  final base = action == 'iniciar'
+      ? 'Não foi possível iniciar a OS.'
+      : 'Não foi possível concluir a OS.';
+  final detail = error.response?.data is Map<String, dynamic>
+      ? (error.response?.data as Map<String, dynamic>)['detail']?.toString()
+      : null;
+  if (detail == null || detail.trim().isEmpty) {
+    return base;
+  }
+  return '$base $detail';
 }
 
 class _PendingSyncBanner extends StatelessWidget {

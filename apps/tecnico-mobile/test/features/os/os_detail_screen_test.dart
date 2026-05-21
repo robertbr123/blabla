@@ -10,6 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:permission_handler_platform_interface/permission_handler_platform_interface.dart';
 import 'package:tecnico_mobile/core/api/api_client.dart';
 import 'package:tecnico_mobile/core/db/database.dart';
+import 'package:tecnico_mobile/core/sync/outbox_repo.dart';
 import 'package:tecnico_mobile/core/sync/sync_service.dart';
 import 'package:tecnico_mobile/features/os/os_detail_screen.dart';
 
@@ -118,6 +119,44 @@ class _PostSuccessGetFailureAdapter implements HttpClientAdapter {
 Dio _postSuccessGetFailureDio() {
   final dio = Dio();
   dio.httpClientAdapter = _PostSuccessGetFailureAdapter();
+  return dio;
+}
+
+class _PermanentPostFailureAdapter implements HttpClientAdapter {
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<List<int>>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.method == 'GET') {
+      return ResponseBody.fromString(
+        '{"id":"os-1","codigo":"OS-001","status":"pendente","problema":"Sem sinal","endereco":"Rua A, 100","nome_cliente":"Cliente Teste","agendamento_at":"2026-05-19T09:00:00Z","criada_em":"2026-05-18T12:00:00Z","concluida_em":null}',
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      );
+    }
+
+    throw DioException(
+      requestOptions: options,
+      response: Response(
+        requestOptions: options,
+        statusCode: 400,
+        data: {'detail': 'invalid transition'},
+      ),
+      type: DioExceptionType.badResponse,
+    );
+  }
+}
+
+Dio _permanentPostFailureDio() {
+  final dio = Dio();
+  dio.httpClientAdapter = _PermanentPostFailureAdapter();
   return dio;
 }
 
@@ -299,6 +338,35 @@ void main() {
   });
 
   testWidgets(
+      'online iniciar with permanent backend rejection keeps ui pending and avoids outbox retry',
+      (tester) async {
+    final db = _testDatabase();
+    addTearDown(db.close);
+
+    ConnectivityPlatform.instance =
+        _FakeConnectivityPlatform(const [ConnectivityResult.wifi]);
+    await _pumpOfflineOsDetail(
+      tester,
+      db: db,
+      status: 'pendente',
+      dio: _permanentPostFailureDio(),
+    );
+
+    await _scrollUntilVisible(
+      tester,
+      find.text('Iniciar visita (com GPS)'),
+    );
+    await tester.tap(find.text('Iniciar visita (com GPS)'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Iniciar visita (com GPS)'), findsOneWidget);
+    expect(find.text('Concluir OS'), findsNothing);
+
+    final pending = await OutboxRepo(db).pendingCount();
+    expect(pending, 0);
+  });
+
+  testWidgets(
       'online iniciar success keeps updated state when refetch falls back to cache',
       (tester) async {
     final db = _testDatabase();
@@ -348,7 +416,7 @@ void main() {
     expect(find.text('Concluir OS'), findsNothing);
     expect(find.text('Concluída'), findsOneWidget);
     expect(
-      find.text('Falha online — conclusão enfileirada pra retry.'),
+      find.text('Falha transitória — conclusão enfileirada pra retry.'),
       findsOneWidget,
     );
   });

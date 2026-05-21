@@ -34,6 +34,9 @@ Map<String, dynamic> _osRow({
 Map<String, dynamic> _clienteRow({
   required String id,
   required String nome,
+  String? neighborhood,
+  String? serial,
+  DateTime? sgpSyncedAt,
 }) {
   return {
     'id': id,
@@ -41,10 +44,13 @@ Map<String, dynamic> _clienteRow({
     'nome': nome,
     'address': 'Rua das Palmeiras',
     'number': '120',
-    'neighborhood': 'Centro',
+    'neighborhood': neighborhood ?? 'Centro',
     'city': 'Manaus',
     'plan_nome': 'Fibra 500 Mega',
     'installer_nome': 'Técnico 1',
+    'serial': serial,
+    'sgp_synced_at': sgpSyncedAt?.toUtc().toIso8601String(),
+    'sgp_id': sgpSyncedAt == null ? null : 'sgp-$id',
     'created_at': DateTime(2026, 5, 20).toUtc().toIso8601String(),
   };
 }
@@ -394,6 +400,134 @@ void main() {
       );
     },
   );
+
+  test(
+    'cliente detail provider opens offline from cached list snapshot only',
+    () async {
+      final db = testDatabase();
+      addTearDown(db.close);
+
+      final repo = ClienteCadastroLocalRepo(db);
+      await repo.replaceAll(
+        userId: 'u2',
+        rows: [
+          _clienteRow(
+            id: 'cliente-2',
+            nome: 'Cliente U2',
+            serial: 'ONU-999',
+          ),
+        ],
+      );
+
+      final container = ProviderContainer(
+        overrides: [
+          dbProvider.overrideWith((ref) => db),
+          apiClientProvider.overrideWith((ref) => _offlineDio()),
+          clienteReadUserIdProvider.overrideWith((ref) => () async => 'u2'),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final cliente =
+          await container.read(clienteDetailProvider('cliente-2').future);
+
+      expect(cliente.id, 'cliente-2');
+      expect(cliente.nome, 'Cliente U2');
+      expect(cliente.address, 'Rua das Palmeiras');
+      expect(cliente.serial, 'ONU-999');
+      expect(cliente.planNome, 'Fibra 500 Mega');
+    },
+  );
+
+  test('clientes offline fallback honors sgp status and serial search',
+      () async {
+    final db = testDatabase();
+    addTearDown(db.close);
+
+    final repo = ClienteCadastroLocalRepo(db);
+    await repo.replaceAll(
+      userId: 'u2',
+      rows: [
+        _clienteRow(
+          id: 'cliente-1',
+          nome: 'Marina Silva',
+          neighborhood: 'Centro',
+          serial: 'ONU-123456',
+          sgpSyncedAt: DateTime(2026, 5, 19),
+        ),
+        _clienteRow(
+          id: 'cliente-2',
+          nome: 'Carlos Souza',
+          neighborhood: 'Flores',
+          serial: 'ONU-999999',
+        ),
+      ],
+    );
+
+    final container = ProviderContainer(
+      overrides: [
+        dbProvider.overrideWith((ref) => db),
+        apiClientProvider.overrideWith((ref) => _offlineDio()),
+        clienteReadUserIdProvider.overrideWith((ref) => () async => 'u2'),
+        clienteListFilterProvider.overrideWith(
+          (ref) => const ClienteListFilter(
+            q: 'onu-123456',
+            sgpStatus: 'synced',
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final serialAndSgp = await container.read(clientesListProvider.future);
+    expect(serialAndSgp.items, hasLength(1));
+    expect(serialAndSgp.items.single.id, 'cliente-1');
+  });
+
+  test('clientes offline fallback honors neighborhood search', () async {
+    final db = testDatabase();
+    addTearDown(db.close);
+
+    final repo = ClienteCadastroLocalRepo(db);
+    await repo.replaceAll(
+      userId: 'u2',
+      rows: [
+        _clienteRow(
+          id: 'cliente-1',
+          nome: 'Marina Silva',
+          neighborhood: 'Centro',
+          serial: 'ONU-123456',
+          sgpSyncedAt: DateTime(2026, 5, 19),
+        ),
+        _clienteRow(
+          id: 'cliente-2',
+          nome: 'Carlos Souza',
+          neighborhood: 'Flores',
+          serial: 'ONU-999999',
+        ),
+      ],
+    );
+
+    final container = ProviderContainer(
+      overrides: [
+        dbProvider.overrideWith((ref) => db),
+        apiClientProvider.overrideWith((ref) => _offlineDio()),
+        clienteReadUserIdProvider.overrideWith((ref) => () async => 'u2'),
+        clienteListFilterProvider.overrideWith(
+          (ref) => const ClienteListFilter(
+            q: 'flores',
+            sgpStatus: 'pending',
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final neighborhoodPending =
+        await container.read(clientesListProvider.future);
+    expect(neighborhoodPending.items, hasLength(1));
+    expect(neighborhoodPending.items.single.id, 'cliente-2');
+  });
 
   test(
     'perfil provider serves cached snapshot for current auth user when offline',
