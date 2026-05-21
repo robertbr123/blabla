@@ -196,3 +196,27 @@ class OsOut(BaseModel):
 
 class OsListOut(BaseModel):
     items: list[OsOut]
+
+
+# ════════ Fase 6: Chat in-app ════════
+
+
+class ChatMessageOut(BaseModel):
+    id: str
+    role: str  # "user" | "bot"
+    content: str
+    created_at: str
+
+
+class ChatMessagesOut(BaseModel):
+    items: list[ChatMessageOut]
+    next_cursor: str | None = None  # iso datetime da msg mais antiga retornada
+
+
+class ChatSendIn(BaseModel):
+    text: str = Field(min_length=1, max_length=4000)
+
+
+class ChatSendOut(BaseModel):
+    user_message: ChatMessageOut
+    bot_message: ChatMessageOut
