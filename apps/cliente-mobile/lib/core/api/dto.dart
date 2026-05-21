@@ -142,6 +142,28 @@ class PlanoDto {
   final EnderecoDto enderecoPrincipal;
 }
 
+class ChatMessageDto {
+  ChatMessageDto({
+    required this.id,
+    required this.role,
+    required this.content,
+    required this.createdAt,
+  });
+  factory ChatMessageDto.fromJson(Map<String, dynamic> j) => ChatMessageDto(
+        id: j['id'] as String,
+        role: j['role'] as String,
+        content: j['content'] as String,
+        createdAt: DateTime.parse(j['created_at'] as String),
+      );
+
+  final String id;
+  final String role; // "user" | "bot"
+  final String content;
+  final DateTime createdAt;
+
+  bool get isUser => role == 'user';
+}
+
 class OsDto {
   OsDto({
     required this.id,

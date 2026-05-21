@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/os_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import 'chat_tab.dart';
 import 'widgets/os_card.dart';
 
 class SuporteScreen extends ConsumerStatefulWidget {
@@ -48,7 +49,7 @@ class _SuporteScreenState extends ConsumerState<SuporteScreen>
       body: TabBarView(
         controller: _tabs,
         children: const [
-          _ChatStub(),
+          ChatTab(),
           _ChamadosTab(),
         ],
       ),
@@ -63,41 +64,6 @@ class _SuporteScreenState extends ConsumerState<SuporteScreen>
                 foregroundColor: Colors.white,
               )
             : const SizedBox.shrink(),
-      ),
-    );
-  }
-}
-
-class _ChatStub extends StatelessWidget {
-  const _ChatStub();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(BrandTokens.spaceXl),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.chat_bubble_outline,
-                size: 64, color: BrandTokens.textSecondary),
-            const SizedBox(height: BrandTokens.spaceMd),
-            Text(
-              'Chat em breve',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-            const SizedBox(height: BrandTokens.spaceSm),
-            Text(
-              'Por enquanto, abra um chamado em "Meus chamados".',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: BrandTokens.textSecondary,
-                  ),
-            ),
-          ],
-        ),
       ),
     );
   }
