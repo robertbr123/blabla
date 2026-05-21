@@ -121,7 +121,7 @@ Map<String, dynamic> normalizeClienteCachedPayload(
     fallback: createdAt,
   );
 
-  return <String, dynamic>{
+  final normalized = <String, dynamic>{
     'id': '',
     'cpf': '',
     'nome': '',
@@ -155,10 +155,11 @@ Map<String, dynamic> normalizeClienteCachedPayload(
     'created_at': createdAt,
     'updated_at': updatedAt,
     ...row,
-    'created_at': createdAt,
-    'updated_at': updatedAt,
-    'registration_date': registrationDate,
   };
+  normalized['created_at'] = createdAt;
+  normalized['updated_at'] = updatedAt;
+  normalized['registration_date'] = registrationDate;
+  return normalized;
 }
 
 String _readIsoString(
