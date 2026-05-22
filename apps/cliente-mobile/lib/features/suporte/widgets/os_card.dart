@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/api/dto.dart';
+import '../../../core/api/os_repository.dart';
 import '../../../core/branding/brand_tokens.dart';
+import '../../nps/nps_bottom_sheet.dart';
 
-class OsCard extends StatelessWidget {
+class OsCard extends ConsumerWidget {
   const OsCard({super.key, required this.os});
   final OsDto os;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final fmt = DateFormat('dd/MM/yyyy HH:mm', 'pt_BR');
     final (statusLabel, statusColor) = switch (os.status) {
       'aberto' => ('Aberto', BrandTokens.info),
@@ -77,7 +80,68 @@ class OsCard extends StatelessWidget {
                   color: BrandTokens.textSecondary,
                 ),
           ),
+          if (os.npsPendente) ...[
+            const SizedBox(height: BrandTokens.spaceMd),
+            _AvaliarCta(
+              osId: os.id,
+              onRespondido: () {
+                ref.invalidate(osListProvider);
+              },
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _AvaliarCta extends StatelessWidget {
+  const _AvaliarCta({required this.osId, required this.onRespondido});
+  final String osId;
+  final VoidCallback onRespondido;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: BrandTokens.primary.withOpacity(0.10),
+      borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+        onTap: () async {
+          await showNpsBottomSheet(context, osId: osId);
+          onRespondido();
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: BrandTokens.spaceMd,
+            vertical: BrandTokens.spaceSm + 2,
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.star_rounded,
+                color: BrandTokens.primary,
+                size: 20,
+              ),
+              const SizedBox(width: BrandTokens.spaceSm),
+              const Expanded(
+                child: Text(
+                  'Avaliar atendimento',
+                  style: TextStyle(
+                    color: BrandTokens.primary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: BrandTokens.primary,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/api/dto.dart';
 import '../../core/api/notificacoes_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../nps/nps_bottom_sheet.dart';
 
 const _categoriaCor = <String, Color>{
   'fatura': BrandTokens.catBilling,
@@ -116,6 +117,11 @@ class _NotifTile extends ConsumerWidget {
       if (!context.mounted) return;
       // ignore: use_build_context_synchronously
       context.push(action.substring(5));
+    } else if (action.startsWith('nps:')) {
+      final osId = action.substring(4);
+      if (!context.mounted) return;
+      // ignore: use_build_context_synchronously
+      await showNpsBottomSheet(context, osId: osId);
     }
   }
 

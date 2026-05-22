@@ -15,6 +15,8 @@ from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.api.schemas.cliente_app_auth import (
+    NpsSubmitIn,
+    NpsSubmitOut,
     OsCreateIn,
     OsListOut,
     OsOut,
@@ -41,6 +43,9 @@ def _os_out(o: ClienteAppOs) -> OsOut:
         status=o.status,
         created_at=o.created_at.isoformat(),
         updated_at=o.updated_at.isoformat(),
+        nps_solicitado_em=o.nps_solicitado_em.isoformat() if o.nps_solicitado_em else None,
+        nps_respondido_em=o.nps_respondido_em.isoformat() if o.nps_respondido_em else None,
+        nps_score=o.nps_score,
     )
 
 
@@ -88,6 +93,42 @@ async def criar(
     await session.commit()
     await session.refresh(os_row)
     return _os_out(os_row)
+
+
+@router.post("/{os_id}/nps", response_model=NpsSubmitOut)
+async def submeter_nps(
+    os_id: UUID,
+    body: NpsSubmitIn,
+    user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> NpsSubmitOut:
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    row = await session.get(ClienteAppOs, os_id)
+    if row is None or row.cliente_app_user_id != user.id:
+        raise HTTPException(status_code=404, detail="chamado nao encontrado")
+    if row.status != "concluido":
+        raise HTTPException(status_code=409, detail="chamado ainda nao concluido")
+    if row.nps_respondido_em is not None:
+        raise HTTPException(status_code=409, detail="avaliacao ja enviada")
+
+    now = _dt.now(_tz.utc)
+    row.nps_score = body.score
+    row.nps_comentario = body.comentario or None
+    row.nps_respondido_em = now
+    await session.commit()
+    log.info(
+        "cliente_app_os.nps_submetido",
+        os_id=str(os_id),
+        score=body.score,
+        has_comment=bool(body.comentario),
+    )
+    return NpsSubmitOut(
+        os_id=str(os_id),
+        score=body.score,
+        respondido_em=now.isoformat(),
+    )
 
 
 @router.get("/{os_id}", response_model=OsOut)
@@ -276,6 +317,9 @@ async def admin_patch(
 
     # Notifica cliente se status mudou.
     if body.status is not None and body.status != status_anterior:
+        from datetime import datetime as _dt
+        from datetime import timezone as _tz
+
         status_labels = {
             "aberto": "aberto",
             "em_atendimento": "em atendimento",
@@ -292,6 +336,19 @@ async def admin_patch(
             action="tela:/suporte",
             payload={"os_id": str(o.id), "status": o.status},
         )
+
+        # Quando concluido pela primeira vez, dispara pedido de NPS.
+        if o.status == "concluido" and o.nps_solicitado_em is None:
+            o.nps_solicitado_em = _dt.now(_tz.utc)
+            await notify_user(
+                session,
+                o.cliente_app_user_id,
+                "os",
+                "Como foi seu atendimento?",
+                "Sua avaliacao leva 5 segundos e ajuda a gente a melhorar.",
+                action=f"nps:{o.id}",
+                payload={"os_id": str(o.id), "kind": "nps"},
+            )
 
     await session.commit()
     await session.refresh(o)

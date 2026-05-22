@@ -28,6 +28,17 @@ class OsRepository {
     });
     return OsDto.fromJson(r.data as Map<String, dynamic>);
   }
+
+  Future<void> submeterNps({
+    required String osId,
+    required int score,
+    String? comentario,
+  }) async {
+    await _dio.post('$_base/$osId/nps', data: {
+      'score': score,
+      if (comentario != null && comentario.isNotEmpty) 'comentario': comentario,
+    });
+  }
 }
 
 final osRepositoryProvider = Provider<OsRepository>(

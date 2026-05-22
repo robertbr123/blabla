@@ -172,6 +172,9 @@ class OsDto {
     required this.status,
     required this.createdAt,
     required this.updatedAt,
+    this.npsSolicitadoEm,
+    this.npsRespondidoEm,
+    this.npsScore,
   });
   factory OsDto.fromJson(Map<String, dynamic> j) => OsDto(
         id: j['id'] as String,
@@ -180,6 +183,13 @@ class OsDto {
         status: j['status'] as String,
         createdAt: DateTime.parse(j['created_at'] as String),
         updatedAt: DateTime.parse(j['updated_at'] as String),
+        npsSolicitadoEm: j['nps_solicitado_em'] != null
+            ? DateTime.parse(j['nps_solicitado_em'] as String)
+            : null,
+        npsRespondidoEm: j['nps_respondido_em'] != null
+            ? DateTime.parse(j['nps_respondido_em'] as String)
+            : null,
+        npsScore: j['nps_score'] as int?,
       );
   final String id;
   final String tipo; // sem_internet|mudanca_endereco|troca_plano
@@ -187,6 +197,14 @@ class OsDto {
   final String status; // aberto|em_atendimento|concluido|cancelado
   final DateTime createdAt;
   final DateTime updatedAt;
+  final DateTime? npsSolicitadoEm;
+  final DateTime? npsRespondidoEm;
+  final int? npsScore;
+
+  bool get npsPendente =>
+      status == 'concluido' &&
+      npsSolicitadoEm != null &&
+      npsRespondidoEm == null;
 
   String get tipoLabel => switch (tipo) {
         'sem_internet' => 'Sem internet',

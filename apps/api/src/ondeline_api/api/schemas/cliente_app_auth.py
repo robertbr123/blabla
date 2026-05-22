@@ -194,10 +194,24 @@ class OsOut(BaseModel):
     status: str
     created_at: str
     updated_at: str
+    nps_solicitado_em: str | None = None
+    nps_respondido_em: str | None = None
+    nps_score: int | None = None
 
 
 class OsListOut(BaseModel):
     items: list[OsOut]
+
+
+class NpsSubmitIn(BaseModel):
+    score: int = Field(ge=0, le=10)
+    comentario: str | None = Field(default=None, max_length=2000)
+
+
+class NpsSubmitOut(BaseModel):
+    os_id: str
+    score: int
+    respondido_em: str
 
 
 # ════════ Fase 6: Chat in-app ════════
