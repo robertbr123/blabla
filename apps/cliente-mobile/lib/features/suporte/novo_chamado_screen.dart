@@ -37,6 +37,13 @@ class _NovoChamadoScreenState extends ConsumerState<NovoChamadoScreen> {
           icon: const Icon(Icons.close),
           onPressed: () => context.pop(),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Perguntas frequentes',
+            onPressed: () => context.push('/faq'),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(

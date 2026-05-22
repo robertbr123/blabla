@@ -35,6 +35,13 @@ class _SuporteScreenState extends ConsumerState<SuporteScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Suporte'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline_rounded),
+            tooltip: 'Perguntas frequentes',
+            onPressed: () => context.push('/faq'),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabs,
           labelColor: BrandTokens.primary,

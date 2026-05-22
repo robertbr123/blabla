@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 
 import 'core/auth/auth_state.dart';
 import 'features/auth/login_screen.dart';
+import 'features/faq/faq_artigo_screen.dart';
+import 'features/faq/faq_screen.dart';
 import 'features/indicacao/indicacao_screen.dart';
 import 'features/legal/legal_screen.dart';
 import 'features/onboarding/onboarding_biometric_screen.dart';
@@ -88,6 +90,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/indicacao',
         builder: (_, __) => const IndicacaoScreen(),
+      ),
+      GoRoute(
+        path: '/faq',
+        builder: (_, __) => const FaqScreen(),
+      ),
+      GoRoute(
+        path: '/faq/:artigoId',
+        builder: (_, state) =>
+            FaqArtigoScreen(artigoId: state.pathParameters['artigoId']!),
       ),
       GoRoute(
         path: '/legal/termos',
