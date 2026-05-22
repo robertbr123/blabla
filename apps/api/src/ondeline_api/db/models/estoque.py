@@ -56,6 +56,26 @@ TIPOS_POSITIVOS: frozenset[str] = frozenset(
 )
 
 
+class EstoqueCategoria(Base):
+    """Categoria de item de estoque — CRUD dinamico (era enum fixo).
+
+    Os 5 valores legados (onu/roteador/cabo/conector/outro) sao seedados na
+    migracao 0033 e nao podem ser apagados se houver item referenciando.
+    """
+
+    __tablename__ = "estoque_categoria"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    slug: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
+    nome: Mapped[str] = mapped_column(String(80), nullable=False)
+    ativo: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class EstoqueItem(Base):
     __tablename__ = "estoque_item"
 

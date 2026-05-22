@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { useCreateEstoqueItem } from '@/lib/api/queries'
+import { useCreateEstoqueItem, useEstoqueCategorias } from '@/lib/api/queries'
 
 const schema = z.object({
   sku: z
@@ -16,7 +16,7 @@ const schema = z.object({
     .max(40)
     .regex(/^[A-Za-z0-9-_]+$/, 'Use letras, números, hífen ou underline'),
   nome: z.string().min(1, 'Obrigatório').max(120),
-  categoria: z.enum(['onu', 'roteador', 'cabo', 'conector', 'outro']),
+  categoria: z.string().min(1, 'Selecione uma categoria'),
   serializado: z.boolean(),
   ativo: z.boolean(),
 })
@@ -29,6 +29,7 @@ interface Props {
 
 export function DialogNovoItemEstoque({ onClose }: Props) {
   const create = useCreateEstoqueItem()
+  const { data: categorias } = useEstoqueCategorias(true)
   const {
     register,
     handleSubmit,
@@ -40,7 +41,7 @@ export function DialogNovoItemEstoque({ onClose }: Props) {
     defaultValues: {
       sku: '',
       nome: '',
-      categoria: 'outro',
+      categoria: '',
       serializado: false,
       ativo: true,
     },
@@ -92,12 +93,18 @@ export function DialogNovoItemEstoque({ onClose }: Props) {
           <div>
             <Label htmlFor="categoria">Categoria *</Label>
             <Select id="categoria" {...register('categoria')}>
-              <option value="onu">ONU</option>
-              <option value="roteador">Roteador</option>
-              <option value="cabo">Cabo</option>
-              <option value="conector">Conector</option>
-              <option value="outro">Outro</option>
+              <option value="">Selecione…</option>
+              {(categorias ?? []).map((c) => (
+                <option key={c.id} value={c.slug}>
+                  {c.nome}
+                </option>
+              ))}
             </Select>
+            {errors.categoria && (
+              <p className="mt-1 text-xs text-destructive">
+                {errors.categoria.message}
+              </p>
+            )}
           </div>
 
           <div className="flex items-center justify-between rounded-md border p-3">

@@ -10,9 +10,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.api.schemas.estoque import (
+    CategoriaCreate,
+    CategoriaOut,
+    CategoriaUpdate,
     DepositoBaixaIn,
     DepositoEntradaIn,
     DepositoSaldoOut,
+    DevolverIn,
     ItemCreate,
     ItemOut,
     ItemUpdate,
@@ -30,7 +34,7 @@ from ondeline_api.api.v1.tecnico_me import current_tecnico
 from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.rbac import require_role
 from ondeline_api.db.models.business import Tecnico
-from ondeline_api.db.models.estoque import EstoqueItem
+from ondeline_api.db.models.estoque import EstoqueCategoria, EstoqueItem
 from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db
 from ondeline_api.repositories.estoque import ItemRepo, MovimentoRepo
@@ -40,6 +44,7 @@ from ondeline_api.services.estoque import (
     SaldoInsuficiente,
     SerialDuplicado,
     calcular_saldo_tecnico,
+    devolver_tecnico_para_deposito,
     registrar_movimento,
     transferir_deposito_para_tecnico,
 )
@@ -63,6 +68,22 @@ async def list_itens(
     return [ItemOut.model_validate(r) for r in rows]
 
 
+async def _validar_categoria(session: AsyncSession, slug: str) -> None:
+    from sqlalchemy import select
+
+    row = (
+        await session.execute(
+            select(EstoqueCategoria).where(
+                EstoqueCategoria.slug == slug, EstoqueCategoria.ativo.is_(True)
+            )
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(
+            status_code=400, detail=f"categoria '{slug}' nao cadastrada ou inativa"
+        )
+
+
 @router.post(
     "/itens",
     response_model=ItemOut,
@@ -73,6 +94,7 @@ async def create_item(
     body: ItemCreate,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ItemOut:
+    await _validar_categoria(session, body.categoria)
     item = EstoqueItem(
         sku=body.sku,
         nome=body.nome,
@@ -98,10 +120,114 @@ async def update_item(
     item = await repo.get_by_id(item_id)
     if item is None:
         raise HTTPException(status_code=404, detail="item not found")
+    if body.categoria is not None:
+        await _validar_categoria(session, body.categoria)
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
     await session.flush()
     return ItemOut.model_validate(item)
+
+
+# ── Categorias ────────────────────────────────────────────────
+
+
+@router.get(
+    "/categorias",
+    response_model=list[CategoriaOut],
+    dependencies=[_admin_atendente],
+)
+async def list_categorias(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    ativos_only: Annotated[bool, Query()] = False,
+) -> list[CategoriaOut]:
+    from sqlalchemy import select
+
+    stmt = select(EstoqueCategoria)
+    if ativos_only:
+        stmt = stmt.where(EstoqueCategoria.ativo.is_(True))
+    stmt = stmt.order_by(EstoqueCategoria.nome)
+    rows = list((await session.execute(stmt)).scalars().all())
+    return [CategoriaOut.model_validate(r) for r in rows]
+
+
+@router.post(
+    "/categorias",
+    response_model=CategoriaOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[_admin],
+)
+async def create_categoria(
+    body: CategoriaCreate,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> CategoriaOut:
+    cat = EstoqueCategoria(slug=body.slug, nome=body.nome, ativo=body.ativo)
+    session.add(cat)
+    try:
+        await session.flush()
+    except IntegrityError as e:
+        raise HTTPException(status_code=409, detail="slug ja em uso") from e
+    return CategoriaOut.model_validate(cat)
+
+
+@router.patch(
+    "/categorias/{cat_id}",
+    response_model=CategoriaOut,
+    dependencies=[_admin],
+)
+async def update_categoria(
+    cat_id: UUID,
+    body: CategoriaUpdate,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> CategoriaOut:
+    from sqlalchemy import select
+
+    cat = (
+        await session.execute(
+            select(EstoqueCategoria).where(EstoqueCategoria.id == cat_id)
+        )
+    ).scalar_one_or_none()
+    if cat is None:
+        raise HTTPException(status_code=404, detail="categoria not found")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(cat, field, value)
+    await session.flush()
+    return CategoriaOut.model_validate(cat)
+
+
+@router.delete(
+    "/categorias/{cat_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[_admin],
+)
+async def delete_categoria(
+    cat_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    from sqlalchemy import func, select
+
+    cat = (
+        await session.execute(
+            select(EstoqueCategoria).where(EstoqueCategoria.id == cat_id)
+        )
+    ).scalar_one_or_none()
+    if cat is None:
+        raise HTTPException(status_code=404, detail="categoria not found")
+
+    n = (
+        await session.execute(
+            select(func.count(EstoqueItem.id)).where(EstoqueItem.categoria == cat.slug)
+        )
+    ).scalar_one()
+    if n and n > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"categoria tem {n} item(ns) — nao da pra apagar. "
+                "Desative via PATCH ativo=false."
+            ),
+        )
+    await session.delete(cat)
+    await session.flush()
 
 
 @router.delete(
@@ -418,6 +544,36 @@ async def transferir_deposito(
     """Transferencia atomica deposito -> tecnico (saida + entrada)."""
     try:
         saida, entrada = await transferir_deposito_para_tecnico(
+            session,
+            item_id=body.item_id,
+            tecnico_id=body.tecnico_id,
+            quantidade=body.quantidade,
+            criado_por=user.id,
+            serial=body.serial,
+            observacao=body.observacao,
+        )
+    except SaldoInsuficiente as e:
+        raise HTTPException(status_code=409, detail=str(e)) from e
+    except (ItemNaoExiste, SerialDuplicado) as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except EstoqueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    return {"saida_id": str(saida.id), "entrada_id": str(entrada.id)}
+
+
+@router.post(
+    "/deposito/devolver",
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[_admin_atendente],
+)
+async def devolver_para_deposito(
+    body: DevolverIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> dict[str, str]:
+    """Devolucao atomica tecnico -> deposito (devolucao + entrada)."""
+    try:
+        saida, entrada = await devolver_tecnico_para_deposito(
             session,
             item_id=body.item_id,
             tecnico_id=body.tecnico_id,

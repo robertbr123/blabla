@@ -383,7 +383,7 @@ export interface EstoqueItem {
   id: string
   sku: string
   nome: string
-  categoria: 'onu' | 'roteador' | 'cabo' | 'conector' | 'outro'
+  categoria: string
   serializado: boolean
   ativo: boolean
   created_at: string

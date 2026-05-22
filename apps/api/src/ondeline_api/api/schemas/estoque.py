@@ -6,7 +6,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-_CATEGORIAS = ("onu", "roteador", "cabo", "conector", "outro")
 _TIPOS = (
     "entrada",
     "saida",
@@ -32,17 +31,44 @@ class ItemOut(BaseModel):
 class ItemCreate(BaseModel):
     sku: str = Field(min_length=1, max_length=40)
     nome: str = Field(min_length=1, max_length=120)
-    categoria: str = Field(pattern="^(onu|roteador|cabo|conector|outro)$")
+    categoria: str = Field(min_length=1, max_length=40)
     serializado: bool = False
     ativo: bool = True
 
 
 class ItemUpdate(BaseModel):
     nome: str | None = Field(default=None, max_length=120)
-    categoria: str | None = Field(
-        default=None, pattern="^(onu|roteador|cabo|conector|outro)$"
-    )
+    categoria: str | None = Field(default=None, max_length=40)
     ativo: bool | None = None
+
+
+class CategoriaOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    slug: str
+    nome: str
+    ativo: bool
+    created_at: datetime
+
+
+class CategoriaCreate(BaseModel):
+    slug: str = Field(min_length=1, max_length=40, pattern="^[a-z0-9_-]+$")
+    nome: str = Field(min_length=1, max_length=80)
+    ativo: bool = True
+
+
+class CategoriaUpdate(BaseModel):
+    nome: str | None = Field(default=None, max_length=80)
+    ativo: bool | None = None
+
+
+class DevolverIn(BaseModel):
+    """Devolucao atomica: tecnico -> deposito (devolucao + entrada)."""
+    item_id: UUID
+    tecnico_id: UUID
+    quantidade: int = Field(gt=0)
+    serial: str | None = Field(default=None, max_length=120)
+    observacao: str | None = Field(default=None, max_length=500)
 
 
 class MovimentoCreate(BaseModel):

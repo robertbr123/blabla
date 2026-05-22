@@ -85,7 +85,7 @@ export function useEstoqueSaldo(tecnicoId: string | null) {
 export interface EstoqueItemCreate {
   sku: string
   nome: string
-  categoria: 'onu' | 'roteador' | 'cabo' | 'conector' | 'outro'
+  categoria: string
   serializado: boolean
   ativo: boolean
 }
@@ -104,7 +104,7 @@ export function useCreateEstoqueItem() {
 
 export interface EstoqueItemUpdate {
   nome?: string
-  categoria?: 'onu' | 'roteador' | 'cabo' | 'conector' | 'outro'
+  categoria?: string
   ativo?: boolean
 }
 
@@ -239,6 +239,97 @@ export function useTransferir() {
       qc.invalidateQueries({ queryKey: ['estoque-saldo'] })
       qc.invalidateQueries({ queryKey: ['estoque-movimentos'] })
     },
+  })
+}
+
+export interface DevolverIn {
+  item_id: string
+  tecnico_id: string
+  quantidade: number
+  serial?: string | null
+  observacao?: string | null
+}
+
+export function useDevolver() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: DevolverIn) =>
+      apiFetch('/api/v1/estoque/deposito/devolver', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['estoque-deposito-saldo'] })
+      qc.invalidateQueries({ queryKey: ['estoque-tecnicos-saldos'] })
+      qc.invalidateQueries({ queryKey: ['estoque-saldo'] })
+      qc.invalidateQueries({ queryKey: ['estoque-movimentos'] })
+      qc.invalidateQueries({ queryKey: ['estoque-seriais-ativos'] })
+    },
+  })
+}
+
+// ── Categorias ───────────────────────────────────────────────
+
+export interface EstoqueCategoria {
+  id: string
+  slug: string
+  nome: string
+  ativo: boolean
+  created_at: string
+}
+
+export interface CategoriaCreate {
+  slug: string
+  nome: string
+  ativo?: boolean
+}
+
+export interface CategoriaUpdate {
+  nome?: string
+  ativo?: boolean
+}
+
+export function useEstoqueCategorias(ativosOnly = false) {
+  return useQuery<EstoqueCategoria[]>({
+    queryKey: ['estoque-categorias', ativosOnly],
+    queryFn: () =>
+      apiFetch(
+        `/api/v1/estoque/categorias${ativosOnly ? '?ativos_only=true' : ''}`,
+      ),
+    staleTime: 30_000,
+  })
+}
+
+export function useCreateCategoria() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CategoriaCreate) =>
+      apiFetch<EstoqueCategoria>('/api/v1/estoque/categorias', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['estoque-categorias'] }),
+  })
+}
+
+export function useUpdateCategoria() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: CategoriaUpdate }) =>
+      apiFetch<EstoqueCategoria>(`/api/v1/estoque/categorias/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['estoque-categorias'] }),
+  })
+}
+
+export function useDeleteCategoria() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<void>(`/api/v1/estoque/categorias/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['estoque-categorias'] }),
   })
 }
 

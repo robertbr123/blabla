@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import { useUpdateEstoqueItem } from '@/lib/api/queries'
+import { useEstoqueCategorias, useUpdateEstoqueItem } from '@/lib/api/queries'
 import type { EstoqueItem } from '@/lib/api/types'
 
 interface Props {
@@ -15,10 +15,9 @@ interface Props {
 
 export function DialogEditarItemEstoque({ item, onClose }: Props) {
   const update = useUpdateEstoqueItem()
+  const { data: categorias } = useEstoqueCategorias(true)
   const [nome, setNome] = useState(item.nome)
-  const [categoria, setCategoria] = useState<EstoqueItem['categoria']>(
-    item.categoria as EstoqueItem['categoria'],
-  )
+  const [categoria, setCategoria] = useState<string>(item.categoria)
   const [ativo, setAtivo] = useState(item.ativo)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -66,15 +65,18 @@ export function DialogEditarItemEstoque({ item, onClose }: Props) {
           <Select
             id="categoria"
             value={categoria}
-            onChange={(e) =>
-              setCategoria(e.target.value as EstoqueItem['categoria'])
-            }
+            onChange={(e) => setCategoria(e.target.value)}
           >
-            <option value="onu">ONU</option>
-            <option value="roteador">Roteador</option>
-            <option value="cabo">Cabo</option>
-            <option value="conector">Conector</option>
-            <option value="outro">Outro</option>
+            {(categorias ?? []).map((c) => (
+              <option key={c.id} value={c.slug}>
+                {c.nome}
+              </option>
+            ))}
+            {/* Fallback: se o slug atual nao existe mais nas ativas, mostra */}
+            {categoria &&
+              !(categorias ?? []).some((c) => c.slug === categoria) && (
+                <option value={categoria}>{categoria} (inativa)</option>
+              )}
           </Select>
         </div>
 

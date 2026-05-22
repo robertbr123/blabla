@@ -199,6 +199,48 @@ async def transferir_deposito_para_tecnico(
     return saida, entrada
 
 
+async def devolver_tecnico_para_deposito(
+    session: AsyncSession,
+    *,
+    item_id: UUID,
+    tecnico_id: UUID,
+    quantidade: int,
+    criado_por: UUID,
+    serial: str | None = None,
+    observacao: str | None = None,
+) -> tuple[EstoqueMovimento, EstoqueMovimento]:
+    """Devolucao atomica: tecnico -> deposito.
+
+    Cria 2 movimentos:
+    1. (tecnico_id=X,    tipo=devolucao) — sai do tecnico
+    2. (tecnico_id=NULL, tipo=entrada)   — volta pro deposito
+    """
+    obs_suffix = f"devolucao tecnico {tecnico_id} -> deposito"
+    obs = obs_suffix if not observacao else f"{observacao} | {obs_suffix}"
+
+    saida = await registrar_movimento(
+        session,
+        item_id=item_id,
+        tipo=MovimentoTipo.DEVOLUCAO.value,
+        quantidade=quantidade,
+        criado_por=criado_por,
+        tecnico_id=tecnico_id,
+        serial=serial,
+        observacao=obs,
+    )
+    entrada = await registrar_movimento(
+        session,
+        item_id=item_id,
+        tipo=MovimentoTipo.ENTRADA.value,
+        quantidade=quantidade,
+        criado_por=criado_por,
+        tecnico_id=None,
+        serial=serial,
+        observacao=obs,
+    )
+    return saida, entrada
+
+
 async def calcular_saldo_tecnico(
     session: AsyncSession, tecnico_id: UUID
 ) -> list[dict[str, Any]]:

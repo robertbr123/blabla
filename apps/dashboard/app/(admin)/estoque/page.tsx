@@ -7,7 +7,9 @@ import {
   Package,
   Pencil,
   Plus,
+  Tags,
   Trash2,
+  Undo2,
   Users,
   Warehouse,
 } from 'lucide-react'
@@ -20,6 +22,8 @@ import { DialogEditarItemEstoque } from '@/components/dialog-editar-item-estoque
 import { DialogEntradaDeposito } from '@/components/dialog-entrada-deposito'
 import { DialogBaixaDeposito } from '@/components/dialog-baixa-deposito'
 import { DialogTransferir } from '@/components/dialog-transferir'
+import { DialogDevolver } from '@/components/dialog-devolver'
+import { DialogGerenciarCategorias } from '@/components/dialog-gerenciar-categorias'
 import {
   useDeleteEstoqueItem,
   useDepositoSaldo,
@@ -51,6 +55,12 @@ export default function EstoquePage() {
   const [showEntrada, setShowEntrada] = useState(false)
   const [showBaixa, setShowBaixa] = useState(false)
   const [showTransfer, setShowTransfer] = useState(false)
+  const [showDevolver, setShowDevolver] = useState<
+    | true
+    | { tecnicoId?: string; itemId?: string; serial?: string }
+    | false
+  >(false)
+  const [showCategorias, setShowCategorias] = useState(false)
   const [itemEditando, setItemEditando] = useState<EstoqueItem | null>(null)
   const [busca, setBusca] = useState('')
   const updateItem = useUpdateEstoqueItem()
@@ -147,6 +157,23 @@ export default function EstoquePage() {
       {showTransfer && (
         <DialogTransferir onClose={() => setShowTransfer(false)} />
       )}
+      {showDevolver && (
+        <DialogDevolver
+          onClose={() => setShowDevolver(false)}
+          tecnicoIdInicial={
+            typeof showDevolver === 'object' ? showDevolver.tecnicoId : undefined
+          }
+          itemIdInicial={
+            typeof showDevolver === 'object' ? showDevolver.itemId : undefined
+          }
+          serialInicial={
+            typeof showDevolver === 'object' ? showDevolver.serial : undefined
+          }
+        />
+      )}
+      {showCategorias && (
+        <DialogGerenciarCategorias onClose={() => setShowCategorias(false)} />
+      )}
       {itemEditando && (
         <DialogEditarItemEstoque
           item={itemEditando}
@@ -182,6 +209,14 @@ export default function EstoquePage() {
           >
             <Package className="h-4 w-4" />
             Novo item
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowCategorias(true)}
+            className="gap-2"
+          >
+            <Tags className="h-4 w-4" />
+            Categorias
           </Button>
         </div>
       </div>
@@ -247,12 +282,23 @@ export default function EstoquePage() {
 
       {aba === 'tecnicos' && (
         <section className="space-y-4">
-          <Input
-            placeholder="Buscar por técnico, item ou SKU…"
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            className="max-w-sm"
-          />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Input
+              placeholder="Buscar por técnico, item ou SKU…"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              className="max-w-sm"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDevolver(true)}
+              className="gap-2"
+            >
+              <Undo2 className="h-4 w-4" />
+              Devolver → depósito
+            </Button>
+          </div>
           <TabelaTecnicosSaldos
             linhas={(tecSaldos?.linhas ?? []).filter((l) =>
               [l.tecnico_nome, l.nome, l.sku, l.categoria]
