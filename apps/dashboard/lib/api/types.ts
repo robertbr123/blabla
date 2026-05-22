@@ -573,3 +573,57 @@ export interface ClienteAppChatThread {
   handoff_at: string | null
   messages: ClienteAppChatMessage[]
 }
+
+// ════════ Promoções ════════
+
+export type PromocaoTipo = 'generica' | 'indicacao'
+export type PromocaoSegmento =
+  | 'todos'
+  | 'inadimplentes'
+  | 'adimplentes'
+  | `plano:${string}`
+
+export interface Promocao {
+  id: string
+  titulo: string
+  subtitulo: string
+  imagem_url: string | null
+  cta_label: string
+  cta_action: string // "info" | "url:<https>" | "tela:<rota>"
+  tipo: PromocaoTipo
+  ativa: boolean
+  ordem: number
+  valido_de: string | null
+  valido_ate: string | null
+  segmento: PromocaoSegmento
+  gradient_from: string | null
+  gradient_to: string | null
+  icon: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface PromocaoAdmin extends Promocao {
+  views: number
+  clicks: number
+  ctr: number
+}
+
+export interface PromocaoCreate {
+  titulo: string
+  subtitulo?: string
+  imagem_url?: string | null
+  cta_label?: string
+  cta_action?: string
+  tipo?: PromocaoTipo
+  ativa?: boolean
+  ordem?: number
+  valido_de?: string | null
+  valido_ate?: string | null
+  segmento?: PromocaoSegmento
+  gradient_from?: string | null
+  gradient_to?: string | null
+  icon?: string | null
+}
+
+export type PromocaoPatch = Partial<PromocaoCreate>

@@ -17,6 +17,7 @@ import {
   Boxes,
   Gift,
   Smartphone,
+  Megaphone,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -51,6 +52,7 @@ const SECTIONS: ReadonlyArray<NavSection> = [
       { href: '/manutencoes', label: 'Manutenções', icon: CalendarClock, roles: ['admin'] },
       { href: '/clientes-campo', label: 'Clientes (em campo)', icon: Users, roles: ['admin', 'atendente'] },
       { href: '/cliente-app-os', label: 'Chamados app cliente', icon: Smartphone, roles: ['admin', 'atendente'] },
+      { href: '/promocoes', label: 'Promoções (app)', icon: Megaphone, roles: ['admin'] },
       { href: '/tecnicos', label: 'Técnicos', icon: Wrench, roles: ['admin'], exact: true },
       { href: '/tecnicos/ranking', label: 'Ranking', icon: Trophy, roles: ['admin'] },
       { href: '/tecnicos/produtividade', label: 'Comissão', icon: Trophy, roles: ['admin'] },

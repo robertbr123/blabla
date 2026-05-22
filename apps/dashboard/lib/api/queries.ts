@@ -1190,3 +1190,86 @@ export function useClienteAppChatRelease(userId: string) {
     },
   })
 }
+
+// ════════ Promoções (admin) ════════
+
+export function usePromocoesAdmin() {
+  return useQuery<import('./types').PromocaoAdmin[]>({
+    queryKey: ['promocoes-admin'],
+    queryFn: () => apiFetch('/api/v1/admin/promocoes'),
+  })
+}
+
+export function useCreatePromocao() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: import('./types').PromocaoCreate) =>
+      apiFetch<import('./types').PromocaoAdmin>('/api/v1/admin/promocoes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['promocoes-admin'] }),
+  })
+}
+
+export function usePatchPromocao(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: import('./types').PromocaoPatch) =>
+      apiFetch<import('./types').PromocaoAdmin>(`/api/v1/admin/promocoes/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['promocoes-admin'] }),
+  })
+}
+
+export function useDeletePromocao() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/api/v1/admin/promocoes/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['promocoes-admin'] }),
+  })
+}
+
+export function useReorderPromocoes() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) =>
+      apiFetch<import('./types').PromocaoAdmin[]>(
+        '/api/v1/admin/promocoes/reorder',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['promocoes-admin'] }),
+  })
+}
+
+export function useUploadPromocaoImagem(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const fd = new FormData()
+      fd.append('file', file)
+      const token = await getAccessToken()
+      const r = await fetch(`/api/v1/admin/promocoes/${id}/imagem`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+        credentials: 'include',
+      })
+      if (!r.ok) {
+        const msg = await r.text().catch(() => 'erro upload')
+        throw new Error(msg || `upload ${r.status}`)
+      }
+      return (await r.json()) as import('./types').PromocaoAdmin
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['promocoes-admin'] }),
+  })
+}
