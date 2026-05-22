@@ -547,3 +547,23 @@ export interface ClienteAppOsPatch {
   sgp_protocolo_id?: string | null
   assign_to_me?: boolean
 }
+
+// ════════ Cliente App Chat (admin) ════════
+
+export interface ClienteAppChatMessage {
+  id: string
+  role: 'user' | 'bot' | 'atendente'
+  content: string
+  atendente_user_id: string | null
+  created_at: string
+}
+
+export interface ClienteAppChatThread {
+  user_id: string
+  user_nome: string
+  handoff_active: boolean
+  handoff_atendente_id: string | null
+  handoff_atendente_nome: string | null
+  handoff_at: string | null
+  messages: ClienteAppChatMessage[]
+}

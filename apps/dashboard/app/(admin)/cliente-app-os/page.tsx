@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Smartphone,
   WifiOff,
@@ -13,15 +13,25 @@ import {
   Mail,
   User as UserIcon,
   FileText,
+  Send,
+  MessageSquare,
+  Headphones,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
+  useClienteAppChatRelease,
+  useClienteAppChatSend,
+  useClienteAppChatTake,
+  useClienteAppChatThread,
   useClienteAppOsList,
   usePatchClienteAppOs,
   type ClienteAppOsFilter,
 } from '@/lib/api/queries'
-import type { ClienteAppOsAdminItem } from '@/lib/api/types'
+import type {
+  ClienteAppChatMessage,
+  ClienteAppOsAdminItem,
+} from '@/lib/api/types'
 import { cn } from '@/lib/utils'
 
 type StatusFilter = ClienteAppOsAdminItem['status'] | 'all'
@@ -231,6 +241,7 @@ function DetailDrawer(props: {
   const o = props.item
   const patch = usePatchClienteAppOs(o.id)
   const [sgpId, setSgpId] = useState(o.sgp_protocolo_id ?? '')
+  const [tab, setTab] = useState<'detalhes' | 'chat'>('detalhes')
 
   async function changeStatus(s: ClienteAppOsAdminItem['status']) {
     try {
@@ -285,8 +296,27 @@ function DetailDrawer(props: {
               Fechar
             </Button>
           </div>
+          <div className="mt-4 flex border-b border-zinc-200 -mb-px">
+            {(['detalhes', 'chat'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={cn(
+                  'px-4 py-2 text-sm font-semibold border-b-2 transition',
+                  tab === t
+                    ? 'border-indigo-600 text-indigo-600'
+                    : 'border-transparent text-zinc-500 hover:text-zinc-700',
+                )}
+              >
+                {t === 'detalhes' ? 'Detalhes' : 'Chat'}
+              </button>
+            ))}
+          </div>
         </div>
 
+        {tab === 'chat' ? (
+          <ChatPanel userId={o.cliente_app_user_id} />
+        ) : (
         <div className="space-y-5 p-6">
           <Section title="Cliente">
             <Field icon={Phone} label="Telefone" value={o.cliente_telefone || '—'} />
@@ -389,8 +419,168 @@ function DetailDrawer(props: {
             </div>
           </Section>
         </div>
+        )}
       </aside>
     </>
+  )
+}
+
+function ChatPanel(props: { userId: string }) {
+  const { data, isLoading } = useClienteAppChatThread(props.userId)
+  const send = useClienteAppChatSend(props.userId)
+  const take = useClienteAppChatTake(props.userId)
+  const release = useClienteAppChatRelease(props.userId)
+  const [text, setText] = useState('')
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [data?.messages.length])
+
+  async function handleSend() {
+    const t = text.trim()
+    if (!t) return
+    setText('')
+    try {
+      await send.mutateAsync(t)
+    } catch (e) {
+      alert((e as Error).message)
+      setText(t)
+    }
+  }
+
+  return (
+    <div className="flex h-[calc(100vh-180px)] flex-col">
+      {/* Status bar */}
+      <div className="border-b border-zinc-200 bg-zinc-50 px-6 py-3">
+        {isLoading ? (
+          <div className="text-xs text-zinc-500">Carregando conversa…</div>
+        ) : data?.handoff_active ? (
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-medium text-emerald-700">
+              <Headphones className="inline h-3.5 w-3.5 mr-1" />
+              Você está atendendo — bot pausado
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => release.mutate()}
+              disabled={release.isPending}
+            >
+              Liberar pro bot
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-zinc-600">
+              <MessageSquare className="inline h-3.5 w-3.5 mr-1" />
+              Bot está respondendo automaticamente
+            </span>
+            <Button
+              size="sm"
+              onClick={() => take.mutate()}
+              disabled={take.isPending}
+            >
+              Assumir conversa
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Messages */}
+      <div
+        ref={scrollRef}
+        className="flex-1 space-y-2 overflow-y-auto bg-zinc-50 p-6"
+      >
+        {(data?.messages ?? []).map((m) => (
+          <ChatMessageBubble key={m.id} msg={m} />
+        ))}
+        {!isLoading && (data?.messages.length ?? 0) === 0 && (
+          <div className="py-8 text-center text-sm text-zinc-500">
+            Nenhuma mensagem ainda.
+          </div>
+        )}
+      </div>
+
+      {/* Input */}
+      <div className="border-t border-zinc-200 bg-white p-4">
+        <div className="flex items-end gap-2">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Mensagem como atendente…"
+            rows={2}
+            className="flex-1 resize-none rounded-md border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                handleSend()
+              }
+            }}
+          />
+          <Button
+            onClick={handleSend}
+            disabled={send.isPending || !text.trim()}
+            className="bg-indigo-600 hover:bg-indigo-700"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+        <p className="mt-1 text-[10px] text-zinc-400">
+          Enter envia · Shift+Enter quebra linha · Assumir conversa pausa o bot
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function ChatMessageBubble(props: { msg: ClienteAppChatMessage }) {
+  const m = props.msg
+  const isUser = m.role === 'user'
+  const isAtendente = m.role === 'atendente'
+  return (
+    <div
+      className={cn(
+        'flex',
+        isUser ? 'justify-start' : 'justify-end',
+      )}
+    >
+      <div
+        className={cn(
+          'max-w-[78%] rounded-2xl px-3 py-2 text-sm',
+          isUser && 'rounded-bl-md bg-white text-zinc-900 shadow-sm',
+          isAtendente && 'rounded-br-md bg-indigo-600 text-white',
+          !isUser &&
+            !isAtendente &&
+            'rounded-br-md bg-zinc-200 text-zinc-700',
+        )}
+      >
+        {!isUser && (
+          <div
+            className={cn(
+              'mb-0.5 text-[10px] font-semibold uppercase tracking-wide',
+              isAtendente ? 'text-indigo-200' : 'text-zinc-500',
+            )}
+          >
+            {isAtendente ? 'Você' : 'Bot'}
+          </div>
+        )}
+        <div className="whitespace-pre-wrap">{m.content}</div>
+        <div
+          className={cn(
+            'mt-1 text-[10px]',
+            isAtendente ? 'text-indigo-200' : 'text-zinc-400',
+          )}
+        >
+          {new Date(m.created_at).toLocaleTimeString('pt-BR', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </div>
+      </div>
+    </div>
   )
 }
 

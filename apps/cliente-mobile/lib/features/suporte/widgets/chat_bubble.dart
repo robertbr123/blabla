@@ -10,8 +10,13 @@ class ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = msg.isUser;
-    final bg = isUser ? BrandTokens.primary : Theme.of(context).colorScheme.surface;
-    final fg = isUser ? Colors.white : BrandTokens.textPrimary;
+    final isAtendente = msg.role == 'atendente';
+    final bg = isUser
+        ? BrandTokens.primary
+        : isAtendente
+            ? BrandTokens.primaryDark
+            : Theme.of(context).colorScheme.surface;
+    final fg = (isUser || isAtendente) ? Colors.white : BrandTokens.textPrimary;
     final align = isUser ? Alignment.centerRight : Alignment.centerLeft;
     final radius = BorderRadius.only(
       topLeft: const Radius.circular(BrandTokens.radiusLg),
@@ -30,20 +35,49 @@ class ChatBubble extends StatelessWidget {
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.78,
         ),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            vertical: BrandTokens.spaceSm + 2,
-            horizontal: BrandTokens.spaceMd,
-          ),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: radius,
-            boxShadow: isUser ? null : BrandTokens.shadowCard,
-          ),
-          child: Text(
-            msg.content,
-            style: TextStyle(color: fg, height: 1.35),
-          ),
+        child: Column(
+          crossAxisAlignment:
+              isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            if (isAtendente)
+              Padding(
+                padding: const EdgeInsets.only(
+                  left: BrandTokens.spaceXs,
+                  bottom: 2,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.support_agent,
+                        size: 12, color: BrandTokens.textSecondary),
+                    SizedBox(width: 4),
+                    Text(
+                      'Atendente',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: BrandTokens.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                vertical: BrandTokens.spaceSm + 2,
+                horizontal: BrandTokens.spaceMd,
+              ),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: radius,
+                boxShadow: (isUser || isAtendente) ? null : BrandTokens.shadowCard,
+              ),
+              child: Text(
+                msg.content,
+                style: TextStyle(color: fg, height: 1.35),
+              ),
+            ),
+          ],
         ),
       ),
     );

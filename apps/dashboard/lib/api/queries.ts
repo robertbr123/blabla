@@ -1133,3 +1133,60 @@ export function usePatchClienteAppOs(id: string) {
     },
   })
 }
+
+// ════════ Cliente App Chat (admin) ════════
+
+export function useClienteAppChatThread(userId: string | null) {
+  return useQuery<import('./types').ClienteAppChatThread>({
+    queryKey: ['cliente-app-chat', userId],
+    enabled: !!userId,
+    queryFn: () => apiFetch(`/api/v1/admin/cliente-app-chat/${userId}`),
+    refetchInterval: 5000, // polling 5s
+  })
+}
+
+export function useClienteAppChatSend(userId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (text: string) =>
+      apiFetch<import('./types').ClienteAppChatMessage>(
+        `/api/v1/admin/cliente-app-chat/${userId}/send`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cliente-app-chat', userId] })
+    },
+  })
+}
+
+export function useClienteAppChatTake(userId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<import('./types').ClienteAppChatThread>(
+        `/api/v1/admin/cliente-app-chat/${userId}/take`,
+        { method: 'POST' },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cliente-app-chat', userId] })
+    },
+  })
+}
+
+export function useClienteAppChatRelease(userId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<import('./types').ClienteAppChatThread>(
+        `/api/v1/admin/cliente-app-chat/${userId}/release`,
+        { method: 'POST' },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cliente-app-chat', userId] })
+    },
+  })
+}
