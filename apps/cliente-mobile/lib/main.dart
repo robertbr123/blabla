@@ -37,6 +37,17 @@ class ClienteApp extends ConsumerWidget {
       darkTheme: BrandTheme.dark(),
       themeMode: themeMode,
       routerConfig: router,
+      builder: (context, child) {
+        // Tap fora de TextField fecha o teclado em todo o app.
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () {
+            final f = FocusManager.instance.primaryFocus;
+            if (f != null && f.hasFocus) f.unfocus();
+          },
+          child: child,
+        );
+      },
     );
   }
 }

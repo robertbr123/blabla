@@ -7,15 +7,13 @@ import '../home/home_screen.dart';
 import '../perfil/perfil_screen.dart';
 import '../suporte/suporte_screen.dart';
 
-class MainShell extends ConsumerStatefulWidget {
+/// Indice da tab ativa do MainShell. Outras telas podem pular tabs
+/// setando `ref.read(mainShellTabProvider.notifier).state = N`.
+/// 0=Inicio, 1=Faturas, 2=Suporte, 3=Perfil.
+final mainShellTabProvider = StateProvider<int>((ref) => 0);
+
+class MainShell extends ConsumerWidget {
   const MainShell({super.key});
-
-  @override
-  ConsumerState<MainShell> createState() => _MainShellState();
-}
-
-class _MainShellState extends ConsumerState<MainShell> {
-  int _index = 0;
 
   static const _tabs = [
     HomeScreen(),
@@ -25,9 +23,10 @@ class _MainShellState extends ConsumerState<MainShell> {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final index = ref.watch(mainShellTabProvider);
     return Scaffold(
-      body: IndexedStack(index: _index, children: _tabs),
+      body: IndexedStack(index: index, children: _tabs),
       bottomNavigationBar: NavigationBarTheme(
         data: NavigationBarThemeData(
           indicatorColor: BrandTokens.primary.withOpacity(0.10),
@@ -38,8 +37,9 @@ class _MainShellState extends ConsumerState<MainShell> {
           ),
         ),
         child: NavigationBar(
-          selectedIndex: _index,
-          onDestinationSelected: (i) => setState(() => _index = i),
+          selectedIndex: index,
+          onDestinationSelected: (i) =>
+              ref.read(mainShellTabProvider.notifier).state = i,
           destinations: const [
             NavigationDestination(
               icon: Icon(Icons.home_outlined),

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../../core/api/dto.dart';
 import '../../core/api/me_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/cache/last_known_cache.dart';
+import '../shell/main_shell.dart';
 import 'widgets/avisos_list.dart';
 import 'widgets/hero_card.dart';
 import 'widgets/quick_actions.dart';
@@ -42,22 +45,24 @@ class HomeScreen extends ConsumerWidget {
                   QuickAction(
                     icon: Icons.receipt_long_outlined,
                     label: '2a via',
-                    onTap: () => _todo(context, 'Faturas chega na Fase 4'),
+                    onTap: () =>
+                        ref.read(mainShellTabProvider.notifier).state = 1,
                   ),
                   QuickAction(
                     icon: Icons.support_agent_outlined,
                     label: 'Falar conosco',
-                    onTap: () => _todo(context, 'Chat chega na Fase 6'),
+                    onTap: () =>
+                        ref.read(mainShellTabProvider.notifier).state = 2,
                   ),
                   QuickAction(
                     icon: Icons.wifi_off_outlined,
                     label: 'Sem internet',
-                    onTap: () => _todo(context, 'Abrir OS chega na Fase 5'),
+                    onTap: () => context.push('/suporte/novo'),
                   ),
                   QuickAction(
                     icon: Icons.swap_horiz,
                     label: 'Mudar plano',
-                    onTap: () => _todo(context, 'Abrir OS chega na Fase 5'),
+                    onTap: () => context.push('/suporte/novo'),
                   ),
                 ],
               ),
@@ -78,9 +83,6 @@ class HomeScreen extends ConsumerWidget {
   Future<void> _persistMe(MeDto me) async {
     await LastKnownCache().writeMe(me);
   }
-
-  void _todo(BuildContext ctx, String s) =>
-      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(s)));
 }
 
 class _HeroSkeleton extends StatelessWidget {

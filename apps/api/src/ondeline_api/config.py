@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     evolution_instance: str = "hermes-wa"
     evolution_ip_allowlist: str = ""  # CSV; vazio = sem allowlist
 
+    # Notificacao admin quando cliente abre OS pelo app (CSV de WhatsApps brasileiros sem +55, ex: "92991234567,92998765432")
+    cliente_app_admin_notify: str = ""
+
     # Webhook
     webhook_max_body_bytes: int = 1_048_576  # 1 MB
     webhook_rate_limit: str = "100/minute"
