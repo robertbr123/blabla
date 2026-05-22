@@ -110,12 +110,57 @@ def _build_me(
     )
 
 
+async def _invalidate_sgp_cache(
+    session: AsyncSession, cpf_encrypted: str
+) -> None:
+    """Best-effort: invalida cache SGP do CPF do user.
+
+    Usado quando o cliente pediu refresh explicito (ex: pull-to-refresh).
+    Sem isso, cache antigo pode mostrar contratos/dados desatualizados.
+    """
+    cpf = decrypt_pii(cpf_encrypted) if cpf_encrypted else ""
+    if not cpf:
+        return
+    try:
+        from ondeline_api.adapters.sgp.linknetam import SgpLinkNetAMProvider
+        from ondeline_api.adapters.sgp.ondeline import SgpOndelineProvider
+        from ondeline_api.adapters.sgp.router import SgpRouter
+        from ondeline_api.config import get_settings
+        from ondeline_api.services.sgp_cache import SgpCacheService
+        from ondeline_api.services.sgp_config import load_sgp_config
+        from ondeline_api.workers.runtime import get_redis
+
+        s = get_settings()
+        sgp_ond = await load_sgp_config(session, "ondeline")
+        sgp_lnk = await load_sgp_config(session, "linknetam")
+        router_ = SgpRouter(
+            primary=SgpOndelineProvider(**sgp_ond),
+            secondary=SgpLinkNetAMProvider(**sgp_lnk),
+        )
+        cache = SgpCacheService(
+            redis=await get_redis(),
+            session=session,
+            router=router_,
+            ttl_cliente=s.sgp_cache_ttl_cliente,
+            ttl_negativo=s.sgp_cache_ttl_negativo,
+        )
+        await cache.invalidate(cpf)
+        await router_.aclose()
+    except Exception:
+        pass  # best-effort
+
+
 @router.get("/me", response_model=MeOut)
 async def me(
     contrato_id: str | None = None,
+    force: bool = False,
     user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> MeOut:
+    # Pull-to-refresh manda force=true pra pegar SGP fresco — util quando
+    # admin acabou de adicionar/remover contrato no SGP.
+    if force:
+        await _invalidate_sgp_cache(session, user.cpf_encrypted)
     sgp = await _sgp_cliente(session, user.cpf_encrypted)
     return _build_me(user, sgp, contrato_id=contrato_id)
 

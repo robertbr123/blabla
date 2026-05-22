@@ -10,13 +10,21 @@ class MeRepository {
   final Dio _dio;
   static const _base = '/api/v1/cliente-app';
 
-  Future<MeDto> getMe({String? contratoId}) async {
+  Future<MeDto> getMe({String? contratoId, bool force = false}) async {
+    final qs = <String, dynamic>{};
+    if (contratoId != null) qs['contrato_id'] = contratoId;
+    if (force) qs['force'] = 'true';
     final r = await _dio.get(
       '$_base/me',
-      queryParameters: contratoId != null ? {'contrato_id': contratoId} : null,
+      queryParameters: qs.isEmpty ? null : qs,
     );
     return MeDto.fromJson(r.data as Map<String, dynamic>);
   }
+
+  /// Pull-to-refresh: força invalidar cache SGP no backend.
+  /// Útil quando admin adicionou/removeu contrato e cache ainda mostra antigo.
+  Future<MeDto> refresh({String? contratoId}) =>
+      getMe(contratoId: contratoId, force: true);
 
   Future<PlanoDto> getPlano() async {
     final r = await _dio.get('$_base/plano');

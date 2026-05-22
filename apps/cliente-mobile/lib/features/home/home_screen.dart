@@ -5,10 +5,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/dto.dart';
 import '../../core/api/me_repository.dart';
+import '../../core/api/os_repository.dart';
 import '../../core/api/promocoes_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/cache/last_known_cache.dart';
+import '../../core/contrato/contrato_atual_provider.dart';
 import '../notificacoes/widgets/notif_bell.dart';
+import '../nps/nps_bottom_sheet.dart';
 import '../shell/main_shell.dart';
 import 'widgets/avisos_list.dart';
 import 'widgets/contrato_switcher.dart';
@@ -16,25 +19,36 @@ import 'widgets/hero_card.dart';
 import 'widgets/promo_carousel.dart';
 import 'widgets/quick_actions.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  /// Set de OS ids pra quais já mostramos o popup nesta sessão.
+  /// Evita reaparecer toda vez que a Home re-renderiza ou o user volta na tab.
+  final _npsAlreadyPromptedThisSession = <String>{};
+
+  @override
+  Widget build(BuildContext context) {
     final meAsync = ref.watch(meProvider);
     final avisosAsync = ref.watch(avisosProvider);
     final promosAsync = ref.watch(promocoesProvider);
+
+    // Auto-popup de NPS pendente: quando a lista de OS chega, se houver
+    // alguma com npsPendente que ainda nao foi mostrada nesta sessao,
+    // abre o bottom sheet automaticamente.
+    ref.listen<AsyncValue<List<OsDto>>>(osListProvider, (_, next) {
+      next.whenData(_maybePromptNps);
+    });
 
     return Scaffold(
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(meProvider);
-            ref.invalidate(avisosProvider);
-            ref.invalidate(promocoesProvider);
-            await ref.read(meProvider.future);
-          },
+          onRefresh: _onRefresh,
           child: ListView(
             physics: const BouncingScrollPhysics(
               parent: AlwaysScrollableScrollPhysics(),
@@ -125,6 +139,48 @@ class HomeScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _onRefresh() async {
+    // Força invalidação do cache SGP no backend antes de re-fetchar,
+    // pra mudancas de SGP (contratos novos, plano, etc) aparecerem.
+    try {
+      final contratoId = ref.read(contratoAtualProvider);
+      await ref
+          .read(meRepositoryProvider)
+          .refresh(contratoId: contratoId);
+    } on Object {
+      // best-effort — segue invalidando providers de qualquer forma
+    }
+    ref.invalidate(meProvider);
+    ref.invalidate(avisosProvider);
+    ref.invalidate(promocoesProvider);
+    ref.invalidate(osListProvider);
+    await ref.read(meProvider.future);
+  }
+
+  void _maybePromptNps(List<OsDto> osList) {
+    // Escolhe a OS mais recente com NPS pendente nao mostrada ainda.
+    OsDto? alvo;
+    for (final o in osList) {
+      if (!o.npsPendente) continue;
+      if (_npsAlreadyPromptedThisSession.contains(o.id)) continue;
+      if (alvo == null || o.updatedAt.isAfter(alvo.updatedAt)) {
+        alvo = o;
+      }
+    }
+    if (alvo == null) return;
+    final id = alvo.id;
+    _npsAlreadyPromptedThisSession.add(id);
+    // Aguarda o frame atual concluir pra evitar showModalBottomSheet durante build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showNpsBottomSheet(context, osId: id).then((_) {
+        // Apos o sheet fechar (com ou sem submit), invalida pra refletir
+        // npsRespondidoEm caso o user tenha enviado.
+        ref.invalidate(osListProvider);
+      });
+    });
   }
 
   Future<void> _persistMe(MeDto me) async {
