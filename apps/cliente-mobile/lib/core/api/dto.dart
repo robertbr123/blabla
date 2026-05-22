@@ -293,3 +293,28 @@ class PromocaoDto {
   /// Nome do icone Material (mapeado em promo_icon.dart).
   final String? icon;
 }
+
+class IndicacaoMeuDto {
+  IndicacaoMeuDto({
+    required this.codigo,
+    required this.linkCompartilhamento,
+    required this.numeroEmpresa,
+    required this.usos,
+    required this.convertidos,
+    required this.creditoAplicado,
+  });
+  factory IndicacaoMeuDto.fromJson(Map<String, dynamic> j) => IndicacaoMeuDto(
+        codigo: j['codigo'] as String,
+        linkCompartilhamento: (j['link_compartilhamento'] as String?) ?? '',
+        numeroEmpresa: (j['numero_empresa'] as String?) ?? '',
+        usos: (j['usos'] as int?) ?? 0,
+        convertidos: (j['convertidos'] as int?) ?? 0,
+        creditoAplicado: (j['credito_aplicado'] as int?) ?? 0,
+      );
+  final String codigo;
+  final String linkCompartilhamento;
+  final String numeroEmpresa;
+  final int usos;
+  final int convertidos;
+  final int creditoAplicado;
+}
