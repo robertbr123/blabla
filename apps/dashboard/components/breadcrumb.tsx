@@ -12,6 +12,7 @@ const LABELS: Record<string, string> = {
   indicacoes: 'Indicações',
   clientes: 'Clientes',
   'clientes-campo': 'Clientes em campo',
+  'cliente-app-os': 'Chamados app cliente',
   tecnicos: 'Técnicos',
   ranking: 'Ranking',
   produtividade: 'Comissão',

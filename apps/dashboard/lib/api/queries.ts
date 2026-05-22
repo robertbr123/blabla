@@ -1085,3 +1085,51 @@ export function useImportClientesCsv() {
     },
   })
 }
+
+// ════════ Cliente App OS (admin) ════════
+
+export interface ClienteAppOsFilter {
+  status?: import('./types').ClienteAppOsAdminItem['status']
+  tipo?: import('./types').ClienteAppOsAdminItem['tipo']
+  limit?: number
+  offset?: number
+}
+
+export function useClienteAppOsList(filter: ClienteAppOsFilter = {}) {
+  const qs = new URLSearchParams()
+  if (filter.status) qs.set('status', filter.status)
+  if (filter.tipo) qs.set('tipo', filter.tipo)
+  if (filter.limit) qs.set('limit', String(filter.limit))
+  if (filter.offset) qs.set('offset', String(filter.offset))
+  return useQuery<import('./types').ClienteAppOsAdminList>({
+    queryKey: ['cliente-app-os', filter],
+    queryFn: () => apiFetch(`/api/v1/admin/cliente-app-os?${qs}`),
+    refetchInterval: 30000, // pega novas a cada 30s
+  })
+}
+
+export function useClienteAppOsDetail(id: string | null) {
+  return useQuery<import('./types').ClienteAppOsAdminItem>({
+    queryKey: ['cliente-app-os', 'detail', id],
+    enabled: !!id,
+    queryFn: () => apiFetch(`/api/v1/admin/cliente-app-os/${id}`),
+  })
+}
+
+export function usePatchClienteAppOs(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: import('./types').ClienteAppOsPatch) =>
+      apiFetch<import('./types').ClienteAppOsAdminItem>(
+        `/api/v1/admin/cliente-app-os/${id}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cliente-app-os'] })
+    },
+  })
+}

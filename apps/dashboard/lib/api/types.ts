@@ -515,3 +515,35 @@ export interface ImportResultOut {
   skipped: number
   errors: string[]
 }
+
+// ════════ Cliente App OS (admin) ════════
+
+export interface ClienteAppOsAdminItem {
+  id: string
+  tipo: 'sem_internet' | 'mudanca_endereco' | 'troca_plano'
+  descricao: string
+  payload: Record<string, unknown>
+  status: 'aberto' | 'em_atendimento' | 'concluido' | 'cancelado'
+  sgp_protocolo_id: string | null
+  atendente_user_id: string | null
+  atendente_nome: string | null
+  cliente_app_user_id: string
+  cliente_nome: string
+  cliente_cpf_last4: string
+  cliente_telefone: string
+  cliente_email: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ClienteAppOsAdminList {
+  items: ClienteAppOsAdminItem[]
+  total: number
+  counts_by_status: Record<string, number>
+}
+
+export interface ClienteAppOsPatch {
+  status?: ClienteAppOsAdminItem['status']
+  sgp_protocolo_id?: string | null
+  assign_to_me?: boolean
+}
