@@ -529,9 +529,11 @@ export interface ClienteAppOsAdminItem {
   atendente_nome: string | null
   cliente_app_user_id: string
   cliente_nome: string
+  cliente_cpf: string
   cliente_cpf_last4: string
   cliente_telefone: string
   cliente_email: string | null
+  cliente_sgp_id: string | null
   created_at: string
   updated_at: string
 }

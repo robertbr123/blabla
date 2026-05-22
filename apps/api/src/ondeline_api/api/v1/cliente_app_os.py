@@ -110,9 +110,11 @@ class AdminOsItemOut(BaseModel):
     atendente_nome: str | None
     cliente_app_user_id: str
     cliente_nome: str
+    cliente_cpf: str  # CPF completo (atendente precisa pra abrir SGP / criar OS)
     cliente_cpf_last4: str
     cliente_telefone: str
     cliente_email: str | None
+    cliente_sgp_id: str | None
     created_at: str
     updated_at: str
 
@@ -151,9 +153,11 @@ def _admin_item(o: ClienteAppOs, u: ClienteAppUser, atendente: User | None) -> A
         atendente_nome=atendente.name if atendente else None,
         cliente_app_user_id=str(u.id),
         cliente_nome=decrypt_pii(u.nome_encrypted) if u.nome_encrypted else "",
+        cliente_cpf=decrypt_pii(u.cpf_encrypted) if u.cpf_encrypted else "",
         cliente_cpf_last4=u.cpf_last4,
         cliente_telefone=decrypt_pii(u.telefone_encrypted) if u.telefone_encrypted else "",
         cliente_email=decrypt_pii(u.email_encrypted) if u.email_encrypted else None,
+        cliente_sgp_id=u.sgp_id,
         created_at=o.created_at.isoformat(),
         updated_at=o.updated_at.isoformat(),
     )

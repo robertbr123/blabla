@@ -69,6 +69,12 @@ function fmtDate(iso: string): string {
   return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 }
 
+function fmtCpf(d: string): string {
+  const digits = (d ?? '').replace(/\D/g, '')
+  if (digits.length !== 11) return d || '—'
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
+}
+
 export default function ClienteAppOsPage() {
   const [status, setStatus] = useState<StatusFilter>('aberto')
   const [openDetail, setOpenDetail] = useState<ClienteAppOsAdminItem | null>(null)
@@ -349,7 +355,7 @@ function DetailDrawer(props: {
             <Field
               icon={UserIcon}
               label="CPF"
-              value={`***.***.***-${o.cliente_cpf_last4}`}
+              value={fmtCpf(o.cliente_cpf)}
             />
           </Section>
 
@@ -448,6 +454,7 @@ function DetailDrawer(props: {
         problemaSugerido={o.descricao}
         clienteNome={o.cliente_nome}
         clienteTelefone={o.cliente_telefone}
+        clienteCpf={o.cliente_cpf}
         onCreated={() => {
           // Marca o chamado como em atendimento (best-effort)
           patch.mutate({ status: 'em_atendimento' })

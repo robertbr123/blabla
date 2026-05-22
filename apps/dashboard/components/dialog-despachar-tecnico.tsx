@@ -1,9 +1,13 @@
 'use client'
-import { useState } from 'react'
-import { X, Wrench, CheckCircle2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { X, Wrench, CheckCircle2, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { useCreateOs, useTecnicos } from '@/lib/api/queries'
+import {
+  useClienteSgpInfo,
+  useCreateOs,
+  useTecnicos,
+} from '@/lib/api/queries'
 import type { OsOut } from '@/lib/api/types'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +20,8 @@ interface Props {
   clienteNome: string
   /** Telefone do cliente — exibido como referencia, nao vai no body. */
   clienteTelefone: string
+  /** CPF (apenas digitos) — usado pra puxar endereco/plano do SGP. */
+  clienteCpf: string
   /** Callback chamado depois da OS criada com sucesso, passando a OS. */
   onCreated?: (os: OsOut) => void
 }
@@ -23,20 +29,40 @@ interface Props {
 export function DialogDespacharTecnico(props: Props) {
   const [problema, setProblema] = useState(props.problemaSugerido)
   const [endereco, setEndereco] = useState('')
+  const [plano, setPlano] = useState<string>('')
+  const [pppoeLogin, setPppoeLogin] = useState<string>('')
+  const [pppoeSenha, setPppoeSenha] = useState<string>('')
   const [tecnicoId, setTecnicoId] = useState<string>('')
   const [agendamento, setAgendamento] = useState('')
   const [criada, setCriada] = useState<OsOut | null>(null)
+  const [enderecoUserEditou, setEnderecoUserEditou] = useState(false)
 
   const tecnicos = useTecnicos({ ativo: true })
   const createOs = useCreateOs()
+  const sgp = useClienteSgpInfo(props.open ? props.clienteCpf || null : null)
+
+  // Pre-preenche dados do SGP quando dispoivel (so se user nao editou ainda).
+  useEffect(() => {
+    if (sgp.data && !enderecoUserEditou) {
+      if (sgp.data.endereco) setEndereco(sgp.data.endereco)
+      if (sgp.data.plano) setPlano(sgp.data.plano)
+      if (sgp.data.pppoe_login) setPppoeLogin(sgp.data.pppoe_login)
+      if (sgp.data.pppoe_senha) setPppoeSenha(sgp.data.pppoe_senha)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sgp.data])
 
   // Reseta state ao fechar
   function close() {
     setCriada(null)
     setProblema(props.problemaSugerido)
     setEndereco('')
+    setPlano('')
+    setPppoeLogin('')
+    setPppoeSenha('')
     setTecnicoId('')
     setAgendamento('')
+    setEnderecoUserEditou(false)
     props.onClose()
   }
 
@@ -56,6 +82,9 @@ export function DialogDespacharTecnico(props: Props) {
         tecnico_id: tecnicoId,
         problema: problema.trim(),
         endereco: endereco.trim(),
+        plano: plano.trim() || null,
+        pppoe_login: pppoeLogin.trim() || null,
+        pppoe_senha: pppoeSenha.trim() || null,
         agendamento_at: agendamento
           ? new Date(agendamento).toISOString()
           : null,
@@ -116,8 +145,19 @@ export function DialogDespacharTecnico(props: Props) {
               <div className="rounded-md bg-zinc-50 px-3 py-2 text-sm">
                 <div className="font-medium">{props.clienteNome || '—'}</div>
                 <div className="text-xs text-zinc-500">
-                  {props.clienteTelefone || '—'}
+                  CPF {fmtCpf(props.clienteCpf)} · {props.clienteTelefone || '—'}
                 </div>
+                {sgp.isLoading && (
+                  <div className="mt-1 flex items-center gap-1 text-xs text-indigo-600">
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                    Buscando dados no SGP…
+                  </div>
+                )}
+                {sgp.error && (
+                  <div className="mt-1 text-xs text-amber-700">
+                    Não encontrei dados no SGP — preencha manualmente.
+                  </div>
+                )}
               </div>
             </Field>
 
@@ -151,8 +191,37 @@ export function DialogDespacharTecnico(props: Props) {
             <Field label="Endereço" required>
               <input
                 value={endereco}
-                onChange={(e) => setEndereco(e.target.value)}
+                onChange={(e) => {
+                  setEndereco(e.target.value)
+                  setEnderecoUserEditou(true)
+                }}
                 placeholder="Rua, número, bairro, cidade"
+                className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm"
+              />
+            </Field>
+
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Plano">
+                <input
+                  value={plano}
+                  onChange={(e) => setPlano(e.target.value)}
+                  placeholder="Ex: Fibra 600"
+                  className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm"
+                />
+              </Field>
+              <Field label="PPPoE login">
+                <input
+                  value={pppoeLogin}
+                  onChange={(e) => setPppoeLogin(e.target.value)}
+                  className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm"
+                />
+              </Field>
+            </div>
+
+            <Field label="PPPoE senha">
+              <input
+                value={pppoeSenha}
+                onChange={(e) => setPppoeSenha(e.target.value)}
                 className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm"
               />
             </Field>
@@ -183,6 +252,12 @@ export function DialogDespacharTecnico(props: Props) {
       </div>
     </div>
   )
+}
+
+function fmtCpf(d: string): string {
+  const digits = (d ?? '').replace(/\D/g, '')
+  if (digits.length !== 11) return d || '—'
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
 }
 
 function Field(props: {
