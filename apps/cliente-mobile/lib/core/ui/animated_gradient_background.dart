@@ -37,6 +37,7 @@ class _AnimatedGradientBackgroundState extends State<AnimatedGradientBackground>
   @override
   Widget build(BuildContext context) {
     return Stack(
+      fit: StackFit.expand,
       children: [
         // Gradiente base
         Positioned.fill(
@@ -58,16 +59,18 @@ class _AnimatedGradientBackgroundState extends State<AnimatedGradientBackground>
             );
           },
         ),
-        // Overlay sutil escurecendo embaixo
+        // Overlay sutil escurecendo embaixo — bem leve pra não criar banda visível
         Positioned.fill(
           child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
+                stops: const [0.0, 0.7, 1.0],
                 colors: [
                   Colors.transparent,
-                  BrandTokens.primaryDark.withOpacity(0.35),
+                  Colors.transparent,
+                  BrandTokens.primaryDark.withOpacity(0.12),
                 ],
               ),
             ),
@@ -114,16 +117,16 @@ class _BlobsPainter extends CustomPainter {
       p2,
     );
 
-    // Blob 3 — marinho, embaixo esquerda
+    // Blob 3 — marinho, embaixo esquerda (bem difuso pra não formar banda)
     final p3 = Paint()
-      ..color = const Color(0xFF1B4D8C).withOpacity(0.45)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 90);
+      ..color = const Color(0xFF1B4D8C).withOpacity(0.22)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 140);
     canvas.drawCircle(
       Offset(
         w * 0.1 + math.cos(t * 0.8) * 35,
-        h * 0.88 + math.sin(t * 1.2) * 30,
+        h * 1.05 + math.sin(t * 1.2) * 30,
       ),
-      w * 0.4,
+      w * 0.5,
       p3,
     );
   }
