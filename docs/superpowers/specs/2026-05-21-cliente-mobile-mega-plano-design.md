@@ -136,7 +136,19 @@ Fases incrementais. **Começamos por A1+A2+A3** (modernização visual core). De
 
 ---
 
-## BLOCO C — Sistema de promoções (dashboard → app)
+## BLOCO C — Sistema de promoções (dashboard → app) + integração Indicação
+
+**Atualizado 2026-05-21**: Sistema de Indicação F10 já roda (bot WhatsApp + `/admin/indicacoes`). Bloco C **integra** Indicação como tipo especial de promoção, **adicionando o canal "app"** sem quebrar o WhatsApp.
+
+### Execução em 5 fases (C.1 → C.5)
+
+- **C.1** Backend promoções genéricas (tabela, endpoints cliente + admin).
+- **C.2** Dashboard `/admin/promocoes` (CRUD, upload imagem, métricas).
+- **C.3** App: carrossel real (substitui `home_promos.dart` mockado), eventos view/click.
+- **C.4** Integração Indicação: coluna `IndicacaoUso.origem` (`app`|`whatsapp`), endpoint cliente-app `GET /indicacao/meu`, tela Flutter `/indicacao`, banner em `/admin/indicacoes`.
+- **C.5** Promoção `tipo: indicacao` ligada à tela `/indicacao` com stats reais.
+
+### Modelo original abaixo
 
 ### Modelo de dados
 Nova tabela `promocoes`:
