@@ -51,7 +51,7 @@ def init_otel(*, component: str, fastapi_app: Any = None) -> bool:
     HTTPXClientInstrumentor().instrument()
     RedisInstrumentor().instrument()
     SQLAlchemyInstrumentor().instrument(enable_commenter=False)
-    CeleryInstrumentor().instrument()  # type: ignore[no-untyped-call]
+    CeleryInstrumentor().instrument()
 
     if fastapi_app is not None:
         FastAPIInstrumentor.instrument_app(fastapi_app)

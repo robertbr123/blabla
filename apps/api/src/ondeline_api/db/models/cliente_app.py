@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import Boolean, DateTime, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -46,7 +47,7 @@ class ClienteAppOs(Base):
     )
     tipo: Mapped[str] = mapped_column(String(24), nullable=False)
     descricao: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    payload_json: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    payload_json: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="aberto")
     sgp_protocolo_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     atendente_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)

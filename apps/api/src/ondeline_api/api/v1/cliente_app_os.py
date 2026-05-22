@@ -5,7 +5,7 @@
 """
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 import structlog
@@ -102,7 +102,7 @@ class AdminOsItemOut(BaseModel):
     id: str
     tipo: str
     descricao: str
-    payload: dict
+    payload: dict[str, Any]
     status: str
     sgp_protocolo_id: str | None
     atendente_user_id: str | None
@@ -185,11 +185,11 @@ async def admin_listar(
     # users + atendentes
     user_ids = list({r.cliente_app_user_id for r in rows})
     atendente_ids = list({r.atendente_user_id for r in rows if r.atendente_user_id})
-    users_map: dict = {}
+    users_map: dict[Any, ClienteAppUser] = {}
     if user_ids:
         u_stmt = select(ClienteAppUser).where(ClienteAppUser.id.in_(user_ids))
         users_map = {u.id: u for u in (await session.execute(u_stmt)).scalars()}
-    atend_map: dict = {}
+    atend_map: dict[Any, User] = {}
     if atendente_ids:
         a_stmt = select(User).where(User.id.in_(atendente_ids))
         atend_map = {u.id: u for u in (await session.execute(a_stmt)).scalars()}

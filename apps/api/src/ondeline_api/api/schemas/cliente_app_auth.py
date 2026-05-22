@@ -1,6 +1,8 @@
 """Pydantic schemas para /cliente-app/auth/*."""
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -175,7 +177,7 @@ class BoletoUrlOut(BaseModel):
 class OsCreateIn(BaseModel):
     tipo: str  # sem_internet | mudanca_endereco | troca_plano
     descricao: str = Field(min_length=0, max_length=2000)
-    payload: dict = Field(default_factory=dict)
+    payload: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("tipo")
     @classmethod
