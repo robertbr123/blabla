@@ -109,6 +109,10 @@ async def send(
     await session.commit()
     await session.refresh(user_msg)
 
+    # Se atendente assumiu, bot nao responde — atendente conduz via dashboard.
+    if user.human_handoff_atendente_id is not None:
+        return ChatSendOut(user_message=_to_out(user_msg), bot_message=None)
+
     # 2. Monta historico (ultimas N msgs, ordem cronologica)
     hist_stmt = (
         select(ClienteAppMessage)
@@ -121,6 +125,7 @@ async def send(
 
     messages: list[ChatMessage] = [ChatMessage(role=Role.SYSTEM, content=SYSTEM_PROMPT)]
     for m in hist:
+        # msgs de atendente entram como assistant (LLM ve como historia comum)
         messages.append(
             ChatMessage(
                 role=Role.USER if m.role == "user" else Role.ASSISTANT,

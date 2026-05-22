@@ -219,4 +219,4 @@ class ChatSendIn(BaseModel):
 
 class ChatSendOut(BaseModel):
     user_message: ChatMessageOut
-    bot_message: ChatMessageOut
+    bot_message: ChatMessageOut | None = None
