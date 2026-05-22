@@ -7,6 +7,7 @@ import '../../core/auth/auth_repository.dart';
 import '../../core/auth/auth_state.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/animated_gradient_background.dart';
+import '../../core/ui/formatters.dart';
 import '../../core/ui/glass_card.dart';
 import '../../core/ui/haptics.dart';
 
@@ -143,6 +144,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly,
                             LengthLimitingTextInputFormatter(11),
+                            CpfFormatter(),
                           ],
                           prefixIcon: const Icon(
                             Icons.badge_outlined,

@@ -8,6 +8,7 @@ import '../../core/auth/auth_state.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/notifications/push_service.dart';
 import '../../core/theme/theme_mode_controller.dart';
+import '../../core/ui/formatters.dart';
 
 class PerfilScreen extends ConsumerWidget {
   const PerfilScreen({super.key});
@@ -51,7 +52,7 @@ class PerfilScreen extends ConsumerWidget {
                     icon: Icons.phone_outlined,
                     iconColor: BrandTokens.info,
                     label: 'Telefone',
-                    value: me.telefone,
+                    value: formatTelefone(me.telefone),
                     onTap: () => context.push('/perfil/editar', extra: {
                       'campo': 'telefone',
                       'valor': me.telefone,

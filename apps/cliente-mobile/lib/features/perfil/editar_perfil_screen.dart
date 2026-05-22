@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/me_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/formatters.dart';
 
 class EditarPerfilScreen extends ConsumerStatefulWidget {
   const EditarPerfilScreen({
@@ -25,7 +27,11 @@ class _EditarPerfilScreenState extends ConsumerState<EditarPerfilScreen> {
   @override
   void initState() {
     super.initState();
-    _ctrl = TextEditingController(text: widget.valor);
+    // Aplica mascara inicial se for telefone (valor vem do backend sem mascara).
+    final v = widget.campo == 'telefone'
+        ? formatTelefone(widget.valor)
+        : widget.valor;
+    _ctrl = TextEditingController(text: v);
   }
 
   @override
@@ -39,7 +45,9 @@ class _EditarPerfilScreenState extends ConsumerState<EditarPerfilScreen> {
     try {
       final repo = ref.read(meRepositoryProvider);
       if (widget.campo == 'telefone') {
-        await repo.patchMe(telefone: _ctrl.text);
+        // Backend recebe so digitos — strip da mascara.
+        final digits = _ctrl.text.replaceAll(RegExp(r'\D'), '');
+        await repo.patchMe(telefone: digits);
       } else {
         await repo.patchMe(email: _ctrl.text);
       }
@@ -73,7 +81,19 @@ class _EditarPerfilScreenState extends ConsumerState<EditarPerfilScreen> {
                 controller: _ctrl,
                 keyboardType: keyboardType,
                 autofocus: true,
-                decoration: InputDecoration(labelText: label),
+                inputFormatters: widget.campo == 'telefone'
+                    ? [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(11),
+                        TelefoneFormatter(),
+                      ]
+                    : null,
+                decoration: InputDecoration(
+                  labelText: label,
+                  hintText: widget.campo == 'telefone'
+                      ? '(47) 99999-8888'
+                      : 'voce@exemplo.com',
+                ),
               ),
               const Spacer(),
               FilledButton(

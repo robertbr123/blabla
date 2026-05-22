@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/auth_scaffold.dart';
+import '../../core/ui/formatters.dart';
 import '../../core/ui/glass_card.dart';
 
 class OnboardingCpfScreen extends ConsumerStatefulWidget {
@@ -69,12 +70,13 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
           inputFormatters: [
             FilteringTextInputFormatter.digitsOnly,
             LengthLimitingTextInputFormatter(11),
+            CpfFormatter(),
           ],
           textStyle: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w700,
-            fontSize: 22,
-            letterSpacing: 2,
+            fontSize: 20,
+            letterSpacing: 1,
           ),
         ),
       ),
