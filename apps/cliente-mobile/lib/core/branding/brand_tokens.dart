@@ -8,6 +8,7 @@ class BrandTokens {
   // Cores principais — derivadas da logo
   static const Color primary = Color(0xFF14B8B0); // Ciano Ondeline
   static const Color primaryDark = Color(0xFF0B1F3A); // Azul marinho fundo da logo
+  static const Color primaryLight = Color(0xFF5FE3DC);
   static const Color accent = Color(0xFF14B8B0);
   static const Color accentDark = Color(0xFF0F8F89);
 
@@ -30,11 +31,18 @@ class BrandTokens {
   static const Color danger = Color(0xFFE0455A);
   static const Color info = Color(0xFF3B82F6);
 
+  // Cores categóricas pra quick actions (ícones com personalidade)
+  static const Color catBilling = Color(0xFF14B8B0); // ciano
+  static const Color catSupport = Color(0xFF8B5CF6); // roxo
+  static const Color catConnection = Color(0xFFE0455A); // vermelho/coral
+  static const Color catPlan = Color(0xFFE8A33D); // âmbar
+
   // Raios
   static const double radiusSm = 12;
   static const double radiusMd = 16;
   static const double radiusLg = 24;
   static const double radiusXl = 32;
+  static const double radius2xl = 40;
 
   // Espacos
   static const double spaceXs = 4;
@@ -43,6 +51,32 @@ class BrandTokens {
   static const double spaceLg = 24;
   static const double spaceXl = 32;
   static const double spaceXxl = 48;
+
+  // Motion (durações padrão)
+  static const Duration motionFast = Duration(milliseconds: 150);
+  static const Duration motionMedium = Duration(milliseconds: 300);
+  static const Duration motionSlow = Duration(milliseconds: 600);
+  static const Duration motionAmbient = Duration(seconds: 12);
+
+  // Gradients reutilizáveis
+  static const LinearGradient gradientHero = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [primary, primaryDark],
+  );
+
+  static const LinearGradient gradientPrimary = LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [primary, primaryLight],
+  );
+
+  static const LinearGradient gradientAuthBg = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [primaryDark, Color(0xFF0A2A4E), Color(0xFF0F5A6E), primary],
+    stops: [0.0, 0.4, 0.75, 1.0],
+  );
 
   // Sombras
   static final List<BoxShadow> shadowSoft = [
@@ -58,6 +92,40 @@ class BrandTokens {
       color: primaryDark.withOpacity(0.05),
       blurRadius: 16,
       offset: const Offset(0, 4),
+    ),
+  ];
+
+  // Elevations
+  static final List<BoxShadow> elevation1 = [
+    BoxShadow(
+      color: primaryDark.withOpacity(0.04),
+      blurRadius: 8,
+      offset: const Offset(0, 2),
+    ),
+  ];
+
+  static final List<BoxShadow> elevation2 = [
+    BoxShadow(
+      color: primaryDark.withOpacity(0.08),
+      blurRadius: 16,
+      offset: const Offset(0, 6),
+    ),
+  ];
+
+  static final List<BoxShadow> elevation3 = [
+    BoxShadow(
+      color: primaryDark.withOpacity(0.12),
+      blurRadius: 28,
+      offset: const Offset(0, 12),
+    ),
+  ];
+
+  // Sombra colorida (usada em botões/CTAs principais)
+  static final List<BoxShadow> shadowColored = [
+    BoxShadow(
+      color: primary.withOpacity(0.35),
+      blurRadius: 20,
+      offset: const Offset(0, 8),
     ),
   ];
 }

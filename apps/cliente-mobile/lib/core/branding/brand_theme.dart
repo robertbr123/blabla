@@ -49,7 +49,7 @@ class BrandTheme {
     Color textSecondary,
     Color divider,
   ) {
-    final textTheme = GoogleFonts.interTextTheme().apply(
+    final textTheme = GoogleFonts.plusJakartaSansTextTheme().apply(
       bodyColor: textPrimary,
       displayColor: textPrimary,
     );
