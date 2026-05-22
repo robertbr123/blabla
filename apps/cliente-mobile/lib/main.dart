@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/branding/brand_theme.dart';
 import 'core/theme/theme_mode_controller.dart';
+import 'firebase_options.dart';
 import 'router.dart';
 
 @pragma('vm:entry-point')
@@ -15,10 +16,13 @@ Future<void> _bgHandler(RemoteMessage message) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
     FirebaseMessaging.onBackgroundMessage(_bgHandler);
   } catch (_) {
-    // sem firebase_options.dart → segue sem push (dev local)
+    // Init falhou (provavelmente sem internet/Google Play Services).
+    // App segue sem push — telas funcionam normalmente.
   }
   runApp(const ProviderScope(child: ClienteApp()));
 }
