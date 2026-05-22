@@ -45,4 +45,10 @@ BEAT_SCHEDULE: dict[str, dict[str, Any]] = {
         "task": "ondeline_api.workers.cobranca_jobs.run_regua_cobranca",
         "schedule": crontab(hour=9, minute=0),
     },
+    # B5.2 — Notificacoes de fatura vencendo (in-app cliente).
+    # 9h15 (depois da cobranca-regua, evita pico).
+    "cliente-app-faturas-vencendo": {
+        "task": "ondeline_api.workers.cliente_app_notif_jobs.notify_faturas_vencendo",
+        "schedule": crontab(hour=9, minute=15),
+    },
 }

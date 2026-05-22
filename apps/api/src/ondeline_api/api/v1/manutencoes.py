@@ -50,7 +50,7 @@ async def create_manutencao(
     body: ManutencaoCreate,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ManutencaoOut:
-    from ondeline_api.services.cliente_app_notif import broadcast
+    from ondeline_api.services.cliente_app_notif import broadcast_cidades
 
     repo = ManutencaoRepo(session)
     m = await repo.create(
@@ -62,17 +62,19 @@ async def create_manutencao(
         notificar=body.notificar,
     )
     # Broadcast app cliente se admin pediu (`notificar=True`).
+    # Filtra por cidades — clientes sem match no cache SGP nao recebem.
     if body.notificar:
         cidades_txt = (
             ", ".join(body.cidades or []) if body.cidades else "sua regiao"
         )
-        await broadcast(
+        await broadcast_cidades(
             session,
             "manutencao",
             body.titulo,
             f"{body.descricao or ''} ({cidades_txt})".strip(),
             action=None,
             payload={"manutencao_id": str(m.id)},
+            cidades=body.cidades,
         )
         await session.commit()
     return ManutencaoOut.model_validate(m)

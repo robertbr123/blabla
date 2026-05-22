@@ -37,6 +37,8 @@ def create_celery_app() -> Celery:
             "ondeline_api.workers.followup",
             "ondeline_api.workers.handoff_summary_task",
             "ondeline_api.workers.cobranca_jobs",
+            "ondeline_api.workers.cliente_app_notif_jobs",
+            "ondeline_api.workers.fcm_push",
             "ondeline_api.workers.asr_jobs",
         ],
     )
