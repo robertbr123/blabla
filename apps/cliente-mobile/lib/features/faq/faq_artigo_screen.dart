@@ -33,7 +33,7 @@ class FaqArtigoScreen extends StatelessWidget {
     if (cat == null || a == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Artigo')),
-        body: const Center(child: Text('Artigo nao encontrado.')),
+        body: const Center(child: Text('Artigo não encontrado.')),
       );
     }
     final color = _catColors[cat.id] ?? BrandTokens.primary;
@@ -114,7 +114,7 @@ class FaqArtigoScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: BrandTokens.spaceXs),
                 Text(
-                  'Nosso time esta disponivel pra te atender.',
+                  'Nosso time esta disponível pra te atender.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: BrandTokens.textSecondary,
                       ),

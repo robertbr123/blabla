@@ -69,7 +69,7 @@ class _MainShellState extends ConsumerState<MainShell> {
           const FloatingNavItem(
             icon: Icons.home_outlined,
             selectedIcon: Icons.home_rounded,
-            label: 'Inicio',
+            label: 'Início',
           ),
           FloatingNavItem(
             icon: Icons.receipt_long_outlined,

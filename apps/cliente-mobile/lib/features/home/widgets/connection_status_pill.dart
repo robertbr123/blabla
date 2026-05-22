@@ -62,7 +62,7 @@ class _PillState extends State<_Pill>
       case 'ativo':
         return (
           color: const Color(0xFF22E0A1),
-          label: 'Servico ativo',
+          label: 'Serviço ativo',
           icon: null,
         );
       case 'suspenso':

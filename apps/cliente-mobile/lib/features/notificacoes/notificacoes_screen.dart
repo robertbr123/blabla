@@ -34,7 +34,7 @@ class NotificacoesScreen extends ConsumerWidget {
     final async = ref.watch(notificacoesProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notificacoes'),
+        title: const Text('Notificações'),
         elevation: 0,
         actions: [
           IconButton(
@@ -50,7 +50,7 @@ class NotificacoesScreen extends ConsumerWidget {
           ),
           IconButton(
             icon: const Icon(Icons.settings_rounded),
-            tooltip: 'Preferencias',
+            tooltip: 'Preferências',
             onPressed: () => context.push('/notificacoes/preferencias'),
           ),
         ],
@@ -64,7 +64,7 @@ class NotificacoesScreen extends ConsumerWidget {
         child: async.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, __) => const Center(
-            child: Text('Nao conseguimos carregar as notificacoes.'),
+            child: Text('Não conseguimos carregar as notificações.'),
           ),
           data: (lista) {
             if (lista.isEmpty) return const _Empty();
@@ -230,7 +230,7 @@ class _Empty extends StatelessWidget {
               ),
               SizedBox(height: BrandTokens.spaceMd),
               Text(
-                'Sem notificacoes por aqui',
+                'Sem notificações por aqui',
                 style: TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
@@ -238,7 +238,7 @@ class _Empty extends StatelessWidget {
               ),
               SizedBox(height: BrandTokens.spaceXs),
               Text(
-                'Avisos importantes (fatura, OS, manutencao, promocao) aparecem aqui.',
+                'Avisos importantes (fatura, OS, manutenção, promoção) aparecem aqui.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: BrandTokens.textSecondary,

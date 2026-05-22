@@ -66,7 +66,7 @@ class HomeScreen extends ConsumerWidget {
                 data: (promos) {
                   if (promos.isEmpty) return const <Widget>[];
                   return [
-                    const _SectionLabel(label: 'Pra voce'),
+                    const _SectionLabel(label: 'Pra você'),
                     const SizedBox(height: BrandTokens.spaceSm),
                     PromoCarousel(items: promos),
                     const SizedBox(height: BrandTokens.spaceLg),
@@ -75,7 +75,7 @@ class HomeScreen extends ConsumerWidget {
                 loading: () => const <Widget>[],
                 error: (_, __) => const <Widget>[],
               ),
-              const _SectionLabel(label: 'Acoes rapidas'),
+              const _SectionLabel(label: 'Ações rapidas'),
               const SizedBox(height: BrandTokens.spaceSm),
               QuickActions(
                 actions: [
@@ -181,7 +181,7 @@ class _CachedHeroOrError extends StatelessWidget {
             children: [
               const Icon(Icons.error_outline, color: BrandTokens.danger),
               const SizedBox(height: BrandTokens.spaceSm),
-              const Text('Nao conseguimos carregar seus dados.'),
+              const Text('Não conseguimos carregar seus dados.'),
               TextButton(
                 onPressed: () => ref.invalidate(meProvider),
                 child: const Text('Tentar de novo'),

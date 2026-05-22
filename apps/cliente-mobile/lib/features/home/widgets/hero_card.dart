@@ -233,7 +233,7 @@ class _FaturaFooter extends StatelessWidget {
       return (
         BrandTokens.success,
         Icons.check_circle_rounded,
-        'Voce esta em dia',
+        'Você esta em dia',
         'Nenhuma fatura em aberto',
       );
     }
@@ -272,7 +272,7 @@ class _FaturaFooter extends StatelessWidget {
     return (
       BrandTokens.info,
       Icons.receipt_long_rounded,
-      'Proxima fatura em $dias dias',
+      'Próxima fatura em $dias dias',
       '${fmtV.format(f.valor)} · vencimento ${fmtD.format(venc)}',
     );
   }

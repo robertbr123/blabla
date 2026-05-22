@@ -89,7 +89,7 @@ class _FaturasScreenState extends ConsumerState<FaturasScreen> {
                 },
               ),
               const SizedBox(height: BrandTokens.spaceXl),
-              _SectionLabel(label: 'Historico'),
+              _SectionLabel(label: 'Histórico'),
               const SizedBox(height: BrandTokens.spaceSm),
               pagasAsync.when(
                 loading: () => const Padding(
@@ -607,7 +607,7 @@ class _EmAdiaCard extends StatelessWidget {
           ),
           const SizedBox(height: BrandTokens.spaceMd),
           Text(
-            'Voce esta em dia! 🎉',
+            'Você esta em dia! 🎉',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w800,
                   color: isDark
@@ -659,7 +659,7 @@ class _ErrorCard extends StatelessWidget {
         children: [
           const Icon(Icons.error_outline, color: BrandTokens.danger),
           const SizedBox(height: BrandTokens.spaceSm),
-          const Text('Nao conseguimos carregar suas faturas.'),
+          const Text('Não conseguimos carregar suas faturas.'),
           TextButton(
             onPressed: onRetry,
             child: const Text('Tentar de novo'),

@@ -8,17 +8,17 @@ import '../../core/branding/brand_tokens.dart';
 const _categoriaLabels = <String, String>{
   'fatura': 'Faturas',
   'os': 'Chamados (OS)',
-  'manutencao': 'Manutencao programada',
-  'promocao': 'Promocoes',
+  'manutencao': 'Manutenção programada',
+  'promocao': 'Promoções',
   'conta': 'Minha conta',
 };
 
 const _categoriaDescricoes = <String, String>{
-  'fatura': 'Fatura nova, vencimento proximo, pagamento confirmado.',
-  'os': 'Atualizacoes do seu chamado de suporte.',
-  'manutencao': 'Avisos de manutencao programada na sua regiao.',
+  'fatura': 'Fatura nova, vencimento próximo, pagamento confirmado.',
+  'os': 'Atualizações do seu chamado de suporte.',
+  'manutencao': 'Avisos de manutenção programada na sua região.',
   'promocao': 'Ofertas e novidades pra clientes.',
-  'conta': 'Mudancas na sua conta ou login suspeito.',
+  'conta': 'Mudanças na sua conta ou login suspeito.',
 };
 
 const _categoriaIcons = <String, IconData>{
@@ -53,13 +53,13 @@ class _NotifPrefsScreenState extends ConsumerState<NotifPrefsScreen> {
     final async = ref.watch(notifPrefsProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Preferencias'),
+        title: const Text('Preferências'),
         elevation: 0,
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, __) => const Center(
-          child: Text('Nao conseguimos carregar as preferencias.'),
+          child: Text('Não conseguimos carregar as preferências.'),
         ),
         data: (prefs) {
           final current = _local ?? Map<String, bool>.from(prefs.categorias);
@@ -67,7 +67,7 @@ class _NotifPrefsScreenState extends ConsumerState<NotifPrefsScreen> {
             padding: const EdgeInsets.all(BrandTokens.spaceLg),
             children: [
               const Text(
-                'Escolha o que voce quer receber. Voce sempre pode mudar aqui.',
+                'Escolha o que você quer receber. Você sempre pode mudar aqui.',
                 style: TextStyle(
                   color: BrandTokens.textSecondary,
                   fontSize: 13,
@@ -126,7 +126,7 @@ class _NotifPrefsScreenState extends ConsumerState<NotifPrefsScreen> {
         _saving = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preferencias salvas.')),
+        const SnackBar(content: Text('Preferências salvas.')),
       );
     } catch (_) {
       if (!mounted) return;

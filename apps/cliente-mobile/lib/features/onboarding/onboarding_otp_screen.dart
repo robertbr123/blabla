@@ -35,7 +35,7 @@ class _OnboardingOtpScreenState extends ConsumerState<OnboardingOtpScreen> {
   Future<void> _continue() async {
     final code = _ctrl.text.trim();
     if (code.length != 6) {
-      _toast('Codigo deve ter 6 digitos');
+      _toast('Código deve ter 6 digitos');
       return;
     }
     setState(() => _loading = true);
@@ -59,7 +59,7 @@ class _OnboardingOtpScreenState extends ConsumerState<OnboardingOtpScreen> {
     await ref.read(authRepositoryProvider).registerStart(widget.cpf);
     if (!mounted) return;
     setState(() => _loading = false);
-    _toast('Codigo reenviado');
+    _toast('Código reenviado');
   }
 
   void _toast(String s) =>
@@ -72,11 +72,11 @@ class _OnboardingOtpScreenState extends ConsumerState<OnboardingOtpScreen> {
       icon: Icons.message_outlined,
       title: 'Confirme seu telefone',
       subtitle:
-          'Enviamos um codigo de 6 digitos no WhatsApp ${widget.maskedPhone}.',
+          'Enviamos um código de 6 digitos no WhatsApp ${widget.maskedPhone}.',
       child: GlassCard(
         child: GlassTextField(
           controller: _ctrl,
-          label: 'Codigo',
+          label: 'Código',
           autofocus: true,
           keyboardType: TextInputType.number,
           inputFormatters: [
@@ -95,7 +95,7 @@ class _OnboardingOtpScreenState extends ConsumerState<OnboardingOtpScreen> {
         children: [
           GlassPrimaryButton(
             onPressed: _loading ? null : _continue,
-            label: 'Validar codigo',
+            label: 'Validar código',
             loading: _loading,
             icon: Icons.check_rounded,
           ),
@@ -106,7 +106,7 @@ class _OnboardingOtpScreenState extends ConsumerState<OnboardingOtpScreen> {
               minimumSize: const Size.fromHeight(48),
             ),
             child: const Text(
-              'Reenviar codigo',
+              'Reenviar código',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),

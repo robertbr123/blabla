@@ -61,7 +61,7 @@ class _FaturaBottomSheetState extends ConsumerState<FaturaBottomSheet> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _pixError = 'Nao consegui gerar o PIX agora.';
+        _pixError = 'Não consegui gerar o PIX agora.';
         _loadingPix = false;
       });
     }
@@ -74,7 +74,7 @@ class _FaturaBottomSheetState extends ConsumerState<FaturaBottomSheet> {
     await Haptics.success();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Codigo PIX copiado')),
+      const SnackBar(content: Text('Código PIX copiado')),
     );
   }
 
@@ -83,7 +83,7 @@ class _FaturaBottomSheetState extends ConsumerState<FaturaBottomSheet> {
     if (c == null) return;
     final fmtValor = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final fmtData = DateFormat('dd/MM/yyyy', 'pt_BR');
-    final msg = 'Codigo Pix Ondeline\n\n'
+    final msg = 'Código Pix Ondeline\n\n'
         'Valor: ${fmtValor.format(widget.fatura.valor)}\n'
         'Vencimento: ${fmtData.format(widget.fatura.vencimentoDate)}\n\n'
         '$c';
@@ -123,7 +123,7 @@ class _FaturaBottomSheetState extends ConsumerState<FaturaBottomSheet> {
       );
       if (!ok && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nao consegui abrir o boleto')),
+          const SnackBar(content: Text('Não consegui abrir o boleto')),
         );
       }
     } catch (_) {
@@ -256,7 +256,7 @@ class _FaturaBottomSheetState extends ConsumerState<FaturaBottomSheet> {
                 ),
                 const SizedBox(height: BrandTokens.spaceMd),
                 Text(
-                  'Aponte a camera do seu app do banco',
+                  'Aponte a câmera do seu app do banco',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: BrandTokens.textSecondary,
@@ -268,7 +268,7 @@ class _FaturaBottomSheetState extends ConsumerState<FaturaBottomSheet> {
                   child: FilledButton.icon(
                     icon: const Icon(Icons.copy_rounded, size: 22),
                     label: const Text(
-                      'Copiar codigo Pix',
+                      'Copiar código Pix',
                       style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w800,

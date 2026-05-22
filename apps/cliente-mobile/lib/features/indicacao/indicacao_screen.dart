@@ -37,12 +37,12 @@ class _Content extends ConsumerWidget {
 
   Future<void> _shareWhatsApp(BuildContext context, WidgetRef ref) async {
     if (data.linkCompartilhamento.isEmpty) {
-      _toast(context, 'Numero da empresa nao configurado.');
+      _toast(context, 'Número da empresa não configurado.');
       return;
     }
     final uri = Uri.tryParse(data.linkCompartilhamento);
     if (uri == null) {
-      _toast(context, 'Link invalido.');
+      _toast(context, 'Link inválido.');
       return;
     }
     // Registra evento server-side em paralelo (fire-and-forget). Invalida
@@ -95,9 +95,9 @@ class _Content extends ConsumerWidget {
                   ),
             ),
             const SizedBox(height: BrandTokens.spaceMd),
-            const _Step(n: 1, t: 'Compartilhe seu link', d: 'Envie pelo WhatsApp pra amigos, familia ou nos grupos.'),
-            const _Step(n: 2, t: 'O amigo fecha plano', d: 'Quando ele virar cliente Ondeline usando seu codigo, voce e ele ganham desconto.'),
-            const _Step(n: 3, t: 'Receba o desconto', d: 'O desconto aparece automaticamente na proxima fatura dos dois.'),
+            const _Step(n: 1, t: 'Compartilhe seu link', d: 'Envie pelo WhatsApp pra amigos, família ou nos grupos.'),
+            const _Step(n: 2, t: 'O amigo fecha plano', d: 'Quando ele virar cliente Ondeline usando seu código, você e ele ganham desconto.'),
+            const _Step(n: 3, t: 'Receba o desconto', d: 'O desconto aparece automaticamente na próxima fatura dos dois.'),
             const SizedBox(height: BrandTokens.spaceMd),
             SizedBox(
               width: double.infinity,
@@ -134,7 +134,7 @@ class _Content extends ConsumerWidget {
                   Icon(Icons.card_giftcard_rounded, color: Colors.white, size: 22),
                   SizedBox(width: BrandTokens.spaceSm),
                   Text(
-                    'Seu codigo',
+                    'Seu código',
                     style: TextStyle(
                       color: Colors.white70,
                       fontWeight: FontWeight.w700,
@@ -160,8 +160,8 @@ class _Content extends ConsumerWidget {
                   Expanded(
                     child: _SmallActionButton(
                       icon: Icons.copy_rounded,
-                      label: 'Copiar codigo',
-                      onTap: () => _copy(context, data.codigo, 'Codigo'),
+                      label: 'Copiar código',
+                      onTap: () => _copy(context, data.codigo, 'Código'),
                     ),
                   ),
                   const SizedBox(width: BrandTokens.spaceSm),
@@ -227,7 +227,7 @@ class _Content extends ConsumerWidget {
           child: Column(
             children: [
               Text(
-                'Suas indicacoes',
+                'Suas indicações',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -261,7 +261,7 @@ class _Content extends ConsumerWidget {
               if (data.usos == 0) ...[
                 const SizedBox(height: BrandTokens.spaceMd),
                 Text(
-                  'Compartilhe seu codigo pra comecar a aparecer aqui.',
+                  'Compartilhe seu código pra comecar a aparecer aqui.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: BrandTokens.textSecondary,
@@ -418,8 +418,8 @@ class _ErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final friendlier = message.contains('409')
-        ? 'Sua conta ainda nao esta vinculada ao cadastro de cliente. Entre em contato com o suporte.'
-        : 'Nao conseguimos carregar agora. Tente novamente em instantes.';
+        ? 'Sua conta ainda não esta vinculada ao cadastro de cliente. Entre em contato com o suporte.'
+        : 'Não conseguimos carregar agora. Tente novamente em instantes.';
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(BrandTokens.spaceLg),

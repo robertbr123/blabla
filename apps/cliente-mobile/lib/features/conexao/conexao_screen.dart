@@ -14,7 +14,7 @@ class ConexaoScreen extends ConsumerWidget {
     final async = ref.watch(conexaoProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Status da conexao'),
+        title: const Text('Status da conexão'),
         elevation: 0,
       ),
       body: RefreshIndicator(
@@ -89,7 +89,7 @@ class _StatusHeroState extends State<_StatusHero>
             end: Alignment.bottomRight,
             colors: [Color(0xFF14B8B0), Color(0xFF22E0A1)],
           ),
-          titulo: 'Servico ativo',
+          titulo: 'Serviço ativo',
           sub: 'Seu contrato esta vigente.',
           icon: Icons.check_circle_rounded,
         );
@@ -100,10 +100,10 @@ class _StatusHeroState extends State<_StatusHero>
             end: Alignment.bottomRight,
             colors: [Color(0xFFE8A33D), Color(0xFFF59E0B)],
           ),
-          titulo: 'Servico suspenso',
+          titulo: 'Serviço suspenso',
           sub: widget.conexao.motivo.isNotEmpty
               ? widget.conexao.motivo
-              : 'Servico temporariamente pausado.',
+              : 'Serviço temporariamente pausado.',
           icon: Icons.pause_circle_filled_rounded,
         );
       case 'cancelado':
@@ -127,7 +127,7 @@ class _StatusHeroState extends State<_StatusHero>
             colors: [Color(0xFF6B7280), Color(0xFF374151)],
           ),
           titulo: 'Status indisponivel',
-          sub: 'Nao conseguimos identificar seu contrato no momento.',
+          sub: 'Não conseguimos identificar seu contrato no momento.',
           icon: Icons.help_outline_rounded,
         );
     }
@@ -309,12 +309,12 @@ class _CtaSuporte extends StatelessWidget {
 
   String _texto() {
     if (status == 'suspenso') {
-      return 'Servico suspenso? Vamos resolver — abra um chamado pra normalizar seu acesso.';
+      return 'Serviço suspenso? Vamos resolver — abra um chamado pra normalizar seu acesso.';
     }
     if (status == 'cancelado') {
       return 'Quer voltar a ser cliente Ondeline? Fale com a gente.';
     }
-    return 'Algo nao parece certo. Fale com o suporte.';
+    return 'Algo não parece certo. Fale com o suporte.';
   }
 
   @override
@@ -405,7 +405,7 @@ class _TelemetriaInfo extends StatelessWidget {
           SizedBox(width: 6),
           Expanded(
             child: Text(
-              'Status mostrado vem do seu contrato. Telemetria em tempo real (sinal optico, queda recente) chega em breve.',
+              'Status mostrado vem do seu contrato. Telemetria em tempo real (sinal óptico, queda recente) chega em breve.',
               style: TextStyle(
                 fontSize: 11,
                 color: BrandTokens.textSecondary,
@@ -438,7 +438,7 @@ class _Error extends StatelessWidget {
             ),
             const SizedBox(height: BrandTokens.spaceMd),
             const Text(
-              'Nao conseguimos carregar o status agora.',
+              'Não conseguimos carregar o status agora.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: BrandTokens.spaceLg),

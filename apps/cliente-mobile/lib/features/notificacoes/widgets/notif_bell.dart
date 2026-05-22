@@ -22,7 +22,7 @@ class NotifBell extends ConsumerWidget {
             Icons.notifications_outlined,
             color: color,
           ),
-          tooltip: 'Notificacoes',
+          tooltip: 'Notificações',
           onPressed: () => context.push('/notificacoes'),
         ),
         if (count > 0)

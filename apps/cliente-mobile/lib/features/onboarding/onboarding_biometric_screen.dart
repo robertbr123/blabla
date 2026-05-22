@@ -42,7 +42,7 @@ class _OnboardingBiometricScreenState
       icon: Icons.fingerprint,
       title: 'Quer entrar com biometria?',
       subtitle:
-          'Mais rapido e seguro. Voce ainda pode usar a senha quando quiser.',
+          'Mais rapido e seguro. Você ainda pode usar a senha quando quiser.',
       child: GlassCard(
         padding: const EdgeInsets.all(BrandTokens.spaceXl),
         child: Column(
@@ -90,7 +90,7 @@ class _OnboardingBiometricScreenState
               minimumSize: const Size.fromHeight(48),
             ),
             child: const Text(
-              'Agora nao',
+              'Agora não',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),

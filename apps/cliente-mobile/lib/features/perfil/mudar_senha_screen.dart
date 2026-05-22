@@ -33,7 +33,7 @@ class _MudarSenhaScreenState extends ConsumerState<MudarSenhaScreen> {
       return;
     }
     if (_nova.text != _conf.text) {
-      _toast('Senhas nao conferem');
+      _toast('Senhas não conferem');
       return;
     }
     setState(() => _loading = true);

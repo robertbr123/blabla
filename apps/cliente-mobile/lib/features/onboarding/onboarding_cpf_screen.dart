@@ -29,7 +29,7 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
   Future<void> _continue() async {
     final cpf = _ctrl.text.replaceAll(RegExp(r'\D'), '');
     if (cpf.length != 11) {
-      _toast('Informe um CPF valido com 11 digitos');
+      _toast('Informe um CPF válido com 11 digitos');
       return;
     }
     setState(() => _loading = true);
@@ -43,7 +43,7 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
           'masked_phone': maskedPhone,
         });
       case RegisterStartError(:final message):
-        if (message.toLowerCase().contains('ja cadastrado')) {
+        if (message.toLowerCase().contains('já cadastrado')) {
           context.go('/login');
         } else {
           _toast(message);

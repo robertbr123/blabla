@@ -44,7 +44,7 @@ class _OnboardingPasswordScreenState
       return;
     }
     if (_p1.text != _p2.text) {
-      _toast('Senhas nao conferem');
+      _toast('Senhas não conferem');
       return;
     }
     setState(() => _loading = true);
@@ -77,7 +77,7 @@ class _OnboardingPasswordScreenState
       showBack: true,
       icon: Icons.lock_outline_rounded,
       title: 'Crie uma senha',
-      subtitle: 'No minimo 8 caracteres. Voce vai usar pra entrar no app.',
+      subtitle: 'No mínimo 8 caracteres. Você vai usar pra entrar no app.',
       child: GlassCard(
         child: Column(
           children: [
@@ -120,7 +120,7 @@ class _OnboardingPasswordScreenState
                 ),
                 children: [
                   const TextSpan(
-                      text: 'Ao criar a conta, voce concorda com os '),
+                      text: 'Ao criar a conta, você concorda com os '),
                   TextSpan(
                     text: 'Termos de Uso',
                     style: const TextStyle(
@@ -132,7 +132,7 @@ class _OnboardingPasswordScreenState
                   ),
                   const TextSpan(text: ' e a '),
                   TextSpan(
-                    text: 'Politica de Privacidade',
+                    text: 'Política de Privacidade',
                     style: const TextStyle(
                       color: BrandTokens.primaryLight,
                       fontWeight: FontWeight.w700,

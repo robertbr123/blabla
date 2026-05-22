@@ -183,8 +183,8 @@ class _StepTipo extends StatelessWidget {
     final opts = const [
       ('sem_internet', Icons.wifi_off_outlined, 'Sem internet',
           'Internet caiu, lenta ou intermitente'),
-      ('mudanca_endereco', Icons.home_outlined, 'Mudanca de endereco',
-          'Levar o plano pra outro endereco'),
+      ('mudanca_endereco', Icons.home_outlined, 'Mudança de endereço',
+          'Levar o plano pra outro endereço'),
       ('troca_plano', Icons.swap_horiz, 'Troca de plano',
           'Subir, descer ou mudar o plano contratado'),
     ];
@@ -285,7 +285,7 @@ class _StepDetalhes extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tituloExtra = switch (tipo) {
-      'mudanca_endereco' => 'Novo endereco (rua, numero, bairro)',
+      'mudanca_endereco' => 'Novo endereço (rua, número, bairro)',
       'troca_plano' => 'Plano desejado',
       _ => null,
     };
@@ -333,7 +333,7 @@ class _StepConfirma extends StatelessWidget {
   Widget build(BuildContext context) {
     final tipoLabel = switch (tipo) {
       'sem_internet' => 'Sem internet',
-      'mudanca_endereco' => 'Mudanca de endereco',
+      'mudanca_endereco' => 'Mudança de endereço',
       'troca_plano' => 'Troca de plano',
       _ => tipo,
     };
@@ -347,10 +347,10 @@ class _StepConfirma extends StatelessWidget {
         ),
         const SizedBox(height: BrandTokens.spaceLg),
         _Field(label: 'Tipo', value: tipoLabel),
-        _Field(label: 'Descricao', value: descricao),
+        _Field(label: 'Descrição', value: descricao),
         if (extra.isNotEmpty)
           _Field(
-            label: tipo == 'mudanca_endereco' ? 'Novo endereco' : 'Plano desejado',
+            label: tipo == 'mudanca_endereco' ? 'Novo endereço' : 'Plano desejado',
             value: extra,
           ),
         const SizedBox(height: BrandTokens.spaceLg),

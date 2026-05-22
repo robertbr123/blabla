@@ -62,7 +62,7 @@ class PerfilScreen extends ConsumerWidget {
                     iconColor: BrandTokens.catSupport,
                     label: 'Email',
                     value: (me.email ?? '').isEmpty
-                        ? 'Nao informado'
+                        ? 'Não informado'
                         : me.email!,
                     onTap: () => context.push('/perfil/editar', extra: {
                       'campo': 'email',
@@ -93,7 +93,7 @@ class PerfilScreen extends ConsumerWidget {
                     icon: Icons.card_giftcard_rounded,
                     iconColor: BrandTokens.catPlan,
                     label: 'Indique e ganhe',
-                    value: 'Compartilhe seu codigo e ganhe desconto',
+                    value: 'Compartilhe seu código e ganhe desconto',
                     onTap: () => context.push('/indicacao'),
                   ),
                 ],
@@ -124,7 +124,7 @@ class PerfilScreen extends ConsumerWidget {
                   _CardTile(
                     icon: Icons.privacy_tip_outlined,
                     iconColor: BrandTokens.textSecondary,
-                    label: 'Politica de Privacidade',
+                    label: 'Política de Privacidade',
                     onTap: () => context.push('/legal/privacidade'),
                   ),
                 ],
@@ -550,7 +550,7 @@ Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     builder: (_) => AlertDialog(
       title: const Text('Excluir minha conta?'),
       content: const Text(
-        'Esta acao e definitiva. Seu acesso ao app sera revogado e seus dados pessoais anonimizados.\n\nVoce continua sendo cliente da Ondeline e podera criar uma nova conta no app a qualquer momento.',
+        'Esta ação e definitiva. Seu acesso ao app será revogado e seus dados pessoais anonimizados.\n\nVoce continua sendo cliente da Ondeline e podera criar uma nova conta no app a qualquer momento.',
       ),
       actions: [
         TextButton(

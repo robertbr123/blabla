@@ -33,7 +33,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _login() async {
     final cpf = _cpfCtrl.text.replaceAll(RegExp(r'\D'), '');
     if (cpf.length != 11) {
-      _toast('Informe um CPF valido');
+      _toast('Informe um CPF válido');
       return;
     }
     if (_pwdCtrl.text.length < 8) {
@@ -69,7 +69,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
     setState(() => _loading = false);
     _toast(
-        'Se o CPF estiver cadastrado, voce recebera um codigo no WhatsApp.');
+        'Se o CPF estiver cadastrado, você recebera um código no WhatsApp.');
   }
 
   void _toast(String s) =>
