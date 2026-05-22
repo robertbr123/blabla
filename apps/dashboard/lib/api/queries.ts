@@ -413,6 +413,14 @@ export function useOs(id: string) {
   })
 }
 
+export function useOsConsumo(id: string) {
+  return useQuery<import('./types').OsConsumoOut>({
+    queryKey: ['os-consumo', id],
+    queryFn: () => apiFetch(`/api/v1/os/${id}/consumo`),
+    enabled: Boolean(id),
+  })
+}
+
 export function useCreateOs() {
   const qc = useQueryClient()
   return useMutation({
@@ -1248,6 +1256,29 @@ export function useReorderPromocoes() {
         },
       ),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['promocoes-admin'] }),
+  })
+}
+
+export function useIndicacoesStats() {
+  return useQuery<{
+    shares_app: number
+    leads_whatsapp: number
+    convertidos: number
+  }>({
+    queryKey: ['indicacoes-stats'],
+    queryFn: () => apiFetch('/api/v1/indicacoes/stats'),
+  })
+}
+
+export function usePromocaoIndicacaoAtiva() {
+  return useQuery<import('./types').PromocaoAdmin | null>({
+    queryKey: ['promocao-indicacao-ativa'],
+    queryFn: async () => {
+      const all = await apiFetch<import('./types').PromocaoAdmin[]>(
+        '/api/v1/admin/promocoes',
+      )
+      return all.find((p) => p.tipo === 'indicacao' && p.ativa) ?? null
+    },
   })
 }
 

@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   useConcluirOs,
   useOs,
+  useOsConsumo,
   usePatchOs,
   useReabrirOs,
   useUploadFoto,
@@ -23,6 +24,7 @@ import { getAccessToken } from '@/lib/api/token'
 
 export function OsDetail({ id }: { id: string }) {
   const { data, isLoading, error } = useOs(id)
+  const { data: consumo } = useOsConsumo(id)
   const patchOs = usePatchOs(id)
   const concluirOs = useConcluirOs(id)
   const reabrirOs = useReabrirOs(id)
@@ -157,8 +159,66 @@ export function OsDetail({ id }: { id: string }) {
           )}
           {data.materiais && (
             <div>
-              <div className="text-xs uppercase text-muted-foreground">Materiais / Gastos</div>
+              <div className="text-xs uppercase text-muted-foreground">
+                Materiais (relato do técnico)
+              </div>
               <p className="mt-1 text-sm whitespace-pre-wrap">{data.materiais}</p>
+            </div>
+          )}
+          {consumo && (consumo.movimentos.length > 0 || consumo.equipamentos.length > 0) && (
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <div className="text-xs uppercase text-muted-foreground">
+                Consumo de estoque registrado
+              </div>
+              {consumo.movimentos.length > 0 && (
+                <ul className="mt-2 space-y-1 text-sm">
+                  {consumo.movimentos.map((m) => (
+                    <li key={m.movimento_id} className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="font-medium">
+                        {m.quantidade}× {m.item_nome}
+                      </span>
+                      <span className="text-xs uppercase text-muted-foreground">
+                        {m.tipo}
+                      </span>
+                      {m.serial && (
+                        <code className="rounded bg-background px-1.5 py-0.5 text-xs">
+                          {m.serial}
+                        </code>
+                      )}
+                      {m.tecnico_nome && (
+                        <span className="text-xs text-muted-foreground">
+                          · {m.tecnico_nome}
+                        </span>
+                      )}
+                      {m.observacao && (
+                        <span className="text-xs text-muted-foreground">
+                          · {m.observacao}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {consumo.equipamentos.length > 0 && (
+                <div className="mt-3">
+                  <div className="text-xs uppercase text-muted-foreground">
+                    Equipamentos serializados nesta OS
+                  </div>
+                  <ul className="mt-1 space-y-1 text-sm">
+                    {consumo.equipamentos.map((e) => (
+                      <li key={e.id} className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="font-medium">{e.item_nome}</span>
+                        <code className="rounded bg-background px-1.5 py-0.5 text-xs">
+                          {e.serial}
+                        </code>
+                        <span className="text-xs uppercase text-muted-foreground">
+                          {e.evento}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
           {data.csat !== null && (

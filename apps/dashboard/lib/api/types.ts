@@ -125,6 +125,41 @@ export interface OsConcluirIn {
   comentario?: string | null
 }
 
+export interface OsConsumoMovimento {
+  movimento_id: string
+  item_id: string
+  item_sku: string
+  item_nome: string
+  item_categoria: string
+  tipo: string
+  quantidade: number
+  serial: string | null
+  observacao: string | null
+  criado_em: string
+  tecnico_id: string | null
+  tecnico_nome: string | null
+}
+
+export interface OsConsumoEquipamento {
+  id: string
+  cliente_id: string
+  item_id: string
+  item_sku: string
+  item_nome: string
+  item_categoria: string
+  serial: string
+  evento: 'instalado' | 'removido'
+  instalado_em: string
+  removido_em: string | null
+  instalado_em_os_id: string | null
+  removido_em_os_id: string | null
+}
+
+export interface OsConsumoOut {
+  movimentos: OsConsumoMovimento[]
+  equipamentos: OsConsumoEquipamento[]
+}
+
 // Leads
 export interface LeadOut {
   id: string

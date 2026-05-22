@@ -85,3 +85,40 @@ class OsReabrirIn(BaseModel):
 
 class OsDeleteOut(BaseModel):
     notif_tecnico: bool
+
+
+class OsConsumoMovimento(BaseModel):
+    """Linha de movimento de estoque vinculado a esta OS."""
+    movimento_id: UUID
+    item_id: UUID
+    item_sku: str
+    item_nome: str
+    item_categoria: str
+    tipo: str
+    quantidade: int
+    serial: str | None
+    observacao: str | None
+    criado_em: datetime
+    tecnico_id: UUID | None
+    tecnico_nome: str | None
+
+
+class OsConsumoEquipamento(BaseModel):
+    """Equipamento serializado que entrou/saiu nessa OS."""
+    id: UUID
+    cliente_id: UUID
+    item_id: UUID
+    item_sku: str
+    item_nome: str
+    item_categoria: str
+    serial: str
+    evento: str  # "instalado" | "removido"
+    instalado_em: datetime
+    removido_em: datetime | None
+    instalado_em_os_id: UUID | None
+    removido_em_os_id: UUID | None
+
+
+class OsConsumoOut(BaseModel):
+    movimentos: list[OsConsumoMovimento]
+    equipamentos: list[OsConsumoEquipamento]

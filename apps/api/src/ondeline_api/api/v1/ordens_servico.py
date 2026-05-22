@@ -14,6 +14,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ondeline_api.api.deps_v1 import CursorParam, LimitParam, parse_cursor, parse_limit
 from ondeline_api.api.schemas.os import (
     OsConcluirIn,
+    OsConsumoEquipamento,
+    OsConsumoMovimento,
+    OsConsumoOut,
     OsCreate,
     OsDeleteOut,
     OsListItem,
@@ -261,6 +264,119 @@ async def get_os(
     out = OsOut.model_validate(os_)
     out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
     return out
+
+
+@router.get(
+    "/{os_id}/consumo",
+    response_model=OsConsumoOut,
+    dependencies=[_role_dep],
+)
+async def get_os_consumo(
+    os_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> OsConsumoOut:
+    """Materiais consumidos + equipamentos serializados (instalados/removidos) nesta OS."""
+    from sqlalchemy import or_, select
+
+    from ondeline_api.db.models.business import Tecnico
+    from ondeline_api.db.models.estoque import (
+        ClienteEquipamento,
+        EstoqueItem,
+        EstoqueMovimento,
+    )
+
+    repo = OrdemServicoRepo(session)
+    os_ = await repo.get_by_id(os_id)
+    if os_ is None:
+        raise HTTPException(status_code=404, detail="OS not found")
+
+    movs = list(
+        (
+            await session.execute(
+                select(EstoqueMovimento)
+                .where(EstoqueMovimento.ordem_servico_id == os_id)
+                .order_by(EstoqueMovimento.criado_em.asc())
+            )
+        ).scalars().all()
+    )
+    equips = list(
+        (
+            await session.execute(
+                select(ClienteEquipamento).where(
+                    or_(
+                        ClienteEquipamento.instalado_em_os_id == os_id,
+                        ClienteEquipamento.removido_em_os_id == os_id,
+                    )
+                )
+            )
+        ).scalars().all()
+    )
+
+    item_ids = {m.item_id for m in movs} | {e.item_id for e in equips}
+    tec_ids = {m.tecnico_id for m in movs if m.tecnico_id is not None}
+
+    itens_map: dict[UUID, EstoqueItem] = {}
+    if item_ids:
+        itens_map = {
+            it.id: it
+            for it in (
+                await session.execute(
+                    select(EstoqueItem).where(EstoqueItem.id.in_(item_ids))
+                )
+            ).scalars().all()
+        }
+    tec_map: dict[UUID, Tecnico] = {}
+    if tec_ids:
+        tec_map = {
+            t.id: t
+            for t in (
+                await session.execute(select(Tecnico).where(Tecnico.id.in_(tec_ids)))
+            ).scalars().all()
+        }
+
+    movimentos_out: list[OsConsumoMovimento] = []
+    for m in movs:
+        it = itens_map.get(m.item_id)
+        tec = tec_map.get(m.tecnico_id) if m.tecnico_id else None
+        movimentos_out.append(
+            OsConsumoMovimento(
+                movimento_id=m.id,
+                item_id=m.item_id,
+                item_sku=it.sku if it else "—",
+                item_nome=it.nome if it else "—",
+                item_categoria=it.categoria if it else "—",
+                tipo=m.tipo,
+                quantidade=m.quantidade,
+                serial=m.serial,
+                observacao=m.observacao,
+                criado_em=m.criado_em,
+                tecnico_id=m.tecnico_id,
+                tecnico_nome=tec.nome if tec else None,
+            )
+        )
+
+    equipamentos_out: list[OsConsumoEquipamento] = []
+    for e in equips:
+        it = itens_map.get(e.item_id)
+        evento = "instalado" if e.instalado_em_os_id == os_id else "removido"
+        equipamentos_out.append(
+            OsConsumoEquipamento(
+                id=e.id,
+                cliente_id=e.cliente_id,
+                item_id=e.item_id,
+                item_sku=it.sku if it else "—",
+                item_nome=it.nome if it else "—",
+                item_categoria=it.categoria if it else "—",
+                serial=e.serial,
+                evento=evento,
+                instalado_em=e.instalado_em,
+                removido_em=e.removido_em,
+                instalado_em_os_id=e.instalado_em_os_id,
+                removido_em_os_id=e.removido_em_os_id,
+            )
+        )
+
+    return OsConsumoOut(movimentos=movimentos_out, equipamentos=equipamentos_out)
 
 
 @router.patch("/{os_id}", response_model=OsOut, dependencies=[_role_dep])
