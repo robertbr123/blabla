@@ -50,6 +50,8 @@ async def create_manutencao(
     body: ManutencaoCreate,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ManutencaoOut:
+    from ondeline_api.services.cliente_app_notif import broadcast
+
     repo = ManutencaoRepo(session)
     m = await repo.create(
         titulo=body.titulo,
@@ -59,6 +61,20 @@ async def create_manutencao(
         cidades=body.cidades,
         notificar=body.notificar,
     )
+    # Broadcast app cliente se admin pediu (`notificar=True`).
+    if body.notificar:
+        cidades_txt = (
+            ", ".join(body.cidades or []) if body.cidades else "sua regiao"
+        )
+        await broadcast(
+            session,
+            "manutencao",
+            body.titulo,
+            f"{body.descricao or ''} ({cidades_txt})".strip(),
+            action=None,
+            payload={"manutencao_id": str(m.id)},
+        )
+        await session.commit()
     return ManutencaoOut.model_validate(m)
 
 

@@ -180,11 +180,24 @@ async def admin_criar(
     current_user: User = Depends(require_role(Role.ADMIN)),  # noqa: B008
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> PromocaoAdminOut:
+    from ondeline_api.services.cliente_app_notif import broadcast
+
     promo = Promocao(
         **body.model_dump(),
         created_by=current_user.id,
     )
     session.add(promo)
+    await session.flush()
+    # Broadcast pra todos os clientes ativos quando promo nasce ativa.
+    if promo.ativa:
+        await broadcast(
+            session,
+            "promocao",
+            promo.titulo,
+            promo.subtitulo,
+            action="tela:/home",
+            payload={"promocao_id": str(promo.id)},
+        )
     await session.commit()
     await session.refresh(promo)
     return _admin_out(promo, 0, 0)
@@ -216,12 +229,26 @@ async def admin_atualizar(
     body: PromocaoUpdateIn,
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> PromocaoAdminOut:
+    from ondeline_api.services.cliente_app_notif import broadcast
+
     p = await session.get(Promocao, promo_id)
     if p is None:
         raise HTTPException(status_code=404, detail="promocao nao encontrada")
+    ativa_antes = p.ativa
     data = body.model_dump(exclude_unset=True)
     for k, v in data.items():
         setattr(p, k, v)
+    await session.flush()
+    # Broadcast se acabou de ser ativada.
+    if not ativa_antes and p.ativa:
+        await broadcast(
+            session,
+            "promocao",
+            p.titulo,
+            p.subtitulo,
+            action="tela:/home",
+            payload={"promocao_id": str(p.id)},
+        )
     await session.commit()
     await session.refresh(p)
     views, clicks = await _stats(session, p.id)

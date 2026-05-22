@@ -64,6 +64,8 @@ async def criar(
     user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> OsOut:
+    from ondeline_api.services.cliente_app_notif import notify_user
+
     os_row = ClienteAppOs(
         cliente_app_user_id=user.id,
         tipo=body.tipo,
@@ -73,6 +75,16 @@ async def criar(
     )
     session.add(os_row)
     await session.flush()
+    # Confirmacao pro proprio cliente.
+    await notify_user(
+        session,
+        user.id,
+        "os",
+        "Chamado recebido",
+        "Vamos analisar e te respondemos pelo app em instantes.",
+        action="tela:/suporte",
+        payload={"os_id": str(os_row.id), "tipo": os_row.tipo},
+    )
     await session.commit()
     await session.refresh(os_row)
     return _os_out(os_row)
@@ -246,10 +258,13 @@ async def admin_patch(
     current_user: User = Depends(require_role(Role.ATENDENTE, Role.ADMIN)),  # noqa: B008
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> AdminOsItemOut:
+    from ondeline_api.services.cliente_app_notif import notify_user
+
     o = await session.get(ClienteAppOs, os_id)
     if o is None:
         raise HTTPException(status_code=404, detail="chamado nao encontrado")
 
+    status_anterior = o.status
     if body.status is not None:
         o.status = body.status
     if body.sgp_protocolo_id is not None:
@@ -258,6 +273,26 @@ async def admin_patch(
         o.atendente_user_id = current_user.id
 
     await session.flush()
+
+    # Notifica cliente se status mudou.
+    if body.status is not None and body.status != status_anterior:
+        status_labels = {
+            "aberto": "aberto",
+            "em_atendimento": "em atendimento",
+            "concluido": "concluido",
+            "cancelado": "cancelado",
+        }
+        novo_label = status_labels.get(o.status, o.status)
+        await notify_user(
+            session,
+            o.cliente_app_user_id,
+            "os",
+            "Seu chamado foi atualizado",
+            f"Status agora: {novo_label}.",
+            action="tela:/suporte",
+            payload={"os_id": str(o.id), "status": o.status},
+        )
+
     await session.commit()
     await session.refresh(o)
 
