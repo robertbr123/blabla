@@ -8,8 +8,10 @@ import '../../core/api/me_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/cache/last_known_cache.dart';
 import '../shell/main_shell.dart';
+import 'home_promos.dart';
 import 'widgets/avisos_list.dart';
 import 'widgets/hero_card.dart';
+import 'widgets/promo_carousel.dart';
 import 'widgets/quick_actions.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -19,9 +21,11 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final meAsync = ref.watch(meProvider);
     final avisosAsync = ref.watch(avisosProvider);
+    final promos = ref.watch(promocoesProvider);
 
     return Scaffold(
       body: SafeArea(
+        bottom: false,
         child: RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(meProvider);
@@ -29,7 +33,15 @@ class HomeScreen extends ConsumerWidget {
             await ref.read(meProvider.future);
           },
           child: ListView(
-            padding: const EdgeInsets.all(BrandTokens.spaceLg),
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            padding: const EdgeInsets.fromLTRB(
+              BrandTokens.spaceLg,
+              BrandTokens.spaceLg,
+              BrandTokens.spaceLg,
+              120, // espaco extra pra navbar flutuante
+            ),
             children: [
               meAsync.when(
                 data: (me) {
@@ -40,28 +52,40 @@ class HomeScreen extends ConsumerWidget {
                 error: (_, __) => _CachedHeroOrError(ref),
               ),
               const SizedBox(height: BrandTokens.spaceLg),
+              if (promos.isNotEmpty) ...[
+                const _SectionLabel(label: 'Pra voce'),
+                const SizedBox(height: BrandTokens.spaceSm),
+                PromoCarousel(items: promos),
+                const SizedBox(height: BrandTokens.spaceLg),
+              ],
+              const _SectionLabel(label: 'Acoes rapidas'),
+              const SizedBox(height: BrandTokens.spaceSm),
               QuickActions(
                 actions: [
                   QuickAction(
                     icon: Icons.receipt_long_outlined,
                     label: '2a via',
+                    color: BrandTokens.catBilling,
                     onTap: () =>
                         ref.read(mainShellTabProvider.notifier).state = 1,
                   ),
                   QuickAction(
                     icon: Icons.support_agent_outlined,
                     label: 'Falar conosco',
+                    color: BrandTokens.catSupport,
                     onTap: () =>
                         ref.read(mainShellTabProvider.notifier).state = 2,
                   ),
                   QuickAction(
                     icon: Icons.wifi_off_outlined,
                     label: 'Sem internet',
+                    color: BrandTokens.catConnection,
                     onTap: () => context.push('/suporte/novo'),
                   ),
                   QuickAction(
-                    icon: Icons.swap_horiz,
+                    icon: Icons.swap_horiz_rounded,
                     label: 'Mudar plano',
+                    color: BrandTokens.catPlan,
                     onTap: () => context.push('/suporte/novo'),
                   ),
                 ],
@@ -72,7 +96,6 @@ class HomeScreen extends ConsumerWidget {
                 loading: () => const SizedBox.shrink(),
                 error: (_, __) => const SizedBox.shrink(),
               ),
-              const SizedBox(height: BrandTokens.spaceXl),
             ],
           ),
         ),
@@ -85,13 +108,29 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.2,
+          ),
+    );
+  }
+}
+
 class _HeroSkeleton extends StatelessWidget {
   const _HeroSkeleton();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 160,
+      height: 180,
       decoration: BoxDecoration(
         color: BrandTokens.primary.withOpacity(0.08),
         borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
