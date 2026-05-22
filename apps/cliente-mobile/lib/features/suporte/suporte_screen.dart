@@ -53,32 +53,37 @@ class _SuporteScreenState extends ConsumerState<SuporteScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabs,
-        children: const [
-          ChatTab(),
-          _ChamadosTab(),
+      // Stack pro FAB ficar exatamente acima da navbar (Scaffold.FAB padrao
+      // somava margens extras). bottom = altura visual da navbar (~78px:
+      // 16 margem externa + 8 padding interno + 10*2 padding tile + 42 conteudo)
+      // + 4 folga = 82, sem somar safe area porque Scaffold extendBody:true
+      // ja considera no body abaixo.
+      body: Stack(
+        children: [
+          TabBarView(
+            controller: _tabs,
+            children: const [
+              ChatTab(),
+              _ChamadosTab(),
+            ],
+          ),
+          Positioned(
+            right: 16,
+            bottom: 82 + MediaQuery.of(context).padding.bottom,
+            child: AnimatedBuilder(
+              animation: _tabs,
+              builder: (_, __) => _tabs.index == 1
+                  ? FloatingActionButton.extended(
+                      onPressed: () => context.push('/suporte/novo'),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Novo chamado'),
+                      backgroundColor: BrandTokens.primary,
+                      foregroundColor: Colors.white,
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ),
         ],
-      ),
-      // FAB logo acima da navbar flutuante, colado mas sem encostar.
-      // Navbar interna ~62px + margem 16 do MainShell = ~78. Padding 70
-      // deixa o FAB ~8px acima da borda superior da navbar.
-      floatingActionButton: Padding(
-        padding: EdgeInsets.only(
-          bottom: 70 + MediaQuery.of(context).padding.bottom,
-        ),
-        child: AnimatedBuilder(
-          animation: _tabs,
-          builder: (_, __) => _tabs.index == 1
-              ? FloatingActionButton.extended(
-                  onPressed: () => context.push('/suporte/novo'),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Novo chamado'),
-                  backgroundColor: BrandTokens.primary,
-                  foregroundColor: Colors.white,
-                )
-              : const SizedBox.shrink(),
-        ),
       ),
     );
   }
