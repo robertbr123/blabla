@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/branding/brand_tokens.dart';
+import '../../core/api/faturas_repository.dart';
+import '../../core/api/os_repository.dart';
 import '../faturas/faturas_screen.dart';
 import '../home/home_screen.dart';
 import '../perfil/perfil_screen.dart';
 import '../suporte/suporte_screen.dart';
+import 'widgets/floating_nav_bar.dart';
 
 /// Indice da tab ativa do MainShell. Outras telas podem pular tabs
 /// setando `ref.read(mainShellTabProvider.notifier).state = N`.
@@ -25,44 +27,52 @@ class MainShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final index = ref.watch(mainShellTabProvider);
+
+    // Badge faturas: ponto vermelho se houver vencida.
+    final temFaturaVencida = ref.watch(faturasAbertasProvider).maybeWhen(
+          data: (l) => l.any((f) => f.isVencido),
+          orElse: () => false,
+        );
+
+    // Badge suporte: contagem de OS abertas/em atendimento.
+    final osAbertasCount = ref.watch(osListProvider).maybeWhen(
+          data: (l) => l
+              .where((o) =>
+                  o.status == 'aberto' || o.status == 'em_atendimento')
+              .length,
+          orElse: () => 0,
+        );
+
     return Scaffold(
+      extendBody: true,
       body: IndexedStack(index: index, children: _tabs),
-      bottomNavigationBar: NavigationBarTheme(
-        data: NavigationBarThemeData(
-          indicatorColor: BrandTokens.primary.withOpacity(0.10),
-          labelTextStyle: WidgetStatePropertyAll(
-            Theme.of(context).textTheme.labelSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+      bottomNavigationBar: FloatingNavBar(
+        currentIndex: index,
+        onTap: (i) => ref.read(mainShellTabProvider.notifier).state = i,
+        items: [
+          const FloatingNavItem(
+            icon: Icons.home_outlined,
+            selectedIcon: Icons.home_rounded,
+            label: 'Inicio',
           ),
-        ),
-        child: NavigationBar(
-          selectedIndex: index,
-          onDestinationSelected: (i) =>
-              ref.read(mainShellTabProvider.notifier).state = i,
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home_rounded),
-              label: 'Inicio',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined),
-              selectedIcon: Icon(Icons.receipt_long),
-              label: 'Faturas',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.support_agent_outlined),
-              selectedIcon: Icon(Icons.support_agent),
-              label: 'Suporte',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              selectedIcon: Icon(Icons.person),
-              label: 'Perfil',
-            ),
-          ],
-        ),
+          FloatingNavItem(
+            icon: Icons.receipt_long_outlined,
+            selectedIcon: Icons.receipt_long,
+            label: 'Faturas',
+            badgeDot: temFaturaVencida,
+          ),
+          FloatingNavItem(
+            icon: Icons.support_agent_outlined,
+            selectedIcon: Icons.support_agent,
+            label: 'Suporte',
+            badgeCount: osAbertasCount,
+          ),
+          const FloatingNavItem(
+            icon: Icons.person_outline,
+            selectedIcon: Icons.person,
+            label: 'Perfil',
+          ),
+        ],
       ),
     );
   }
