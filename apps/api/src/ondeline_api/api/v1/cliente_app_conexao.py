@@ -53,11 +53,12 @@ def _normalize_status(raw: str) -> str:
 
 @router.get("", response_model=ConexaoOut)
 async def get_conexao(
+    contrato_id: str | None = None,
     user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> ConexaoOut:
-    # Reusa helper de SGP do me.
-    from ondeline_api.api.v1.cliente_app_me import _sgp_cliente
+    # Reusa helpers de SGP do me.
+    from ondeline_api.api.v1.cliente_app_me import _pick_contrato, _sgp_cliente
 
     sgp = await _sgp_cliente(session, user.cpf_encrypted)
     if sgp is None:
@@ -71,11 +72,9 @@ async def get_conexao(
             motivo="Nenhum contrato vinculado.",
         )
 
-    # Pega o primeiro contrato ativo, senao o primeiro qualquer.
-    contrato = next(
-        (c for c in sgp.contratos if _normalize_status(c.status) == "ativo"),
-        sgp.contratos[0],
-    )
+    # contrato_id explicito > primeiro ativo > primeiro qualquer.
+    contrato = _pick_contrato(list(sgp.contratos), contrato_id)
+    assert contrato is not None  # garantido por sgp.contratos nao vazio acima
     status_norm = _normalize_status(contrato.status)
     motivo = ""
     if status_norm != "ativo" and contrato.motivo_status:

@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../contrato/contrato_atual_provider.dart';
 import 'api_client.dart';
 import 'dto.dart';
 
@@ -9,8 +10,11 @@ class MeRepository {
   final Dio _dio;
   static const _base = '/api/v1/cliente-app';
 
-  Future<MeDto> getMe() async {
-    final r = await _dio.get('$_base/me');
+  Future<MeDto> getMe({String? contratoId}) async {
+    final r = await _dio.get(
+      '$_base/me',
+      queryParameters: contratoId != null ? {'contrato_id': contratoId} : null,
+    );
     return MeDto.fromJson(r.data as Map<String, dynamic>);
   }
 
@@ -65,7 +69,10 @@ final meRepositoryProvider = Provider<MeRepository>(
 );
 
 final meProvider = FutureProvider<MeDto>(
-  (ref) => ref.watch(meRepositoryProvider).getMe(),
+  (ref) {
+    final contratoId = ref.watch(contratoAtualProvider);
+    return ref.watch(meRepositoryProvider).getMe(contratoId: contratoId);
+  },
 );
 
 final planoProvider = FutureProvider<PlanoDto>(

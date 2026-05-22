@@ -8,6 +8,7 @@ class MeDto {
     required this.biometricEnabled,
     this.planoNome,
     this.statusConexao,
+    this.contratos = const [],
   });
 
   factory MeDto.fromJson(Map<String, dynamic> j) => MeDto(
@@ -19,6 +20,9 @@ class MeDto {
         biometricEnabled: j['biometric_enabled'] as bool,
         planoNome: j['plano_nome'] as String?,
         statusConexao: j['status_conexao'] as String?,
+        contratos: ((j['contratos'] as List?) ?? const [])
+            .map((c) => ContratoResumoDto.fromJson(c as Map<String, dynamic>))
+            .toList(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -30,6 +34,7 @@ class MeDto {
         'biometric_enabled': biometricEnabled,
         'plano_nome': planoNome,
         'status_conexao': statusConexao,
+        'contratos': contratos.map((c) => c.toJson()).toList(),
       };
 
   final String id;
@@ -40,6 +45,68 @@ class MeDto {
   final bool biometricEnabled;
   final String? planoNome;
   final String? statusConexao;
+  final List<ContratoResumoDto> contratos;
+
+  bool get temMultiContrato => contratos.length > 1;
+}
+
+class ContratoResumoDto {
+  ContratoResumoDto({
+    required this.id,
+    required this.plano,
+    required this.status,
+    this.cidade = '',
+    this.bairro = '',
+    this.logradouro = '',
+    this.numero = '',
+  });
+
+  factory ContratoResumoDto.fromJson(Map<String, dynamic> j) =>
+      ContratoResumoDto(
+        id: j['id'] as String,
+        plano: j['plano'] as String? ?? '',
+        status: j['status'] as String? ?? '',
+        cidade: j['cidade'] as String? ?? '',
+        bairro: j['bairro'] as String? ?? '',
+        logradouro: j['logradouro'] as String? ?? '',
+        numero: j['numero'] as String? ?? '',
+      );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'plano': plano,
+        'status': status,
+        'cidade': cidade,
+        'bairro': bairro,
+        'logradouro': logradouro,
+        'numero': numero,
+      };
+
+  final String id;
+  final String plano;
+  final String status;
+  final String cidade;
+  final String bairro;
+  final String logradouro;
+  final String numero;
+
+  /// "Rua Tal, 123 — Bairro" ou cidade como fallback.
+  String get enderecoResumido {
+    final partes = <String>[];
+    if (logradouro.isNotEmpty) {
+      partes.add(numero.isNotEmpty ? '$logradouro, $numero' : logradouro);
+    }
+    if (bairro.isNotEmpty) partes.add(bairro);
+    if (partes.isEmpty && cidade.isNotEmpty) return cidade;
+    return partes.join(' — ');
+  }
+
+  /// Apelido curto pro chip do switcher (bairro ou cidade).
+  String get apelidoCurto {
+    if (bairro.isNotEmpty) return bairro;
+    if (cidade.isNotEmpty) return cidade;
+    return plano;
+  }
 }
 
 class EnderecoDto {

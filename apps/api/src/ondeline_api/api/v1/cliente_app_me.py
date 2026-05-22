@@ -11,12 +11,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ondeline_api.adapters.sgp.base import ClienteSgp, Fatura
+from ondeline_api.adapters.sgp.base import ClienteSgp, Contrato, Fatura
 from ondeline_api.api.schemas.cliente_app_auth import (
     AvisosOut,
     BoletoUrlOut,
     ChangePasswordIn,
     ContratoOut,
+    ContratoResumoOut,
     EnderecoOut,
     FaturaOut,
     FaturasOut,
@@ -53,8 +54,43 @@ def _endereco_out(e: object) -> EnderecoOut:
     )
 
 
-def _build_me(user: ClienteAppUser, sgp: ClienteSgp | None) -> MeOut:
-    plano_nome = sgp.contratos[0].plano if (sgp and sgp.contratos) else None
+def _contrato_resumo(c: Contrato) -> ContratoResumoOut:
+    return ContratoResumoOut(
+        id=c.id,
+        plano=c.plano,
+        status=c.status,
+        cidade=c.cidade or "",
+        bairro=getattr(c.endereco, "bairro", "") or "",
+        logradouro=getattr(c.endereco, "logradouro", "") or "",
+        numero=getattr(c.endereco, "numero", "") or "",
+    )
+
+
+def _pick_contrato(
+    contratos: list[Contrato], contrato_id: str | None
+) -> Contrato | None:
+    """Escolhe contrato pelo id, ou o primeiro ativo, ou o primeiro qualquer."""
+    if not contratos:
+        return None
+    if contrato_id:
+        for c in contratos:
+            if c.id == contrato_id:
+                return c
+        # id desconhecido — cai no default abaixo
+    for c in contratos:
+        if c.status and "ativ" in c.status.lower():
+            return c
+    return contratos[0]
+
+
+def _build_me(
+    user: ClienteAppUser,
+    sgp: ClienteSgp | None,
+    contrato_id: str | None = None,
+) -> MeOut:
+    contratos = list(sgp.contratos) if sgp else []
+    contrato = _pick_contrato(contratos, contrato_id)
+    plano_nome = contrato.plano if contrato else None
     # Local pode ter vindo vazio em registros criados em versoes antigas
     # com bugs de parse SGP. Fallback no SGP atual.
     nome_local = decrypt_pii(user.nome_encrypted) if user.nome_encrypted else ""
@@ -70,16 +106,18 @@ def _build_me(user: ClienteAppUser, sgp: ClienteSgp | None) -> MeOut:
         biometric_enabled=user.biometric_enabled,
         plano_nome=plano_nome,
         status_conexao=None,
+        contratos=[_contrato_resumo(c) for c in contratos],
     )
 
 
 @router.get("/me", response_model=MeOut)
 async def me(
+    contrato_id: str | None = None,
     user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> MeOut:
     sgp = await _sgp_cliente(session, user.cpf_encrypted)
-    return _build_me(user, sgp)
+    return _build_me(user, sgp, contrato_id=contrato_id)
 
 
 @router.get("/plano", response_model=PlanoOut)
@@ -119,6 +157,7 @@ async def avisos(
 @router.patch("/me", response_model=MeOut)
 async def update_me(
     body: UpdateMeIn,
+    contrato_id: str | None = None,
     user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> MeOut:
@@ -129,7 +168,7 @@ async def update_me(
     await session.flush()
     await session.commit()
     sgp = await _sgp_cliente(session, user.cpf_encrypted)
-    return _build_me(user, sgp)
+    return _build_me(user, sgp, contrato_id=contrato_id)
 
 
 def _calc_dias_atraso(vencimento_str: str, status: str, hoje: date) -> int:

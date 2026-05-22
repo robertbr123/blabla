@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/me_repository.dart';
 import '../../core/auth/auth_repository.dart';
+import '../../core/contrato/contrato_atual_provider.dart';
 import '../../core/auth/auth_state.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/notifications/push_service.dart';
@@ -144,6 +145,8 @@ class PerfilScreen extends ConsumerWidget {
                     // do token de auth ainda valido).
                     await ref.read(pushServiceProvider).clear();
                     await ref.read(authRepositoryProvider).logout();
+                    // Limpa selecao de contrato pra nao vazar entre contas.
+                    await ref.read(contratoAtualProvider.notifier).clear();
                     ref.read(authRefreshProvider).bump();
                     if (context.mounted) context.go('/onboarding/cpf');
                   },
@@ -575,6 +578,7 @@ Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
   if (!context.mounted) return;
   if (success) {
     await ref.read(authRepositoryProvider).logout();
+    await ref.read(contratoAtualProvider.notifier).clear();
     ref.read(authRefreshProvider).bump();
     if (context.mounted) context.go('/onboarding/cpf');
   } else {

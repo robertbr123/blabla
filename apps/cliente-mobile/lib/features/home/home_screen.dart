@@ -11,6 +11,7 @@ import '../../core/cache/last_known_cache.dart';
 import '../notificacoes/widgets/notif_bell.dart';
 import '../shell/main_shell.dart';
 import 'widgets/avisos_list.dart';
+import 'widgets/contrato_switcher.dart';
 import 'widgets/hero_card.dart';
 import 'widgets/promo_carousel.dart';
 import 'widgets/quick_actions.dart';
@@ -56,7 +57,13 @@ class HomeScreen extends ConsumerWidget {
               meAsync.when(
                 data: (me) {
                   _persistMe(me);
-                  return HeroCard(me: me);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ContratoSwitcher(me: me),
+                      HeroCard(me: me),
+                    ],
+                  );
                 },
                 loading: () => const _HeroSkeleton(),
                 error: (_, __) => _CachedHeroOrError(ref),

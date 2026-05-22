@@ -80,6 +80,17 @@ class ForgotIn(BaseModel):
 from datetime import datetime as _Dt  # noqa: E402
 
 
+class ContratoResumoOut(BaseModel):
+    """Resumo de contrato pro switcher multi-contrato na Home."""
+    id: str
+    plano: str
+    status: str  # raw do SGP — frontend normaliza se precisar
+    cidade: str = ""
+    bairro: str = ""
+    logradouro: str = ""
+    numero: str = ""
+
+
 class MeOut(BaseModel):
     id: str
     nome: str
@@ -89,6 +100,9 @@ class MeOut(BaseModel):
     biometric_enabled: bool
     plano_nome: str | None = None
     status_conexao: str | None = None
+    # Lista de contratos pro switcher. Sempre presente (pode ser []).
+    # Frontend so mostra switcher quando len > 1.
+    contratos: list[ContratoResumoOut] = []
 
 
 class EnderecoOut(BaseModel):
