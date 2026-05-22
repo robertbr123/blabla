@@ -8,8 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ondeline_api.adapters.sgp.base import ClienteSgp
-from ondeline_api.adapters.sgp.base import Fatura
+from ondeline_api.adapters.sgp.base import ClienteSgp, Fatura
 from ondeline_api.api.schemas.cliente_app_auth import (
     AvisosOut,
     BoletoUrlOut,

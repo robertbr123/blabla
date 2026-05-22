@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import collections.abc
-from typing import Any
 
 import pytest
 import pytest_asyncio
@@ -14,10 +13,10 @@ from ondeline_api.adapters.sgp.base import (
     EnderecoSgp,
     Fatura,
 )
-from ondeline_api.db.models.business import SgpProvider as SgpProviderEnum
 from ondeline_api.auth import jwt as jwt_mod
 from ondeline_api.auth.passwords import hash_password
 from ondeline_api.db.crypto import encrypt_pii, hash_pii
+from ondeline_api.db.models.business import SgpProvider as SgpProviderEnum
 from ondeline_api.db.models.cliente_app import ClienteAppUser
 from ondeline_api.deps import get_db
 from ondeline_api.main import create_app

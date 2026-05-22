@@ -80,3 +80,38 @@ class ClienteAppOtp(Base):
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+
+class ClienteAppNotificacao(Base):
+    __tablename__ = "cliente_app_notificacoes"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    cliente_app_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False, index=True
+    )
+    # fatura | os | manutencao | promocao | conta | outro
+    categoria: Mapped[str] = mapped_column(String(24), nullable=False)
+    titulo: Mapped[str] = mapped_column(String(120), nullable=False)
+    corpo: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    action: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    payload_json: Mapped[dict[str, object] | None] = mapped_column(JSONB, nullable=True)
+    lida_em: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class ClienteAppNotifPrefs(Base):
+    __tablename__ = "cliente_app_notif_prefs"
+
+    cliente_app_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True
+    )
+    categorias: Mapped[dict[str, bool]] = mapped_column(JSONB, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )

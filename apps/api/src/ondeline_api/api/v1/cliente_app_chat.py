@@ -7,7 +7,6 @@ Bot responde com texto puro via Hermes. Persistencia em
 from __future__ import annotations
 
 from datetime import datetime
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import desc, select

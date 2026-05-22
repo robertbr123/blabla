@@ -10,7 +10,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +20,6 @@ from ondeline_api.api.schemas.cliente_app_auth import (
     OsOut,
 )
 from ondeline_api.auth.cliente_deps import get_current_cliente_user
-from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.rbac import require_role
 from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.cliente_app import ClienteAppOs, ClienteAppUser

@@ -8,6 +8,8 @@ import 'features/faq/faq_artigo_screen.dart';
 import 'features/faq/faq_screen.dart';
 import 'features/indicacao/indicacao_screen.dart';
 import 'features/legal/legal_screen.dart';
+import 'features/notificacoes/notif_prefs_screen.dart';
+import 'features/notificacoes/notificacoes_screen.dart';
 import 'features/onboarding/onboarding_biometric_screen.dart';
 import 'features/onboarding/onboarding_cpf_screen.dart';
 import 'features/onboarding/onboarding_otp_screen.dart';
@@ -95,6 +97,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/conexao',
         builder: (_, __) => const ConexaoScreen(),
+      ),
+      GoRoute(
+        path: '/notificacoes',
+        builder: (_, __) => const NotificacoesScreen(),
+      ),
+      GoRoute(
+        path: '/notificacoes/preferencias',
+        builder: (_, __) => const NotifPrefsScreen(),
       ),
       GoRoute(
         path: '/faq',

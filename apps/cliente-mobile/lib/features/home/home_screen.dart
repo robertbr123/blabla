@@ -8,6 +8,7 @@ import '../../core/api/me_repository.dart';
 import '../../core/api/promocoes_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/cache/last_known_cache.dart';
+import '../notificacoes/widgets/notif_bell.dart';
 import '../shell/main_shell.dart';
 import 'widgets/avisos_list.dart';
 import 'widgets/hero_card.dart';
@@ -44,6 +45,14 @@ class HomeScreen extends ConsumerWidget {
               120, // espaco extra pra navbar flutuante
             ),
             children: [
+              // Header inline com sino (home nao usa AppBar)
+              const Padding(
+                padding: EdgeInsets.only(bottom: BrandTokens.spaceSm),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: NotifBell(),
+                ),
+              ),
               meAsync.when(
                 data: (me) {
                   _persistMe(me);

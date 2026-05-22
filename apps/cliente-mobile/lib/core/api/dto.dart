@@ -341,3 +341,45 @@ class ConexaoDto {
   final String? cidade;
   final bool temTelemetriaReal;
 }
+
+class NotificacaoDto {
+  NotificacaoDto({
+    required this.id,
+    required this.categoria,
+    required this.titulo,
+    required this.corpo,
+    required this.action,
+    required this.lida,
+    required this.createdAt,
+  });
+  factory NotificacaoDto.fromJson(Map<String, dynamic> j) => NotificacaoDto(
+        id: j['id'] as String,
+        categoria: j['categoria'] as String,
+        titulo: j['titulo'] as String,
+        corpo: (j['corpo'] as String?) ?? '',
+        action: j['action'] as String?,
+        lida: (j['lida'] as bool?) ?? false,
+        createdAt: DateTime.parse(j['created_at'] as String),
+      );
+  final String id;
+  /// fatura | os | manutencao | promocao | conta | outro
+  final String categoria;
+  final String titulo;
+  final String corpo;
+  /// "tela:/path" | "url:https://..." | null
+  final String? action;
+  final bool lida;
+  final DateTime createdAt;
+}
+
+class NotifPrefsDto {
+  NotifPrefsDto({required this.categorias});
+  factory NotifPrefsDto.fromJson(Map<String, dynamic> j) {
+    final map = (j['categorias'] as Map?) ?? {};
+    return NotifPrefsDto(
+      categorias: map.map((k, v) => MapEntry(k as String, v as bool)),
+    );
+  }
+  Map<String, dynamic> toJson() => {'categorias': categorias};
+  final Map<String, bool> categorias;
+}
