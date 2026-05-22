@@ -40,6 +40,11 @@ class IndicacaoMeOut(BaseModel):
     usos: int
     convertidos: int
     credito_aplicado: int  # quantos usos ja viraram credito (proxy do R$)
+    shares_app: int  # quantas vezes user tocou "Compartilhar" na tela in-app
+
+
+class IndicacaoShareOut(BaseModel):
+    shares_app: int
 
 
 async def _resolve_cliente(
@@ -114,4 +119,38 @@ async def get_meu(
         usos=len(usos),
         convertidos=convertidos,
         credito_aplicado=creditados,
+        shares_app=ind.shares_app,
     )
+
+
+@router.post("/share", response_model=IndicacaoShareOut)
+async def registrar_share(
+    user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> IndicacaoShareOut:
+    """Incrementa shares_app do codigo do cliente atual.
+
+    Disparado quando o cliente toca "Compartilhar via WhatsApp" na tela
+    in-app. Cria o codigo se ainda nao existir (idempotente com /meu).
+    """
+    cliente = await _resolve_cliente(user, session)
+    if cliente is None:
+        raise HTTPException(
+            status_code=409,
+            detail="Conta nao vinculada ao cadastro de cliente.",
+        )
+    repo = IndicacaoRepo(session)
+    ind = await repo.get_or_create_para_cliente(cliente.id)
+    # Increment atomico.
+    from sqlalchemy import update as _update
+
+    from ondeline_api.db.models.business import Indicacao as _Ind
+
+    await session.execute(
+        _update(_Ind)
+        .where(_Ind.id == ind.id)
+        .values(shares_app=_Ind.shares_app + 1)
+    )
+    await session.commit()
+    await session.refresh(ind)
+    return IndicacaoShareOut(shares_app=ind.shares_app)

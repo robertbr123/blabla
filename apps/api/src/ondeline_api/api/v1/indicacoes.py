@@ -6,7 +6,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import desc, select
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.api.schemas.indicacao import (
@@ -194,6 +194,31 @@ async def ranking(
         )
         for c, usos, conv in rows
     ]
+
+
+@router.get("/stats", dependencies=[_role_dep])
+async def stats(
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> dict[str, int]:
+    """Stats agregadas pra dashboard: total shares via app + leads concretos."""
+    total_shares = (
+        await session.execute(select(func.coalesce(func.sum(Indicacao.shares_app), 0)))
+    ).scalar_one()
+    total_usos = (
+        await session.execute(select(func.count(IndicacaoUso.id)))
+    ).scalar_one()
+    total_convertidos = (
+        await session.execute(
+            select(func.count(IndicacaoUso.id)).where(
+                IndicacaoUso.convertido_em.isnot(None)
+            )
+        )
+    ).scalar_one()
+    return {
+        "shares_app": int(total_shares or 0),
+        "leads_whatsapp": int(total_usos or 0),
+        "convertidos": int(total_convertidos or 0),
+    }
 
 
 async def _hydrate_uso(session: AsyncSession, uso_id: UUID) -> IndicacaoUsoOut:

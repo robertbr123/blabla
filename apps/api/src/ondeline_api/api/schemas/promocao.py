@@ -4,10 +4,13 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 PROMO_TIPOS = {"generica", "indicacao"}
 PROMO_SEGMENTOS_FIXOS = {"todos", "inadimplentes", "adimplentes"}
+
+# CTA fixo pra promocoes do tipo indicacao (abre a tela in-app).
+INDICACAO_CTA_FIXO = "tela:/indicacao"
 
 
 def _valid_segmento(v: str) -> str:
@@ -57,7 +60,11 @@ class PromocaoBaseIn(BaseModel):
 
 
 class PromocaoCreateIn(PromocaoBaseIn):
-    pass
+    @model_validator(mode="after")
+    def _force_indicacao_cta(self) -> PromocaoCreateIn:
+        if self.tipo == "indicacao":
+            self.cta_action = INDICACAO_CTA_FIXO
+        return self
 
 
 class PromocaoUpdateIn(BaseModel):
@@ -100,6 +107,12 @@ class PromocaoUpdateIn(BaseModel):
         if v == "info" or v.startswith("url:") or v.startswith("tela:"):
             return v
         raise ValueError("cta_action deve ser 'info', 'url:<https>' ou 'tela:<rota>'")
+
+    @model_validator(mode="after")
+    def _force_indicacao_cta(self) -> PromocaoUpdateIn:
+        if self.tipo == "indicacao":
+            self.cta_action = INDICACAO_CTA_FIXO
+        return self
 
 
 class PromocaoOut(BaseModel):

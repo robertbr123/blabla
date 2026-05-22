@@ -625,6 +625,11 @@ class Indicacao(Base):
     usos: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0, server_default="0"
     )
+    # Contador de "Compartilhar via WhatsApp" disparado pela tela in-app.
+    # Independente de `usos` (que conta leads que efetivamente chegaram).
+    shares_app: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     ativo: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"
     )
