@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Smartphone,
   WifiOff,
@@ -87,6 +87,29 @@ export default function ClienteAppOsPage() {
   const items = data?.items ?? []
   const counts = data?.counts_by_status ?? {}
 
+  // Agrupa chamados pelo cliente (cliente_app_user_id). Mantém a ordem de
+  // chegada do primeiro chamado do cliente, e dentro de cada cliente ordena
+  // do mais recente pro mais antigo.
+  const grupos = useMemo(() => {
+    const map = new Map<string, { cliente: ClienteAppOsAdminItem; chamados: ClienteAppOsAdminItem[] }>()
+    for (const o of items) {
+      const key = o.cliente_app_user_id
+      const slot = map.get(key)
+      if (slot) {
+        slot.chamados.push(o)
+      } else {
+        map.set(key, { cliente: o, chamados: [o] })
+      }
+    }
+    for (const g of map.values()) {
+      g.chamados.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      )
+    }
+    return Array.from(map.values())
+  }, [items])
+
   return (
     <div className="space-y-6 p-6">
       <header className="flex items-center justify-between">
@@ -150,54 +173,78 @@ export default function ClienteAppOsPage() {
             </div>
           )}
           <ul className="divide-y divide-zinc-100">
-            {items.map((o) => {
-              const Icon = TIPO_ICON[o.tipo]
-              return (
-                <li
-                  key={o.id}
-                  className="cursor-pointer p-4 hover:bg-zinc-50 transition"
-                  onClick={() => setOpenDetail(o)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-lg bg-indigo-50 p-2 mt-0.5">
-                      <Icon className="h-5 w-5 text-indigo-600" />
+            {grupos.map(({ cliente, chamados }) => (
+              <li key={cliente.cliente_app_user_id} className="p-4">
+                {/* Header do cliente */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="rounded-full bg-zinc-100 p-2">
+                      <UserIcon className="h-5 w-5 text-zinc-600" />
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-zinc-900">
-                          {TIPO_LABEL[o.tipo]}
-                        </span>
-                        <span
-                          className={cn(
-                            'rounded-md px-2 py-0.5 text-xs font-medium',
-                            STATUS_STYLE[o.status],
-                          )}
-                        >
-                          {STATUS_LABEL[o.status]}
-                        </span>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-zinc-900 truncate">
+                        {cliente.cliente_nome || '(sem nome)'}
                       </div>
-                      <p className="mt-1 text-sm text-zinc-700 line-clamp-2">
-                        {o.descricao || '—'}
-                      </p>
-                      <div className="mt-1.5 flex items-center gap-3 text-xs text-zinc-500">
-                        <span>
-                          <UserIcon className="inline h-3 w-3 mr-0.5" />
-                          {o.cliente_nome || '(sem nome)'} · CPF ***-{o.cliente_cpf_last4}
-                        </span>
+                      <div className="mt-0.5 flex items-center gap-3 text-xs text-zinc-500">
                         <span>
                           <Phone className="inline h-3 w-3 mr-0.5" />
-                          {o.cliente_telefone || '—'}
+                          {cliente.cliente_telefone || '—'}
                         </span>
-                        <span>
-                          <Clock className="inline h-3 w-3 mr-0.5" />
-                          {fmtDate(o.created_at)}
-                        </span>
+                        <span>CPF ***-{cliente.cliente_cpf_last4}</span>
                       </div>
                     </div>
                   </div>
-                </li>
-              )
-            })}
+                  <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700 border border-indigo-200">
+                    {chamados.length}{' '}
+                    {chamados.length === 1 ? 'chamado' : 'chamados'}
+                  </span>
+                </div>
+
+                {/* Chamados desse cliente */}
+                <ul className="mt-3 space-y-2 pl-11">
+                  {chamados.map((o) => {
+                    const Icon = TIPO_ICON[o.tipo]
+                    return (
+                      <li
+                        key={o.id}
+                        className="cursor-pointer rounded-lg border border-zinc-100 p-3 hover:border-indigo-200 hover:bg-indigo-50/30 transition"
+                        onClick={() => setOpenDetail(o)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="rounded-md bg-indigo-50 p-1.5 mt-0.5">
+                            <Icon className="h-4 w-4 text-indigo-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-zinc-900 text-sm">
+                                {TIPO_LABEL[o.tipo]}
+                              </span>
+                              <span
+                                className={cn(
+                                  'rounded-md px-2 py-0.5 text-xs font-medium',
+                                  STATUS_STYLE[o.status],
+                                )}
+                              >
+                                {STATUS_LABEL[o.status]}
+                              </span>
+                              <span className="ml-auto text-xs text-zinc-500">
+                                <Clock className="inline h-3 w-3 mr-0.5" />
+                                {fmtDate(o.created_at)}
+                              </span>
+                            </div>
+                            {o.descricao && (
+                              <p className="mt-1 text-sm text-zinc-600 line-clamp-2">
+                                {o.descricao}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </li>
+            ))}
           </ul>
         </CardContent>
       </Card>
