@@ -31,11 +31,11 @@ class IndicacaoScreen extends ConsumerWidget {
   }
 }
 
-class _Content extends StatelessWidget {
+class _Content extends ConsumerWidget {
   const _Content({required this.data});
   final IndicacaoMeuDto data;
 
-  Future<void> _shareWhatsApp(BuildContext context) async {
+  Future<void> _shareWhatsApp(BuildContext context, WidgetRef ref) async {
     if (data.linkCompartilhamento.isEmpty) {
       _toast(context, 'Numero da empresa nao configurado.');
       return;
@@ -45,6 +45,11 @@ class _Content extends StatelessWidget {
       _toast(context, 'Link invalido.');
       return;
     }
+    // Registra evento server-side em paralelo (fire-and-forget). Invalida
+    // o provider depois pra atualizar contador local.
+    ref.read(indicacaoRepositoryProvider).registrarShare().then((_) {
+      ref.invalidate(indicacaoMeuProvider);
+    });
     await Haptics.success();
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
@@ -108,7 +113,7 @@ class _Content extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListView(
       padding: const EdgeInsets.all(BrandTokens.spaceLg),
@@ -183,7 +188,7 @@ class _Content extends StatelessWidget {
         SizedBox(
           height: 56,
           child: FilledButton.icon(
-            onPressed: () => _shareWhatsApp(context),
+            onPressed: () => _shareWhatsApp(context, ref),
             icon: const Icon(Icons.share_rounded),
             label: const Text('Compartilhar via WhatsApp'),
             style: FilledButton.styleFrom(

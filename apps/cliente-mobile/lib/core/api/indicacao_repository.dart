@@ -13,6 +13,16 @@ class IndicacaoRepository {
     final r = await _dio.get('$_base/meu');
     return IndicacaoMeuDto.fromJson(r.data as Map<String, dynamic>);
   }
+
+  /// Registra que o usuario tocou "Compartilhar via WhatsApp" na tela.
+  /// Best-effort — falha nao trava o share.
+  Future<void> registrarShare() async {
+    try {
+      await _dio.post('$_base/share');
+    } catch (_) {
+      // Analytics nao pode quebrar UX.
+    }
+  }
 }
 
 final indicacaoRepositoryProvider = Provider<IndicacaoRepository>(
