@@ -5,8 +5,10 @@ import 'package:intl/intl.dart';
 import '../../../core/api/dto.dart';
 import '../../../core/api/faturas_repository.dart';
 import '../../../core/branding/brand_tokens.dart';
+import '../../../core/contrato/contrato_atual_provider.dart';
 import '../../shell/main_shell.dart';
 import 'connection_status_pill.dart';
+import 'contrato_switcher.dart';
 
 /// Hero da Home — padrao dos cards do Perfil/Faturas (surface, sombra leve)
 /// com informacao acionavel: linha de cima identifica o cliente + status do
@@ -24,6 +26,15 @@ class HeroCard extends ConsumerWidget {
       data: (l) => l.isEmpty ? null : l.first,
       orElse: () => null,
     );
+
+    // Contrato atualmente selecionado (ou primeiro disponivel).
+    final contratoAtualId = ref.watch(contratoAtualProvider);
+    final contratoAtual = me.contratos.isEmpty
+        ? null
+        : me.contratos.firstWhere(
+            (c) => c.id == contratoAtualId,
+            orElse: () => me.contratos.first,
+          );
 
     return Container(
       decoration: BoxDecoration(
@@ -50,7 +61,7 @@ class HeroCard extends ConsumerWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        _saudacaoComNome(me.nome),
+                        _soNome(me.nome),
                         style: const TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 15,
@@ -89,23 +100,127 @@ class HeroCard extends ConsumerWidget {
             ),
           ),
 
-          // Linha 2: footer com fatura ou "em dia"
+          // Linha 2 (opcional): endereço do contrato atual, clicavel quando multi-contrato
+          if (contratoAtual != null && contratoAtual.enderecoResumido.isNotEmpty)
+            _EnderecoLinha(
+              contrato: contratoAtual,
+              podeTrocar: me.temMultiContrato,
+              onTrocar: () => showContratoSelector(context, ref, me),
+            ),
+
+          // Linha 3: footer com fatura ou "em dia"
           _FaturaFooter(fatura: fatura, ref: ref),
         ],
       ),
     );
   }
 
-  String _saudacaoComNome(String full) {
-    final hora = DateTime.now().hour;
-    final cumprimento = hora < 12
-        ? 'Bom dia'
-        : hora < 18
-            ? 'Boa tarde'
-            : 'Boa noite';
+  /// Pega o primeiro nome com primeira letra maiuscula. Fallback 'Cliente'.
+  String _soNome(String full) {
     final t = full.trim();
-    final nome = t.isEmpty ? 'Cliente' : t.split(' ').first;
-    return '$cumprimento, $nome';
+    if (t.isEmpty) return 'Cliente';
+    final primeiroNome = t.split(RegExp(r'\s+')).first;
+    if (primeiroNome.isEmpty) return 'Cliente';
+    // Capitaliza so a primeira letra preservando o resto (case do SGP).
+    return primeiroNome[0].toUpperCase() +
+        primeiroNome.substring(1).toLowerCase();
+  }
+}
+
+/// Linha de endereço do contrato atual. Quando o cliente tem mais de um
+/// contrato, vira clicavel com chevron pra trocar.
+class _EnderecoLinha extends StatelessWidget {
+  const _EnderecoLinha({
+    required this.contrato,
+    required this.podeTrocar,
+    required this.onTrocar,
+  });
+  final ContratoResumoDto contrato;
+  final bool podeTrocar;
+  final VoidCallback onTrocar;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final divider = isDark ? Colors.white10 : BrandTokens.divider;
+
+    final inner = Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: BrandTokens.spaceMd,
+        vertical: 10,
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.location_on_outlined,
+            size: 14,
+            color: BrandTokens.textSecondary,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              contrato.enderecoResumido,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: BrandTokens.textSecondary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          if (podeTrocar) ...[
+            const SizedBox(width: BrandTokens.spaceSm),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: BrandTokens.spaceSm,
+                vertical: 3,
+              ),
+              decoration: BoxDecoration(
+                color: BrandTokens.primary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.swap_horiz_rounded,
+                    size: 13,
+                    color: BrandTokens.primary,
+                  ),
+                  SizedBox(width: 3),
+                  Text(
+                    'trocar',
+                    style: TextStyle(
+                      color: BrandTokens.primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+
+    final decorada = Container(
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: divider)),
+      ),
+      child: inner,
+    );
+
+    if (!podeTrocar) return decorada;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTrocar,
+        child: decorada,
+      ),
+    );
   }
 }
 
