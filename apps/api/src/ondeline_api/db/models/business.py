@@ -663,6 +663,11 @@ class IndicacaoUso(Base):
         DateTime(timezone=True), nullable=True
     )
     observacao: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Canal pelo qual a indicacao foi registrada: 'app' (tela in-app) ou
+    # 'whatsapp' (bot tradicional).
+    origem: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="whatsapp", server_default="whatsapp"
+    )
 
     __table_args__ = (Index("ix_indicacao_uso_indicacao", "indicacao_id"),)
 

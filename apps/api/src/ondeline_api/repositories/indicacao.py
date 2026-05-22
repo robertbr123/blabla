@@ -86,11 +86,13 @@ class IndicacaoRepo:
         *,
         lead_id: UUID | None = None,
         cliente_indicado_id: UUID | None = None,
+        origem: str = "whatsapp",
     ) -> IndicacaoUso:
         uso = IndicacaoUso(
             indicacao_id=indicacao_id,
             lead_id=lead_id,
             cliente_indicado_id=cliente_indicado_id,
+            origem=origem,
         )
         self._s.add(uso)
         # Incrementa contador.
