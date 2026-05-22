@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_repository.dart';
 import '../../core/auth/auth_state.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/animated_gradient_background.dart';
+import '../../core/ui/glass_card.dart';
 import '../../core/ui/haptics.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -76,74 +78,141 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(BrandTokens.spaceLg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Bem-vindo de volta',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
+      backgroundColor: BrandTokens.primaryDark,
+      body: AnimatedGradientBackground(
+        child: SafeArea(
+          child: GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            behavior: HitTestBehavior.translucent,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: BrandTokens.spaceLg,
+                vertical: BrandTokens.spaceXl,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: BrandTokens.spaceXl),
+                  // Logo / ícone marca
+                  Center(
+                    child: Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        gradient: BrandTokens.gradientPrimary,
+                        borderRadius:
+                            BorderRadius.circular(BrandTokens.radiusLg),
+                        boxShadow: BrandTokens.shadowColored,
+                      ),
+                      child: const Icon(
+                        Icons.wifi_rounded,
+                        color: Colors.white,
+                        size: 38,
+                      ),
                     ),
-              ),
-              const SizedBox(height: BrandTokens.spaceSm),
-              Text(
-                'Entre com seu CPF e senha.',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: BrandTokens.textSecondary,
-                    ),
-              ),
-              const SizedBox(height: BrandTokens.spaceXl),
-              TextField(
-                controller: _cpfCtrl,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(11),
-                ],
-                decoration: const InputDecoration(labelText: 'CPF'),
-              ),
-              const SizedBox(height: BrandTokens.spaceMd),
-              TextField(
-                controller: _pwdCtrl,
-                obscureText: _hide,
-                decoration: InputDecoration(
-                  labelText: 'Senha',
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                        _hide ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setState(() => _hide = !_hide),
                   ),
-                ),
+                  const SizedBox(height: BrandTokens.spaceLg),
+                  const Text(
+                    'Bem-vindo de volta',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 28,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: BrandTokens.spaceXs),
+                  const Text(
+                    'Entre com seu CPF e senha pra continuar.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: BrandTokens.spaceXl),
+                  GlassCard(
+                    child: Column(
+                      children: [
+                        GlassTextField(
+                          controller: _cpfCtrl,
+                          label: 'CPF',
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(11),
+                          ],
+                          prefixIcon: const Icon(
+                            Icons.badge_outlined,
+                            color: Colors.white70,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(height: BrandTokens.spaceMd),
+                        GlassTextField(
+                          controller: _pwdCtrl,
+                          label: 'Senha',
+                          obscureText: _hide,
+                          prefixIcon: const Icon(
+                            Icons.lock_outline,
+                            color: Colors.white70,
+                            size: 20,
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _hide
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              color: Colors.white70,
+                            ),
+                            onPressed: () => setState(() => _hide = !_hide),
+                          ),
+                        ),
+                        const SizedBox(height: BrandTokens.spaceSm),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _loading ? null : _forgot,
+                            style: TextButton.styleFrom(
+                              foregroundColor: BrandTokens.primaryLight,
+                              padding: EdgeInsets.zero,
+                              tapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'Esqueci minha senha',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: BrandTokens.spaceLg),
+                  GlassPrimaryButton(
+                    onPressed: _loading ? null : _login,
+                    label: 'Entrar',
+                    loading: _loading,
+                    icon: Icons.arrow_forward_rounded,
+                  ),
+                  const SizedBox(height: BrandTokens.spaceMd),
+                  TextButton(
+                    onPressed:
+                        _loading ? null : () => context.go('/onboarding/cpf'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(48),
+                    ),
+                    child: const Text(
+                      'Criar conta',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: BrandTokens.spaceSm),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: _loading ? null : _forgot,
-                  child: const Text('Esqueci minha senha'),
-                ),
-              ),
-              const Spacer(),
-              FilledButton(
-                onPressed: _loading ? null : _login,
-                child: _loading
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Entrar'),
-              ),
-              TextButton(
-                onPressed:
-                    _loading ? null : () => context.go('/onboarding/cpf'),
-                child: const Text('Criar conta'),
-              ),
-            ],
+            ),
           ),
         ),
       ),

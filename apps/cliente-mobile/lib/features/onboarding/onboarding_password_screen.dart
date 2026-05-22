@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_repository.dart';
 import '../../core/auth/auth_state.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/auth_scaffold.dart';
+import '../../core/ui/glass_card.dart';
 import '../../core/ui/haptics.dart';
 
 class OnboardingPasswordScreen extends ConsumerStatefulWidget {
@@ -71,96 +73,87 @@ class _OnboardingPasswordScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(BrandTokens.spaceLg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Crie uma senha',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-              ),
-              const SizedBox(height: BrandTokens.spaceSm),
-              Text(
-                'No minimo 8 caracteres. Voce vai usar pra entrar no app.',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: BrandTokens.textSecondary,
-                    ),
-              ),
-              const SizedBox(height: BrandTokens.spaceXl),
-              TextField(
-                controller: _p1,
-                obscureText: _hide,
-                decoration: InputDecoration(
-                  labelText: 'Senha',
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                        _hide ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setState(() => _hide = !_hide),
-                  ),
+    return AuthScaffold(
+      showBack: true,
+      icon: Icons.lock_outline_rounded,
+      title: 'Crie uma senha',
+      subtitle: 'No minimo 8 caracteres. Voce vai usar pra entrar no app.',
+      child: GlassCard(
+        child: Column(
+          children: [
+            GlassTextField(
+              controller: _p1,
+              label: 'Senha',
+              obscureText: _hide,
+              prefixIcon: const Icon(Icons.lock_outline,
+                  color: Colors.white70, size: 20),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _hide
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                  color: Colors.white70,
                 ),
+                onPressed: () => setState(() => _hide = !_hide),
               ),
-              const SizedBox(height: BrandTokens.spaceMd),
-              TextField(
-                controller: _p2,
-                obscureText: _hide,
-                decoration:
-                    const InputDecoration(labelText: 'Confirme a senha'),
-              ),
-              const Spacer(),
-              Padding(
-                padding: const EdgeInsets.only(bottom: BrandTokens.spaceSm),
-                child: Text.rich(
-                  TextSpan(
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: BrandTokens.textSecondary,
-                        ),
-                    children: [
-                      const TextSpan(
-                          text: 'Ao criar a conta, voce concorda com os '),
-                      TextSpan(
-                        text: 'Termos de Uso',
-                        style: const TextStyle(
-                          color: BrandTokens.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        recognizer: TapGestureRecognizer()
-                          ..onTap = () => context.push('/legal/termos'),
-                      ),
-                      const TextSpan(text: ' e a '),
-                      TextSpan(
-                        text: 'Politica de Privacidade',
-                        style: const TextStyle(
-                          color: BrandTokens.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        recognizer: TapGestureRecognizer()
-                          ..onTap = () => context.push('/legal/privacidade'),
-                      ),
-                      const TextSpan(text: '.'),
-                    ],
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-              FilledButton(
-                onPressed: _loading ? null : _continue,
-                child: _loading
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Criar conta'),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: BrandTokens.spaceMd),
+            GlassTextField(
+              controller: _p2,
+              label: 'Confirme a senha',
+              obscureText: _hide,
+              prefixIcon: const Icon(Icons.lock_outline,
+                  color: Colors.white70, size: 20),
+            ),
+          ],
         ),
+      ),
+      bottom: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: BrandTokens.spaceSm),
+            child: Text.rich(
+              TextSpan(
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                ),
+                children: [
+                  const TextSpan(
+                      text: 'Ao criar a conta, voce concorda com os '),
+                  TextSpan(
+                    text: 'Termos de Uso',
+                    style: const TextStyle(
+                      color: BrandTokens.primaryLight,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () => context.push('/legal/termos'),
+                  ),
+                  const TextSpan(text: ' e a '),
+                  TextSpan(
+                    text: 'Politica de Privacidade',
+                    style: const TextStyle(
+                      color: BrandTokens.primaryLight,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () => context.push('/legal/privacidade'),
+                  ),
+                  const TextSpan(text: '.'),
+                ],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          GlassPrimaryButton(
+            onPressed: _loading ? null : _continue,
+            label: 'Criar conta',
+            loading: _loading,
+            icon: Icons.check_rounded,
+          ),
+          const SizedBox(height: BrandTokens.spaceXs),
+        ],
       ),
     );
   }

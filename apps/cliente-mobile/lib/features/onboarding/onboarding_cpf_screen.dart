@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/auth_scaffold.dart';
+import '../../core/ui/glass_card.dart';
 
 class OnboardingCpfScreen extends ConsumerStatefulWidget {
   const OnboardingCpfScreen({super.key});
@@ -54,56 +56,49 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(BrandTokens.spaceLg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Vamos te encontrar',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-              ),
-              const SizedBox(height: BrandTokens.spaceSm),
-              Text(
-                'Digite seu CPF pra continuar.',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: BrandTokens.textSecondary,
-                    ),
-              ),
-              const SizedBox(height: BrandTokens.spaceXl),
-              TextField(
-                controller: _ctrl,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(11),
-                ],
-                decoration: const InputDecoration(labelText: 'CPF'),
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const Spacer(),
-              FilledButton(
-                onPressed: _loading ? null : _continue,
-                child: _loading
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Continuar'),
-              ),
-              TextButton(
-                onPressed: () => context.go('/login'),
-                child: const Text('Ja tenho conta'),
-              ),
-            ],
+    return AuthScaffold(
+      icon: Icons.badge_outlined,
+      title: 'Vamos te encontrar',
+      subtitle: 'Digite seu CPF pra continuar.',
+      child: GlassCard(
+        child: GlassTextField(
+          controller: _ctrl,
+          label: 'CPF',
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(11),
+          ],
+          textStyle: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 22,
+            letterSpacing: 2,
           ),
         ),
+      ),
+      bottom: Column(
+        children: [
+          GlassPrimaryButton(
+            onPressed: _loading ? null : _continue,
+            label: 'Continuar',
+            loading: _loading,
+            icon: Icons.arrow_forward_rounded,
+          ),
+          TextButton(
+            onPressed: () => context.go('/login'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(48),
+            ),
+            child: const Text(
+              'Ja tenho conta',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(height: BrandTokens.spaceXs),
+        ],
       ),
     );
   }

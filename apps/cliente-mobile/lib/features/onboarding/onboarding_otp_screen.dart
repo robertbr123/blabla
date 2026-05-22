@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/auth_scaffold.dart';
+import '../../core/ui/glass_card.dart';
 
 class OnboardingOtpScreen extends ConsumerStatefulWidget {
   const OnboardingOtpScreen({
@@ -65,60 +67,51 @@ class _OnboardingOtpScreenState extends ConsumerState<OnboardingOtpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(BrandTokens.spaceLg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Confirme seu telefone',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-              ),
-              const SizedBox(height: BrandTokens.spaceSm),
-              Text(
-                'Enviamos um codigo de 6 digitos no WhatsApp ${widget.maskedPhone}.',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: BrandTokens.textSecondary,
-                    ),
-              ),
-              const SizedBox(height: BrandTokens.spaceXl),
-              TextField(
-                controller: _ctrl,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      letterSpacing: 12,
-                      fontWeight: FontWeight.w800,
-                    ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(6),
-                ],
-                decoration: const InputDecoration(labelText: 'Codigo'),
-              ),
-              const Spacer(),
-              FilledButton(
-                onPressed: _loading ? null : _continue,
-                child: _loading
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Validar codigo'),
-              ),
-              TextButton(
-                onPressed: _loading ? null : _resend,
-                child: const Text('Reenviar codigo'),
-              ),
-            ],
+    return AuthScaffold(
+      showBack: true,
+      icon: Icons.message_outlined,
+      title: 'Confirme seu telefone',
+      subtitle:
+          'Enviamos um codigo de 6 digitos no WhatsApp ${widget.maskedPhone}.',
+      child: GlassCard(
+        child: GlassTextField(
+          controller: _ctrl,
+          label: 'Codigo',
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          inputFormatters: [
+            FilteringTextInputFormatter.digitsOnly,
+            LengthLimitingTextInputFormatter(6),
+          ],
+          textStyle: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontSize: 28,
+            letterSpacing: 14,
           ),
         ),
+      ),
+      bottom: Column(
+        children: [
+          GlassPrimaryButton(
+            onPressed: _loading ? null : _continue,
+            label: 'Validar codigo',
+            loading: _loading,
+            icon: Icons.check_rounded,
+          ),
+          TextButton(
+            onPressed: _loading ? null : _resend,
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(48),
+            ),
+            child: const Text(
+              'Reenviar codigo',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(height: BrandTokens.spaceXs),
+        ],
       ),
     );
   }
