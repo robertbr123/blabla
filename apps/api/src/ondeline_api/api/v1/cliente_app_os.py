@@ -148,7 +148,7 @@ def _admin_item(o: ClienteAppOs, u: ClienteAppUser, atendente: User | None) -> A
         status=o.status,
         sgp_protocolo_id=o.sgp_protocolo_id,
         atendente_user_id=str(o.atendente_user_id) if o.atendente_user_id else None,
-        atendente_nome=atendente.nome if atendente else None,
+        atendente_nome=atendente.name if atendente else None,
         cliente_app_user_id=str(u.id),
         cliente_nome=decrypt_pii(u.nome_encrypted) if u.nome_encrypted else "",
         cliente_cpf_last4=u.cpf_last4,
