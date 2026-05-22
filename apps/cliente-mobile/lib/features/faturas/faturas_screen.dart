@@ -27,9 +27,12 @@ class _FaturasScreenState extends ConsumerState<FaturasScreen> {
         bottom: false,
         child: RefreshIndicator(
           onRefresh: () async {
+            // Força refresh no backend (invalida cache SGP de 1h) — usuario
+            // chamando pull-to-refresh espera dado novo, ex: depois que admin
+            // baixou fatura no SGP.
+            await ref.read(faturasRepositoryProvider).refreshAll();
             ref.invalidate(faturasAbertasProvider);
             ref.invalidate(faturasPagasProvider);
-            await ref.read(faturasAbertasProvider.future);
           },
           child: ListView(
             physics: const BouncingScrollPhysics(

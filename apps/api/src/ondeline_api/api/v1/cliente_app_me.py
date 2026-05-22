@@ -5,6 +5,8 @@ ja existente do dashboard.
 """
 from __future__ import annotations
 
+from datetime import UTC, date
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -130,13 +132,31 @@ async def update_me(
     return _build_me(user, sgp)
 
 
-def _fatura_out(f: Fatura) -> FaturaOut:
+def _calc_dias_atraso(vencimento_str: str, status: str, hoje: date) -> int:
+    """Calcula dias_atraso autoritativo a partir de vencimento + hoje.
+
+    Nao confia no campo `diasAtraso` do SGP — observamos casos onde ele
+    retorna valor antigo (ex: 10) mesmo com vencimento futuro. Se o titulo
+    nao esta aberto OU vence no futuro, dias_atraso = 0.
+    """
+    if status != "aberto":
+        return 0
+    try:
+        venc = date.fromisoformat(vencimento_str)
+    except (ValueError, TypeError):
+        return 0
+    delta = (hoje - venc).days
+    return max(0, delta)
+
+
+def _fatura_out(f: Fatura, hoje: date) -> FaturaOut:
     return FaturaOut(
         id=f.id,
         valor=float(f.valor),
         vencimento=f.vencimento,
         status=f.status,
-        dias_atraso=int(f.dias_atraso),
+        # Recalculado — ignora f.dias_atraso do SGP.
+        dias_atraso=_calc_dias_atraso(f.vencimento, f.status, hoje),
         tem_pdf=bool(f.link_pdf),
         tem_pix=bool(f.codigo_pix),
     )
@@ -145,9 +165,48 @@ def _fatura_out(f: Fatura) -> FaturaOut:
 @router.get("/faturas", response_model=FaturasOut)
 async def faturas(
     status: str | None = None,
+    force: bool = False,
     user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> FaturasOut:
+    # Pull-to-refresh manda force=true → invalida cache pra pegar SGP fresco
+    # (ex: depois que admin deu baixa no SGP, cache de 1h ainda mostrava
+    # como em aberto). User explicito > performance.
+    if force:
+        cpf = decrypt_pii(user.cpf_encrypted) if user.cpf_encrypted else ""
+        if cpf:
+            try:
+                from ondeline_api.adapters.sgp.linknetam import (
+                    SgpLinkNetAMProvider,
+                )
+                from ondeline_api.adapters.sgp.ondeline import (
+                    SgpOndelineProvider,
+                )
+                from ondeline_api.adapters.sgp.router import SgpRouter
+                from ondeline_api.config import get_settings
+                from ondeline_api.services.sgp_cache import SgpCacheService
+                from ondeline_api.services.sgp_config import load_sgp_config
+                from ondeline_api.workers.runtime import get_redis
+
+                s = get_settings()
+                sgp_ond = await load_sgp_config(session, "ondeline")
+                sgp_lnk = await load_sgp_config(session, "linknetam")
+                router = SgpRouter(
+                    primary=SgpOndelineProvider(**sgp_ond),
+                    secondary=SgpLinkNetAMProvider(**sgp_lnk),
+                )
+                cache = SgpCacheService(
+                    redis=await get_redis(),
+                    session=session,
+                    router=router,
+                    ttl_cliente=s.sgp_cache_ttl_cliente,
+                    ttl_negativo=s.sgp_cache_ttl_negativo,
+                )
+                await cache.invalidate(cpf)
+                await router.aclose()
+            except Exception:
+                pass  # best-effort
+
     sgp = await _sgp_cliente(session, user.cpf_encrypted)
     if sgp is None:
         return FaturasOut(items=[])
@@ -156,8 +215,17 @@ async def faturas(
         titulos = [t for t in titulos if t.status == "aberto"]
     elif status == "pagas":
         titulos = [t for t in titulos if t.status != "aberto"]
-    titulos.sort(key=lambda t: t.vencimento, reverse=True)
-    return FaturasOut(items=[_fatura_out(t) for t in titulos])
+
+    # Ordenacao:
+    # - abertas: ASC por vencimento (mais urgente primeiro)
+    # - pagas e geral: DESC por vencimento (mais recente primeiro)
+    is_abertas = status == "abertas"
+    titulos.sort(key=lambda t: t.vencimento, reverse=not is_abertas)
+
+    from datetime import datetime as _dt
+
+    hoje = _dt.now(tz=UTC).date()
+    return FaturasOut(items=[_fatura_out(t, hoje) for t in titulos])
 
 
 @router.get("/faturas/{titulo_id}/pix", response_model=PixOut)
