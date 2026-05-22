@@ -11,18 +11,30 @@ import '../../core/ui/haptics.dart';
 Future<void> showNpsBottomSheet(
   BuildContext context, {
   required String osId,
+  String? tipoLabel,
+  String? numero,
 }) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _NpsSheet(osId: osId),
+    builder: (_) => _NpsSheet(
+      osId: osId,
+      tipoLabel: tipoLabel,
+      numero: numero,
+    ),
   );
 }
 
 class _NpsSheet extends ConsumerStatefulWidget {
-  const _NpsSheet({required this.osId});
+  const _NpsSheet({
+    required this.osId,
+    this.tipoLabel,
+    this.numero,
+  });
   final String osId;
+  final String? tipoLabel;
+  final String? numero;
 
   @override
   ConsumerState<_NpsSheet> createState() => _NpsSheetState();
@@ -119,6 +131,13 @@ class _NpsSheetState extends ConsumerState<_NpsSheet> {
                 letterSpacing: -0.3,
               ),
             ),
+            if (widget.tipoLabel != null || widget.numero != null) ...[
+              const SizedBox(height: BrandTokens.spaceXs),
+              _ReferenciaChamado(
+                tipoLabel: widget.tipoLabel,
+                numero: widget.numero,
+              ),
+            ],
             const SizedBox(height: BrandTokens.spaceXs),
             const Text(
               'De 0 a 10, qual a chance de você indicar nosso atendimento?',
@@ -246,6 +265,41 @@ class _NpsSheetState extends ConsumerState<_NpsSheet> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ReferenciaChamado extends StatelessWidget {
+  const _ReferenciaChamado({this.tipoLabel, this.numero});
+  final String? tipoLabel;
+  final String? numero;
+
+  @override
+  Widget build(BuildContext context) {
+    final partes = <String>[];
+    if (numero != null && numero!.isNotEmpty) partes.add('Chamado #$numero');
+    if (tipoLabel != null && tipoLabel!.isNotEmpty) partes.add(tipoLabel!);
+    if (partes.isEmpty) return const SizedBox.shrink();
+    return Container(
+      margin: const EdgeInsets.only(top: BrandTokens.spaceXs),
+      padding: const EdgeInsets.symmetric(
+        horizontal: BrandTokens.spaceSm + 2,
+        vertical: 6,
+      ),
+      decoration: BoxDecoration(
+        color: BrandTokens.primary.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
+      ),
+      child: Text(
+        partes.join(' — '),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: BrandTokens.primary,
+          fontWeight: FontWeight.w700,
+          fontSize: 12.5,
         ),
       ),
     );

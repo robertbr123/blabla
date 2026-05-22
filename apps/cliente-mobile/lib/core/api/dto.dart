@@ -281,6 +281,31 @@ class OsDto {
       };
 }
 
+class ManutencaoBreakingDto {
+  ManutencaoBreakingDto({
+    required this.id,
+    required this.titulo,
+    this.descricao,
+    required this.inicioAt,
+    required this.fimAt,
+  });
+
+  factory ManutencaoBreakingDto.fromJson(Map<String, dynamic> j) =>
+      ManutencaoBreakingDto(
+        id: j['id'] as String,
+        titulo: j['titulo'] as String,
+        descricao: j['descricao'] as String?,
+        inicioAt: DateTime.parse(j['inicio_at'] as String),
+        fimAt: DateTime.parse(j['fim_at'] as String),
+      );
+
+  final String id;
+  final String titulo;
+  final String? descricao;
+  final DateTime inicioAt;
+  final DateTime fimAt;
+}
+
 class FaturaDto {
   FaturaDto({
     required this.id,

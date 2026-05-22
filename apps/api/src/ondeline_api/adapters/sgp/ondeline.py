@@ -74,7 +74,13 @@ def _extract_contrato_id(raw: dict[str, Any]) -> str | None:
     Quando nada bate, retorna None — significa que o SGP nao expoe a
     associacao e o titulo deve ser tratado como global do CPF.
     """
-    for key in ("idContrato", "contratoId", "contrato_id", "idcontrato"):
+    for key in (
+        "clientecontrato_id",  # Ondeline/LinkNetAM via SGP TSMX
+        "idContrato",
+        "contratoId",
+        "contrato_id",
+        "idcontrato",
+    ):
         v = raw.get(key)
         if v is not None and str(v):
             return str(v)

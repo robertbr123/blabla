@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/dto.dart';
 import '../../core/api/notificacoes_repository.dart';
+import '../../core/api/os_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../nps/nps_bottom_sheet.dart';
 
@@ -119,10 +120,33 @@ class _NotifTile extends ConsumerWidget {
       context.push(action.substring(5));
     } else if (action.startsWith('nps:')) {
       final osId = action.substring(4);
+      // Tenta enriquecer com tipo/numero da OS, se a lista ja estiver no cache.
+      final osAsync = ref.read(osListProvider);
+      OsDto? os;
+      osAsync.whenData((list) {
+        for (final o in list) {
+          if (o.id == osId) {
+            os = o;
+            break;
+          }
+        }
+      });
       if (!context.mounted) return;
       // ignore: use_build_context_synchronously
-      await showNpsBottomSheet(context, osId: osId);
+      await showNpsBottomSheet(
+        context,
+        osId: osId,
+        tipoLabel: os?.tipoLabel,
+        numero: os != null ? _osNumeroCurto(osId) : null,
+      );
     }
+  }
+
+  static String _osNumeroCurto(String osId) {
+    final clean = osId.replaceAll('-', '');
+    return clean.length <= 6
+        ? clean.toUpperCase()
+        : clean.substring(0, 6).toUpperCase();
   }
 
   @override

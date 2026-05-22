@@ -7,6 +7,13 @@ import '../../../core/api/os_repository.dart';
 import '../../../core/branding/brand_tokens.dart';
 import '../../nps/nps_bottom_sheet.dart';
 
+/// UUID curto pro display — pega os primeiros 6 chars do id da OS.
+/// Suficiente pro cliente identificar visualmente, sem expor o uuid inteiro.
+String _numeroCurto(String osId) {
+  final clean = osId.replaceAll('-', '');
+  return clean.length <= 6 ? clean.toUpperCase() : clean.substring(0, 6).toUpperCase();
+}
+
 class OsCard extends ConsumerWidget {
   const OsCard({super.key, required this.os});
   final OsDto os;
@@ -84,6 +91,8 @@ class OsCard extends ConsumerWidget {
             const SizedBox(height: BrandTokens.spaceMd),
             _AvaliarCta(
               osId: os.id,
+              tipoLabel: os.tipoLabel,
+              numero: _numeroCurto(os.id),
               onRespondido: () {
                 ref.invalidate(osListProvider);
               },
@@ -96,8 +105,15 @@ class OsCard extends ConsumerWidget {
 }
 
 class _AvaliarCta extends StatelessWidget {
-  const _AvaliarCta({required this.osId, required this.onRespondido});
+  const _AvaliarCta({
+    required this.osId,
+    required this.tipoLabel,
+    required this.numero,
+    required this.onRespondido,
+  });
   final String osId;
+  final String tipoLabel;
+  final String numero;
   final VoidCallback onRespondido;
 
   @override
@@ -108,7 +124,12 @@ class _AvaliarCta extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
         onTap: () async {
-          await showNpsBottomSheet(context, osId: osId);
+          await showNpsBottomSheet(
+            context,
+            osId: osId,
+            tipoLabel: tipoLabel,
+            numero: numero,
+          );
           onRespondido();
         },
         child: Padding(

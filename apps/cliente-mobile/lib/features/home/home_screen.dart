@@ -10,11 +10,13 @@ import '../../core/api/promocoes_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/cache/last_known_cache.dart';
 import '../../core/contrato/contrato_atual_provider.dart';
+import '../../core/api/manutencoes_repository.dart';
 import '../notificacoes/widgets/notif_bell.dart';
 import '../nps/nps_bottom_sheet.dart';
 import '../shell/main_shell.dart';
 import 'widgets/avisos_list.dart';
 import 'widgets/hero_card.dart';
+import 'widgets/manutencao_breaking_bar.dart';
 import 'widgets/promo_carousel.dart';
 import 'widgets/quick_actions.dart';
 
@@ -67,6 +69,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: NotifBell(),
                 ),
               ),
+              // Breaking news bar de manutencoes ativas (auto-hide quando vazio).
+              const ManutencaoBreakingBar(),
               meAsync.when(
                 data: (me) {
                   _persistMe(me);
@@ -149,6 +153,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.invalidate(avisosProvider);
     ref.invalidate(promocoesProvider);
     ref.invalidate(osListProvider);
+    ref.invalidate(manutencoesAtivasProvider);
     await ref.read(meProvider.future);
   }
 
@@ -164,16 +169,30 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
     if (alvo == null) return;
     final id = alvo.id;
+    final tipoLabel = alvo.tipoLabel;
+    final numero = _numeroCurto(id);
     _npsAlreadyPromptedThisSession.add(id);
     // Aguarda o frame atual concluir pra evitar showModalBottomSheet durante build.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      showNpsBottomSheet(context, osId: id).then((_) {
+      showNpsBottomSheet(
+        context,
+        osId: id,
+        tipoLabel: tipoLabel,
+        numero: numero,
+      ).then((_) {
         // Apos o sheet fechar (com ou sem submit), invalida pra refletir
         // npsRespondidoEm caso o user tenha enviado.
         ref.invalidate(osListProvider);
       });
     });
+  }
+
+  String _numeroCurto(String osId) {
+    final clean = osId.replaceAll('-', '');
+    return clean.length <= 6
+        ? clean.toUpperCase()
+        : clean.substring(0, 6).toUpperCase();
   }
 
   Future<void> _persistMe(MeDto me) async {
