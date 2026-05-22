@@ -1,5 +1,5 @@
 'use client'
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import {
   ArrowRightLeft,
   Boxes,
@@ -25,6 +25,7 @@ import {
   useDepositoSaldo,
   useEstoqueItens,
   useEstoqueMovimentos,
+  useSeriaisAtivos,
   useTecnicos,
   useTecnicosSaldos,
   useUpdateEstoqueItem,
@@ -60,6 +61,24 @@ export default function EstoquePage() {
   const { data: tecSaldos } = useTecnicosSaldos()
   const { data: itens } = useEstoqueItens(false)
   const { data: movimentos } = useEstoqueMovimentos({ limit: 30 })
+  const { data: seriais } = useSeriaisAtivos()
+
+  // Indexa seriais ativos por (locKey, item_id) — locKey: 'deposito' | tecnicoId
+  const seriaisPorLocItem = useMemo(() => {
+    const map = new Map<string, Map<string, string[]>>()
+    for (const s of seriais?.linhas ?? []) {
+      const locKey = s.tecnico_id ?? 'deposito'
+      let perLoc = map.get(locKey)
+      if (!perLoc) {
+        perLoc = new Map<string, string[]>()
+        map.set(locKey, perLoc)
+      }
+      const arr = perLoc.get(s.item_id) ?? []
+      arr.push(s.serial)
+      perLoc.set(s.item_id, arr)
+    }
+    return map
+  }, [seriais])
 
   async function handleExcluir(item: EstoqueItem) {
     const ok = confirm(
@@ -211,6 +230,7 @@ export default function EstoquePage() {
               filtrar(l, busca),
             )}
             mostrarTipoQuando="saldo"
+            seriaisPorItem={seriaisPorLocItem.get('deposito')}
           />
 
           {/* Movimentos recentes do depósito */}
@@ -240,6 +260,7 @@ export default function EstoquePage() {
                 .toLowerCase()
                 .includes(busca.toLowerCase()),
             )}
+            seriaisPorLocItem={seriaisPorLocItem}
           />
 
           <h3 className="mt-6 text-base font-semibold">
@@ -422,6 +443,7 @@ function TabButton({
 function TabelaSaldo({
   linhas,
   mostrarTipoQuando: _ignored,
+  seriaisPorItem,
 }: {
   linhas: Array<{
     item_id: string
@@ -432,6 +454,7 @@ function TabelaSaldo({
     saldo: number
   }>
   mostrarTipoQuando: 'saldo'
+  seriaisPorItem?: Map<string, string[]>
 }) {
   return (
     <div className="overflow-x-auto rounded-md border bg-card">
@@ -452,40 +475,60 @@ function TabelaSaldo({
               </td>
             </tr>
           )}
-          {linhas.map((l) => (
-            <tr
-              key={l.item_id}
-              className="border-b last:border-b-0 hover:bg-muted/50"
-            >
-              <td className="px-4 py-3 font-medium">
-                {l.nome}
-                {l.serializado && (
-                  <span className="ml-2 inline-flex items-center rounded bg-info/[0.12] px-1.5 py-0.5 text-[10px] font-semibold text-info ring-1 ring-inset ring-info/30">
-                    serial
-                  </span>
+          {linhas.map((l) => {
+            const seriais = l.serializado
+              ? seriaisPorItem?.get(l.item_id) ?? []
+              : []
+            return (
+              <Fragment key={l.item_id}>
+                <tr className="border-b last:border-b-0 hover:bg-muted/50">
+                  <td className="px-4 py-3 font-medium">
+                    {l.nome}
+                    {l.serializado && (
+                      <span className="ml-2 inline-flex items-center rounded bg-info/[0.12] px-1.5 py-0.5 text-[10px] font-semibold text-info ring-1 ring-inset ring-info/30">
+                        serial
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs">{l.sku}</td>
+                  <td className="px-4 py-3 capitalize text-muted-foreground">
+                    {l.categoria}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <span
+                      className={cn(
+                        'rounded-md px-2 py-1 font-semibold',
+                        l.saldo > 0
+                          ? 'bg-success/[0.12] text-success ring-1 ring-inset ring-success/30'
+                          : l.saldo === 0
+                            ? 'text-muted-foreground'
+                            : 'bg-destructive/[0.12] text-destructive ring-1 ring-inset ring-destructive/30',
+                      )}
+                      style={{ fontVariantNumeric: 'tabular-nums' }}
+                    >
+                      {l.saldo}
+                    </span>
+                  </td>
+                </tr>
+                {seriais.length > 0 && (
+                  <tr className="border-b last:border-b-0 bg-muted/20">
+                    <td colSpan={4} className="px-4 py-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        {seriais.map((s) => (
+                          <code
+                            key={s}
+                            className="rounded bg-background px-1.5 py-0.5 text-[11px] ring-1 ring-inset ring-border"
+                          >
+                            {s}
+                          </code>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
                 )}
-              </td>
-              <td className="px-4 py-3 font-mono text-xs">{l.sku}</td>
-              <td className="px-4 py-3 capitalize text-muted-foreground">
-                {l.categoria}
-              </td>
-              <td className="px-4 py-3 text-right">
-                <span
-                  className={cn(
-                    'rounded-md px-2 py-1 font-semibold',
-                    l.saldo > 0
-                      ? 'bg-success/[0.12] text-success ring-1 ring-inset ring-success/30'
-                      : l.saldo === 0
-                        ? 'text-muted-foreground'
-                        : 'bg-destructive/[0.12] text-destructive ring-1 ring-inset ring-destructive/30',
-                  )}
-                  style={{ fontVariantNumeric: 'tabular-nums' }}
-                >
-                  {l.saldo}
-                </span>
-              </td>
-            </tr>
-          ))}
+              </Fragment>
+            )
+          })}
         </tbody>
       </table>
     </div>
@@ -494,6 +537,7 @@ function TabelaSaldo({
 
 function TabelaTecnicosSaldos({
   linhas,
+  seriaisPorLocItem,
 }: {
   linhas: Array<{
     tecnico_id: string
@@ -504,6 +548,7 @@ function TabelaTecnicosSaldos({
     categoria: string
     saldo: number
   }>
+  seriaisPorLocItem?: Map<string, Map<string, string[]>>
 }) {
   // Agrupa por técnico
   const porTec = new Map<string, { nome: string; itens: typeof linhas }>()
@@ -534,20 +579,42 @@ function TabelaTecnicosSaldos({
           </div>
           <table className="w-full text-sm">
             <tbody>
-              {itens.map((it) => (
-                <tr key={it.item_id} className="border-b last:border-b-0">
-                  <td className="px-4 py-2 font-medium">{it.nome}</td>
-                  <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
-                    {it.sku}
-                  </td>
-                  <td className="px-4 py-2 text-xs capitalize text-muted-foreground">
-                    {it.categoria}
-                  </td>
-                  <td className="px-4 py-2 text-right font-semibold">
-                    {it.saldo}
-                  </td>
-                </tr>
-              ))}
+              {itens.map((it) => {
+                const seriais =
+                  seriaisPorLocItem?.get(tecId)?.get(it.item_id) ?? []
+                return (
+                  <Fragment key={it.item_id}>
+                    <tr className="border-b last:border-b-0">
+                      <td className="px-4 py-2 font-medium">{it.nome}</td>
+                      <td className="px-4 py-2 font-mono text-xs text-muted-foreground">
+                        {it.sku}
+                      </td>
+                      <td className="px-4 py-2 text-xs capitalize text-muted-foreground">
+                        {it.categoria}
+                      </td>
+                      <td className="px-4 py-2 text-right font-semibold">
+                        {it.saldo}
+                      </td>
+                    </tr>
+                    {seriais.length > 0 && (
+                      <tr className="border-b last:border-b-0 bg-muted/20">
+                        <td colSpan={4} className="px-4 py-2">
+                          <div className="flex flex-wrap gap-1.5">
+                            {seriais.map((s) => (
+                              <code
+                                key={s}
+                                className="rounded bg-background px-1.5 py-0.5 text-[11px] ring-1 ring-inset ring-border"
+                              >
+                                {s}
+                              </code>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                )
+              })}
             </tbody>
           </table>
         </div>

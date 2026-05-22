@@ -20,6 +20,8 @@ from ondeline_api.api.schemas.estoque import (
     MovimentoOut,
     SaldoLinha,
     SaldoOut,
+    SerialAtivo,
+    SeriaisAtivosOut,
     TecnicoSaldoOut,
     TecnicoSaldoResumo,
     TransferirIn,
@@ -496,6 +498,65 @@ async def saldos_tecnicos(
         for r in rows
     ]
     return TecnicoSaldoOut(linhas=linhas)
+
+
+@router.get(
+    "/seriais",
+    response_model=SeriaisAtivosOut,
+    dependencies=[_admin_atendente],
+)
+async def list_seriais_ativos(
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> SeriaisAtivosOut:
+    """Lista seriais que estao atualmente em estoque (saldo do serial > 0).
+
+    Para cada (item_id, serial), pega o ultimo movimento; se o tipo for
+    positivo (entrada/recolhido/ajuste+), o serial esta naquela localizacao
+    (tecnico_id ou deposito quando NULL). Tipos negativos ja sairam do estoque.
+    """
+    from sqlalchemy import select
+
+    from ondeline_api.db.models.estoque import (
+        TIPOS_POSITIVOS as _POS,
+    )
+    from ondeline_api.db.models.estoque import EstoqueMovimento
+
+    # DISTINCT ON: ultimo movimento por (item_id, serial)
+    last_mov = (
+        select(
+            EstoqueMovimento.item_id,
+            EstoqueMovimento.serial,
+            EstoqueMovimento.tecnico_id,
+            EstoqueMovimento.tipo,
+            EstoqueMovimento.criado_em,
+        )
+        .where(EstoqueMovimento.serial.is_not(None))
+        .order_by(
+            EstoqueMovimento.item_id,
+            EstoqueMovimento.serial,
+            EstoqueMovimento.criado_em.desc(),
+        )
+        .distinct(EstoqueMovimento.item_id, EstoqueMovimento.serial)
+    ).subquery()
+
+    stmt = select(
+        last_mov.c.item_id,
+        last_mov.c.serial,
+        last_mov.c.tecnico_id,
+        last_mov.c.criado_em,
+    ).where(last_mov.c.tipo.in_(list(_POS)))
+
+    rows = (await session.execute(stmt)).all()
+    linhas = [
+        SerialAtivo(
+            item_id=r.item_id,
+            serial=r.serial,
+            tecnico_id=r.tecnico_id,
+            desde=r.criado_em,
+        )
+        for r in rows
+    ]
+    return SeriaisAtivosOut(linhas=linhas)
 
 
 # Exporta os dois routers; main.py registra ambos.

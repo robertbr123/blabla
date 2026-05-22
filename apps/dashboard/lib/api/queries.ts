@@ -259,6 +259,20 @@ export function useTecnicosSaldos() {
   })
 }
 
+export interface SerialAtivo {
+  item_id: string
+  serial: string
+  tecnico_id: string | null
+  desde: string
+}
+
+export function useSeriaisAtivos() {
+  return useQuery<{ linhas: SerialAtivo[] }>({
+    queryKey: ['estoque-seriais-ativos'],
+    queryFn: () => apiFetch('/api/v1/estoque/seriais'),
+  })
+}
+
 export function useEstoqueMovimentos(filters: { tecnico_id?: string; item_id?: string; limit?: number } = {}) {
   const params = new URLSearchParams()
   if (filters.tecnico_id) params.set('tecnico_id', filters.tecnico_id)

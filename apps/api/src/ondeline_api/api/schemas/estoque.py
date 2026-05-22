@@ -130,3 +130,15 @@ class TecnicoSaldoResumo(BaseModel):
 class TecnicoSaldoOut(BaseModel):
     """Saldo de todos os tecnicos x itens (admin visualiza distribuicao)."""
     linhas: list[TecnicoSaldoResumo]
+
+
+class SerialAtivo(BaseModel):
+    """Serial atualmente em estoque (saldo > 0) com sua localizacao corrente."""
+    item_id: UUID
+    serial: str
+    tecnico_id: UUID | None  # None = deposito central
+    desde: datetime  # criado_em do ultimo movimento positivo
+
+
+class SeriaisAtivosOut(BaseModel):
+    linhas: list[SerialAtivo]
