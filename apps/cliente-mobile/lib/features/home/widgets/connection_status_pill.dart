@@ -95,12 +95,14 @@ class _PillState extends State<_Pill>
   @override
   Widget build(BuildContext context) {
     final info = _info();
+    // Adaptado pra fundo claro (hero virou surface). Usa info.color como
+    // tint do fundo do pill pra contraste suficiente em light e dark.
     final child = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.14),
+        color: info.color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
-        border: Border.all(color: Colors.white.withOpacity(0.18)),
+        border: Border.all(color: info.color.withOpacity(0.30)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -116,7 +118,7 @@ class _PillState extends State<_Pill>
                     width: 8 + t * 6,
                     height: 8 + t * 6,
                     decoration: BoxDecoration(
-                      color: info.color.withOpacity(0.25 * (1 - t)),
+                      color: info.color.withOpacity(0.30 * (1 - t)),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -134,13 +136,13 @@ class _PillState extends State<_Pill>
           ),
           const SizedBox(width: 8),
           if (info.icon != null) ...[
-            Icon(info.icon, color: Colors.white, size: 14),
+            Icon(info.icon, color: info.color, size: 14),
             const SizedBox(width: 4),
           ],
           Text(
             info.label,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: info.color,
               fontWeight: FontWeight.w700,
               fontSize: 12,
             ),

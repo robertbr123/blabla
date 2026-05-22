@@ -60,17 +60,22 @@ class _SuporteScreenState extends ConsumerState<SuporteScreen>
           _ChamadosTab(),
         ],
       ),
-      floatingActionButton: AnimatedBuilder(
-        animation: _tabs,
-        builder: (_, __) => _tabs.index == 1
-            ? FloatingActionButton.extended(
-                onPressed: () => context.push('/suporte/novo'),
-                icon: const Icon(Icons.add),
-                label: const Text('Novo chamado'),
-                backgroundColor: BrandTokens.primary,
-                foregroundColor: Colors.white,
-              )
-            : const SizedBox.shrink(),
+      // FAB com padding extra pra subir acima da navbar flutuante (~80px
+      // de altura + margem). Sem isso fica atras dela e nao da pra tocar.
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 80),
+        child: AnimatedBuilder(
+          animation: _tabs,
+          builder: (_, __) => _tabs.index == 1
+              ? FloatingActionButton.extended(
+                  onPressed: () => context.push('/suporte/novo'),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Novo chamado'),
+                  backgroundColor: BrandTokens.primary,
+                  foregroundColor: Colors.white,
+                )
+              : const SizedBox.shrink(),
+        ),
       ),
     );
   }
