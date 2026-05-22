@@ -1,148 +1,640 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/api/dto.dart';
 import '../../core/api/faturas_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import 'widgets/fatura_bottom_sheet.dart';
-import 'widgets/fatura_card.dart';
 
-class FaturasScreen extends ConsumerStatefulWidget {
+class FaturasScreen extends ConsumerWidget {
   const FaturasScreen({super.key});
 
   @override
-  ConsumerState<FaturasScreen> createState() => _FaturasScreenState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final abertasAsync = ref.watch(faturasAbertasProvider);
+    final pagasAsync = ref.watch(faturasPagasProvider);
+
+    return Scaffold(
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(faturasAbertasProvider);
+            ref.invalidate(faturasPagasProvider);
+            await ref.read(faturasAbertasProvider.future);
+          },
+          child: ListView(
+            physics: const BouncingScrollPhysics(
+              parent: AlwaysScrollableScrollPhysics(),
+            ),
+            padding: const EdgeInsets.fromLTRB(
+              BrandTokens.spaceLg,
+              BrandTokens.spaceLg,
+              BrandTokens.spaceLg,
+              120,
+            ),
+            children: [
+              Text(
+                'Faturas',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: BrandTokens.spaceLg),
+              abertasAsync.when(
+                loading: () => const _HeroSkeleton(),
+                error: (_, __) => _ErrorCard(
+                  onRetry: () =>
+                      ref.invalidate(faturasAbertasProvider),
+                ),
+                data: (abertas) {
+                  if (abertas.isEmpty) {
+                    return const _EmAdiaCard();
+                  }
+                  // Pega a mais proxima do vencimento (primeira da lista,
+                  // ja vem ordenada do backend).
+                  final principal = abertas.first;
+                  final outras = abertas.skip(1).toList();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _AbertaHeroCard(
+                        fatura: principal,
+                        onTap: () =>
+                            FaturaBottomSheet.show(context, principal),
+                      ),
+                      if (outras.isNotEmpty) ...[
+                        const SizedBox(height: BrandTokens.spaceMd),
+                        ...outras.map(
+                          (f) => _OutraAbertaTile(
+                            fatura: f,
+                            onTap: () =>
+                                FaturaBottomSheet.show(context, f),
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: BrandTokens.spaceXl),
+              _SectionLabel(label: 'Historico'),
+              const SizedBox(height: BrandTokens.spaceSm),
+              pagasAsync.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.symmetric(vertical: BrandTokens.spaceLg),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (_, __) => const SizedBox.shrink(),
+                data: (pagas) {
+                  if (pagas.isEmpty) {
+                    return _MutedText(
+                      'Suas faturas pagas vao aparecer aqui.',
+                    );
+                  }
+                  return Column(
+                    children: [
+                      for (int i = 0; i < pagas.length; i++)
+                        _TimelineTile(
+                          fatura: pagas[i],
+                          isFirst: i == 0,
+                          isLast: i == pagas.length - 1,
+                          onTap: () =>
+                              FaturaBottomSheet.show(context, pagas[i]),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-class _FaturasScreenState extends ConsumerState<FaturasScreen>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabs;
+// ════════ Hero da fatura em aberto ════════
 
-  @override
-  void initState() {
-    super.initState();
-    _tabs = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabs.dispose();
-    super.dispose();
-  }
+class _AbertaHeroCard extends StatelessWidget {
+  const _AbertaHeroCard({required this.fatura, required this.onTap});
+  final FaturaDto fatura;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Faturas'),
-        bottom: TabBar(
-          controller: _tabs,
-          labelColor: BrandTokens.primary,
-          unselectedLabelColor: BrandTokens.textSecondary,
-          indicatorColor: BrandTokens.primary,
-          tabs: const [
-            Tab(text: 'Em aberto'),
-            Tab(text: 'Pagas'),
+    final fmtValor = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+    final fmtData = DateFormat('dd/MM/yyyy', 'pt_BR');
+    final venceHoje = _diasAteVencimento(fatura.vencimentoDate);
+    final statusColor =
+        fatura.isVencido ? BrandTokens.danger : Colors.white;
+    final statusTexto = _heroStatusTexto(fatura, venceHoje);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
+      child: Container(
+        padding: const EdgeInsets.all(BrandTokens.spaceLg),
+        decoration: BoxDecoration(
+          gradient: fatura.isVencido
+              ? const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    BrandTokens.danger,
+                    Color(0xFFB12B40),
+                  ],
+                )
+              : BrandTokens.gradientHero,
+          borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
+          boxShadow: BrandTokens.elevation2,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.18),
+                    borderRadius:
+                        BorderRadius.circular(BrandTokens.radiusSm),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.30),
+                    ),
+                  ),
+                  child: Text(
+                    statusTexto,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: BrandTokens.spaceMd),
+            Text(
+              fmtValor.format(fatura.valor),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 36,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -1,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(
+                  Icons.calendar_today_outlined,
+                  color: Colors.white70,
+                  size: 14,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Vence ${fmtData.format(fatura.vencimentoDate)}',
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: BrandTokens.spaceLg),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: BrandTokens.spaceMd,
+                vertical: BrandTokens.spaceSm,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.18),
+                borderRadius:
+                    BorderRadius.circular(BrandTokens.radiusMd),
+              ),
+              child: Row(
+                children: [
+                  if (fatura.temPix) ...[
+                    const Icon(Icons.qr_code_2_rounded,
+                        color: Colors.white, size: 20),
+                    const SizedBox(width: BrandTokens.spaceSm),
+                    const Text(
+                      'Pagar com Pix',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ] else if (fatura.temPdf) ...[
+                    const Icon(Icons.picture_as_pdf_outlined,
+                        color: Colors.white, size: 20),
+                    const SizedBox(width: BrandTokens.spaceSm),
+                    const Text(
+                      'Abrir boleto',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    color: Colors.white,
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabs,
+    );
+  }
+
+  int _diasAteVencimento(DateTime venc) {
+    final hoje = DateTime.now();
+    final v = DateTime(venc.year, venc.month, venc.day);
+    final h = DateTime(hoje.year, hoje.month, hoje.day);
+    return v.difference(h).inDays;
+  }
+
+  String _heroStatusTexto(FaturaDto f, int dias) {
+    if (f.isVencido) return 'VENCIDA HA ${f.diasAtraso} DIA${f.diasAtraso == 1 ? '' : 'S'}';
+    if (dias == 0) return 'VENCE HOJE';
+    if (dias == 1) return 'VENCE AMANHA';
+    if (dias > 0) return 'VENCE EM $dias DIAS';
+    return 'EM ABERTO';
+  }
+}
+
+// ════════ Outras abertas (compactas) ════════
+
+class _OutraAbertaTile extends StatelessWidget {
+  const _OutraAbertaTile({required this.fatura, required this.onTap});
+  final FaturaDto fatura;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final fmtValor = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+    final fmtData = DateFormat('dd/MM', 'pt_BR');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: BrandTokens.spaceSm),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+          child: Container(
+            padding: const EdgeInsets.all(BrandTokens.spaceMd),
+            decoration: BoxDecoration(
+              color: isDark ? BrandTokens.surfaceDark : BrandTokens.surface,
+              borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+              border: Border.all(
+                color: fatura.isVencido
+                    ? BrandTokens.danger.withOpacity(0.30)
+                    : (isDark ? Colors.white12 : BrandTokens.divider),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: (fatura.isVencido
+                            ? BrandTokens.danger
+                            : BrandTokens.warning)
+                        .withOpacity(0.14),
+                    borderRadius:
+                        BorderRadius.circular(BrandTokens.radiusSm),
+                  ),
+                  child: Icon(
+                    fatura.isVencido
+                        ? Icons.warning_amber_rounded
+                        : Icons.schedule_rounded,
+                    size: 18,
+                    color: fatura.isVencido
+                        ? BrandTokens.danger
+                        : BrandTokens.warning,
+                  ),
+                ),
+                const SizedBox(width: BrandTokens.spaceMd),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        fmtValor.format(fatura.valor),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        fatura.isVencido
+                            ? 'Vencida ${fmtData.format(fatura.vencimentoDate)}'
+                            : 'Vence ${fmtData.format(fatura.vencimentoDate)}',
+                        style: TextStyle(
+                          color: fatura.isVencido
+                              ? BrandTokens.danger
+                              : BrandTokens.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: BrandTokens.textSecondary,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ════════ Timeline (pagas) ════════
+
+class _TimelineTile extends StatelessWidget {
+  const _TimelineTile({
+    required this.fatura,
+    required this.isFirst,
+    required this.isLast,
+    required this.onTap,
+  });
+  final FaturaDto fatura;
+  final bool isFirst;
+  final bool isLast;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final fmtValor = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+    final fmtMes = DateFormat('MMM/yyyy', 'pt_BR');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _FaturasList(provider: faturasAbertasProvider),
-          _FaturasList(provider: faturasPagasProvider),
+          // Trilho vertical + bolinha
+          SizedBox(
+            width: 32,
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 12,
+                  child: isFirst
+                      ? const SizedBox.shrink()
+                      : Container(
+                          width: 2,
+                          color: BrandTokens.success.withOpacity(0.30),
+                        ),
+                ),
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: BrandTokens.success,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isDark
+                          ? BrandTokens.backgroundDark
+                          : BrandTokens.background,
+                      width: 3,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: BrandTokens.success.withOpacity(0.30),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: isLast
+                      ? const SizedBox.shrink()
+                      : Container(
+                          width: 2,
+                          color: BrandTokens.success.withOpacity(0.30),
+                        ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: BrandTokens.spaceMd),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onTap,
+                  borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+                  child: Padding(
+                    padding: const EdgeInsets.all(BrandTokens.spaceMd),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                fmtValor.format(fatura.valor),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              Text(
+                                fmtMes.format(fatura.vencimentoDate),
+                                style: const TextStyle(
+                                  color: BrandTokens.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                BrandTokens.success.withOpacity(0.14),
+                            borderRadius:
+                                BorderRadius.circular(BrandTokens.radiusSm),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.check_circle,
+                                color: BrandTokens.success,
+                                size: 14,
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                'Paga',
+                                style: TextStyle(
+                                  color: BrandTokens.success,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _FaturasList extends ConsumerWidget {
-  const _FaturasList({required this.provider});
-  final FutureProvider<List<FaturaDto>> provider;
+// ════════ Helpers ════════
 
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.label});
+  final String label;
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(provider);
-    return RefreshIndicator(
-      onRefresh: () async {
-        ref.invalidate(provider);
-        await ref.read(provider.future);
-      },
-      child: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => _Empty(
-          icon: Icons.error_outline,
-          title: 'Nao consegui carregar suas faturas',
-          subtitle: 'Verifique sua conexao e tente de novo.',
-        ),
-        data: (faturas) {
-          if (faturas.isEmpty) {
-            return ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              children: const [
-                SizedBox(height: 96),
-                _Empty(
-                  icon: Icons.receipt_long_outlined,
-                  title: 'Nada por aqui',
-                  subtitle: 'Voce esta em dia.',
-                ),
-              ],
-            );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(BrandTokens.spaceLg),
-            itemCount: faturas.length,
-            itemBuilder: (_, i) {
-              final f = faturas[i];
-              return FaturaCard(
-                fatura: f,
-                onTap: () => FaturaBottomSheet.show(context, f),
-              );
-            },
-          );
-        },
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.2,
+          ),
+    );
+  }
+}
+
+class _MutedText extends StatelessWidget {
+  const _MutedText(this.text);
+  final String text;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: BrandTokens.spaceMd),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: BrandTokens.textSecondary,
+            ),
       ),
     );
   }
 }
 
-class _Empty extends StatelessWidget {
-  const _Empty({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
+class _EmAdiaCard extends StatelessWidget {
+  const _EmAdiaCard();
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(BrandTokens.spaceXl),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 64, color: BrandTokens.textSecondary),
-            const SizedBox(height: BrandTokens.spaceMd),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-            const SizedBox(height: BrandTokens.spaceSm),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: BrandTokens.textSecondary,
-                  ),
-            ),
-          ],
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(BrandTokens.spaceLg),
+      decoration: BoxDecoration(
+        color: BrandTokens.success.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
+        border: Border.all(
+          color: BrandTokens.success.withOpacity(0.30),
         ),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: BrandTokens.success.withOpacity(0.18),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.check_circle_outline,
+              color: BrandTokens.success,
+              size: 30,
+            ),
+          ),
+          const SizedBox(height: BrandTokens.spaceMd),
+          Text(
+            'Voce esta em dia! 🎉',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: isDark
+                      ? BrandTokens.textPrimaryDark
+                      : BrandTokens.textPrimary,
+                ),
+          ),
+          const SizedBox(height: BrandTokens.spaceXs),
+          Text(
+            'Nenhuma fatura em aberto no momento.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: BrandTokens.textSecondary,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroSkeleton extends StatelessWidget {
+  const _HeroSkeleton();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 200,
+      decoration: BoxDecoration(
+        color: BrandTokens.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
+      ),
+      child: const Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class _ErrorCard extends StatelessWidget {
+  const _ErrorCard({required this.onRetry});
+  final VoidCallback onRetry;
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(BrandTokens.spaceLg),
+      decoration: BoxDecoration(
+        color: BrandTokens.danger.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.error_outline, color: BrandTokens.danger),
+          const SizedBox(height: BrandTokens.spaceSm),
+          const Text('Nao conseguimos carregar suas faturas.'),
+          TextButton(
+            onPressed: onRetry,
+            child: const Text('Tentar de novo'),
+          ),
+        ],
       ),
     );
   }
