@@ -69,8 +69,10 @@ def upgrade() -> None:
             "categorias",
             postgresql.JSONB(),
             nullable=False,
+            # IMPORTANTE: espaco depois de ':' obrigatorio — SQLAlchemy text()
+            # interpreta ':nome' como bind param e quebra o JSON.
             server_default=sa.text(
-                "'{\"fatura\":true,\"os\":true,\"manutencao\":true,\"promocao\":true,\"conta\":true}'::jsonb"
+                "'{\"fatura\": true, \"os\": true, \"manutencao\": true, \"promocao\": true, \"conta\": true}'::jsonb"
             ),
         ),
         sa.Column(
