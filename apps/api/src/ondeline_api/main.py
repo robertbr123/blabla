@@ -58,7 +58,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     import os as _os
     from pathlib import Path as _P
 
-    for d in [_P("/tmp/ondeline_os_fotos"), _P("/tmp/ondeline_cliente_fotos")]:
+    for d in [
+        _P("/tmp/ondeline_os_fotos"),
+        _P("/tmp/ondeline_cliente_fotos"),
+        _P("/tmp/ondeline_promocoes"),
+    ]:
         try:
             d.mkdir(parents=True, exist_ok=True)
             try:
@@ -169,14 +173,22 @@ def create_app() -> FastAPI:
     app.include_router(v1_cliente_app_promocoes.router)
     app.include_router(v1_cliente_app_promocoes.admin_router)
 
-    # Static dir pras imagens de promocoes (servido em /static/...)
+    # Static dir pras imagens de promocoes (servido em /static/promocoes/...).
+    # Usa /tmp pra evitar PermissionError no /app (user nao-root).
     from pathlib import Path as _Path
 
     from fastapi.staticfiles import StaticFiles
 
-    _static_dir = _Path("data/static")
-    _static_dir.mkdir(parents=True, exist_ok=True)
-    app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
+    _promo_dir = _Path("/tmp/ondeline_promocoes")
+    try:
+        _promo_dir.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
+    app.mount(
+        "/static/promocoes",
+        StaticFiles(directory=str(_promo_dir)),
+        name="static-promocoes",
+    )
     return app
 
 

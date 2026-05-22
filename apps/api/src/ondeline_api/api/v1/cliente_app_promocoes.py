@@ -35,8 +35,8 @@ from ondeline_api.deps import get_db
 log = structlog.get_logger(__name__)
 
 # Diretorio dos uploads de imagem. Servido em /static/promocoes/.
-STATIC_DIR = Path("data/static/promocoes")
-STATIC_DIR.mkdir(parents=True, exist_ok=True)
+# /tmp tem perm liberada no startup (lifespan) + e mapeavel como volume.
+STATIC_DIR = Path("/tmp/ondeline_promocoes")
 ALLOWED_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_BYTES = 2 * 1024 * 1024  # 2 MB
 
