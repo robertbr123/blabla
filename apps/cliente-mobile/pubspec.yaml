@@ -41,6 +41,9 @@ dependencies:
   qr_flutter: ^4.1.0
   share_plus: ^10.1.2
 
+  # Home screen widget (Android primeiro; iOS WidgetKit numa onda futura)
+  home_widget: ^0.7.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

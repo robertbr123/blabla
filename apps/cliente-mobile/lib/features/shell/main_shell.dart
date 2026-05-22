@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/api/conexao_repository.dart';
+import '../../core/api/dto.dart';
 import '../../core/api/faturas_repository.dart';
 import '../../core/api/os_repository.dart';
 import '../../core/notifications/push_service.dart';
+import '../../core/widget/home_widget_service.dart';
 import '../faturas/faturas_screen.dart';
 import '../home/home_screen.dart';
 import '../perfil/perfil_screen.dart';
@@ -59,6 +62,21 @@ class _MainShellState extends ConsumerState<MainShell> {
           orElse: () => 0,
         );
 
+    // Sincroniza widget de home screen com dados atuais (best-effort).
+    // Roda toda vez que faturas/conexão chegam — barato e mantém widget vivo.
+    ref.listen<AsyncValue<List<FaturaDto>>>(faturasAbertasProvider, (_, next) {
+      next.whenData((faturas) {
+        HomeWidgetService.setProximaFatura(_proximaFatura(faturas))
+            .then((_) => HomeWidgetService.refresh());
+      });
+    });
+    ref.listen<AsyncValue<ConexaoDto>>(conexaoProvider, (_, next) {
+      next.whenData((c) {
+        HomeWidgetService.setStatus(c.status)
+            .then((_) => HomeWidgetService.refresh());
+      });
+    });
+
     return Scaffold(
       extendBody: true,
       body: IndexedStack(index: index, children: _tabs),
@@ -91,5 +109,19 @@ class _MainShellState extends ConsumerState<MainShell> {
         ],
       ),
     );
+  }
+
+  /// Escolhe a fatura "destaque" pro widget:
+  /// 1) primeira vencida (urgência maior),
+  /// 2) próxima com vencimento mais cedo no futuro,
+  /// 3) se não houver abertas, null.
+  static FaturaDto? _proximaFatura(List<FaturaDto> abertas) {
+    if (abertas.isEmpty) return null;
+    final vencidas = abertas.where((f) => f.isVencido).toList()
+      ..sort((a, b) => a.vencimento.compareTo(b.vencimento));
+    if (vencidas.isNotEmpty) return vencidas.first;
+    final ordenadas = [...abertas]
+      ..sort((a, b) => a.vencimento.compareTo(b.vencimento));
+    return ordenadas.first;
   }
 }
