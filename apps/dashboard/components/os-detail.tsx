@@ -272,17 +272,32 @@ export function OsDetail({ id }: { id: string }) {
               <p className="text-xs text-muted-foreground">Enviando…</p>
             )}
             {data.fotos && data.fotos.length > 0 && (
-              <ul className="space-y-1 text-xs text-muted-foreground">
-                {data.fotos.map((f, i) => (
-                  <li key={i} className="truncate">
-                    {f.url.split('/').pop()} —{' '}
-                    {new Date(f.ts).toLocaleString('pt-BR')}
-                  </li>
-                ))}
-              </ul>
+              <FotosGaleria osId={id} fotos={data.fotos} />
             )}
           </CardContent>
         </Card>
+
+        {(data.gps_inicio_lat || data.gps_fim_lat) && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Localização da visita</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <OsMapa
+                inicio={
+                  data.gps_inicio_lat && data.gps_inicio_lng
+                    ? { lat: data.gps_inicio_lat, lng: data.gps_inicio_lng }
+                    : null
+                }
+                fim={
+                  data.gps_fim_lat && data.gps_fim_lng
+                    ? { lat: data.gps_fim_lat, lng: data.gps_fim_lng }
+                    : null
+                }
+              />
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 
 import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.api.deps_v1 import CursorParam, LimitParam, parse_cursor, parse_limit
@@ -219,6 +219,34 @@ async def create_os(
     out = OsOut.model_validate(os_)
     out.nome_cliente = nome_cliente_str
     return out
+
+
+@router.get(
+    "/{os_id}/foto/{foto_idx}",
+    dependencies=[_role_dep],
+)
+async def get_os_foto(
+    os_id: UUID,
+    foto_idx: int,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> FileResponse:
+    """Serve binario da foto N de uma OS. URL pra exibir em <Image>."""
+    repo = OrdemServicoRepo(session)
+    os_ = await repo.get_by_id(os_id)
+    if os_ is None:
+        raise HTTPException(status_code=404, detail="OS not found")
+    fotos = os_.fotos or []
+    if foto_idx < 0 or foto_idx >= len(fotos):
+        raise HTTPException(status_code=404, detail="foto nao encontrada")
+    f = fotos[foto_idx]
+    url = f.get("url")
+    if not isinstance(url, str):
+        raise HTTPException(status_code=404, detail="foto sem path valido")
+    path = Path(url)
+    if not path.is_relative_to(FOTOS_DIR) or not path.exists():
+        raise HTTPException(status_code=404, detail="arquivo nao existe")
+    mime = str(f.get("mime") or "image/jpeg")
+    return FileResponse(path, media_type=mime)
 
 
 @router.get("/{os_id}", response_model=OsOut, dependencies=[_role_dep])

@@ -73,6 +73,10 @@ export interface OsFoto {
 
 export interface OsOut extends OsListItem {
   fotos: OsFoto[] | null
+  gps_inicio_lat: number | null
+  gps_inicio_lng: number | null
+  gps_fim_lat: number | null
+  gps_fim_lng: number | null
   csat: number | null
   comentario_cliente: string | null
   historico_reatribuicoes: Array<{de: string|null, para: string, em: string, por: string}> | null
