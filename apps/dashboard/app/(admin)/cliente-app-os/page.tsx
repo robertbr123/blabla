@@ -16,9 +16,11 @@ import {
   Send,
   MessageSquare,
   Headphones,
+  Wrench,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { DialogDespacharTecnico } from '@/components/dialog-despachar-tecnico'
 import {
   useClienteAppChatRelease,
   useClienteAppChatSend,
@@ -242,6 +244,7 @@ function DetailDrawer(props: {
   const patch = usePatchClienteAppOs(o.id)
   const [sgpId, setSgpId] = useState(o.sgp_protocolo_id ?? '')
   const [tab, setTab] = useState<'detalhes' | 'chat'>('detalhes')
+  const [despacharOpen, setDespacharOpen] = useState(false)
 
   async function changeStatus(s: ClienteAppOsAdminItem['status']) {
     try {
@@ -318,6 +321,24 @@ function DetailDrawer(props: {
           <ChatPanel userId={o.cliente_app_user_id} />
         ) : (
         <div className="space-y-5 p-6">
+          {/* Acao primaria — despachar pra tecnico */}
+          <button
+            onClick={() => setDespacharOpen(true)}
+            className="flex w-full items-center gap-3 rounded-lg border-2 border-indigo-200 bg-indigo-50 px-4 py-3 text-left transition hover:border-indigo-300 hover:bg-indigo-100"
+          >
+            <div className="rounded-md bg-indigo-600 p-2">
+              <Wrench className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <div className="font-semibold text-indigo-900">
+                Despachar pra técnico
+              </div>
+              <div className="text-xs text-indigo-700">
+                Cria OS em /os com técnico atribuído e notifica via WhatsApp.
+              </div>
+            </div>
+          </button>
+
           <Section title="Cliente">
             <Field icon={Phone} label="Telefone" value={o.cliente_telefone || '—'} />
             <Field
@@ -421,6 +442,17 @@ function DetailDrawer(props: {
         </div>
         )}
       </aside>
+      <DialogDespacharTecnico
+        open={despacharOpen}
+        onClose={() => setDespacharOpen(false)}
+        problemaSugerido={o.descricao}
+        clienteNome={o.cliente_nome}
+        clienteTelefone={o.cliente_telefone}
+        onCreated={() => {
+          // Marca o chamado como em atendimento (best-effort)
+          patch.mutate({ status: 'em_atendimento' })
+        }}
+      />
     </>
   )
 }
