@@ -224,8 +224,25 @@ async def faturas(
 
     from datetime import datetime as _dt
 
+    import structlog as _structlog
+
+    _log = _structlog.get_logger(__name__)
     hoje = _dt.now(tz=UTC).date()
-    return FaturasOut(items=[_fatura_out(t, hoje) for t in titulos])
+    out = [_fatura_out(t, hoje) for t in titulos]
+    # Log defensivo: se SGP mandou dias_atraso diferente do nosso calculo,
+    # ajuda a debugar discrepancias futuras.
+    for raw, computed in zip(titulos, out, strict=False):
+        if raw.dias_atraso != computed.dias_atraso:
+            _log.info(
+                "faturas.dias_atraso_recalc",
+                titulo_id=raw.id,
+                vencimento=raw.vencimento,
+                status=raw.status,
+                sgp_dias=raw.dias_atraso,
+                computed_dias=computed.dias_atraso,
+                hoje=hoje.isoformat(),
+            )
+    return FaturasOut(items=out)
 
 
 @router.get("/faturas/{titulo_id}/pix", response_model=PixOut)
