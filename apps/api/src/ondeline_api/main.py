@@ -16,11 +16,12 @@ from ondeline_api.api import auth, health
 from ondeline_api.api import metrics as metrics_router
 from ondeline_api.api import webhook as webhook_router
 from ondeline_api.api.v1 import canais as v1_canais
-from ondeline_api.api.v1 import cliente_app_auth as v1_cliente_app_auth
-from ondeline_api.api.v1 import cliente_app_me as v1_cliente_app_me
 from ondeline_api.api.v1 import cliente_app_admin_chat as v1_cliente_app_admin_chat
+from ondeline_api.api.v1 import cliente_app_auth as v1_cliente_app_auth
 from ondeline_api.api.v1 import cliente_app_chat as v1_cliente_app_chat
+from ondeline_api.api.v1 import cliente_app_me as v1_cliente_app_me
 from ondeline_api.api.v1 import cliente_app_os as v1_cliente_app_os
+from ondeline_api.api.v1 import cliente_app_promocoes as v1_cliente_app_promocoes
 from ondeline_api.api.v1 import clientes as v1_clientes
 from ondeline_api.api.v1 import clientes_cadastro as v1_clientes_cadastro
 from ondeline_api.api.v1 import config as v1_config
@@ -50,8 +51,30 @@ _log = structlog.get_logger(__name__)
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Startup: garante canal default (F4) a partir de settings.evolution_instance."""
+    """Startup: garante canal default + diretorios de upload com permissao correta."""
     settings = get_settings()
+    # Garante dirs de upload graváveis. Volumes docker às vezes vêm com owner
+    # errado de deploy anterior — best-effort chmod 0o777 nas pastas-raiz.
+    import os as _os
+    from pathlib import Path as _P
+
+    for d in [_P("/tmp/ondeline_os_fotos"), _P("/tmp/ondeline_cliente_fotos")]:
+        try:
+            d.mkdir(parents=True, exist_ok=True)
+            try:
+                _os.chmod(d, 0o777)
+            except PermissionError:
+                # Sem permissao pra chmod — provavelmente ja escrevemos mas
+                # outro user dono. Robert precisa rodar:
+                #   docker exec -u root blabla-api chmod -R 777 <path>
+                _log.warning(
+                    "startup.fotos_dir_chmod_failed",
+                    path=str(d),
+                    hint="run 'docker exec -u root <api> chmod -R 777 ' + path",
+                )
+        except Exception as e:
+            _log.warning("startup.fotos_dir_init_failed", path=str(d), error=str(e))
+
     try:
         sm = get_sessionmaker()
         async with sm() as session:
@@ -77,6 +100,7 @@ CSRF_EXEMPT_PATHS = [
     "/livez",
     "/metrics",
     "/api/v1",
+    "/static",
 ]
 
 
@@ -142,6 +166,17 @@ def create_app() -> FastAPI:
     app.include_router(v1_cliente_app_os.admin_router)
     app.include_router(v1_cliente_app_chat.router)
     app.include_router(v1_cliente_app_admin_chat.admin_router)
+    app.include_router(v1_cliente_app_promocoes.router)
+    app.include_router(v1_cliente_app_promocoes.admin_router)
+
+    # Static dir pras imagens de promocoes (servido em /static/...)
+    from pathlib import Path as _Path
+
+    from fastapi.staticfiles import StaticFiles
+
+    _static_dir = _Path("data/static")
+    _static_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
     return app
 
 

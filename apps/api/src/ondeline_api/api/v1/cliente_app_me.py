@@ -53,11 +53,17 @@ def _endereco_out(e: object) -> EnderecoOut:
 
 def _build_me(user: ClienteAppUser, sgp: ClienteSgp | None) -> MeOut:
     plano_nome = sgp.contratos[0].plano if (sgp and sgp.contratos) else None
+    # Local pode ter vindo vazio em registros criados em versoes antigas
+    # com bugs de parse SGP. Fallback no SGP atual.
+    nome_local = decrypt_pii(user.nome_encrypted) if user.nome_encrypted else ""
+    nome = nome_local.strip() or (sgp.nome if sgp else "") or ""
+    tel_local = decrypt_pii(user.telefone_encrypted) if user.telefone_encrypted else ""
+    telefone = tel_local.strip() or (sgp.whatsapp if sgp else "") or ""
     return MeOut(
         id=str(user.id),
-        nome=decrypt_pii(user.nome_encrypted),
+        nome=nome,
         cpf_last4=user.cpf_last4,
-        telefone=decrypt_pii(user.telefone_encrypted),
+        telefone=telefone,
         email=decrypt_pii(user.email_encrypted) if user.email_encrypted else None,
         biometric_enabled=user.biometric_enabled,
         plano_nome=plano_nome,
