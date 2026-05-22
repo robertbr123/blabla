@@ -42,6 +42,18 @@ class OsLocalRepo {
   /// Upsert de uma OS individual (apos endpoint de detalhe).
   Future<void> upsertOne(Map<String, dynamic> os) => upsertAll([os]);
 
+  /// Reconcilia a lista local com a vinda da API: faz upsert das presentes
+  /// e DELETA as que sumiram (foram excluidas pelo admin no dashboard).
+  /// Chamado pelo refresh da lista — nao pelo upsert de detalhe.
+  Future<void> reconcileWithServer(List<Map<String, dynamic>> serverList) async {
+    final serverIds = serverList.map((o) => o['id'] as String).toSet();
+    await upsertAll(serverList);
+    // Apaga locais que nao estao mais na resposta do servidor.
+    await (_db.delete(_db.osLocal)
+          ..where((t) => t.id.isNotIn(serverIds.toList())))
+        .go();
+  }
+
   /// Lista todas as OS cacheadas (ordenadas mais recentes primeiro).
   Future<List<Map<String, dynamic>>> listAll() async {
     final rows = await (_db.select(_db.osLocal)

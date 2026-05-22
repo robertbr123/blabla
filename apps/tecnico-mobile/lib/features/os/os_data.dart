@@ -70,5 +70,5 @@ Future<void> _refreshOsList(Ref ref, OsLocalRepo repo) async {
   } else {
     items = const [];
   }
-  await repo.upsertAll(items.cast<Map<String, dynamic>>());
+  await repo.reconcileWithServer(items.cast<Map<String, dynamic>>());
 }
