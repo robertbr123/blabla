@@ -10,6 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   cupertino_icons: ^1.0.8
 
   # HTTP + auth
@@ -35,7 +37,7 @@ dependencies:
   google_fonts: ^6.2.1
 
   # Utils
-  intl: ^0.19.0
+  intl: ^0.20.2
   qr_flutter: ^4.1.0
   share_plus: ^10.1.2
 

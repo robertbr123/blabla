@@ -1,7 +1,10 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
 
 import 'core/branding/brand_theme.dart';
 import 'core/theme/theme_mode_controller.dart';
@@ -15,6 +18,13 @@ Future<void> _bgHandler(RemoteMessage message) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // intl precisa carregar dados do locale antes de DateFormat/NumberFormat
+  // com locale: 'pt_BR'. Sem isso → LocaleDataException nas telas Faturas
+  // e Suporte (que formatam datas/valores).
+  await initializeDateFormatting('pt_BR', null);
+  Intl.defaultLocale = 'pt_BR';
+
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -41,6 +51,13 @@ class ClienteApp extends ConsumerWidget {
       darkTheme: BrandTheme.dark(),
       themeMode: themeMode,
       routerConfig: router,
+      locale: const Locale('pt', 'BR'),
+      supportedLocales: const [Locale('pt', 'BR')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       builder: (context, child) {
         // Tap fora de TextField fecha o teclado em todo o app.
         return GestureDetector(
