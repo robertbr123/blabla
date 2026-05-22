@@ -5,10 +5,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/dto.dart';
 import '../../core/api/me_repository.dart';
+import '../../core/api/promocoes_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/cache/last_known_cache.dart';
 import '../shell/main_shell.dart';
-import 'home_promos.dart';
 import 'widgets/avisos_list.dart';
 import 'widgets/hero_card.dart';
 import 'widgets/promo_carousel.dart';
@@ -21,7 +21,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final meAsync = ref.watch(meProvider);
     final avisosAsync = ref.watch(avisosProvider);
-    final promos = ref.watch(promocoesProvider);
+    final promosAsync = ref.watch(promocoesProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -30,6 +30,7 @@ class HomeScreen extends ConsumerWidget {
           onRefresh: () async {
             ref.invalidate(meProvider);
             ref.invalidate(avisosProvider);
+            ref.invalidate(promocoesProvider);
             await ref.read(meProvider.future);
           },
           child: ListView(
@@ -52,12 +53,19 @@ class HomeScreen extends ConsumerWidget {
                 error: (_, __) => _CachedHeroOrError(ref),
               ),
               const SizedBox(height: BrandTokens.spaceLg),
-              if (promos.isNotEmpty) ...[
-                const _SectionLabel(label: 'Pra voce'),
-                const SizedBox(height: BrandTokens.spaceSm),
-                PromoCarousel(items: promos),
-                const SizedBox(height: BrandTokens.spaceLg),
-              ],
+              ...promosAsync.when(
+                data: (promos) {
+                  if (promos.isEmpty) return const <Widget>[];
+                  return [
+                    const _SectionLabel(label: 'Pra voce'),
+                    const SizedBox(height: BrandTokens.spaceSm),
+                    PromoCarousel(items: promos),
+                    const SizedBox(height: BrandTokens.spaceLg),
+                  ];
+                },
+                loading: () => const <Widget>[],
+                error: (_, __) => const <Widget>[],
+              ),
               const _SectionLabel(label: 'Acoes rapidas'),
               const SizedBox(height: BrandTokens.spaceSm),
               QuickActions(

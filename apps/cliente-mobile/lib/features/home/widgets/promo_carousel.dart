@@ -1,44 +1,80 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/api/api_client.dart';
+import '../../../core/api/dto.dart';
+import '../../../core/api/promocoes_repository.dart';
 import '../../../core/branding/brand_tokens.dart';
+import '../../../core/ui/hex_color.dart';
+import '../promo_icon_map.dart';
 
-/// Item de promoção. Bloco C vai trocar pra DTO do backend.
-class PromoItem {
-  const PromoItem({
-    required this.titulo,
-    required this.subtitulo,
-    required this.ctaLabel,
-    this.onTap,
-    this.gradient,
-    this.icon,
-  });
-  final String titulo;
-  final String subtitulo;
-  final String ctaLabel;
-  final VoidCallback? onTap;
-  final LinearGradient? gradient;
-  final IconData? icon;
-}
-
-/// Carrossel horizontal de promoções na home.
-/// Por enquanto recebe lista in-memory; bloco C plugga API real
-/// (`GET /api/cliente-app/promocoes`).
-class PromoCarousel extends StatefulWidget {
+/// Carrossel horizontal de promocoes na home, consumindo a API real.
+/// - Registra evento "view" 1.5s depois da pagina ficar visivel.
+/// - Registra evento "click" no tap do CTA.
+/// - CTA: "info" no-op, "url:<https>" abre browser, "tela:<rota>" navega in-app.
+class PromoCarousel extends ConsumerStatefulWidget {
   const PromoCarousel({super.key, required this.items});
-  final List<PromoItem> items;
+  final List<PromocaoDto> items;
 
   @override
-  State<PromoCarousel> createState() => _PromoCarouselState();
+  ConsumerState<PromoCarousel> createState() => _PromoCarouselState();
 }
 
-class _PromoCarouselState extends State<PromoCarousel> {
+class _PromoCarouselState extends ConsumerState<PromoCarousel> {
   final PageController _ctrl = PageController(viewportFraction: 0.92);
   int _idx = 0;
+  final Set<String> _viewedIds = {};
+  Timer? _viewTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleView(0);
+  }
 
   @override
   void dispose() {
+    _viewTimer?.cancel();
     _ctrl.dispose();
     super.dispose();
+  }
+
+  void _scheduleView(int idx) {
+    _viewTimer?.cancel();
+    if (idx < 0 || idx >= widget.items.length) return;
+    final id = widget.items[idx].id;
+    if (_viewedIds.contains(id)) return;
+    _viewTimer = Timer(const Duration(milliseconds: 1500), () {
+      if (!mounted) return;
+      _viewedIds.add(id);
+      ref.read(promocoesRepositoryProvider).registrarEvento(id, 'view');
+    });
+  }
+
+  Future<void> _onTap(PromocaoDto p) async {
+    // Click sempre registra
+    ref.read(promocoesRepositoryProvider).registrarEvento(p.id, 'click');
+
+    final action = p.ctaAction;
+    if (action == 'info') return;
+    if (action.startsWith('url:')) {
+      final url = action.substring(4);
+      final uri = Uri.tryParse(url);
+      if (uri != null) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+      return;
+    }
+    if (action.startsWith('tela:')) {
+      final rota = action.substring(5);
+      if (!mounted) return;
+      // ignore: use_build_context_synchronously
+      context.push(rota);
+    }
   }
 
   @override
@@ -50,11 +86,14 @@ class _PromoCarouselState extends State<PromoCarousel> {
           height: 140,
           child: PageView.builder(
             controller: _ctrl,
-            onPageChanged: (i) => setState(() => _idx = i),
+            onPageChanged: (i) {
+              setState(() => _idx = i);
+              _scheduleView(i);
+            },
             itemCount: widget.items.length,
             itemBuilder: (_, i) => Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: _PromoCard(item: widget.items[i]),
+              child: _PromoCard(item: widget.items[i], onTap: _onTap),
             ),
           ),
         ),
@@ -85,28 +124,41 @@ class _PromoCarouselState extends State<PromoCarousel> {
 }
 
 class _PromoCard extends StatelessWidget {
-  const _PromoCard({required this.item});
-  final PromoItem item;
+  const _PromoCard({required this.item, required this.onTap});
+  final PromocaoDto item;
+  final ValueChanged<PromocaoDto> onTap;
 
   @override
   Widget build(BuildContext context) {
-    final gradient = item.gradient ??
-        const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF8B5CF6), Color(0xFF5B6CFF)],
-        );
+    final from = hexColor(item.gradientFrom) ?? const Color(0xFF8B5CF6);
+    final to = hexColor(item.gradientTo) ?? const Color(0xFF5B6CFF);
+    final imagemUrl = item.imagemUrl;
+    final imagemAbs = imagemUrl == null
+        ? null
+        : (imagemUrl.startsWith('http') ? imagemUrl : '$apiBaseUrl$imagemUrl');
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: item.onTap,
+        onTap: () => onTap(item),
         borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
         child: Container(
           padding: const EdgeInsets.all(BrandTokens.spaceLg),
           decoration: BoxDecoration(
-            gradient: gradient,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [from, to],
+            ),
             borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
             boxShadow: BrandTokens.elevation2,
+            image: imagemAbs == null
+                ? null
+                : DecorationImage(
+                    image: NetworkImage(imagemAbs),
+                    fit: BoxFit.cover,
+                    opacity: 0.35,
+                  ),
           ),
           child: Row(
             children: [
@@ -126,18 +178,20 @@ class _PromoCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.subtitulo,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                        height: 1.3,
+                    if (item.subtitulo.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        item.subtitulo,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                          height: 1.3,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    ],
                     const SizedBox(height: BrandTokens.spaceSm),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -175,16 +229,16 @@ class _PromoCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (item.icon != null)
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(item.icon, color: Colors.white, size: 30),
+              const SizedBox(width: BrandTokens.spaceMd),
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.18),
+                  shape: BoxShape.circle,
                 ),
+                child: Icon(promoIconOf(item.icon), color: Colors.white, size: 30),
+              ),
             ],
           ),
         ),

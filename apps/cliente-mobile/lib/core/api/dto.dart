@@ -251,3 +251,45 @@ class AvisoDto {
   final String severidade;
   final DateTime publicadoEm;
 }
+
+class PromocaoDto {
+  PromocaoDto({
+    required this.id,
+    required this.titulo,
+    required this.subtitulo,
+    required this.imagemUrl,
+    required this.ctaLabel,
+    required this.ctaAction,
+    required this.tipo,
+    required this.gradientFrom,
+    required this.gradientTo,
+    required this.icon,
+  });
+
+  factory PromocaoDto.fromJson(Map<String, dynamic> j) => PromocaoDto(
+        id: j['id'] as String,
+        titulo: j['titulo'] as String,
+        subtitulo: (j['subtitulo'] as String?) ?? '',
+        imagemUrl: j['imagem_url'] as String?,
+        ctaLabel: (j['cta_label'] as String?) ?? 'Saiba mais',
+        ctaAction: (j['cta_action'] as String?) ?? 'info',
+        tipo: (j['tipo'] as String?) ?? 'generica',
+        gradientFrom: j['gradient_from'] as String?,
+        gradientTo: j['gradient_to'] as String?,
+        icon: j['icon'] as String?,
+      );
+
+  final String id;
+  final String titulo;
+  final String subtitulo;
+  final String? imagemUrl;
+  final String ctaLabel;
+  /// "info" | "url:<https>" | "tela:<rota>"
+  final String ctaAction;
+  /// "generica" | "indicacao"
+  final String tipo;
+  final String? gradientFrom;
+  final String? gradientTo;
+  /// Nome do icone Material (mapeado em promo_icon.dart).
+  final String? icon;
+}
