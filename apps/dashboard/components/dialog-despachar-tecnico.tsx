@@ -128,11 +128,13 @@ export function DialogDespacharTecnico(props: Props) {
                 className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm"
               >
                 <option value="">— Selecione —</option>
-                {(tecnicos.data ?? []).map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.nome}
-                  </option>
-                ))}
+                {(tecnicos.data?.items ?? [])
+                  .filter((t) => t.ativo)
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.nome}
+                    </option>
+                  ))}
               </select>
             </Field>
 
