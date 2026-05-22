@@ -60,11 +60,12 @@ class _SuporteScreenState extends ConsumerState<SuporteScreen>
           _ChamadosTab(),
         ],
       ),
-      // FAB acima da navbar flutuante. Navbar tem ~82px (icone+label+padding)
-      // + safe area bottom (notch iOS). MediaQuery pra adaptar nos 2 sistemas.
+      // FAB logo acima da navbar flutuante, colado mas sem encostar.
+      // Navbar interna ~62px + margem 16 do MainShell = ~78. Padding 70
+      // deixa o FAB ~8px acima da borda superior da navbar.
       floatingActionButton: Padding(
         padding: EdgeInsets.only(
-          bottom: 96 + MediaQuery.of(context).padding.bottom,
+          bottom: 70 + MediaQuery.of(context).padding.bottom,
         ),
         child: AnimatedBuilder(
           animation: _tabs,
