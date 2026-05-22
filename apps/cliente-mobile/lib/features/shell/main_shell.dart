@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/faturas_repository.dart';
 import '../../core/api/os_repository.dart';
+import '../../core/notifications/push_service.dart';
 import '../faturas/faturas_screen.dart';
 import '../home/home_screen.dart';
 import '../perfil/perfil_screen.dart';
@@ -14,9 +15,14 @@ import 'widgets/floating_nav_bar.dart';
 /// 0=Inicio, 1=Faturas, 2=Suporte, 3=Perfil.
 final mainShellTabProvider = StateProvider<int>((ref) => 0);
 
-class MainShell extends ConsumerWidget {
+class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
 
+  @override
+  ConsumerState<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends ConsumerState<MainShell> {
   static const _tabs = [
     HomeScreen(),
     FaturasScreen(),
@@ -25,7 +31,17 @@ class MainShell extends ConsumerWidget {
   ];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    // Registra push token no backend assim que o user chega ao shell
+    // (= autenticado). Idempotente, falha silenciosa sem Firebase.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(pushServiceProvider).start();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final index = ref.watch(mainShellTabProvider);
 
     // Badge faturas: ponto vermelho se houver vencida.

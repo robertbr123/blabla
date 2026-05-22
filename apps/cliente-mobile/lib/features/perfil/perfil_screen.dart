@@ -6,6 +6,7 @@ import '../../core/api/me_repository.dart';
 import '../../core/auth/auth_repository.dart';
 import '../../core/auth/auth_state.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/notifications/push_service.dart';
 import '../../core/theme/theme_mode_controller.dart';
 
 class PerfilScreen extends ConsumerWidget {
@@ -138,6 +139,9 @@ class PerfilScreen extends ConsumerWidget {
                   icon: const Icon(Icons.logout_rounded),
                   label: const Text('Sair'),
                   onPressed: () async {
+                    // Limpa push token no backend ANTES do logout (precisa
+                    // do token de auth ainda valido).
+                    await ref.read(pushServiceProvider).clear();
                     await ref.read(authRepositoryProvider).logout();
                     ref.read(authRefreshProvider).bump();
                     if (context.mounted) context.go('/onboarding/cpf');
@@ -563,6 +567,9 @@ Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
   );
   if (ok != true) return;
 
+  // Limpa push token antes do delete (deleteMe ja anonimiza no backend mas
+  // limpamos no FCM tambem pra parar mensagens fantasma no device).
+  await ref.read(pushServiceProvider).clear();
   final success = await ref.read(meRepositoryProvider).deleteMe();
   if (!context.mounted) return;
   if (success) {

@@ -6,6 +6,7 @@ ja existente do dashboard.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.adapters.sgp.base import ClienteSgp, Fatura
@@ -231,5 +232,37 @@ async def change_password(
     ):
         raise HTTPException(status_code=401, detail="senha atual incorreta")
     user.password_hash = hash_password(body.new_password)
+    await session.flush()
+    await session.commit()
+
+
+class PushTokenIn(BaseModel):
+    token: str = Field(min_length=1, max_length=512)
+    platform: str | None = Field(default=None, max_length=16)  # "android" | "ios"
+
+
+@router.post("/me/push-token", status_code=204)
+async def set_push_token(
+    body: PushTokenIn,
+    user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> None:
+    """Registra/atualiza o token FCM do device. Idempotente."""
+    if user.push_token == body.token:
+        return  # ja registrado
+    user.push_token = body.token
+    await session.flush()
+    await session.commit()
+
+
+@router.delete("/me/push-token", status_code=204)
+async def clear_push_token(
+    user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> None:
+    """Limpa o token FCM (chamado no logout pra parar de receber push)."""
+    if user.push_token is None:
+        return
+    user.push_token = None
     await session.flush()
     await session.commit()
