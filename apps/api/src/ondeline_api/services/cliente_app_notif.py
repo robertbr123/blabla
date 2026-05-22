@@ -9,6 +9,8 @@ Usage:
 """
 from __future__ import annotations
 
+from uuid import UUID
+
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,7 +33,7 @@ _PREFS_DEFAULT = {
 
 
 async def _categoria_permitida(
-    session: AsyncSession, user_id, categoria: str
+    session: AsyncSession, user_id: UUID, categoria: str
 ) -> bool:
     """Le prefs do user. Default e True quando nao salvou ainda."""
     row = await session.get(ClienteAppNotifPrefs, user_id)
@@ -43,12 +45,12 @@ async def _categoria_permitida(
 
 async def notify_user(
     session: AsyncSession,
-    user_id,
+    user_id: UUID,
     categoria: str,
     titulo: str,
     corpo: str = "",
     action: str | None = None,
-    payload: dict | None = None,
+    payload: dict[str, object] | None = None,
 ) -> ClienteAppNotificacao | None:
     """Cria notificacao se a categoria estiver habilitada pro user.
 
@@ -82,7 +84,7 @@ async def broadcast(
     titulo: str,
     corpo: str = "",
     action: str | None = None,
-    payload: dict | None = None,
+    payload: dict[str, object] | None = None,
     cidade: str | None = None,
 ) -> int:
     """Cria notif pra todos os usuarios ativos (status='active').
