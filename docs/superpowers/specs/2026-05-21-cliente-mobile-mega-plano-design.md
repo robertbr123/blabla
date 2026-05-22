@@ -1,9 +1,54 @@
 # Cliente Mobile — Mega Plano de Evolução
 
-**Data:** 2026-05-21
+**Data:** 2026-05-21 (atualizado 2026-05-22)
 **App alvo:** `apps/cliente-mobile` (Flutter)
 **Stack:** Flutter 3.27+ · Riverpod · go_router · Dio · FastAPI backend · Next.js dashboard
 **Objetivo:** Transformar o app cliente atual num app de provedor de internet completo, moderno, com sistema de promoções gerenciável pelo dashboard.
+
+---
+
+## 📊 Status (snapshot 2026-05-22)
+
+### ✅ Entregue
+- **A1** Navbar flutuante com badges (faturas vencidas + OS abertas)
+- **A2** Login + Onboarding glassmorphism (fundo animado + cards de vidro)
+- **A3** Home redesenhada (hero, status pill, carrossel, quick actions coloridas)
+- **A4** Faturas + QR Pix in-app (timeline, hero, qr_flutter)
+- **A5** Perfil moderno (avatar gradient, cards, segmented dark/claro/auto)
+- **A6 (parcial)** Tokens novos (motion, gradients, elevations, cores categóricas, Plus Jakarta Sans)
+- **Bloco C completo (C.1 → C.5)** Sistema de promoções fim-a-fim:
+  - C.1 backend (tabelas, endpoints cliente+admin, upload imagem)
+  - C.2 dashboard `/admin/promocoes` (CRUD, preview, métricas, drag-drop, 5 templates seed)
+  - C.3 app carrossel real consumindo API
+  - C.4 integração Indicação (endpoint `/indicacao/meu`, tela in-app, share WhatsApp)
+  - C.5 promoção tipo indicação ligada + banner em `/admin/indicacoes` + stats por origem
+- **B1 (MVP)** Status do contrato (`/cliente-app/conexao` deriva ativo/suspenso/cancelado do SGP, sem telemetria PPPoE)
+- **B4 (parcial)** Pagamentos expandido — filtro por ano nas pagas + share nativo Pix/boleto (`share_plus`)
+- **B5** Central de notificações (tabelas, endpoints, sino com badge, tela list, tela preferências)
+- **B5 triggers** Notificações automáticas: OS criada/atualizada, promo ativada (broadcast), manutenção (broadcast)
+- **B6** Indique e ganhe (entregue via C.4 + C.5)
+- **B10** FAQ in-app (11 artigos em 4 categorias, busca, atalho no Suporte)
+
+### 🚧 Aberto
+- **A6 (resto)** Dark mode polish em todas as telas (review tela-a-tela), acessibilidade WCAG, gradients reutilizáveis
+- **B1 (telemetria real)** PPPoE up/down, uptime, sinal óptico — depende do adapter SGP expor
+- **B2** Diagnóstico guiado (wizard "Sua internet caiu?" + reiniciar conexão remoto)
+- **B3** Speedtest in-app
+- **B4 (resto)** Promessa de pagamento (OS especial com data futura)
+- **B5.2** Cron de faturas vencendo (notif automática diária)
+- **B5 push real** Firebase Messaging out-of-app (token já existe em `cliente_app_user.push_token`)
+- **B5 broadcast por cidade** Manutenção só pra clientes da região (join com SGP)
+- **B7** Mudança de plano self-service
+- **B8** Chat polish (WebSocket pra real-time, indicador "digitando…", anexo de foto) — handoff bot↔atendente já existe
+- **B9** Banner de manutenção programada na home (notif já manda — falta banner inline)
+- **Bloco D** Analytics, Sentry mobile, i18n PT/EN, acessibilidade
+
+### 📝 Notas operacionais
+- Migration 0034 (notif) precisou de `exec_driver_sql` pro JSONB default — `sa.text(":true")` quebra (interpretado como bind param).
+- Promoções servem imagem em `/static/promocoes/` → `/tmp/ondeline_promocoes` (volume `/tmp` evita PermissionError).
+- Indicação tem 2 contadores distintos: `IndicacaoUso.origem` (lead concreto) vs `Indicacao.shares_app` (compartilhamentos via app).
+- Tipo `indicacao` de promoção força CTA = `tela:/indicacao` no validator.
+- 5 templates prontos de promoção via `POST /api/v1/admin/promocoes/seed-templates` (idempotente).
 
 ---
 
