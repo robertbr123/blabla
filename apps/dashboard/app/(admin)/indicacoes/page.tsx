@@ -1,14 +1,25 @@
 'use client'
 import { useState } from 'react'
-import { Award, CheckCircle2, Coins, Gift } from 'lucide-react'
+import Link from 'next/link'
+import {
+  Award,
+  CheckCircle2,
+  Coins,
+  Gift,
+  Megaphone,
+  Smartphone,
+  MessageCircle,
+} from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   useIndicacaoUsos,
   useIndicacoes,
+  useIndicacoesStats,
   useMarcarConvertido,
   useMarcarCredito,
+  usePromocaoIndicacaoAtiva,
   useRankingIndicadores,
 } from '@/lib/api/queries'
 
@@ -16,6 +27,8 @@ export default function IndicacoesPage() {
   const { data: indicacoes } = useIndicacoes()
   const { data: usos } = useIndicacaoUsos()
   const { data: ranking } = useRankingIndicadores()
+  const { data: stats } = useIndicacoesStats()
+  const { data: promoIndicacao } = usePromocaoIndicacaoAtiva()
   const converter = useMarcarConvertido()
   const aplicarCredito = useMarcarCredito()
   const [busy, setBusy] = useState<string | null>(null)
@@ -53,10 +66,64 @@ export default function IndicacoesPage() {
           <Gift className="h-6 w-6" /> Indicações
         </h1>
         <p className="text-sm text-muted-foreground">
-          Cliente manda <strong>INDICAR</strong> no WhatsApp → recebe link → amigo clica e
-          fecha plano → admin marca conversão e aplica crédito no SGP.
+          Dois canais ativos: <strong>WhatsApp</strong> (cliente manda <code>INDICAR</code> no bot)
+          e <strong>App</strong> (tela <code>/indicacao</code>, ativada por promoção do tipo Indicação).
         </p>
       </div>
+
+      {/* Banner card de indicação no app */}
+      <Card>
+        <CardContent className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="rounded-md bg-pink-100 p-2 text-pink-700">
+              <Megaphone className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Card de indicação no app</p>
+              <p className="text-xs text-muted-foreground">
+                {promoIndicacao
+                  ? `Ativa: "${promoIndicacao.titulo}" · ${promoIndicacao.views} views · ${promoIndicacao.clicks} clicks`
+                  : 'Nenhuma promoção do tipo Indicação ativa. Crie uma pra exibir o card no carrossel da home do app.'}
+              </p>
+            </div>
+          </div>
+          <Button asChild variant={promoIndicacao ? 'outline' : 'default'} size="sm">
+            <Link href="/promocoes">
+              {promoIndicacao ? 'Gerenciar' : 'Criar promoção'}
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Stats por origem */}
+      {stats && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <Card>
+            <CardContent className="p-4">
+              <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Smartphone className="h-3 w-3" /> Compartilhamentos via app
+              </p>
+              <p className="text-2xl font-bold">{stats.shares_app}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                <MessageCircle className="h-3 w-3" /> Leads via WhatsApp
+              </p>
+              <p className="text-2xl font-bold">{stats.leads_whatsapp}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                <CheckCircle2 className="h-3 w-3" /> Convertidos
+              </p>
+              <p className="text-2xl font-bold text-emerald-600">{stats.convertidos}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Ranking */}
       <Card>

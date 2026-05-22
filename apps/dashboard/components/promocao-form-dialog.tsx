@@ -236,8 +236,8 @@ export function PromocaoFormDialog(props: Props) {
                   ))}
                 </select>
                 {draft.tipo === 'indicacao' && (
-                  <p className="mt-1 text-[10px] text-muted-foreground">
-                    Indicação fixa CTA pra tela in-app (C.5). Por ora vale o CTA livre.
+                  <p className="mt-1 text-[10px] text-pink-700">
+                    Tipo Indicação fixa CTA pra <code>tela:/indicacao</code>. Ao salvar, o backend força esse valor.
                   </p>
                 )}
               </div>
@@ -271,40 +271,49 @@ export function PromocaoFormDialog(props: Props) {
               />
             </div>
 
-            <div className="rounded-md border bg-muted/30 p-3 space-y-2">
-              <Label className="text-xs">CTA — Ação ao clicar</Label>
-              <div className="flex gap-2">
-                {(['info', 'url', 'tela'] as const).map((k) => (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => setCta(k, cta.value)}
-                    className={`rounded-md border px-3 py-1 text-xs font-medium ${
-                      cta.kind === k
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-input bg-background'
-                    }`}
-                  >
-                    {k === 'info'
-                      ? 'Apenas informativo'
-                      : k === 'url'
-                        ? 'Abrir URL externa'
-                        : 'Abrir tela in-app'}
-                  </button>
-                ))}
+            {draft.tipo === 'indicacao' ? (
+              <div className="rounded-md border border-pink-200 bg-pink-50 p-3 text-xs text-pink-700">
+                <p className="font-medium">CTA fixo: abrir tela in-app</p>
+                <p className="mt-1">
+                  Ao clicar, o app navega pra <code>/indicacao</code> onde o cliente vê o próprio código e compartilha via WhatsApp.
+                </p>
               </div>
-              {cta.kind !== 'info' && (
-                <Input
-                  value={cta.value}
-                  onChange={(e) => setCta(cta.kind, e.target.value)}
-                  placeholder={
-                    cta.kind === 'url'
-                      ? 'https://exemplo.com/promo'
-                      : '/indicacao ou /suporte/novo'
-                  }
-                />
-              )}
-            </div>
+            ) : (
+              <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+                <Label className="text-xs">CTA — Ação ao clicar</Label>
+                <div className="flex gap-2">
+                  {(['info', 'url', 'tela'] as const).map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setCta(k, cta.value)}
+                      className={`rounded-md border px-3 py-1 text-xs font-medium ${
+                        cta.kind === k
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-input bg-background'
+                      }`}
+                    >
+                      {k === 'info'
+                        ? 'Apenas informativo'
+                        : k === 'url'
+                          ? 'Abrir URL externa'
+                          : 'Abrir tela in-app'}
+                    </button>
+                  ))}
+                </div>
+                {cta.kind !== 'info' && (
+                  <Input
+                    value={cta.value}
+                    onChange={(e) => setCta(cta.kind, e.target.value)}
+                    placeholder={
+                      cta.kind === 'url'
+                        ? 'https://exemplo.com/promo'
+                        : '/indicacao ou /suporte/novo'
+                    }
+                  />
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
