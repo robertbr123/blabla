@@ -19,6 +19,7 @@ import {
   Smartphone,
   Megaphone,
 } from 'lucide-react'
+import { useTemChamadoAberto, useTemConversaAguardando } from '@/lib/api/queries'
 import { cn } from '@/lib/utils'
 
 type Role = 'admin' | 'atendente' | 'tecnico'
@@ -78,6 +79,13 @@ const SECTIONS: ReadonlyArray<NavSection> = [
 
 export function NavSidebar({ role }: { role: Role }) {
   const pathname = usePathname()
+  const { data: temConversaAguardando } = useTemConversaAguardando()
+  const { data: temChamadoAberto } = useTemChamadoAberto()
+
+  const badgePorHref: Record<string, boolean> = {
+    '/conversas': !!temConversaAguardando,
+    '/cliente-app-os': !!temChamadoAberto,
+  }
 
   const visibleSections = SECTIONS.map((s) => ({
     ...s,
@@ -135,7 +143,15 @@ export function NavSidebar({ role }: { role: Role }) {
                         className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-0.5 rounded-r-full bg-primary"
                       />
                     )}
-                    <Icon className={cn('h-4 w-4 shrink-0', active && 'text-primary')} />
+                    <span className="relative shrink-0">
+                      <Icon className={cn('h-4 w-4', active && 'text-primary')} />
+                      {badgePorHref[it.href] && (
+                        <span
+                          aria-label="Tem item novo"
+                          className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-card"
+                        />
+                      )}
+                    </span>
                     <span className="truncate">{it.label}</span>
                   </Link>
                 )

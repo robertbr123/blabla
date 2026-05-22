@@ -57,6 +57,38 @@ export function useConversas(filters: ConversaListFilters = {}) {
   })
 }
 
+/** Bolinha do sidebar: ha conversa em handoff humano aguardando? */
+export function useTemConversaAguardando() {
+  return useQuery<boolean>({
+    queryKey: ['nav-badge', 'conversas-aguardando'],
+    queryFn: async () => {
+      const data = await apiFetch<CursorPage<ConversaListItem>>(
+        '/api/v1/conversas?status=aguardando&limit=1',
+      )
+      return (data?.items?.length ?? 0) > 0
+    },
+    staleTime: 20_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  })
+}
+
+/** Bolinha do sidebar: ha chamado do app cliente em aberto? */
+export function useTemChamadoAberto() {
+  return useQuery<boolean>({
+    queryKey: ['nav-badge', 'chamados-aberto'],
+    queryFn: async () => {
+      const data = await apiFetch<{ counts_by_status?: Record<string, number> }>(
+        '/api/v1/admin/cliente-app-os?status=aberto&limit=1',
+      )
+      return (data?.counts_by_status?.aberto ?? 0) > 0
+    },
+    staleTime: 20_000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  })
+}
+
 export function useCanais() {
   return useQuery<import('./types').CanalOut[]>({
     queryKey: ['canais'],
