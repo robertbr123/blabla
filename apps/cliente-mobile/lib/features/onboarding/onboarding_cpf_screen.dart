@@ -44,7 +44,11 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
           'masked_phone': maskedPhone,
         });
       case RegisterStartError(:final message):
-        if (message.toLowerCase().contains('já cadastrado')) {
+        final lower = message.toLowerCase();
+        if (lower.contains('cadastrad')) {
+          _toast('Esse CPF já tem conta. Vou te levar pro login.');
+          await Future.delayed(const Duration(milliseconds: 700));
+          if (!mounted) return;
           context.go('/login');
         } else {
           _toast(message);
