@@ -9,6 +9,7 @@ import {
   MousePointerClick,
   Gift,
   Tag,
+  Sparkles,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -16,6 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   usePromocoesAdmin,
   useReorderPromocoes,
+  useSeedPromocoesTemplates,
 } from '@/lib/api/queries'
 import type { PromocaoAdmin } from '@/lib/api/types'
 import { PromocaoFormDialog } from '@/components/promocao-form-dialog'
@@ -27,6 +29,7 @@ const API_BASE = ''
 export default function PromocoesPage() {
   const { data, isLoading } = usePromocoesAdmin()
   const reorder = useReorderPromocoes()
+  const seed = useSeedPromocoesTemplates()
   const [editing, setEditing] = useState<PromocaoAdmin | null>(null)
   const [creating, setCreating] = useState(false)
 
@@ -64,9 +67,20 @@ export default function PromocoesPage() {
             Cards do carrossel da home do app. Refletidos em tempo real após salvar.
           </p>
         </div>
-        <Button onClick={() => setCreating(true)}>
-          <Plus className="mr-1 h-4 w-4" /> Nova
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => seed.mutate()}
+            disabled={seed.isPending}
+            title="Insere 5 modelos prontos (inativos) pra você editar"
+          >
+            <Sparkles className="mr-1 h-4 w-4" />
+            {seed.isPending ? 'Carregando…' : 'Carregar modelos'}
+          </Button>
+          <Button onClick={() => setCreating(true)}>
+            <Plus className="mr-1 h-4 w-4" /> Nova
+          </Button>
+        </div>
       </div>
 
       {/* Métricas */}
@@ -113,14 +127,24 @@ export default function PromocoesPage() {
               <p className="text-sm text-muted-foreground">
                 Nenhuma promoção cadastrada ainda.
               </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-3"
-                onClick={() => setCreating(true)}
-              >
-                Criar a primeira
-              </Button>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Carregue 5 modelos prontos (inativos) ou crie a sua do zero.
+              </p>
+              <div className="mt-4 flex items-center justify-center gap-2">
+                <Button
+                  onClick={() => seed.mutate()}
+                  disabled={seed.isPending}
+                >
+                  <Sparkles className="mr-1 h-4 w-4" />
+                  {seed.isPending ? 'Carregando…' : 'Carregar modelos'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setCreating(true)}
+                >
+                  Criar a primeira
+                </Button>
+              </div>
             </div>
           )}
           {sorted.length > 0 && (

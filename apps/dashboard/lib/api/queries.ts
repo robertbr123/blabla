@@ -1348,6 +1348,18 @@ export function useDeletePromocao() {
   })
 }
 
+export function useSeedPromocoesTemplates() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<import('./types').PromocaoAdmin[]>(
+        '/api/v1/admin/promocoes/seed-templates',
+        { method: 'POST' },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['promocoes-admin'] }),
+  })
+}
+
 export function useReorderPromocoes() {
   const qc = useQueryClient()
   return useMutation({

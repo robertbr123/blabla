@@ -318,3 +318,109 @@ async def admin_upload_imagem(
     await session.refresh(p)
     v, c = await _stats(session, p.id)
     return _admin_out(p, v, c)
+
+
+# ════════════════════════ Templates ════════════════════════
+
+# Lista de promocoes-modelo prontas pra Robert apenas editar.
+# Todas criadas inativas, pra ele revisar e ativar quando quiser.
+_TEMPLATES: list[dict[str, object]] = [
+    {
+        "titulo": "Upgrade pra 1 Giga",
+        "subtitulo": "Velocidade dobrada com o mesmo valor no primeiro mes.",
+        "cta_label": "Quero esse",
+        "cta_action": "tela:/suporte/novo",
+        "tipo": "generica",
+        "ativa": False,
+        "ordem": 100,
+        "segmento": "todos",
+        "gradient_from": "#8B5CF6",
+        "gradient_to": "#5B6CFF",
+        "icon": "rocket_launch_rounded",
+    },
+    {
+        "titulo": "Indique e ganhe R$30",
+        "subtitulo": "Desconto na sua proxima fatura por indicacao convertida.",
+        "cta_label": "Indicar agora",
+        # tipo indicacao forca cta_action='tela:/indicacao' no validator
+        "tipo": "indicacao",
+        "ativa": False,
+        "ordem": 101,
+        "segmento": "todos",
+        "gradient_from": "#E0455A",
+        "gradient_to": "#E8A33D",
+        "icon": "card_giftcard_rounded",
+    },
+    {
+        "titulo": "Aplicativo de seguranca gratis",
+        "subtitulo": "Antivirus pro celular incluso pra clientes Ondeline.",
+        "cta_label": "Ativar",
+        "cta_action": "info",
+        "tipo": "generica",
+        "ativa": False,
+        "ordem": 102,
+        "segmento": "todos",
+        "gradient_from": "#14B8B0",
+        "gradient_to": "#0F8F89",
+        "icon": "shield_rounded",
+    },
+    {
+        "titulo": "Manutencao programada na sua regiao",
+        "subtitulo": "Confira datas e horarios pra nao ser pego de surpresa.",
+        "cta_label": "Ver detalhes",
+        "cta_action": "info",
+        "tipo": "generica",
+        "ativa": False,
+        "ordem": 103,
+        "segmento": "todos",
+        "gradient_from": "#F59E0B",
+        "gradient_to": "#DC2626",
+        "icon": "home_repair_service_rounded",
+    },
+    {
+        "titulo": "App do banco com Pix mais rapido",
+        "subtitulo": "Pague suas faturas escaneando o QR direto pelo aplicativo.",
+        "cta_label": "Como pagar",
+        "cta_action": "info",
+        "tipo": "generica",
+        "ativa": False,
+        "ordem": 104,
+        "segmento": "todos",
+        "gradient_from": "#0EA5E9",
+        "gradient_to": "#1E40AF",
+        "icon": "payments_rounded",
+    },
+]
+
+
+@admin_router.post(
+    "/seed-templates",
+    response_model=list[PromocaoAdminOut],
+    dependencies=[Depends(require_role(Role.ADMIN))],
+)
+async def admin_seed_templates(
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> list[PromocaoAdminOut]:
+    """Cria promocoes-modelo (inativas) pro admin editar e ativar.
+
+    Idempotente: so insere se ainda nao existe promo com mesmo titulo.
+    Retorna a lista atual ordenada (template + existentes).
+    """
+    inserted: list[Promocao] = []
+    for tpl in _TEMPLATES:
+        existing = (
+            await session.execute(
+                select(Promocao).where(Promocao.titulo == tpl["titulo"]).limit(1)
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            continue
+        # CTA do tipo indicacao e sobreescrito pelo schema validator,
+        # entao aqui basta passar os campos validados.
+        promo = Promocao(**tpl)
+        session.add(promo)
+        inserted.append(promo)
+    await session.commit()
+    log.info("promocoes.seed_templates", inseridas=len(inserted))
+    # Retorna a lista completa atual
+    return await admin_listar(session=session)
