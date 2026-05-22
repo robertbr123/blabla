@@ -7,11 +7,18 @@ import '../../core/api/faturas_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import 'widgets/fatura_bottom_sheet.dart';
 
-class FaturasScreen extends ConsumerWidget {
+class FaturasScreen extends ConsumerStatefulWidget {
   const FaturasScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FaturasScreen> createState() => _FaturasScreenState();
+}
+
+class _FaturasScreenState extends ConsumerState<FaturasScreen> {
+  int? _anoFiltro; // null = todas
+
+  @override
+  Widget build(BuildContext context) {
     final abertasAsync = ref.watch(faturasAbertasProvider);
     final pagasAsync = ref.watch(faturasPagasProvider);
 
@@ -93,15 +100,35 @@ class FaturasScreen extends ConsumerWidget {
                       'Suas faturas pagas vao aparecer aqui.',
                     );
                   }
+                  // Anos disponiveis pra filtrar
+                  final anos = pagas
+                      .map((f) => f.vencimentoDate.year)
+                      .toSet()
+                      .toList()
+                    ..sort((a, b) => b.compareTo(a));
+                  final filtradas = _anoFiltro == null
+                      ? pagas
+                      : pagas
+                          .where((f) => f.vencimentoDate.year == _anoFiltro)
+                          .toList();
                   return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      for (int i = 0; i < pagas.length; i++)
+                      if (anos.length > 1)
+                        _AnoFilter(
+                          anos: anos,
+                          selecionado: _anoFiltro,
+                          onSelect: (a) =>
+                              setState(() => _anoFiltro = a),
+                        ),
+                      const SizedBox(height: BrandTokens.spaceMd),
+                      for (int i = 0; i < filtradas.length; i++)
                         _TimelineTile(
-                          fatura: pagas[i],
+                          fatura: filtradas[i],
                           isFirst: i == 0,
-                          isLast: i == pagas.length - 1,
+                          isLast: i == filtradas.length - 1,
                           onTap: () =>
-                              FaturaBottomSheet.show(context, pagas[i]),
+                              FaturaBottomSheet.show(context, filtradas[i]),
                         ),
                     ],
                   );
@@ -635,6 +662,90 @@ class _ErrorCard extends StatelessWidget {
             child: const Text('Tentar de novo'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AnoFilter extends StatelessWidget {
+  const _AnoFilter({
+    required this.anos,
+    required this.selecionado,
+    required this.onSelect,
+  });
+  final List<int> anos;
+  final int? selecionado;
+  final ValueChanged<int?> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _Chip(
+            label: 'Todas',
+            selecionado: selecionado == null,
+            onTap: () => onSelect(null),
+          ),
+          for (final a in anos)
+            _Chip(
+              label: '$a',
+              selecionado: selecionado == a,
+              onTap: () => onSelect(a),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({
+    required this.label,
+    required this.selecionado,
+    required this.onTap,
+  });
+  final String label;
+  final bool selecionado;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.only(right: BrandTokens.spaceSm),
+      child: Material(
+        color: selecionado
+            ? BrandTokens.primary
+            : (isDark ? BrandTokens.surfaceDark : BrandTokens.surface),
+        borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: BrandTokens.spaceMd,
+              vertical: BrandTokens.spaceSm,
+            ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+              border: Border.all(
+                color: selecionado
+                    ? BrandTokens.primary
+                    : (isDark ? Colors.white12 : BrandTokens.divider),
+              ),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: selecionado ? Colors.white : null,
+                fontWeight: selecionado ? FontWeight.w800 : FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

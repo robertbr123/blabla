@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/dto.dart';
@@ -75,6 +76,40 @@ class _FaturaBottomSheetState extends ConsumerState<FaturaBottomSheet> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Codigo PIX copiado')),
     );
+  }
+
+  Future<void> _sharePix() async {
+    final c = _pixCodigo;
+    if (c == null) return;
+    final fmtValor = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+    final fmtData = DateFormat('dd/MM/yyyy', 'pt_BR');
+    final msg = 'Codigo Pix Ondeline\n\n'
+        'Valor: ${fmtValor.format(widget.fatura.valor)}\n'
+        'Vencimento: ${fmtData.format(widget.fatura.vencimentoDate)}\n\n'
+        '$c';
+    await Haptics.medium();
+    await Share.share(msg, subject: 'Pix Ondeline');
+  }
+
+  Future<void> _shareBoleto() async {
+    try {
+      final url = await ref
+          .read(faturasRepositoryProvider)
+          .getBoletoUrl(widget.fatura.id);
+      final fmtValor = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+      final fmtData = DateFormat('dd/MM/yyyy', 'pt_BR');
+      final msg = 'Boleto Ondeline\n\n'
+          'Valor: ${fmtValor.format(widget.fatura.valor)}\n'
+          'Vencimento: ${fmtData.format(widget.fatura.vencimentoDate)}\n\n'
+          '$url';
+      await Haptics.medium();
+      await Share.share(msg, subject: 'Boleto Ondeline');
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Falha ao gerar link do boleto')),
+      );
+    }
   }
 
   Future<void> _openBoleto() async {
@@ -246,11 +281,20 @@ class _FaturaBottomSheetState extends ConsumerState<FaturaBottomSheet> {
                     ),
                   ),
                 ),
+                const SizedBox(height: BrandTokens.spaceSm),
+                TextButton.icon(
+                  icon: const Icon(Icons.share_rounded, size: 18),
+                  label: const Text('Compartilhar Pix'),
+                  onPressed: _sharePix,
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44),
+                  ),
+                ),
               ],
               const SizedBox(height: BrandTokens.spaceSm),
             ],
 
-            if (f.temPdf)
+            if (f.temPdf) ...[
               OutlinedButton.icon(
                 icon: const Icon(Icons.picture_as_pdf_outlined),
                 label: const Text('Abrir boleto em PDF'),
@@ -262,6 +306,16 @@ class _FaturaBottomSheetState extends ConsumerState<FaturaBottomSheet> {
                   ),
                 ),
               ),
+              const SizedBox(height: BrandTokens.spaceSm),
+              TextButton.icon(
+                icon: const Icon(Icons.share_rounded, size: 18),
+                label: const Text('Compartilhar boleto'),
+                onPressed: _shareBoleto,
+                style: TextButton.styleFrom(
+                  minimumSize: const Size.fromHeight(44),
+                ),
+              ),
+            ],
 
             // Faturas pagas: so mostra resumo + boleto
             if (!f.isAberto && !f.temPdf)
