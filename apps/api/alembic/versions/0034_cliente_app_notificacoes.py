@@ -65,22 +65,22 @@ def upgrade() -> None:
             primary_key=True,
         ),
         # JSON {fatura: bool, os: bool, manutencao: bool, promocao: bool, conta: bool}
-        sa.Column(
-            "categorias",
-            postgresql.JSONB(),
-            nullable=False,
-            # IMPORTANTE: espaco depois de ':' obrigatorio — SQLAlchemy text()
-            # interpreta ':nome' como bind param e quebra o JSON.
-            server_default=sa.text(
-                "'{\"fatura\": true, \"os\": true, \"manutencao\": true, \"promocao\": true, \"conta\": true}'::jsonb"
-            ),
-        ),
+        # Default aplicado via ALTER abaixo — sa.text() interpretaria ':true'
+        # como bind param e quebraria o JSON. exec_driver_sql passa a string
+        # direto pro driver, sem parser.
+        sa.Column("categorias", postgresql.JSONB(), nullable=False),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
             nullable=False,
             server_default=sa.func.now(),
         ),
+    )
+    op.get_bind().exec_driver_sql(
+        "ALTER TABLE cliente_app_notif_prefs "
+        "ALTER COLUMN categorias SET DEFAULT "
+        "'{\"fatura\": true, \"os\": true, \"manutencao\": true, "
+        "\"promocao\": true, \"conta\": true}'::jsonb"
     )
 
 
