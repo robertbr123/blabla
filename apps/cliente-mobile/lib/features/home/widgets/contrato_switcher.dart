@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/conexao_repository.dart';
 import '../../../core/api/dto.dart';
+import '../../../core/api/faturas_repository.dart';
 import '../../../core/api/me_repository.dart';
 import '../../../core/branding/brand_tokens.dart';
 import '../../../core/contrato/contrato_atual_provider.dart';
@@ -28,6 +29,8 @@ Future<void> showContratoSelector(
   await ref.read(contratoAtualProvider.notifier).selecionar(novoId);
   ref.invalidate(meProvider);
   ref.invalidate(conexaoProvider);
+  ref.invalidate(faturasAbertasProvider);
+  ref.invalidate(faturasPagasProvider);
 }
 
 class _ContratoBottomSheet extends StatelessWidget {

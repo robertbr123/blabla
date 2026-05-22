@@ -250,6 +250,7 @@ def _fatura_out(f: Fatura, hoje: date) -> FaturaOut:
 async def faturas(
     status: str | None = None,
     force: bool = False,
+    contrato_id: str | None = None,
     user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> FaturasOut:
@@ -257,44 +258,22 @@ async def faturas(
     # (ex: depois que admin deu baixa no SGP, cache de 1h ainda mostrava
     # como em aberto). User explicito > performance.
     if force:
-        cpf = decrypt_pii(user.cpf_encrypted) if user.cpf_encrypted else ""
-        if cpf:
-            try:
-                from ondeline_api.adapters.sgp.linknetam import (
-                    SgpLinkNetAMProvider,
-                )
-                from ondeline_api.adapters.sgp.ondeline import (
-                    SgpOndelineProvider,
-                )
-                from ondeline_api.adapters.sgp.router import SgpRouter
-                from ondeline_api.config import get_settings
-                from ondeline_api.services.sgp_cache import SgpCacheService
-                from ondeline_api.services.sgp_config import load_sgp_config
-                from ondeline_api.workers.runtime import get_redis
-
-                s = get_settings()
-                sgp_ond = await load_sgp_config(session, "ondeline")
-                sgp_lnk = await load_sgp_config(session, "linknetam")
-                router = SgpRouter(
-                    primary=SgpOndelineProvider(**sgp_ond),
-                    secondary=SgpLinkNetAMProvider(**sgp_lnk),
-                )
-                cache = SgpCacheService(
-                    redis=await get_redis(),
-                    session=session,
-                    router=router,
-                    ttl_cliente=s.sgp_cache_ttl_cliente,
-                    ttl_negativo=s.sgp_cache_ttl_negativo,
-                )
-                await cache.invalidate(cpf)
-                await router.aclose()
-            except Exception:
-                pass  # best-effort
+        await _invalidate_sgp_cache(session, user.cpf_encrypted)
 
     sgp = await _sgp_cliente(session, user.cpf_encrypted)
     if sgp is None:
         return FaturasOut(items=[])
     titulos = list(sgp.titulos)
+    # Filtra por contrato — so se o SGP expor a associacao em ALGUM titulo.
+    # Quando nenhum titulo tem contrato_id, nao da pra filtrar: devolvemos
+    # todos pra evitar "lista vazia" enganosa.
+    if contrato_id:
+        algum_tem_contrato = any(t.contrato_id for t in titulos)
+        if algum_tem_contrato:
+            titulos = [
+                t for t in titulos
+                if t.contrato_id is None or t.contrato_id == contrato_id
+            ]
     if status == "abertas":
         titulos = [t for t in titulos if t.status == "aberto"]
     elif status == "pagas":

@@ -65,6 +65,27 @@ def _extract_whatsapp(c: dict[str, Any]) -> str:
     return ""
 
 
+def _extract_contrato_id(raw: dict[str, Any]) -> str | None:
+    """SGP retorna o id do contrato no titulo em varios formatos possiveis.
+
+    Tentamos cobrir os comuns:
+    - idContrato, contratoId, contrato_id, idcontrato (chaves flat)
+    - contrato.id (objeto aninhado)
+    Quando nada bate, retorna None — significa que o SGP nao expoe a
+    associacao e o titulo deve ser tratado como global do CPF.
+    """
+    for key in ("idContrato", "contratoId", "contrato_id", "idcontrato"):
+        v = raw.get(key)
+        if v is not None and str(v):
+            return str(v)
+    contrato = raw.get("contrato")
+    if isinstance(contrato, dict):
+        v = contrato.get("id")
+        if v is not None and str(v):
+            return str(v)
+    return None
+
+
 def _build_fatura(raw: dict[str, Any]) -> Fatura:
     return Fatura(
         id=str(raw.get("id", "")),
@@ -74,6 +95,7 @@ def _build_fatura(raw: dict[str, Any]) -> Fatura:
         link_pdf=raw.get("link") or None,
         codigo_pix=raw.get("codigoPix") or None,
         dias_atraso=int(raw.get("diasAtraso") or 0),
+        contrato_id=_extract_contrato_id(raw),
     )
 
 

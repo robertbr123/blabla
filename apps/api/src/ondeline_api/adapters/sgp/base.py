@@ -47,6 +47,9 @@ class Fatura:
     link_pdf: str | None = None
     codigo_pix: str | None = None
     dias_atraso: int = 0
+    # Id do contrato ao qual o titulo pertence. Quando SGP nao expoe a
+    # associacao, fica None e o backend trata como "fatura global do CPF".
+    contrato_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

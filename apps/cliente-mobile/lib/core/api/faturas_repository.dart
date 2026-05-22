@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../contrato/contrato_atual_provider.dart';
 import 'api_client.dart';
 import 'dto.dart';
 
@@ -9,10 +10,15 @@ class FaturasRepository {
   final Dio _dio;
   static const _base = '/api/v1/cliente-app';
 
-  Future<List<FaturaDto>> list({String? status, bool force = false}) async {
+  Future<List<FaturaDto>> list({
+    String? status,
+    bool force = false,
+    String? contratoId,
+  }) async {
     final qs = <String, dynamic>{};
     if (status != null) qs['status'] = status;
     if (force) qs['force'] = 'true';
+    if (contratoId != null) qs['contrato_id'] = contratoId;
     final r = await _dio.get(
       '$_base/faturas',
       queryParameters: qs.isEmpty ? null : qs,
@@ -23,10 +29,13 @@ class FaturasRepository {
   }
 
   /// Pull-to-refresh: invalida cache do backend e re-busca.
-  Future<({List<FaturaDto> abertas, List<FaturaDto> pagas})> refreshAll() async {
-    final abertas = await list(status: 'abertas', force: true);
+  Future<({List<FaturaDto> abertas, List<FaturaDto> pagas})> refreshAll({
+    String? contratoId,
+  }) async {
+    final abertas =
+        await list(status: 'abertas', force: true, contratoId: contratoId);
     // Pagas sem force — cache de 1h ja serve, foi invalidado na chamada anterior.
-    final pagas = await list(status: 'pagas');
+    final pagas = await list(status: 'pagas', contratoId: contratoId);
     return (abertas: abertas, pagas: pagas);
   }
 
@@ -46,9 +55,19 @@ final faturasRepositoryProvider = Provider<FaturasRepository>(
 );
 
 final faturasAbertasProvider = FutureProvider<List<FaturaDto>>(
-  (ref) => ref.watch(faturasRepositoryProvider).list(status: 'abertas'),
+  (ref) {
+    final contratoId = ref.watch(contratoAtualProvider);
+    return ref
+        .watch(faturasRepositoryProvider)
+        .list(status: 'abertas', contratoId: contratoId);
+  },
 );
 
 final faturasPagasProvider = FutureProvider<List<FaturaDto>>(
-  (ref) => ref.watch(faturasRepositoryProvider).list(status: 'pagas'),
+  (ref) {
+    final contratoId = ref.watch(contratoAtualProvider);
+    return ref
+        .watch(faturasRepositoryProvider)
+        .list(status: 'pagas', contratoId: contratoId);
+  },
 );

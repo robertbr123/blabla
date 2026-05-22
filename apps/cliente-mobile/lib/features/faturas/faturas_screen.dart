@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/api/dto.dart';
 import '../../core/api/faturas_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/contrato/contrato_atual_provider.dart';
 import 'widgets/fatura_bottom_sheet.dart';
 
 class FaturasScreen extends ConsumerStatefulWidget {
@@ -30,7 +31,10 @@ class _FaturasScreenState extends ConsumerState<FaturasScreen> {
             // Força refresh no backend (invalida cache SGP de 1h) — usuario
             // chamando pull-to-refresh espera dado novo, ex: depois que admin
             // baixou fatura no SGP.
-            await ref.read(faturasRepositoryProvider).refreshAll();
+            final contratoId = ref.read(contratoAtualProvider);
+            await ref
+                .read(faturasRepositoryProvider)
+                .refreshAll(contratoId: contratoId);
             ref.invalidate(faturasAbertasProvider);
             ref.invalidate(faturasPagasProvider);
           },
