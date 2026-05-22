@@ -318,3 +318,26 @@ class IndicacaoMeuDto {
   final int convertidos;
   final int creditoAplicado;
 }
+
+class ConexaoDto {
+  ConexaoDto({
+    required this.status,
+    required this.motivo,
+    required this.plano,
+    required this.cidade,
+    required this.temTelemetriaReal,
+  });
+  factory ConexaoDto.fromJson(Map<String, dynamic> j) => ConexaoDto(
+        status: j['status'] as String? ?? 'desconhecido',
+        motivo: (j['motivo'] as String?) ?? '',
+        plano: j['plano'] as String?,
+        cidade: j['cidade'] as String?,
+        temTelemetriaReal: (j['tem_telemetria_real'] as bool?) ?? false,
+      );
+  /// 'ativo' | 'suspenso' | 'cancelado' | 'desconhecido'
+  final String status;
+  final String motivo;
+  final String? plano;
+  final String? cidade;
+  final bool temTelemetriaReal;
+}

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/auth/auth_state.dart';
 import 'features/auth/login_screen.dart';
+import 'features/conexao/conexao_screen.dart';
 import 'features/faq/faq_artigo_screen.dart';
 import 'features/faq/faq_screen.dart';
 import 'features/indicacao/indicacao_screen.dart';
@@ -90,6 +91,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/indicacao',
         builder: (_, __) => const IndicacaoScreen(),
+      ),
+      GoRoute(
+        path: '/conexao',
+        builder: (_, __) => const ConexaoScreen(),
       ),
       GoRoute(
         path: '/faq',
