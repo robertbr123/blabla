@@ -3,8 +3,8 @@
 Tabela `cliente_app_notificacoes` (historico por usuario).
 Tabela `cliente_app_notif_prefs` (preferencias por categoria, key-value).
 
-Revision ID: 0033_cliente_app_notificacoes
-Revises: 0032_indicacao_shares_app
+Revision ID: 0034_cliente_app_notificacoes
+Revises: 0033_estoque_categoria
 Create Date: 2026-05-22
 """
 from __future__ import annotations
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = "0033_cliente_app_notificacoes"
-down_revision: str | None = "0032_indicacao_shares_app"
+revision: str = "0034_cliente_app_notificacoes"
+down_revision: str | None = "0033_estoque_categoria"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
