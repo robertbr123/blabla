@@ -239,6 +239,37 @@ class _AbertaHeroCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: BrandTokens.spaceSm,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8A33D).withOpacity(0.95),
+                    borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.workspace_premium_rounded,
+                        color: Colors.white,
+                        size: 13,
+                      ),
+                      SizedBox(width: 3),
+                      Text(
+                        'Ganhe +50 pts',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: BrandTokens.spaceLg),

@@ -10,6 +10,8 @@ import '../../core/api/promocoes_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/cache/last_known_cache.dart';
 import '../../core/contrato/contrato_atual_provider.dart';
+import '../../core/api/contatos_repository.dart';
+import '../../core/api/fidelidade_repository.dart';
 import '../../core/api/manutencoes_repository.dart';
 import '../notificacoes/widgets/notif_bell.dart';
 import '../nps/nps_bottom_sheet.dart';
@@ -20,6 +22,7 @@ import 'widgets/hero_card.dart';
 import 'widgets/manutencao_breaking_bar.dart';
 import 'widgets/promo_carousel.dart';
 import 'widgets/quick_actions.dart';
+import 'widgets/quick_cards_row.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -87,6 +90,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 error: (_, __) => _CachedHeroOrError(ref),
               ),
               const SizedBox(height: BrandTokens.spaceLg),
+              const QuickCardsRow(),
               ...promosAsync.when(
                 data: (promos) {
                   if (promos.isEmpty) return const <Widget>[];
@@ -161,6 +165,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.invalidate(promocoesProvider);
     ref.invalidate(osListProvider);
     ref.invalidate(manutencoesAtivasProvider);
+    ref.invalidate(fidelidadeProvider);
+    ref.invalidate(contatosOperadoraProvider);
     await ref.read(meProvider.future);
   }
 
