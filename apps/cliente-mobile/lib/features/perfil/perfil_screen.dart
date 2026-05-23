@@ -101,6 +101,20 @@ class PerfilScreen extends ConsumerWidget {
                 ],
               ),
 
+              // Atendimento
+              _CardSection(
+                title: 'Atendimento',
+                children: [
+                  _CardTile(
+                    icon: Icons.contact_phone_outlined,
+                    iconColor: BrandTokens.primary,
+                    label: 'Fale conosco',
+                    value: 'WhatsApp, telefone, endereço e redes',
+                    onTap: () => context.push('/contatos'),
+                  ),
+                ],
+              ),
+
               // Aparencia (com toggle dark visivel)
               _CardSection(
                 title: 'Aparencia',

@@ -281,6 +281,34 @@ class OsDto {
       };
 }
 
+class ContatoOperadoraDto {
+  ContatoOperadoraDto({
+    required this.id,
+    required this.tipo,
+    required this.label,
+    required this.valor,
+    this.subtitle,
+    required this.ordem,
+  });
+
+  factory ContatoOperadoraDto.fromJson(Map<String, dynamic> j) =>
+      ContatoOperadoraDto(
+        id: j['id'] as String,
+        tipo: j['tipo'] as String,
+        label: j['label'] as String,
+        valor: j['valor'] as String,
+        subtitle: j['subtitle'] as String?,
+        ordem: (j['ordem'] as int?) ?? 0,
+      );
+
+  final String id;
+  final String tipo; // whatsapp|telefone|email|endereco|instagram|facebook|site|outro
+  final String label;
+  final String valor;
+  final String? subtitle;
+  final int ordem;
+}
+
 class ManutencaoBreakingDto {
   ManutencaoBreakingDto({
     required this.id,

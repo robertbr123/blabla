@@ -124,3 +124,29 @@ class ClienteAppNotifPrefs(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class ClienteAppContatoOperadora(Base):
+    """Meios de contato da operadora exibidos no app (Fale conosco)."""
+
+    __tablename__ = "cliente_app_contatos_operadora"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    # whatsapp | telefone | email | endereco | instagram | facebook | site | outro
+    tipo: Mapped[str] = mapped_column(String(24), nullable=False)
+    label: Mapped[str] = mapped_column(String(120), nullable=False)
+    valor: Mapped[str] = mapped_column(Text, nullable=False)
+    subtitle: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    ordem: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    criado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    atualizado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
