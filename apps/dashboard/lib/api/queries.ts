@@ -1506,6 +1506,58 @@ export function useDeleteContatoOperadora() {
   })
 }
 
+// ════════ Cliente App Cards do Dia (admin) ════════
+
+export function useCardsDia() {
+  return useQuery<import('./types').AdminCardDia[]>({
+    queryKey: ['cliente-app-cards-dia'],
+    queryFn: () => apiFetch(`/api/v1/admin/cliente-app-cards-dia`),
+  })
+}
+
+export function useCreateCardDia() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: import('./types').CardDiaIn) =>
+      apiFetch<import('./types').AdminCardDia>(
+        `/api/v1/admin/cliente-app-cards-dia`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['cliente-app-cards-dia'] }),
+  })
+}
+
+export function usePatchCardDia(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: import('./types').CardDiaPatch) =>
+      apiFetch<import('./types').AdminCardDia>(
+        `/api/v1/admin/cliente-app-cards-dia/${id}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['cliente-app-cards-dia'] }),
+  })
+}
+
+export function useDeleteCardDia() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/api/v1/admin/cliente-app-cards-dia/${id}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['cliente-app-cards-dia'] }),
+  })
+}
+
 // ════════ Cliente App Fidelidade (admin) ════════
 
 export function useFidelidadeResgates() {

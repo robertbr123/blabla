@@ -638,6 +638,47 @@ export interface ContatoOperadoraPatch {
   ativo?: boolean
 }
 
+// ════════ Cliente App Cards do Dia ════════
+
+export interface AdminCardDia {
+  id: string
+  slug: string
+  titulo: string
+  corpo: string
+  cta_label: string
+  cta_action: string
+  icon: string | null
+  gradient_from: string | null
+  gradient_to: string | null
+  ativo: boolean
+  criado_em: string
+  atualizado_em: string
+}
+
+export interface CardDiaIn {
+  slug: string
+  titulo: string
+  corpo: string
+  cta_label?: string
+  cta_action?: string
+  icon?: string | null
+  gradient_from?: string | null
+  gradient_to?: string | null
+  ativo?: boolean
+}
+
+export interface CardDiaPatch {
+  slug?: string
+  titulo?: string
+  corpo?: string
+  cta_label?: string
+  cta_action?: string
+  icon?: string | null
+  gradient_from?: string | null
+  gradient_to?: string | null
+  ativo?: boolean
+}
+
 // ════════ Cliente App Fidelidade ════════
 
 export type FidelidadeResgateStatus =

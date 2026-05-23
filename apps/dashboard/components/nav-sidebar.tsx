@@ -20,6 +20,7 @@ import {
   Megaphone,
   PhoneCall,
   Award,
+  Sparkles,
 } from 'lucide-react'
 import { useTemChamadoAberto, useTemConversaAguardando } from '@/lib/api/queries'
 import { cn } from '@/lib/utils'
@@ -58,6 +59,7 @@ const SECTIONS: ReadonlyArray<NavSection> = [
       { href: '/promocoes', label: 'Promoções (app)', icon: Megaphone, roles: ['admin'] },
       { href: '/cliente-app-contatos', label: 'Fale conosco (app)', icon: PhoneCall, roles: ['admin'] },
       { href: '/cliente-app-fidelidade', label: 'Fidelidade (app)', icon: Award, roles: ['admin'] },
+      { href: '/cliente-app-cards-dia', label: 'Card do dia (app)', icon: Sparkles, roles: ['admin'] },
       { href: '/tecnicos', label: 'Técnicos', icon: Wrench, roles: ['admin'], exact: true },
       { href: '/tecnicos/ranking', label: 'Ranking', icon: Trophy, roles: ['admin'] },
       { href: '/tecnicos/produtividade', label: 'Comissão', icon: Trophy, roles: ['admin'] },

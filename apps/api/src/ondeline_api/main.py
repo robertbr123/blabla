@@ -188,6 +188,7 @@ def create_app() -> FastAPI:
     app.include_router(v1_cliente_app_contatos.router)
     app.include_router(v1_cliente_app_contatos.admin_router)
     app.include_router(v1_cliente_app_card_dia.router)
+    app.include_router(v1_cliente_app_card_dia.admin_router)
     app.include_router(v1_cliente_app_streak.router)
     app.include_router(v1_cliente_app_missoes.router)
     app.include_router(v1_cliente_app_fidelidade.router)
