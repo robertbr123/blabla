@@ -83,7 +83,7 @@ class _PromoCarouselState extends ConsumerState<PromoCarousel> {
     return Column(
       children: [
         SizedBox(
-          height: 140,
+          height: 172,
           child: PageView.builder(
             controller: _ctrl,
             onPageChanged: (i) {

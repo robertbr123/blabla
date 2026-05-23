@@ -232,14 +232,18 @@ class _AbertaHeroCard extends StatelessWidget {
                   size: 14,
                 ),
                 const SizedBox(width: 6),
-                Text(
-                  'Vence ${fmtData.format(fatura.vencimentoDate)}',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontWeight: FontWeight.w600,
+                Flexible(
+                  child: Text(
+                    'Vence ${fmtData.format(fatura.vencimentoDate)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: BrandTokens.spaceSm),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: BrandTokens.spaceSm,
