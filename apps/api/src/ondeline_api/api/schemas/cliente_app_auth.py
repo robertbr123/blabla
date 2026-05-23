@@ -103,6 +103,10 @@ class MeOut(BaseModel):
     # Lista de contratos pro switcher. Sempre presente (pode ser []).
     # Frontend so mostra switcher quando len > 1.
     contratos: list[ContratoResumoOut] = []
+    # True quando o mes atual = mes de nascimento do cliente (SGP).
+    aniversariante_do_mes: bool = False
+    # Dia/mes do aniversario pro app exibir ("DD/MM" ou None).
+    aniversario_dia_mes: str | None = None
 
 
 class EnderecoOut(BaseModel):

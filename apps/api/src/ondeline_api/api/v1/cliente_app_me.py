@@ -83,6 +83,19 @@ def _pick_contrato(
     return contratos[0]
 
 
+def _aniversario_info(data_nasc: str | None) -> tuple[bool, str | None]:
+    """Dado data de nascimento YYYY-MM-DD, retorna (eh_aniversariante_mes, 'DD/MM')."""
+    if not data_nasc or len(data_nasc) < 10:
+        return False, None
+    try:
+        mes_nasc = int(data_nasc[5:7])
+        dia_nasc = int(data_nasc[8:10])
+    except ValueError:
+        return False, None
+    hoje_mes = date.today().month
+    return mes_nasc == hoje_mes, f"{dia_nasc:02d}/{mes_nasc:02d}"
+
+
 def _build_me(
     user: ClienteAppUser,
     sgp: ClienteSgp | None,
@@ -97,6 +110,7 @@ def _build_me(
     nome = nome_local.strip() or (sgp.nome if sgp else "") or ""
     tel_local = decrypt_pii(user.telefone_encrypted) if user.telefone_encrypted else ""
     telefone = tel_local.strip() or (sgp.whatsapp if sgp else "") or ""
+    aniv_mes, aniv_dm = _aniversario_info(sgp.data_nascimento if sgp else None)
     return MeOut(
         id=str(user.id),
         nome=nome,
@@ -107,6 +121,8 @@ def _build_me(
         plano_nome=plano_nome,
         status_conexao=None,
         contratos=[_contrato_resumo(c) for c in contratos],
+        aniversariante_do_mes=aniv_mes,
+        aniversario_dia_mes=aniv_dm,
     )
 
 

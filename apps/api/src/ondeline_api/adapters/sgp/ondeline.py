@@ -65,6 +65,30 @@ def _extract_whatsapp(c: dict[str, Any]) -> str:
     return ""
 
 
+def _extract_data_nascimento(c: dict[str, Any]) -> str | None:
+    """Extrai data de nascimento do cliente e normaliza pra YYYY-MM-DD.
+
+    SGP retorna em formatos variados (raw observado: 'YYYY-MM-DD' ou
+    'DD/MM/YYYY'). Tentamos varias chaves: dataNascimento, data_nascimento,
+    nascimento. Retorna None se nao bater ou formato invalido.
+    """
+    raw = None
+    for key in ("dataNascimento", "data_nascimento", "nascimento"):
+        v = c.get(key)
+        if v:
+            raw = str(v).strip()
+            break
+    if not raw:
+        return None
+    # YYYY-MM-DD
+    if len(raw) >= 10 and raw[4] == "-" and raw[7] == "-":
+        return raw[:10]
+    # DD/MM/YYYY
+    if len(raw) >= 10 and raw[2] == "/" and raw[5] == "/":
+        return f"{raw[6:10]}-{raw[3:5]}-{raw[0:2]}"
+    return None
+
+
 def _extract_contrato_id(raw: dict[str, Any]) -> str | None:
     """SGP retorna o id do contrato no titulo em varios formatos possiveis.
 
@@ -188,6 +212,7 @@ class SgpOndelineProvider(SgpProvider):
             contratos=contratos,
             endereco=_build_endereco(c.get("endereco")),
             titulos=titulos,
+            data_nascimento=_extract_data_nascimento(c),
         )
 
     async def listar_faturas(self, sgp_id: str, *, apenas_abertas: bool = True) -> list[Fatura]:

@@ -9,6 +9,8 @@ class MeDto {
     this.planoNome,
     this.statusConexao,
     this.contratos = const [],
+    this.aniversarianteDoMes = false,
+    this.aniversarioDiaMes,
   });
 
   factory MeDto.fromJson(Map<String, dynamic> j) => MeDto(
@@ -23,6 +25,8 @@ class MeDto {
         contratos: ((j['contratos'] as List?) ?? const [])
             .map((c) => ContratoResumoDto.fromJson(c as Map<String, dynamic>))
             .toList(),
+        aniversarianteDoMes: (j['aniversariante_do_mes'] as bool?) ?? false,
+        aniversarioDiaMes: j['aniversario_dia_mes'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -35,6 +39,8 @@ class MeDto {
         'plano_nome': planoNome,
         'status_conexao': statusConexao,
         'contratos': contratos.map((c) => c.toJson()).toList(),
+        'aniversariante_do_mes': aniversarianteDoMes,
+        'aniversario_dia_mes': aniversarioDiaMes,
       };
 
   final String id;
@@ -46,6 +52,8 @@ class MeDto {
   final String? planoNome;
   final String? statusConexao;
   final List<ContratoResumoDto> contratos;
+  final bool aniversarianteDoMes;
+  final String? aniversarioDiaMes;
 
   bool get temMultiContrato => contratos.length > 1;
 }

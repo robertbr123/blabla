@@ -14,6 +14,7 @@ import '../../core/api/manutencoes_repository.dart';
 import '../notificacoes/widgets/notif_bell.dart';
 import '../nps/nps_bottom_sheet.dart';
 import '../shell/main_shell.dart';
+import 'widgets/aniversariante_banner.dart';
 import 'widgets/avisos_list.dart';
 import 'widgets/hero_card.dart';
 import 'widgets/manutencao_breaking_bar.dart';
@@ -74,7 +75,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               meAsync.when(
                 data: (me) {
                   _persistMe(me);
-                  return HeroCard(me: me);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      AniversarianteBanner(me: me),
+                      HeroCard(me: me),
+                    ],
+                  );
                 },
                 loading: () => const _HeroSkeleton(),
                 error: (_, __) => _CachedHeroOrError(ref),

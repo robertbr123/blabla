@@ -74,6 +74,9 @@ class ClienteSgp:
     contratos: list[Contrato] = field(default_factory=list)
     endereco: EnderecoSgp = field(default_factory=EnderecoSgp)
     titulos: list[Fatura] = field(default_factory=list)
+    # Data de nascimento — None quando o SGP nao expoe ou cliente nao
+    # cadastrou. Formato 'YYYY-MM-DD' (normalizado).
+    data_nascimento: str | None = None
 
 
 class SgpProvider(ABC):
