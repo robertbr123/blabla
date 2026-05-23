@@ -443,6 +443,40 @@ class PromocaoDto {
   final String? icon;
 }
 
+class CardDiaDto {
+  CardDiaDto({
+    required this.id,
+    required this.slug,
+    required this.titulo,
+    required this.corpo,
+    required this.ctaLabel,
+    required this.ctaAction,
+    this.icon,
+    this.gradientFrom,
+    this.gradientTo,
+  });
+  factory CardDiaDto.fromJson(Map<String, dynamic> j) => CardDiaDto(
+        id: j['id'] as String,
+        slug: j['slug'] as String,
+        titulo: j['titulo'] as String,
+        corpo: j['corpo'] as String,
+        ctaLabel: (j['cta_label'] as String?) ?? 'Saiba mais',
+        ctaAction: (j['cta_action'] as String?) ?? 'info',
+        icon: j['icon'] as String?,
+        gradientFrom: j['gradient_from'] as String?,
+        gradientTo: j['gradient_to'] as String?,
+      );
+  final String id;
+  final String slug;
+  final String titulo;
+  final String corpo;
+  final String ctaLabel;
+  final String ctaAction;
+  final String? icon;
+  final String? gradientFrom;
+  final String? gradientTo;
+}
+
 class IndicacaoMilestoneDto {
   IndicacaoMilestoneDto({
     required this.atingidos,

@@ -10,6 +10,7 @@ import '../../core/api/promocoes_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/cache/last_known_cache.dart';
 import '../../core/contrato/contrato_atual_provider.dart';
+import '../../core/api/card_dia_repository.dart';
 import '../../core/api/contatos_repository.dart';
 import '../../core/api/fidelidade_repository.dart';
 import '../../core/api/manutencoes_repository.dart';
@@ -18,6 +19,7 @@ import '../nps/nps_bottom_sheet.dart';
 import '../shell/main_shell.dart';
 import 'widgets/aniversariante_banner.dart';
 import 'widgets/avisos_list.dart';
+import 'widgets/card_do_dia.dart';
 import 'widgets/hero_card.dart';
 import 'widgets/manutencao_breaking_bar.dart';
 import 'widgets/promo_carousel.dart';
@@ -91,6 +93,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               const SizedBox(height: BrandTokens.spaceLg),
               const QuickCardsRow(),
+              const CardDoDia(),
               ...promosAsync.when(
                 data: (promos) {
                   if (promos.isEmpty) return const <Widget>[];
@@ -167,6 +170,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.invalidate(manutencoesAtivasProvider);
     ref.invalidate(fidelidadeProvider);
     ref.invalidate(contatosOperadoraProvider);
+    ref.invalidate(cardDiaProvider);
     await ref.read(meProvider.future);
   }
 

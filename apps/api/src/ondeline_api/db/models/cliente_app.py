@@ -158,6 +158,43 @@ class ClienteAppContatoOperadora(Base):
     )
 
 
+class ClienteAppCardDia(Base):
+    """Card rotativo exibido na Home do app cliente.
+
+    Backend escolhe 1 ativo por dia/usuario via hash deterministico
+    (hash(date.today, user_id) % len(ativos)). Admin edita por endpoint
+    /api/v1/cliente-app-admin/card-dia.
+    """
+
+    __tablename__ = "cliente_app_card_dia"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    slug: Mapped[str] = mapped_column(String(48), nullable=False, unique=True)
+    titulo: Mapped[str] = mapped_column(String(120), nullable=False)
+    corpo: Mapped[str] = mapped_column(Text, nullable=False)
+    cta_label: Mapped[str] = mapped_column(
+        String(48), nullable=False, default="Saiba mais"
+    )
+    cta_action: Mapped[str] = mapped_column(
+        String(255), nullable=False, default="info"
+    )
+    icon: Mapped[str | None] = mapped_column(String(48), nullable=True)
+    gradient_from: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    gradient_to: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    criado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    atualizado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
 class ClienteAppFidelidadeResgate(Base):
     """Pedido de resgate de pontos. Admin aprova manualmente no dashboard."""
 
