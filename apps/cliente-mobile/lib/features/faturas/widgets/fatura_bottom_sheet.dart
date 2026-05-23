@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -139,6 +140,20 @@ class _FaturaBottomSheetState extends ConsumerState<FaturaBottomSheet> {
         // ignore — usa fallback
       }
 
+      // Pre-decodifica logo offscreen — Image.asset nao funciona no render
+      // detached porque sao async e o tree nao aguarda load.
+      ui.Image? logo;
+      try {
+        final logoBytes = await rootBundle.load('assets/icon/icon.png');
+        final codec = await ui.instantiateImageCodec(
+          logoBytes.buffer.asUint8List(),
+        );
+        final frame = await codec.getNextFrame();
+        logo = frame.image;
+      } on Object {
+        // Falha silenciosa — comprovante usa placeholder com 'O'.
+      }
+
       final bytes = await renderWidgetToPng(
         ComprovanteCard(
           nomeCliente: nome,
@@ -146,6 +161,7 @@ class _FaturaBottomSheetState extends ConsumerState<FaturaBottomSheet> {
           vencimento: f.vencimentoDate,
           faturaId: f.id,
           geradoEm: DateTime.now(),
+          logoImage: logo,
         ),
         logicalSize: ComprovanteCard.designSize,
       );
