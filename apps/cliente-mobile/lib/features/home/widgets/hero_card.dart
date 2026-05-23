@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/api/dto.dart';
 import '../../../core/api/faturas_repository.dart';
+import '../../../core/api/streak_repository.dart';
 import '../../../core/branding/brand_tokens.dart';
 import '../../../core/contrato/contrato_atual_provider.dart';
 import '../../shell/main_shell.dart';
@@ -107,6 +108,9 @@ class HeroCard extends ConsumerWidget {
               podeTrocar: me.temMultiContrato,
               onTrocar: () => showContratoSelector(context, ref, me),
             ),
+
+          // Linha 2.5 (opcional): badge de streak quando >= 3 meses
+          const _StreakBadge(),
 
           // Linha 3: footer com fatura ou "em dia"
           _FaturaFooter(fatura: fatura, ref: ref),
@@ -220,6 +224,64 @@ class _EnderecoLinha extends StatelessWidget {
         onTap: onTrocar,
         child: decorada,
       ),
+    );
+  }
+}
+
+/// Badge "🔥 N meses pagando em dia" — auto-hide quando streak < 3.
+class _StreakBadge extends ConsumerWidget {
+  const _StreakBadge();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(streakProvider);
+    return async.maybeWhen(
+      data: (s) {
+        if (s.atual < 3) return const SizedBox.shrink();
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final divider = isDark ? Colors.white10 : BrandTokens.divider;
+        return Container(
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: divider)),
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: BrandTokens.spaceMd,
+            vertical: 10,
+          ),
+          child: Row(
+            children: [
+              const Text('🔥', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: RichText(
+                  text: TextSpan(
+                    style: const TextStyle(
+                      color: BrandTokens.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: '${s.atual} ',
+                        style: const TextStyle(
+                          color: Color(0xFFE8A33D),
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      TextSpan(
+                        text: s.atual == 1
+                            ? 'mês pagando em dia'
+                            : 'meses pagando em dia',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
     );
   }
 }

@@ -13,6 +13,7 @@ import '../../core/contrato/contrato_atual_provider.dart';
 import '../../core/api/card_dia_repository.dart';
 import '../../core/api/contatos_repository.dart';
 import '../../core/api/fidelidade_repository.dart';
+import '../../core/api/streak_repository.dart';
 import '../../core/api/manutencoes_repository.dart';
 import '../notificacoes/widgets/notif_bell.dart';
 import '../nps/nps_bottom_sheet.dart';
@@ -171,6 +172,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.invalidate(fidelidadeProvider);
     ref.invalidate(contatosOperadoraProvider);
     ref.invalidate(cardDiaProvider);
+    ref.invalidate(streakProvider);
     await ref.read(meProvider.future);
   }
 
