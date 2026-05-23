@@ -123,7 +123,9 @@ async def _run_faturas_vencendo() -> dict[str, int]:
                             "fatura",
                             titulo,
                             corpo,
-                            action="tela:/home",
+                            # tela:/faturas leva direto pra tab de faturas
+                            # (resolvido no app via mainShellTabProvider).
+                            action="tela:/faturas",
                             payload={
                                 "titulo_id": fatura.id,
                                 "valor": float(fatura.valor),

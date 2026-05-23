@@ -9,6 +9,7 @@ import '../../core/api/notificacoes_repository.dart';
 import '../../core/api/os_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../nps/nps_bottom_sheet.dart';
+import '../shell/main_shell.dart';
 
 const _categoriaCor = <String, Color>{
   'fatura': BrandTokens.catBilling,
@@ -115,9 +116,27 @@ class _NotifTile extends ConsumerWidget {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     } else if (action.startsWith('tela:')) {
+      final path = action.substring(5);
+      // Atalhos para as tabs do MainShell — evita criar rotas fantasmas
+      // pra cada tela que vive como tab.
+      const tabPaths = {
+        '/home': 0,
+        '/inicio': 0,
+        '/faturas': 1,
+        '/suporte': 2,
+        '/perfil': 3,
+      };
+      final tab = tabPaths[path];
+      if (tab != null) {
+        ref.read(mainShellTabProvider.notifier).state = tab;
+        if (!context.mounted) return;
+        // ignore: use_build_context_synchronously
+        context.go('/home');
+        return;
+      }
       if (!context.mounted) return;
       // ignore: use_build_context_synchronously
-      context.push(action.substring(5));
+      context.push(path);
     } else if (action.startsWith('nps:')) {
       final osId = action.substring(4);
       // Tenta enriquecer com tipo/numero da OS, se a lista ja estiver no cache.
