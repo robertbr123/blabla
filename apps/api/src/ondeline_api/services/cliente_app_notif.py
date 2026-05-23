@@ -32,6 +32,8 @@ _PREFS_DEFAULT = {
     "manutencao": True,
     "promocao": True,
     "conta": True,
+    # Push semanal "status" pra users inativos — opt-out simples via prefs.
+    "engajamento": True,
 }
 
 

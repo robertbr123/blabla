@@ -51,4 +51,10 @@ BEAT_SCHEDULE: dict[str, dict[str, Any]] = {
         "task": "ondeline_api.workers.cliente_app_notif_jobs.notify_faturas_vencendo",
         "schedule": crontab(hour=9, minute=15),
     },
+    # Engajamento semanal — toda segunda 9h30 pra users que nao abriram
+    # o app nos ultimos 7 dias.
+    "cliente-app-status-semanal": {
+        "task": "ondeline_api.workers.cliente_app_notif_jobs.notify_status_semanal",
+        "schedule": crontab(day_of_week=1, hour=9, minute=30),
+    },
 }

@@ -165,3 +165,89 @@ async def _run_faturas_vencendo() -> dict[str, int]:
 def notify_faturas_vencendo() -> dict[str, Any]:
     result: dict[str, Any] = run_task(_run_faturas_vencendo)
     return result
+
+
+# ────────────────────── Push semanal de engajamento ──────────────────────
+
+
+async def _ja_notif_engajamento_semana(session: Any, user_id: Any) -> bool:
+    """Idempotencia: ja mandou notif categoria='engajamento' nos ultimos 7 dias?"""
+    agora = datetime.now(tz=UTC)
+    inicio = agora - timedelta(days=7)
+    stmt = (
+        select(ClienteAppNotificacao.id)
+        .where(
+            ClienteAppNotificacao.cliente_app_user_id == user_id,
+            ClienteAppNotificacao.categoria == "engajamento",
+            ClienteAppNotificacao.created_at >= inicio,
+        )
+        .limit(1)
+    )
+    return (await session.execute(stmt)).scalar_one_or_none() is not None
+
+
+async def _run_status_semanal() -> dict[str, int]:
+    """Push leve toda 2a 9h pra users inativos ha 7+ dias.
+
+    Filtro: last_login_at < (now - 7 dias) OU last_login_at is null.
+    Idempotente: 1 notif/user/semana (categoria=engajamento).
+    """
+    criadas = 0
+    erros = 0
+    users_processados = 0
+    cutoff = datetime.now(tz=UTC) - timedelta(days=7)
+
+    async with task_session() as session:
+        stmt = select(ClienteAppUser).where(
+            ClienteAppUser.deleted_at.is_(None),
+            (ClienteAppUser.last_login_at.is_(None))
+            | (ClienteAppUser.last_login_at < cutoff),
+        )
+        users = list((await session.execute(stmt)).scalars())
+
+        for user in users:
+            users_processados += 1
+            try:
+                if await _ja_notif_engajamento_semana(session, user.id):
+                    continue
+                notif = await notify_user(
+                    session,
+                    user.id,
+                    "engajamento",
+                    "Tudo certo por aí?",
+                    "Sua Ondeline tá rodando essa semana. "
+                    "Dá uma olhada nas dicas e novidades no app 👋",
+                    action="tela:/home",
+                    payload={"tipo": "status_semanal"},
+                )
+                if notif is not None:
+                    criadas += 1
+            except Exception as e:
+                erros += 1
+                log.warning(
+                    "notif_status_semanal.user_falhou",
+                    user_id=str(user.id),
+                    error=str(e),
+                )
+
+        await session.commit()
+
+    log.info(
+        "notif_status_semanal.done",
+        criadas=criadas,
+        users_processados=users_processados,
+        erros=erros,
+    )
+    return {
+        "criadas": criadas,
+        "users_processados": users_processados,
+        "erros": erros,
+    }
+
+
+@celery_app.task(
+    name="ondeline_api.workers.cliente_app_notif_jobs.notify_status_semanal"
+)
+def notify_status_semanal() -> dict[str, Any]:
+    result: dict[str, Any] = run_task(_run_status_semanal)
+    return result
