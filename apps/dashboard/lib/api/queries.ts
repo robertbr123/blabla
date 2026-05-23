@@ -1453,3 +1453,80 @@ export function useUploadPromocaoImagem(id: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['promocoes-admin'] }),
   })
 }
+
+// ════════ Cliente App Contatos da Operadora (admin) ════════
+
+export function useContatosOperadora() {
+  return useQuery<import('./types').AdminContatoOperadora[]>({
+    queryKey: ['contatos-operadora'],
+    queryFn: () => apiFetch(`/api/v1/admin/cliente-app-contatos`),
+  })
+}
+
+export function useCreateContatoOperadora() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: import('./types').ContatoOperadoraIn) =>
+      apiFetch<import('./types').AdminContatoOperadora>(
+        `/api/v1/admin/cliente-app-contatos`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['contatos-operadora'] }),
+  })
+}
+
+export function usePatchContatoOperadora(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: import('./types').ContatoOperadoraPatch) =>
+      apiFetch<import('./types').AdminContatoOperadora>(
+        `/api/v1/admin/cliente-app-contatos/${id}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['contatos-operadora'] }),
+  })
+}
+
+export function useDeleteContatoOperadora() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch(`/api/v1/admin/cliente-app-contatos/${id}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['contatos-operadora'] }),
+  })
+}
+
+// ════════ Cliente App Fidelidade (admin) ════════
+
+export function useFidelidadeResgates() {
+  return useQuery<import('./types').AdminFidelidadeResgate[]>({
+    queryKey: ['fidelidade-resgates'],
+    queryFn: () => apiFetch(`/api/v1/admin/cliente-app-fidelidade`),
+  })
+}
+
+export function usePatchFidelidadeResgate(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: import('./types').FidelidadeResgatePatch) =>
+      apiFetch<import('./types').AdminFidelidadeResgate>(
+        `/api/v1/admin/cliente-app-fidelidade/${id}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['fidelidade-resgates'] }),
+  })
+}

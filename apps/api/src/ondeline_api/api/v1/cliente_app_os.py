@@ -176,6 +176,12 @@ class AdminOsItemOut(BaseModel):
     cliente_telefone: str
     cliente_email: str | None
     cliente_sgp_id: str | None
+    teve_visita_tecnica: bool = False
+    nps_respondido_em: str | None = None
+    nps_score: int | None = None
+    tecnico_pontual: bool | None = None
+    tecnico_educado: bool | None = None
+    tecnico_limpou: bool | None = None
     created_at: str
     updated_at: str
 
@@ -220,6 +226,12 @@ def _admin_item(o: ClienteAppOs, u: ClienteAppUser, atendente: User | None) -> A
         cliente_telefone=decrypt_pii(u.telefone_encrypted) if u.telefone_encrypted else "",
         cliente_email=decrypt_pii(u.email_encrypted) if u.email_encrypted else None,
         cliente_sgp_id=u.sgp_id,
+        teve_visita_tecnica=o.teve_visita_tecnica,
+        nps_respondido_em=o.nps_respondido_em.isoformat() if o.nps_respondido_em else None,
+        nps_score=o.nps_score,
+        tecnico_pontual=o.tecnico_pontual,
+        tecnico_educado=o.tecnico_educado,
+        tecnico_limpou=o.tecnico_limpou,
         created_at=o.created_at.isoformat(),
         updated_at=o.updated_at.isoformat(),
     )

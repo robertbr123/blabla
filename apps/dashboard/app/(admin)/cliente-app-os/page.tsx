@@ -323,6 +323,14 @@ function DetailDrawer(props: {
     }
   }
 
+  async function toggleVisitaTecnica() {
+    try {
+      await patch.mutateAsync({ teve_visita_tecnica: !o.teve_visita_tecnica })
+    } catch (e) {
+      alert((e as Error).message)
+    }
+  }
+
   return (
     <>
       <div
@@ -492,6 +500,66 @@ function DetailDrawer(props: {
               />
             </div>
           </Section>
+
+          <Section title="Visita técnica">
+            <button
+              type="button"
+              onClick={toggleVisitaTecnica}
+              disabled={patch.isPending}
+              className={cn(
+                'flex w-full items-center justify-between rounded-lg border-2 px-4 py-3 text-left transition',
+                o.teve_visita_tecnica
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-900 hover:border-emerald-300'
+                  : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300',
+              )}
+            >
+              <div>
+                <div className="font-semibold">
+                  {o.teve_visita_tecnica ? 'Teve visita técnica ✓' : 'Sem visita técnica'}
+                </div>
+                <div className="mt-0.5 text-xs opacity-80">
+                  Marque pra mostrar avaliação do técnico (3 perguntas) no NPS do cliente.
+                </div>
+              </div>
+              <div
+                className={cn(
+                  'h-6 w-11 shrink-0 rounded-full transition',
+                  o.teve_visita_tecnica ? 'bg-emerald-500' : 'bg-zinc-300',
+                )}
+              >
+                <div
+                  className={cn(
+                    'mt-0.5 h-5 w-5 rounded-full bg-white shadow transition',
+                    o.teve_visita_tecnica ? 'ml-[22px]' : 'ml-0.5',
+                  )}
+                />
+              </div>
+            </button>
+          </Section>
+
+          {o.nps_respondido_em && (
+            <Section title="Avaliação do cliente (NPS)">
+              <div className="space-y-2">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold">{o.nps_score ?? '—'}</span>
+                  <span className="text-sm text-zinc-500">/ 10</span>
+                  <span className="ml-auto text-xs text-zinc-500">
+                    {fmtDate(o.nps_respondido_em)}
+                  </span>
+                </div>
+                {o.teve_visita_tecnica && (
+                  <div className="space-y-1 rounded-md border border-zinc-200 bg-zinc-50 p-3">
+                    <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                      Sobre a visita técnica
+                    </div>
+                    <TecnicoAvaliacaoRow label="Chegou no horário?" valor={o.tecnico_pontual} />
+                    <TecnicoAvaliacaoRow label="Foi educado?" valor={o.tecnico_educado} />
+                    <TecnicoAvaliacaoRow label="Deixou limpo?" valor={o.tecnico_limpou} />
+                  </div>
+                )}
+              </div>
+            </Section>
+          )}
         </div>
         )}
       </aside>
@@ -692,6 +760,30 @@ function Field(props: {
       <Icon className="h-4 w-4 text-zinc-400" />
       <span className="text-zinc-500">{props.label}:</span>
       <span className="font-medium text-zinc-900">{props.value}</span>
+    </div>
+  )
+}
+
+function TecnicoAvaliacaoRow({
+  label,
+  valor,
+}: {
+  label: string
+  valor: boolean | null
+}) {
+  let txt = '—'
+  let cls = 'text-zinc-400'
+  if (valor === true) {
+    txt = 'Sim'
+    cls = 'text-emerald-700'
+  } else if (valor === false) {
+    txt = 'Não'
+    cls = 'text-rose-700'
+  }
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-zinc-700">{label}</span>
+      <span className={cn('font-bold', cls)}>{txt}</span>
     </div>
   )
 }

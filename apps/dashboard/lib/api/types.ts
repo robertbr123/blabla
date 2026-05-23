@@ -573,6 +573,12 @@ export interface ClienteAppOsAdminItem {
   cliente_telefone: string
   cliente_email: string | null
   cliente_sgp_id: string | null
+  teve_visita_tecnica: boolean
+  nps_respondido_em: string | null
+  nps_score: number | null
+  tecnico_pontual: boolean | null
+  tecnico_educado: boolean | null
+  tecnico_limpou: boolean | null
   created_at: string
   updated_at: string
 }
@@ -587,6 +593,73 @@ export interface ClienteAppOsPatch {
   status?: ClienteAppOsAdminItem['status']
   sgp_protocolo_id?: string | null
   assign_to_me?: boolean
+  teve_visita_tecnica?: boolean
+}
+
+// ════════ Cliente App Contatos da Operadora ════════
+
+export type ContatoOperadoraTipo =
+  | 'whatsapp'
+  | 'telefone'
+  | 'email'
+  | 'endereco'
+  | 'instagram'
+  | 'facebook'
+  | 'site'
+  | 'outro'
+
+export interface AdminContatoOperadora {
+  id: string
+  tipo: ContatoOperadoraTipo
+  label: string
+  valor: string
+  subtitle: string | null
+  ordem: number
+  ativo: boolean
+  criado_em: string
+  atualizado_em: string
+}
+
+export interface ContatoOperadoraIn {
+  tipo: ContatoOperadoraTipo
+  label: string
+  valor: string
+  subtitle?: string | null
+  ordem?: number
+  ativo?: boolean
+}
+
+export interface ContatoOperadoraPatch {
+  tipo?: ContatoOperadoraTipo
+  label?: string
+  valor?: string
+  subtitle?: string | null
+  ordem?: number
+  ativo?: boolean
+}
+
+// ════════ Cliente App Fidelidade ════════
+
+export type FidelidadeResgateStatus =
+  | 'pendente'
+  | 'aprovado'
+  | 'aplicado'
+  | 'rejeitado'
+
+export interface AdminFidelidadeResgate {
+  id: string
+  cliente_app_user_id: string
+  recompensa_slug: string
+  recompensa_label: string
+  pontos_gastos: number
+  status: FidelidadeResgateStatus
+  obs_admin: string | null
+  criado_em: string
+}
+
+export interface FidelidadeResgatePatch {
+  status: FidelidadeResgateStatus
+  obs_admin?: string | null
 }
 
 // ════════ Cliente App Chat (admin) ════════
