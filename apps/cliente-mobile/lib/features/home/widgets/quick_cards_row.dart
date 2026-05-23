@@ -21,13 +21,15 @@ class QuickCardsRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.only(bottom: BrandTokens.spaceLg),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: const [
-          Expanded(child: _FidelidadeMiniCard()),
-          SizedBox(width: BrandTokens.spaceSm),
-          Expanded(child: _FaleConoscoMiniCard()),
-        ],
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: const [
+            Expanded(child: _FidelidadeMiniCard()),
+            SizedBox(width: BrandTokens.spaceSm),
+            Expanded(child: _FaleConoscoMiniCard()),
+          ],
+        ),
       ),
     );
   }
