@@ -9,6 +9,8 @@ class FidelidadeBreakdownDto {
     required this.tempoCasaPontos,
     required this.faturasPagasQtd,
     required this.faturasPagasPontos,
+    this.missoesQtd = 0,
+    this.missoesPontos = 0,
   });
 
   factory FidelidadeBreakdownDto.fromJson(Map<String, dynamic> j) =>
@@ -17,12 +19,16 @@ class FidelidadeBreakdownDto {
         tempoCasaPontos: j['tempo_casa_pontos'] as int,
         faturasPagasQtd: j['faturas_pagas_qtd'] as int,
         faturasPagasPontos: j['faturas_pagas_pontos'] as int,
+        missoesQtd: (j['missoes_qtd'] as int?) ?? 0,
+        missoesPontos: (j['missoes_pontos'] as int?) ?? 0,
       );
 
   final int tempoCasaMeses;
   final int tempoCasaPontos;
   final int faturasPagasQtd;
   final int faturasPagasPontos;
+  final int missoesQtd;
+  final int missoesPontos;
 }
 
 class RecompensaDto {

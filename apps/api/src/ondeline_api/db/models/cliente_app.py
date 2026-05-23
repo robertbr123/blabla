@@ -158,6 +158,27 @@ class ClienteAppContatoOperadora(Base):
     )
 
 
+class ClienteAppMissaoCompletada(Base):
+    """Registro de conclusao de missao discreta (share, NPS).
+
+    `slug` inclui chave de unicidade (data ou os_id) — unique(user, slug)
+    impede dupla contagem.
+    """
+
+    __tablename__ = "cliente_app_missao_completada"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    cliente_app_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False
+    )
+    slug: Mapped[str] = mapped_column(String(96), nullable=False)
+    completada_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class ClienteAppCardDia(Base):
     """Card rotativo exibido na Home do app cliente.
 

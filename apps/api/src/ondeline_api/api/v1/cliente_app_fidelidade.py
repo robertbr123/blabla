@@ -50,6 +50,9 @@ class BreakdownOut(BaseModel):
     tempo_casa_pontos: int
     faturas_pagas_qtd: int
     faturas_pagas_pontos: int
+    # Fase 3d — missoes (share/NPS/pagar_em_dia). Quando 0, app esconde.
+    missoes_qtd: int = 0
+    missoes_pontos: int = 0
 
 
 class RecompensaOut(BaseModel):
@@ -103,12 +106,22 @@ async def _calcular_pontos(
         pagas = sum(1 for t in sgp.titulos if t.status and t.status != "aberto")
     pts_pagas = pagas * PONTOS_POR_FATURA_PAGA
 
-    total = pts_casa + pts_pagas
+    # Pontos das missoes (Fase 3d).
+    from ondeline_api.services.missoes import calcular_pontos_missoes
+
+    pts_missoes, contagem_missoes = await calcular_pontos_missoes(
+        session, user
+    )
+    qtd_missoes = sum(contagem_missoes.values())
+
+    total = pts_casa + pts_pagas + pts_missoes
     bd = BreakdownOut(
         tempo_casa_meses=meses_casa,
         tempo_casa_pontos=pts_casa,
         faturas_pagas_qtd=pagas,
         faturas_pagas_pontos=pts_pagas,
+        missoes_qtd=qtd_missoes,
+        missoes_pontos=pts_missoes,
     )
     return total, bd
 

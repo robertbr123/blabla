@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/api/fidelidade_repository.dart';
+import '../../core/api/missoes_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/haptics.dart';
+import '../home/promo_icon_map.dart';
 
 class FidelidadeScreen extends ConsumerWidget {
   const FidelidadeScreen({super.key});
@@ -17,6 +19,7 @@ class FidelidadeScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(fidelidadeProvider);
+          ref.invalidate(missoesProvider);
           await ref.read(fidelidadeProvider.future);
         },
         child: async.when(
@@ -65,6 +68,7 @@ class _Content extends ConsumerWidget {
         const SizedBox(height: BrandTokens.spaceSm),
         _BreakdownCard(b: data.breakdown),
         const SizedBox(height: BrandTokens.spaceLg),
+        const _MissoesSection(),
         const Text(
           'Trocar pontos',
           style: TextStyle(
@@ -219,6 +223,157 @@ class _BreakdownCard extends StatelessWidget {
             icon: Icons.check_circle_outline_rounded,
             label: pagasTxt,
             pontos: '+${b.faturasPagasPontos}',
+          ),
+          if (b.missoesQtd > 0) ...[
+            const Divider(height: 8),
+            _BreakdownRow(
+              icon: Icons.emoji_events_rounded,
+              label: b.missoesQtd == 1
+                  ? '1 missão concluída'
+                  : '${b.missoesQtd} missões concluídas',
+              pontos: '+${b.missoesPontos}',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _MissoesSection extends ConsumerWidget {
+  const _MissoesSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(missoesProvider);
+    return async.maybeWhen(
+      data: (items) {
+        if (items.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Missões',
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                color: BrandTokens.textSecondary,
+              ),
+            ),
+            const SizedBox(height: BrandTokens.spaceSm),
+            for (final m in items) _MissaoCard(missao: m),
+            const SizedBox(height: BrandTokens.spaceLg),
+          ],
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
+    );
+  }
+}
+
+class _MissaoCard extends StatelessWidget {
+  const _MissaoCard({required this.missao});
+  final MissaoItemDto missao;
+
+  ({String label, Color color, IconData icon}) get _statusMeta {
+    if (missao.periodicidade == 'diaria') {
+      if (missao.completadaHoje) {
+        return (
+          label: 'Feita hoje',
+          color: BrandTokens.success,
+          icon: Icons.check_circle_rounded,
+        );
+      }
+      return (
+        label: 'Disponível hoje',
+        color: BrandTokens.primary,
+        icon: Icons.bolt_rounded,
+      );
+    }
+    // por_os e on_the_fly: sempre disponivel, mostra contagem.
+    return (
+      label: missao.totalConcluida == 0
+          ? 'Comece já'
+          : '${missao.totalConcluida}x feita',
+      color: missao.totalConcluida == 0
+          ? BrandTokens.primary
+          : BrandTokens.success,
+      icon: missao.totalConcluida == 0
+          ? Icons.bolt_rounded
+          : Icons.repeat_rounded,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = _statusMeta;
+    return Container(
+      margin: const EdgeInsets.only(bottom: BrandTokens.spaceSm),
+      padding: const EdgeInsets.all(BrandTokens.spaceMd),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
+        border: Border.all(color: BrandTokens.divider),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: meta.color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            alignment: Alignment.center,
+            child: Icon(promoIconOf(missao.icon), color: meta.color, size: 22),
+          ),
+          const SizedBox(width: BrandTokens.spaceMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  missao.titulo,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  missao.descricao,
+                  style: const TextStyle(
+                    color: BrandTokens.textSecondary,
+                    fontSize: 12,
+                    height: 1.3,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(meta.icon, size: 13, color: meta.color),
+                    const SizedBox(width: 4),
+                    Text(
+                      meta.label,
+                      style: TextStyle(
+                        color: meta.color,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: BrandTokens.spaceSm),
+          Text(
+            '+${missao.pontos}',
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+              color: BrandTokens.success,
+            ),
           ),
         ],
       ),

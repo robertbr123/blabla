@@ -241,6 +241,9 @@ async def registrar_share(
 
     Disparado quando o cliente toca "Compartilhar via WhatsApp" na tela
     in-app. Cria o codigo se ainda nao existir (idempotente com /meu).
+
+    Tambem tenta completar a missao 'share_indicacao' do dia (Fase 3d) —
+    falha silenciosa, nao bloqueia o share.
     """
     cliente = await _resolve_cliente(user, session)
     if cliente is None:
@@ -254,12 +257,14 @@ async def registrar_share(
     from sqlalchemy import update as _update
 
     from ondeline_api.db.models.business import Indicacao as _Ind
+    from ondeline_api.services.missoes import completar as _completar_missao
 
     await session.execute(
         _update(_Ind)
         .where(_Ind.id == ind.id)
         .values(shares_app=_Ind.shares_app + 1)
     )
+    await _completar_missao(session, user.id, "share_indicacao")
     await session.commit()
     await session.refresh(ind)
     return IndicacaoShareOut(shares_app=ind.shares_app)

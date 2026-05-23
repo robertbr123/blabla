@@ -126,6 +126,12 @@ async def submeter_nps(
             row.tecnico_educado = body.tecnico_educado
         if body.tecnico_limpou is not None:
             row.tecnico_limpou = body.tecnico_limpou
+    # Missao 'responder_nps' (Fase 3d) — best-effort.
+    from ondeline_api.services.missoes import completar as _completar_missao
+
+    await _completar_missao(
+        session, user.id, "responder_nps", chave_extra=str(os_id)
+    )
     await session.commit()
     log.info(
         "cliente_app_os.nps_submetido",
