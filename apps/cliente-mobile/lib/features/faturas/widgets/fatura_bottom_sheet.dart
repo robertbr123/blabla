@@ -150,9 +150,11 @@ class _FaturaBottomSheetState extends ConsumerState<FaturaBottomSheet> {
         logicalSize: ComprovanteCard.designSize,
       );
       final tmp = await getTemporaryDirectory();
-      final file = File(
-        '${tmp.path}/comprovante_${f.id.replaceAll('-', '').substring(0, 8)}.png',
-      );
+      final cleanId = f.id.replaceAll('-', '');
+      final shortId = cleanId.length <= 8
+          ? cleanId
+          : cleanId.substring(0, 8);
+      final file = File('${tmp.path}/comprovante_$shortId.png');
       await file.writeAsBytes(bytes, flush: true);
       await Haptics.success();
       final fmtValor = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
