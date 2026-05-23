@@ -59,6 +59,12 @@ class ClienteAppOs(Base):
     )
     nps_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     nps_comentario: Mapped[str | None] = mapped_column(Text, nullable=True)
+    teve_visita_tecnica: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False
+    )
+    tecnico_pontual: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    tecnico_educado: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    tecnico_limpou: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()

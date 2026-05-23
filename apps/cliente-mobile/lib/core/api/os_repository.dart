@@ -33,10 +33,16 @@ class OsRepository {
     required String osId,
     required int score,
     String? comentario,
+    bool? tecnicoPontual,
+    bool? tecnicoEducado,
+    bool? tecnicoLimpou,
   }) async {
     await _dio.post('$_base/$osId/nps', data: {
       'score': score,
       if (comentario != null && comentario.isNotEmpty) 'comentario': comentario,
+      if (tecnicoPontual != null) 'tecnico_pontual': tecnicoPontual,
+      if (tecnicoEducado != null) 'tecnico_educado': tecnicoEducado,
+      if (tecnicoLimpou != null) 'tecnico_limpou': tecnicoLimpou,
     });
   }
 }

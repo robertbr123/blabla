@@ -215,6 +215,8 @@ class OsOut(BaseModel):
     nps_solicitado_em: str | None = None
     nps_respondido_em: str | None = None
     nps_score: int | None = None
+    # Avaliacao do tecnico (so usado quando teve_visita_tecnica=True).
+    teve_visita_tecnica: bool = False
 
 
 class OsListOut(BaseModel):
@@ -224,6 +226,10 @@ class OsListOut(BaseModel):
 class NpsSubmitIn(BaseModel):
     score: int = Field(ge=0, le=10)
     comentario: str | None = Field(default=None, max_length=2000)
+    # Avaliacao do tecnico no campo (apenas quando OS teve visita).
+    tecnico_pontual: bool | None = None
+    tecnico_educado: bool | None = None
+    tecnico_limpou: bool | None = None
 
 
 class NpsSubmitOut(BaseModel):

@@ -13,6 +13,7 @@ Future<void> showNpsBottomSheet(
   required String osId,
   String? tipoLabel,
   String? numero,
+  bool teveVisitaTecnica = false,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -22,6 +23,7 @@ Future<void> showNpsBottomSheet(
       osId: osId,
       tipoLabel: tipoLabel,
       numero: numero,
+      teveVisitaTecnica: teveVisitaTecnica,
     ),
   );
 }
@@ -31,10 +33,12 @@ class _NpsSheet extends ConsumerStatefulWidget {
     required this.osId,
     this.tipoLabel,
     this.numero,
+    required this.teveVisitaTecnica,
   });
   final String osId;
   final String? tipoLabel;
   final String? numero;
+  final bool teveVisitaTecnica;
 
   @override
   ConsumerState<_NpsSheet> createState() => _NpsSheetState();
@@ -44,6 +48,9 @@ class _NpsSheetState extends ConsumerState<_NpsSheet> {
   int? _score;
   final _comentarioCtrl = TextEditingController();
   bool _sending = false;
+  bool? _pontual;
+  bool? _educado;
+  bool? _limpou;
 
   @override
   void dispose() {
@@ -72,6 +79,9 @@ class _NpsSheetState extends ConsumerState<_NpsSheet> {
             osId: widget.osId,
             score: _score!,
             comentario: _comentarioCtrl.text.trim(),
+            tecnicoPontual: widget.teveVisitaTecnica ? _pontual : null,
+            tecnicoEducado: widget.teveVisitaTecnica ? _educado : null,
+            tecnicoLimpou: widget.teveVisitaTecnica ? _limpou : null,
           );
       if (!mounted) return;
       await Haptics.success();
@@ -228,6 +238,41 @@ class _NpsSheetState extends ConsumerState<_NpsSheet> {
                 ),
               ),
             ),
+            if (widget.teveVisitaTecnica) ...[
+              const SizedBox(height: BrandTokens.spaceMd),
+              const Divider(),
+              const SizedBox(height: BrandTokens.spaceMd),
+              const Text(
+                'Sobre a visita técnica',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: BrandTokens.primaryDark,
+                ),
+              ),
+              const SizedBox(height: BrandTokens.spaceSm),
+              _AvaliacaoBin(
+                label: 'O técnico chegou no horário?',
+                valor: _pontual,
+                onChange: _sending
+                    ? null
+                    : (v) => setState(() => _pontual = v),
+              ),
+              _AvaliacaoBin(
+                label: 'Foi educado e atencioso?',
+                valor: _educado,
+                onChange: _sending
+                    ? null
+                    : (v) => setState(() => _educado = v),
+              ),
+              _AvaliacaoBin(
+                label: 'Deixou o local limpo após o serviço?',
+                valor: _limpou,
+                onChange: _sending
+                    ? null
+                    : (v) => setState(() => _limpou = v),
+              ),
+            ],
             const SizedBox(height: BrandTokens.spaceSm),
             SizedBox(
               height: 52,
@@ -266,6 +311,75 @@ class _NpsSheetState extends ConsumerState<_NpsSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AvaliacaoBin extends StatelessWidget {
+  const _AvaliacaoBin({
+    required this.label,
+    required this.valor,
+    required this.onChange,
+  });
+  final String label;
+  final bool? valor;
+  final ValueChanged<bool?>? onChange;
+
+  Widget _btn(BuildContext context, {required bool value, required String txt}) {
+    final selected = valor == value;
+    final cor = value ? BrandTokens.success : BrandTokens.danger;
+    return GestureDetector(
+      onTap: onChange == null
+          ? null
+          : () => onChange!(selected ? null : value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.symmetric(
+          horizontal: BrandTokens.spaceMd,
+          vertical: 8,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? cor : Colors.white,
+          borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
+          border: Border.all(
+            color: selected ? cor : Colors.black12,
+            width: selected ? 0 : 1,
+          ),
+        ),
+        child: Text(
+          txt,
+          style: TextStyle(
+            color: selected ? Colors.white : Colors.black87,
+            fontWeight: FontWeight.w700,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: BrandTokens.primaryDark,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: BrandTokens.spaceSm),
+          _btn(context, value: true, txt: 'Sim'),
+          const SizedBox(width: 6),
+          _btn(context, value: false, txt: 'Não'),
+        ],
       ),
     );
   }

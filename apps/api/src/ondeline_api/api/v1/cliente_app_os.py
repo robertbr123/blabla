@@ -46,6 +46,7 @@ def _os_out(o: ClienteAppOs) -> OsOut:
         nps_solicitado_em=o.nps_solicitado_em.isoformat() if o.nps_solicitado_em else None,
         nps_respondido_em=o.nps_respondido_em.isoformat() if o.nps_respondido_em else None,
         nps_score=o.nps_score,
+        teve_visita_tecnica=o.teve_visita_tecnica,
     )
 
 
@@ -117,6 +118,14 @@ async def submeter_nps(
     row.nps_score = body.score
     row.nps_comentario = body.comentario or None
     row.nps_respondido_em = now
+    # So grava avaliacao do tecnico se a OS teve visita.
+    if row.teve_visita_tecnica:
+        if body.tecnico_pontual is not None:
+            row.tecnico_pontual = body.tecnico_pontual
+        if body.tecnico_educado is not None:
+            row.tecnico_educado = body.tecnico_educado
+        if body.tecnico_limpou is not None:
+            row.tecnico_limpou = body.tecnico_limpou
     await session.commit()
     log.info(
         "cliente_app_os.nps_submetido",
@@ -181,6 +190,7 @@ class AdminOsPatchIn(BaseModel):
     status: str | None = None
     sgp_protocolo_id: str | None = None
     assign_to_me: bool = False
+    teve_visita_tecnica: bool | None = None
 
     @field_validator("status")
     @classmethod
@@ -312,6 +322,8 @@ async def admin_patch(
         o.sgp_protocolo_id = body.sgp_protocolo_id or None
     if body.assign_to_me:
         o.atendente_user_id = current_user.id
+    if body.teve_visita_tecnica is not None:
+        o.teve_visita_tecnica = body.teve_visita_tecnica
 
     await session.flush()
 

@@ -178,6 +178,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final id = alvo.id;
     final tipoLabel = alvo.tipoLabel;
     final numero = _numeroCurto(id);
+    final teveVisita = alvo.teveVisitaTecnica;
     _npsAlreadyPromptedThisSession.add(id);
     // Aguarda o frame atual concluir pra evitar showModalBottomSheet durante build.
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -187,6 +188,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         osId: id,
         tipoLabel: tipoLabel,
         numero: numero,
+        teveVisitaTecnica: teveVisita,
       ).then((_) {
         // Apos o sheet fechar (com ou sem submit), invalida pra refletir
         // npsRespondidoEm caso o user tenha enviado.

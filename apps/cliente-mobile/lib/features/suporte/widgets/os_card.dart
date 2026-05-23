@@ -93,6 +93,7 @@ class OsCard extends ConsumerWidget {
               osId: os.id,
               tipoLabel: os.tipoLabel,
               numero: _numeroCurto(os.id),
+              teveVisitaTecnica: os.teveVisitaTecnica,
               onRespondido: () {
                 ref.invalidate(osListProvider);
               },
@@ -109,11 +110,13 @@ class _AvaliarCta extends StatelessWidget {
     required this.osId,
     required this.tipoLabel,
     required this.numero,
+    required this.teveVisitaTecnica,
     required this.onRespondido,
   });
   final String osId;
   final String tipoLabel;
   final String numero;
+  final bool teveVisitaTecnica;
   final VoidCallback onRespondido;
 
   @override
@@ -129,6 +132,7 @@ class _AvaliarCta extends StatelessWidget {
             osId: osId,
             tipoLabel: tipoLabel,
             numero: numero,
+            teveVisitaTecnica: teveVisitaTecnica,
           );
           onRespondido();
         },

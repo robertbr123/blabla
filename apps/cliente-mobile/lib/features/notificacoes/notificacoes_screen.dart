@@ -138,6 +138,7 @@ class _NotifTile extends ConsumerWidget {
         osId: osId,
         tipoLabel: os?.tipoLabel,
         numero: os != null ? _osNumeroCurto(osId) : null,
+        teveVisitaTecnica: os?.teveVisitaTecnica ?? false,
       );
     }
   }

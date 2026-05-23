@@ -250,6 +250,7 @@ class OsDto {
     this.npsSolicitadoEm,
     this.npsRespondidoEm,
     this.npsScore,
+    this.teveVisitaTecnica = false,
   });
   factory OsDto.fromJson(Map<String, dynamic> j) => OsDto(
         id: j['id'] as String,
@@ -265,6 +266,7 @@ class OsDto {
             ? DateTime.parse(j['nps_respondido_em'] as String)
             : null,
         npsScore: j['nps_score'] as int?,
+        teveVisitaTecnica: (j['teve_visita_tecnica'] as bool?) ?? false,
       );
   final String id;
   final String tipo; // sem_internet|mudanca_endereco|troca_plano
@@ -275,6 +277,7 @@ class OsDto {
   final DateTime? npsSolicitadoEm;
   final DateTime? npsRespondidoEm;
   final int? npsScore;
+  final bool teveVisitaTecnica;
 
   bool get npsPendente =>
       status == 'concluido' &&
