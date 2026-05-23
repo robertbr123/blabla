@@ -92,6 +92,13 @@ class PerfilScreen extends ConsumerWidget {
                 title: 'Vantagens',
                 children: [
                   _CardTile(
+                    icon: Icons.workspace_premium_rounded,
+                    iconColor: BrandTokens.warning,
+                    label: 'Programa de fidelidade',
+                    value: 'Acumule pontos e troque por descontos',
+                    onTap: () => context.push('/fidelidade'),
+                  ),
+                  _CardTile(
                     icon: Icons.card_giftcard_rounded,
                     iconColor: BrandTokens.catPlan,
                     label: 'Indique e ganhe',

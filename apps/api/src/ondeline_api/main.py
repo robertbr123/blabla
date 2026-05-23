@@ -21,6 +21,7 @@ from ondeline_api.api.v1 import cliente_app_auth as v1_cliente_app_auth
 from ondeline_api.api.v1 import cliente_app_chat as v1_cliente_app_chat
 from ondeline_api.api.v1 import cliente_app_conexao as v1_cliente_app_conexao
 from ondeline_api.api.v1 import cliente_app_contatos as v1_cliente_app_contatos
+from ondeline_api.api.v1 import cliente_app_fidelidade as v1_cliente_app_fidelidade
 from ondeline_api.api.v1 import cliente_app_indicacao as v1_cliente_app_indicacao
 from ondeline_api.api.v1 import cliente_app_manutencoes as v1_cliente_app_manutencoes
 from ondeline_api.api.v1 import cliente_app_me as v1_cliente_app_me
@@ -183,6 +184,8 @@ def create_app() -> FastAPI:
     app.include_router(v1_cliente_app_manutencoes.router)
     app.include_router(v1_cliente_app_contatos.router)
     app.include_router(v1_cliente_app_contatos.admin_router)
+    app.include_router(v1_cliente_app_fidelidade.router)
+    app.include_router(v1_cliente_app_fidelidade.admin_router)
 
     # Static dir pras imagens de promocoes (servido em /static/promocoes/...).
     # Usa /tmp pra evitar PermissionError no /app (user nao-root).

@@ -156,3 +156,33 @@ class ClienteAppContatoOperadora(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+class ClienteAppFidelidadeResgate(Base):
+    """Pedido de resgate de pontos. Admin aprova manualmente no dashboard."""
+
+    __tablename__ = "cliente_app_fidelidade_resgates"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    cliente_app_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False, index=True
+    )
+    recompensa_slug: Mapped[str] = mapped_column(String(48), nullable=False)
+    recompensa_label: Mapped[str] = mapped_column(String(120), nullable=False)
+    pontos_gastos: Mapped[int] = mapped_column(Integer, nullable=False)
+    # pendente | aprovado | aplicado | rejeitado
+    status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="pendente"
+    )
+    obs_admin: Mapped[str | None] = mapped_column(Text, nullable=True)
+    criado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    atualizado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )

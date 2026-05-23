@@ -6,6 +6,7 @@ import 'features/auth/login_screen.dart';
 import 'features/conexao/conexao_screen.dart';
 import 'features/contatos/contatos_screen.dart';
 import 'features/faq/faq_artigo_screen.dart';
+import 'features/fidelidade/fidelidade_screen.dart';
 import 'features/faq/faq_screen.dart';
 import 'features/indicacao/indicacao_screen.dart';
 import 'features/legal/legal_screen.dart';
@@ -110,6 +111,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/contatos',
         builder: (_, __) => const ContatosScreen(),
+      ),
+      GoRoute(
+        path: '/fidelidade',
+        builder: (_, __) => const FidelidadeScreen(),
       ),
       GoRoute(
         path: '/faq',
