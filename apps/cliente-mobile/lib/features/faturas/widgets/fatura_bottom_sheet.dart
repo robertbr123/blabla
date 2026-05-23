@@ -1,15 +1,21 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/dto.dart';
 import '../../../core/api/faturas_repository.dart';
+import '../../../core/api/me_repository.dart';
 import '../../../core/branding/brand_tokens.dart';
+import '../../../core/share/render_to_png.dart';
 import '../../../core/ui/haptics.dart';
+import 'comprovante_card.dart';
 
 class FaturaBottomSheet extends ConsumerStatefulWidget {
   const FaturaBottomSheet({super.key, required this.fatura});
@@ -108,6 +114,57 @@ class _FaturaBottomSheetState extends ConsumerState<FaturaBottomSheet> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Falha ao gerar link do boleto')),
+      );
+    }
+  }
+
+  Future<void> _shareComprovante() async {
+    final f = widget.fatura;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        duration: Duration(seconds: 2),
+        content: Text('Gerando comprovante…'),
+      ),
+    );
+    try {
+      // Nome do cliente vem do meProvider — best-effort, fallback genérico.
+      String nome = 'Cliente Ondeline';
+      try {
+        final me = await ref.read(meProvider.future);
+        if (me.nome.trim().isNotEmpty) {
+          nome = me.nome.trim();
+        }
+      } on Object {
+        // ignore — usa fallback
+      }
+
+      final bytes = await renderWidgetToPng(
+        ComprovanteCard(
+          nomeCliente: nome,
+          valor: f.valor,
+          vencimento: f.vencimentoDate,
+          faturaId: f.id,
+          geradoEm: DateTime.now(),
+        ),
+        logicalSize: ComprovanteCard.designSize,
+      );
+      final tmp = await getTemporaryDirectory();
+      final file = File(
+        '${tmp.path}/comprovante_${f.id.replaceAll('-', '').substring(0, 8)}.png',
+      );
+      await file.writeAsBytes(bytes, flush: true);
+      await Haptics.success();
+      final fmtValor = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: 'image/png')],
+        text:
+            'Comprovante de pagamento — ${fmtValor.format(f.valor)} (Ondeline)',
+        subject: 'Comprovante Ondeline',
+      );
+    } on Object catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Não consegui gerar o comprovante: $e')),
       );
     }
   }
@@ -317,30 +374,61 @@ class _FaturaBottomSheetState extends ConsumerState<FaturaBottomSheet> {
               ),
             ],
 
-            // Faturas pagas: so mostra resumo + boleto
-            if (!f.isAberto && !f.temPdf)
-              Padding(
+            // Faturas pagas: selo + botao "Compartilhar comprovante" (PNG)
+            if (!f.isAberto) ...[
+              const SizedBox(height: BrandTokens.spaceSm),
+              Container(
                 padding: const EdgeInsets.symmetric(
-                  vertical: BrandTokens.spaceLg,
+                  horizontal: BrandTokens.spaceMd,
+                  vertical: BrandTokens.spaceMd,
+                ),
+                decoration: BoxDecoration(
+                  color: BrandTokens.success.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+                  border: Border.all(
+                    color: BrandTokens.success.withOpacity(0.30),
+                  ),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(
-                      Icons.check_circle,
+                      Icons.check_circle_rounded,
                       color: BrandTokens.success,
                     ),
                     const SizedBox(width: BrandTokens.spaceSm),
-                    Text(
-                      'Fatura paga',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: BrandTokens.success,
-                            fontWeight: FontWeight.w800,
-                          ),
+                    Expanded(
+                      child: Text(
+                        'Fatura paga',
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: BrandTokens.success,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                      ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: BrandTokens.spaceSm),
+              SizedBox(
+                height: 56,
+                child: FilledButton.icon(
+                  icon: const Icon(Icons.receipt_long_rounded),
+                  label: const Text(
+                    'Compartilhar comprovante',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  onPressed: _shareComprovante,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: BrandTokens.success,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
