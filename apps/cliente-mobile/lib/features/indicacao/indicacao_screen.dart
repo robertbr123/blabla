@@ -1,12 +1,19 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/dto.dart';
 import '../../core/api/indicacao_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/share/render_to_png.dart';
 import '../../core/ui/haptics.dart';
+import 'widgets/indicacao_share_card.dart';
 
 class IndicacaoScreen extends ConsumerWidget {
   const IndicacaoScreen({super.key});
@@ -20,7 +27,14 @@ class IndicacaoScreen extends ConsumerWidget {
         elevation: 0,
       ),
       body: async.when(
-        data: (data) => _Content(data: data),
+        data: (data) => RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(indicacaoMeuProvider);
+            ref.invalidate(indicacaoTimelineProvider);
+            await ref.read(indicacaoMeuProvider.future);
+          },
+          child: _Content(data: data),
+        ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => _ErrorView(
           message: e.toString(),
@@ -45,13 +59,46 @@ class _Content extends ConsumerWidget {
       _toast(context, 'Link inválido.');
       return;
     }
-    // Registra evento server-side em paralelo (fire-and-forget). Invalida
-    // o provider depois pra atualizar contador local.
     ref.read(indicacaoRepositoryProvider).registrarShare().then((_) {
       ref.invalidate(indicacaoMeuProvider);
     });
     await Haptics.success();
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _shareImage(BuildContext context, WidgetRef ref) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        duration: Duration(seconds: 2),
+        content: Text('Gerando imagem…'),
+      ),
+    );
+    try {
+      final bytes = await renderWidgetToPng(
+        IndicacaoShareCard(
+          codigo: data.codigo,
+          recompensa: data.milestone.recompensa,
+        ),
+        logicalSize: IndicacaoShareCard.designSize,
+      );
+      final tmp = await getTemporaryDirectory();
+      final file = File('${tmp.path}/indicacao_${data.codigo}.png');
+      await file.writeAsBytes(bytes, flush: true);
+      ref.read(indicacaoRepositoryProvider).registrarShare().then((_) {
+        ref.invalidate(indicacaoMeuProvider);
+      });
+      await Haptics.success();
+      await Share.shareXFiles(
+        [XFile(file.path, mimeType: 'image/png')],
+        text:
+            'Use meu código *${data.codigo}* pra contratar a internet — você ganha desconto e eu também 🚀',
+      );
+    } on Object catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Não consegui gerar a imagem: $e')),
+      );
+    }
   }
 
   Future<void> _copy(BuildContext context, String text, String label) async {
@@ -95,9 +142,21 @@ class _Content extends ConsumerWidget {
                   ),
             ),
             const SizedBox(height: BrandTokens.spaceMd),
-            const _Step(n: 1, t: 'Compartilhe seu link', d: 'Envie pelo WhatsApp pra amigos, família ou nos grupos.'),
-            const _Step(n: 2, t: 'O amigo fecha plano', d: 'Quando ele virar cliente Ondeline usando seu código, você e ele ganham desconto.'),
-            const _Step(n: 3, t: 'Receba o desconto', d: 'O desconto aparece automaticamente na próxima fatura dos dois.'),
+            _Step(
+              n: 1,
+              t: 'Compartilhe seu código',
+              d: 'Envie pelo WhatsApp, posta no status ou nos grupos. Quanto mais gente vê, maior a chance.',
+            ),
+            _Step(
+              n: 2,
+              t: 'O amigo fecha plano',
+              d: 'Quando ele virar cliente usando seu código, conta como uma indicação convertida.',
+            ),
+            _Step(
+              n: 3,
+              t: 'Você ganha a recompensa',
+              d: 'Atingindo ${data.milestone.alvo} indicações convertidas, você ganha ${data.milestone.recompensa}. Fale com o suporte pra aplicar.',
+            ),
             const SizedBox(height: BrandTokens.spaceMd),
             SizedBox(
               width: double.infinity,
@@ -118,81 +177,28 @@ class _Content extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.all(BrandTokens.spaceLg),
       children: [
-        // Card hero com o codigo
-        Container(
-          padding: const EdgeInsets.all(BrandTokens.spaceLg),
-          decoration: BoxDecoration(
-            gradient: BrandTokens.gradientHero,
-            borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
-            boxShadow: BrandTokens.elevation2,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.card_giftcard_rounded, color: Colors.white, size: 22),
-                  SizedBox(width: BrandTokens.spaceSm),
-                  Text(
-                    'Seu código',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: BrandTokens.spaceMd),
-              Text(
-                data.codigo,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 42,
-                  letterSpacing: 6,
-                ),
-              ),
-              const SizedBox(height: BrandTokens.spaceMd),
-              Row(
-                children: [
-                  Expanded(
-                    child: _SmallActionButton(
-                      icon: Icons.copy_rounded,
-                      label: 'Copiar código',
-                      onTap: () => _copy(context, data.codigo, 'Código'),
-                    ),
-                  ),
-                  const SizedBox(width: BrandTokens.spaceSm),
-                  if (data.linkCompartilhamento.isNotEmpty)
-                    Expanded(
-                      child: _SmallActionButton(
-                        icon: Icons.link_rounded,
-                        label: 'Copiar link',
-                        onTap: () => _copy(
-                          context,
-                          data.linkCompartilhamento,
-                          'Link',
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
+        _HeroCard(
+          data: data,
+          onCopyCodigo: () => _copy(context, data.codigo, 'Código'),
+          onCopyLink: data.linkCompartilhamento.isEmpty
+              ? null
+              : () => _copy(context, data.linkCompartilhamento, 'Link'),
         ),
         const SizedBox(height: BrandTokens.spaceLg),
 
-        // CTA principal: compartilhar
+        // Progress bar de milestone
+        _MilestoneCard(milestone: data.milestone, isDark: isDark),
+        const SizedBox(height: BrandTokens.spaceLg),
+
+        // CTAs de compartilhamento
         SizedBox(
           height: 56,
           child: FilledButton.icon(
-            onPressed: () => _shareWhatsApp(context, ref),
-            icon: const Icon(Icons.share_rounded),
-            label: const Text('Compartilhar via WhatsApp'),
+            onPressed: () => _shareImage(context, ref),
+            icon: const Icon(Icons.image_rounded),
+            label: const Text('Compartilhar como imagem'),
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF25D366),
+              backgroundColor: BrandTokens.primary,
               foregroundColor: Colors.white,
               textStyle: const TextStyle(
                 fontSize: 16,
@@ -201,77 +207,419 @@ class _Content extends ConsumerWidget {
             ),
           ),
         ),
+        const SizedBox(height: BrandTokens.spaceSm),
+        SizedBox(
+          height: 52,
+          child: OutlinedButton.icon(
+            onPressed: () => _shareWhatsApp(context, ref),
+            icon: const Icon(Icons.chat_rounded, color: Color(0xFF25D366)),
+            label: const Text(
+              'Enviar pelo WhatsApp',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFF25D366), width: 1.5),
+              foregroundColor: const Color(0xFF128C7E),
+            ),
+          ),
+        ),
         const SizedBox(height: BrandTokens.spaceXs),
-        TextButton(
-          onPressed: () => _showComoFunciona(context),
-          child: const Text(
-            'Como funciona?',
-            style: TextStyle(fontWeight: FontWeight.w700),
+        Center(
+          child: TextButton(
+            onPressed: () => _showComoFunciona(context),
+            child: const Text(
+              'Como funciona?',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
         ),
         const SizedBox(height: BrandTokens.spaceLg),
 
         // Stats
-        Container(
-          padding: const EdgeInsets.all(BrandTokens.spaceMd),
-          decoration: BoxDecoration(
-            color: isDark
-                ? BrandTokens.surfaceDark
-                : BrandTokens.surface,
-            borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
-            border: Border.all(
-              color: isDark ? Colors.white12 : BrandTokens.divider,
-            ),
-            boxShadow: BrandTokens.elevation1,
+        _StatsCard(data: data, isDark: isDark),
+        const SizedBox(height: BrandTokens.spaceLg),
+
+        // Timeline
+        const _TimelineSection(),
+      ],
+    );
+  }
+}
+
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({
+    required this.data,
+    required this.onCopyCodigo,
+    required this.onCopyLink,
+  });
+  final IndicacaoMeuDto data;
+  final VoidCallback onCopyCodigo;
+  final VoidCallback? onCopyLink;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(BrandTokens.spaceLg),
+      decoration: BoxDecoration(
+        gradient: BrandTokens.gradientHero,
+        borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
+        boxShadow: BrandTokens.elevation2,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.card_giftcard_rounded, color: Colors.white, size: 22),
+              SizedBox(width: BrandTokens.spaceSm),
+              Text(
+                'Seu código',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
+            ],
           ),
-          child: Column(
+          const SizedBox(height: BrandTokens.spaceMd),
+          Text(
+            data.codigo,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 42,
+              letterSpacing: 6,
+            ),
+          ),
+          const SizedBox(height: BrandTokens.spaceMd),
+          Row(
+            children: [
+              Expanded(
+                child: _SmallActionButton(
+                  icon: Icons.copy_rounded,
+                  label: 'Copiar código',
+                  onTap: onCopyCodigo,
+                ),
+              ),
+              if (onCopyLink != null) ...[
+                const SizedBox(width: BrandTokens.spaceSm),
+                Expanded(
+                  child: _SmallActionButton(
+                    icon: Icons.link_rounded,
+                    label: 'Copiar link',
+                    onTap: onCopyLink!,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MilestoneCard extends StatelessWidget {
+  const _MilestoneCard({required this.milestone, required this.isDark});
+  final IndicacaoMilestoneDto milestone;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final atingido = milestone.atingido;
+    final headline = atingido
+        ? '🎉 Você desbloqueou ${milestone.recompensa}!'
+        : '${milestone.faltam} ${milestone.faltam == 1 ? 'indicação' : 'indicações'} pra ganhar ${milestone.recompensa}';
+    final sub = atingido
+        ? 'Fale com o suporte pra aplicar o benefício na sua próxima fatura.'
+        : '${milestone.atingidos} de ${milestone.alvo} amigos já fecharam plano com seu código.';
+
+    return Container(
+      padding: const EdgeInsets.all(BrandTokens.spaceMd),
+      decoration: BoxDecoration(
+        color: atingido
+            ? BrandTokens.success.withOpacity(0.10)
+            : (isDark ? BrandTokens.surfaceDark : BrandTokens.surface),
+        borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
+        border: Border.all(
+          color: atingido
+              ? BrandTokens.success.withOpacity(0.40)
+              : (isDark ? Colors.white12 : BrandTokens.divider),
+        ),
+        boxShadow: BrandTokens.elevation1,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            headline,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            sub,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: BrandTokens.textSecondary,
+                ),
+          ),
+          const SizedBox(height: BrandTokens.spaceMd),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: milestone.progresso.toDouble(),
+              minHeight: 12,
+              backgroundColor: isDark
+                  ? Colors.white12
+                  : BrandTokens.primary.withOpacity(0.10),
+              valueColor: AlwaysStoppedAnimation(
+                atingido ? BrandTokens.success : BrandTokens.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Suas indicações',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                '${milestone.atingidos}',
+                style: TextStyle(
+                  color: BrandTokens.textSecondary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                ),
               ),
-              const SizedBox(height: BrandTokens.spaceMd),
-              Row(
-                children: [
-                  Expanded(
-                    child: _Stat(
-                      label: 'Cliques',
-                      value: '${data.usos}',
-                      color: BrandTokens.info,
-                    ),
-                  ),
-                  Expanded(
-                    child: _Stat(
-                      label: 'Convertidos',
-                      value: '${data.convertidos}',
-                      color: BrandTokens.warning,
-                    ),
-                  ),
-                  Expanded(
-                    child: _Stat(
-                      label: 'Creditados',
-                      value: '${data.creditoAplicado}',
-                      color: BrandTokens.success,
-                    ),
-                  ),
-                ],
+              Text(
+                '${milestone.alvo}',
+                style: const TextStyle(
+                  color: BrandTokens.textSecondary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                ),
               ),
-              if (data.usos == 0) ...[
-                const SizedBox(height: BrandTokens.spaceMd),
-                Text(
-                  'Compartilhe seu código pra comecar a aparecer aqui.',
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatsCard extends StatelessWidget {
+  const _StatsCard({required this.data, required this.isDark});
+  final IndicacaoMeuDto data;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(BrandTokens.spaceMd),
+      decoration: BoxDecoration(
+        color: isDark ? BrandTokens.surfaceDark : BrandTokens.surface,
+        borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
+        border: Border.all(
+          color: isDark ? Colors.white12 : BrandTokens.divider,
+        ),
+        boxShadow: BrandTokens.elevation1,
+      ),
+      child: Column(
+        children: [
+          Text(
+            'Suas indicações',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: BrandTokens.spaceMd),
+          Row(
+            children: [
+              Expanded(
+                child: _Stat(
+                  label: 'Cliques',
+                  value: '${data.usos}',
+                  color: BrandTokens.info,
+                ),
+              ),
+              Expanded(
+                child: _Stat(
+                  label: 'Convertidos',
+                  value: '${data.convertidos}',
+                  color: BrandTokens.warning,
+                ),
+              ),
+              Expanded(
+                child: _Stat(
+                  label: 'Creditados',
+                  value: '${data.creditoAplicado}',
+                  color: BrandTokens.success,
+                ),
+              ),
+            ],
+          ),
+          if (data.usos == 0) ...[
+            const SizedBox(height: BrandTokens.spaceMd),
+            Text(
+              'Compartilhe seu código pra começar a aparecer aqui.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: BrandTokens.textSecondary,
+                  ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineSection extends ConsumerWidget {
+  const _TimelineSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(indicacaoTimelineProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Atividade recente',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+        ),
+        const SizedBox(height: BrandTokens.spaceSm),
+        async.when(
+          data: (items) {
+            if (items.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(BrandTokens.spaceLg),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: BrandTokens.surface,
+                  borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
+                  border: Border.all(color: BrandTokens.divider),
+                ),
+                child: Text(
+                  'Nada aqui ainda. Quando alguém usar seu código, a atividade aparece neste lugar.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: BrandTokens.textSecondary,
                       ),
                 ),
+              );
+            }
+            return Column(
+              children: [
+                for (final it in items) _TimelineTile(item: it),
               ],
-            ],
+            );
+          },
+          loading: () => const Padding(
+            padding: EdgeInsets.all(BrandTokens.spaceLg),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (_, __) => Text(
+            'Não consegui carregar a atividade.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: BrandTokens.danger,
+                ),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _TimelineTile extends StatelessWidget {
+  const _TimelineTile({required this.item});
+  final IndicacaoTimelineItemDto item;
+
+  ({Color color, IconData icon, String label, DateTime when}) get _meta {
+    switch (item.status) {
+      case 'creditado':
+        return (
+          color: BrandTokens.success,
+          icon: Icons.verified_rounded,
+          label: 'Crédito aplicado',
+          when: item.creditoAplicadoEm ?? item.criadoEm,
+        );
+      case 'convertido':
+        return (
+          color: BrandTokens.warning,
+          icon: Icons.handshake_rounded,
+          label: 'Virou cliente',
+          when: item.convertidoEm ?? item.criadoEm,
+        );
+      default:
+        return (
+          color: BrandTokens.info,
+          icon: Icons.touch_app_rounded,
+          label: 'Recebido no funil',
+          when: item.criadoEm,
+        );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = _meta;
+    final df = DateFormat('dd/MM');
+    return Container(
+      margin: const EdgeInsets.only(bottom: BrandTokens.spaceSm),
+      padding: const EdgeInsets.all(BrandTokens.spaceMd),
+      decoration: BoxDecoration(
+        color: BrandTokens.surface,
+        borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+        border: Border.all(color: BrandTokens.divider),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: meta.color.withOpacity(0.14),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Icon(meta.icon, color: meta.color, size: 18),
+          ),
+          const SizedBox(width: BrandTokens.spaceMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.nomeMascarado,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  meta.label,
+                  style: const TextStyle(
+                    color: BrandTokens.textSecondary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            df.format(meta.when),
+            style: const TextStyle(
+              color: BrandTokens.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

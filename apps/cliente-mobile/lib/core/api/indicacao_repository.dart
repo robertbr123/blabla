@@ -14,6 +14,14 @@ class IndicacaoRepository {
     return IndicacaoMeuDto.fromJson(r.data as Map<String, dynamic>);
   }
 
+  Future<List<IndicacaoTimelineItemDto>> getTimeline() async {
+    final r = await _dio.get('$_base/timeline');
+    final list = ((r.data as Map)['items'] as List? ?? const [])
+        .map((j) => IndicacaoTimelineItemDto.fromJson(j as Map<String, dynamic>))
+        .toList();
+    return list;
+  }
+
   /// Registra que o usuario tocou "Compartilhar via WhatsApp" na tela.
   /// Best-effort — falha nao trava o share.
   Future<void> registrarShare() async {
@@ -31,4 +39,9 @@ final indicacaoRepositoryProvider = Provider<IndicacaoRepository>(
 
 final indicacaoMeuProvider = FutureProvider<IndicacaoMeuDto>(
   (ref) => ref.watch(indicacaoRepositoryProvider).getMeu(),
+);
+
+final indicacaoTimelineProvider =
+    FutureProvider<List<IndicacaoTimelineItemDto>>(
+  (ref) => ref.watch(indicacaoRepositoryProvider).getTimeline(),
 );

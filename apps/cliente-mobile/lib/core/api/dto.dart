@@ -443,6 +443,29 @@ class PromocaoDto {
   final String? icon;
 }
 
+class IndicacaoMilestoneDto {
+  IndicacaoMilestoneDto({
+    required this.atingidos,
+    required this.alvo,
+    required this.recompensa,
+    required this.atingido,
+  });
+  factory IndicacaoMilestoneDto.fromJson(Map<String, dynamic> j) =>
+      IndicacaoMilestoneDto(
+        atingidos: (j['atingidos'] as int?) ?? 0,
+        alvo: (j['alvo'] as int?) ?? 3,
+        recompensa: (j['recompensa'] as String?) ?? '1 mês grátis',
+        atingido: (j['atingido'] as bool?) ?? false,
+      );
+  final int atingidos;
+  final int alvo;
+  final String recompensa;
+  final bool atingido;
+
+  double get progresso => alvo <= 0 ? 0 : (atingidos / alvo).clamp(0, 1);
+  int get faltam => (alvo - atingidos).clamp(0, alvo);
+}
+
 class IndicacaoMeuDto {
   IndicacaoMeuDto({
     required this.codigo,
@@ -451,6 +474,7 @@ class IndicacaoMeuDto {
     required this.usos,
     required this.convertidos,
     required this.creditoAplicado,
+    required this.milestone,
   });
   factory IndicacaoMeuDto.fromJson(Map<String, dynamic> j) => IndicacaoMeuDto(
         codigo: j['codigo'] as String,
@@ -459,6 +483,16 @@ class IndicacaoMeuDto {
         usos: (j['usos'] as int?) ?? 0,
         convertidos: (j['convertidos'] as int?) ?? 0,
         creditoAplicado: (j['credito_aplicado'] as int?) ?? 0,
+        milestone: j['milestone'] != null
+            ? IndicacaoMilestoneDto.fromJson(
+                j['milestone'] as Map<String, dynamic>,
+              )
+            : IndicacaoMilestoneDto(
+                atingidos: (j['convertidos'] as int?) ?? 0,
+                alvo: 3,
+                recompensa: '1 mês grátis',
+                atingido: ((j['convertidos'] as int?) ?? 0) >= 3,
+              ),
       );
   final String codigo;
   final String linkCompartilhamento;
@@ -466,6 +500,37 @@ class IndicacaoMeuDto {
   final int usos;
   final int convertidos;
   final int creditoAplicado;
+  final IndicacaoMilestoneDto milestone;
+}
+
+class IndicacaoTimelineItemDto {
+  IndicacaoTimelineItemDto({
+    required this.id,
+    required this.nomeMascarado,
+    required this.status,
+    required this.criadoEm,
+    this.convertidoEm,
+    this.creditoAplicadoEm,
+  });
+  factory IndicacaoTimelineItemDto.fromJson(Map<String, dynamic> j) =>
+      IndicacaoTimelineItemDto(
+        id: j['id'] as String,
+        nomeMascarado: j['nome_mascarado'] as String,
+        status: j['status'] as String,
+        criadoEm: DateTime.parse(j['criado_em'] as String),
+        convertidoEm: j['convertido_em'] != null
+            ? DateTime.parse(j['convertido_em'] as String)
+            : null,
+        creditoAplicadoEm: j['credito_aplicado_em'] != null
+            ? DateTime.parse(j['credito_aplicado_em'] as String)
+            : null,
+      );
+  final String id;
+  final String nomeMascarado;
+  final String status; // 'clique' | 'convertido' | 'creditado'
+  final DateTime criadoEm;
+  final DateTime? convertidoEm;
+  final DateTime? creditoAplicadoEm;
 }
 
 class ConexaoDto {

@@ -40,6 +40,7 @@ dependencies:
   intl: ^0.20.2
   qr_flutter: ^4.1.0
   share_plus: ^10.1.2
+  path_provider: ^2.1.5
 
   # Home screen widget (Android primeiro; iOS WidgetKit numa onda futura)
   home_widget: ^0.7.0

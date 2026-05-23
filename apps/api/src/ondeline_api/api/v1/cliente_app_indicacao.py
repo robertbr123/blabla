@@ -6,6 +6,7 @@ WhatsApp pronto pra compartilhar.
 """
 from __future__ import annotations
 
+from datetime import datetime
 from urllib.parse import quote
 
 import structlog
@@ -16,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.auth.cliente_deps import get_current_cliente_user
 from ondeline_api.config import get_settings
+from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.business import (
     Cliente,
     Config,
@@ -27,10 +29,23 @@ from ondeline_api.repositories.indicacao import IndicacaoRepo
 
 log = structlog.get_logger(__name__)
 
+# Milestone V1: hardcoded. Cliente atinge 3 convertidos -> 1 mes gratis
+# (resgate manual pelo whatsapp, admin aplica no SGP). Mesmo padrao
+# operacional do programa de fidelidade.
+META_CONVERTIDOS = 3
+RECOMPENSA_LABEL = "1 mês grátis"
+
 router = APIRouter(
     prefix="/api/v1/cliente-app/indicacao",
     tags=["cliente-app:indicacao"],
 )
+
+
+class MilestoneOut(BaseModel):
+    atingidos: int
+    alvo: int
+    recompensa: str
+    atingido: bool
 
 
 class IndicacaoMeOut(BaseModel):
@@ -41,6 +56,20 @@ class IndicacaoMeOut(BaseModel):
     convertidos: int
     credito_aplicado: int  # quantos usos ja viraram credito (proxy do R$)
     shares_app: int  # quantas vezes user tocou "Compartilhar" na tela in-app
+    milestone: MilestoneOut
+
+
+class TimelineItemOut(BaseModel):
+    id: str
+    nome_mascarado: str  # "M*** S***" ou "Lead recebido"
+    status: str  # 'clique' | 'convertido' | 'creditado'
+    criado_em: datetime
+    convertido_em: datetime | None = None
+    credito_aplicado_em: datetime | None = None
+
+
+class TimelineOut(BaseModel):
+    items: list[TimelineItemOut]
 
 
 class IndicacaoShareOut(BaseModel):
@@ -120,7 +149,87 @@ async def get_meu(
         convertidos=convertidos,
         credito_aplicado=creditados,
         shares_app=ind.shares_app,
+        milestone=MilestoneOut(
+            atingidos=convertidos,
+            alvo=META_CONVERTIDOS,
+            recompensa=RECOMPENSA_LABEL,
+            atingido=convertidos >= META_CONVERTIDOS,
+        ),
     )
+
+
+def _mask_nome(nome: str) -> str:
+    """Transforma 'Maria Silva Santos' em 'M*** S***'.
+
+    Pega primeira letra dos 2 primeiros tokens (>=2 chars). Quando o nome
+    e muito curto ou vazio, devolve fallback.
+    """
+    if not nome or not nome.strip():
+        return "Cliente"
+    tokens = [t for t in nome.strip().split() if len(t) >= 2]
+    if not tokens:
+        return "Cliente"
+    pieces = [f"{t[0].upper()}***" for t in tokens[:2]]
+    return " ".join(pieces)
+
+
+@router.get("/timeline", response_model=TimelineOut)
+async def get_timeline(
+    user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> TimelineOut:
+    """Ultimos 20 usos do codigo de indicacao do cliente atual.
+
+    Devolve nomes mascarados (M*** S***) quando ha cliente_indicado_id
+    resolvel. Senao, devolve "Lead recebido" (chegou no funil mas ainda
+    nao virou cliente).
+    """
+    cliente = await _resolve_cliente(user, session)
+    if cliente is None:
+        return TimelineOut(items=[])
+
+    repo = IndicacaoRepo(session)
+    ind = await repo.get_or_create_para_cliente(cliente.id)
+
+    stmt = (
+        select(IndicacaoUso, Cliente)
+        .outerjoin(Cliente, Cliente.id == IndicacaoUso.cliente_indicado_id)
+        .where(IndicacaoUso.indicacao_id == ind.id)
+        .order_by(IndicacaoUso.criado_em.desc())
+        .limit(20)
+    )
+    rows = (await session.execute(stmt)).all()
+
+    items: list[TimelineItemOut] = []
+    for uso, cli in rows:
+        if cli is not None:
+            try:
+                nome_claro = decrypt_pii(cli.nome_encrypted)
+            except Exception:  # noqa: BLE001
+                nome_claro = ""
+            nome = _mask_nome(nome_claro)
+        else:
+            nome = "Lead recebido"
+
+        if uso.credito_aplicado_em is not None:
+            status = "creditado"
+        elif uso.convertido_em is not None:
+            status = "convertido"
+        else:
+            status = "clique"
+
+        items.append(
+            TimelineItemOut(
+                id=str(uso.id),
+                nome_mascarado=nome,
+                status=status,
+                criado_em=uso.criado_em,
+                convertido_em=uso.convertido_em,
+                credito_aplicado_em=uso.credito_aplicado_em,
+            )
+        )
+
+    return TimelineOut(items=items)
 
 
 @router.post("/share", response_model=IndicacaoShareOut)
