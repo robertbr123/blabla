@@ -103,6 +103,27 @@ class EvolutionAdapter:
         }
         return await self._post(f"/message/sendMedia/{self._instance}", payload)
 
+    async def send_template(
+        self,
+        jid: str,
+        *,
+        name: str,
+        language: str = "pt_BR",
+        body_params: list[str] | None = None,
+        header_media_url: str | None = None,
+        header_media_type: str | None = None,
+    ) -> dict[str, Any]:
+        """Evolution nao tem o conceito de TEMPLATE da Meta.
+
+        Levanta ``NotImplementedError`` — o caller (notify_sender) deve fazer
+        fallback pra ``send_text`` com o texto renderizado localmente. A regra
+        de janela 24h da Meta nao se aplica a Evolution (Baileys envia sempre).
+        """
+        raise NotImplementedError(
+            "Evolution adapter does not support TEMPLATE messages — "
+            "render text locally and call send_text instead"
+        )
+
     async def get_media_base64(
         self, *, message_key: dict[str, Any], convert_to_mp4: bool = False
     ) -> tuple[bytes, str]:

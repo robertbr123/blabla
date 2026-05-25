@@ -11,7 +11,11 @@ from uuid import UUID
 
 import structlog
 
-from ondeline_api.adapters.evolution import EvolutionAdapter, EvolutionError
+from ondeline_api.adapters.whatsapp import (
+    CloudAdapter,
+    WhatsAppAdapter,
+    WhatsAppError,
+)
 from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.business import (
     Cliente,
@@ -21,6 +25,7 @@ from ondeline_api.db.models.business import (
 )
 from ondeline_api.repositories.conversa import ConversaRepo
 from ondeline_api.repositories.notificacao import NotificacaoRepo
+from ondeline_api.services.whatsapp_templates import spec_for
 
 log = structlog.get_logger(__name__)
 
@@ -110,30 +115,60 @@ def render_message(n: Notificacao, cliente_nome: str) -> str:
 
 async def send_one(
     session: Any,
-    evolution: EvolutionAdapter,
+    adapter: WhatsAppAdapter,
     notificacao: Notificacao,
     cliente: Cliente,
 ) -> bool:
     """Render + send one notification. Marks as sent or failed.
 
-    Returns True if sent, False if failed (e.g., EvolutionError).
+    Estrategia provider-aware:
+    - Cloud (Meta) + spec de template existe: envia TEMPLATE (unica forma fora
+      da janela 24h). Se falhar com NotImplementedError, cai pra texto livre
+      (defesa contra bug de wiring).
+    - Evolution OU spec ausente: render_message() + send_text.
+
+    Returns True if sent, False if failed.
     """
     repo = NotificacaoRepo(session)
     try:
-        nome = decrypt_pii(cliente.nome_encrypted) if cliente.nome_encrypted else "Cliente"
+        nome_full = decrypt_pii(cliente.nome_encrypted) if cliente.nome_encrypted else "Cliente"
     except Exception as e:
         log.warning("notify.decrypt_failed", error=str(e))
-        nome = "Cliente"
+        nome_full = "Cliente"
+    nome_parts = (nome_full or "").split()
+    primeiro_nome = nome_parts[0] if nome_parts else "Cliente"
 
     if not cliente.whatsapp:
         log.warning("notify.no_whatsapp", notif_id=str(notificacao.id))
         await repo.mark_failed(notificacao)
         return False
 
-    text = render_message(notificacao, nome)
+    spec = spec_for(notificacao.tipo)
+    use_template = isinstance(adapter, CloudAdapter) and spec is not None
+
     try:
-        await evolution.send_text(cliente.whatsapp, text)
-    except EvolutionError as e:
+        if use_template and spec is not None:
+            body_params = spec.body_params_fn(notificacao, primeiro_nome)
+            header_media: tuple[str, str] | None = None
+            if spec.header_media_fn is not None:
+                header_media = spec.header_media_fn(notificacao)
+            await adapter.send_template(
+                cliente.whatsapp,
+                name=spec.name,
+                language=spec.language,
+                body_params=body_params,
+                header_media_url=header_media[0] if header_media else None,
+                header_media_type=header_media[1] if header_media else None,
+            )
+            log.info(
+                "notify.sent_template",
+                notif_id=str(notificacao.id),
+                template=spec.name,
+            )
+        else:
+            text = render_message(notificacao, nome_full)
+            await adapter.send_text(cliente.whatsapp, text)
+    except WhatsAppError as e:
         log.warning("notify.send_failed", notif_id=str(notificacao.id), error=str(e))
         await repo.mark_failed(notificacao)
         return False

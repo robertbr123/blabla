@@ -47,6 +47,17 @@ class WhatsAppAdapter(Protocol):
         caption: str = "",
     ) -> SendResult: ...
 
+    async def send_template(
+        self,
+        jid: str,
+        *,
+        name: str,
+        language: str = "pt_BR",
+        body_params: list[str] | None = None,
+        header_media_url: str | None = None,
+        header_media_type: str | None = None,
+    ) -> SendResult: ...
+
     async def get_media_base64(
         self, *, message_key: dict[str, Any], convert_to_mp4: bool = False
     ) -> tuple[bytes, str]: ...
