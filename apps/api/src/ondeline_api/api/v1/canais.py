@@ -42,7 +42,10 @@ async def create_canal(
     canal = Canal(
         slug=body.slug,
         nome=body.nome,
+        provider=body.provider,
         evolution_instance=body.evolution_instance,
+        cloud_phone_id=body.cloud_phone_id,
+        cloud_waba_id=body.cloud_waba_id,
         prompt_variant=body.prompt_variant,
         ativo=body.ativo,
         horario_inicio=body.horario_inicio,
@@ -55,7 +58,7 @@ async def create_canal(
     except IntegrityError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="slug ou evolution_instance ja em uso",
+            detail="slug, evolution_instance ou cloud_phone_id ja em uso",
         ) from e
     return CanalOut.model_validate(canal)
 
@@ -81,6 +84,6 @@ async def update_canal(
     except IntegrityError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="evolution_instance ja em uso por outro canal",
+            detail="evolution_instance ou cloud_phone_id ja em uso por outro canal",
         ) from e
     return CanalOut.model_validate(canal)

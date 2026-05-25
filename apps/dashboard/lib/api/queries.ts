@@ -97,6 +97,30 @@ export function useCanais() {
   })
 }
 
+export function useCreateCanal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: import('./types').CanalCreate) =>
+      apiFetch<import('./types').CanalOut>('/api/v1/canais', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['canais'] }),
+  })
+}
+
+export function usePatchCanal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: import('./types').CanalUpdate }) =>
+      apiFetch<import('./types').CanalOut>(`/api/v1/canais/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['canais'] }),
+  })
+}
+
 // F6 — Estoque
 export function useEstoqueItens(ativosOnly = false) {
   return useQuery<import('./types').EstoqueItem[]>({

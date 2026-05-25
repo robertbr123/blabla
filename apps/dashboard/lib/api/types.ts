@@ -364,18 +364,50 @@ export interface PlanoOut extends PlanoIn {
   index: number
 }
 
-// Canais (F4)
+// Canais (F4 + Cloud API)
+export type CanalProvider = 'evolution' | 'cloud'
+
 export interface CanalOut {
   id: string
   slug: string
   nome: string
-  evolution_instance: string
+  provider: CanalProvider
+  evolution_instance: string | null
+  cloud_phone_id: string | null
+  cloud_waba_id: string | null
   prompt_variant: string
   ativo: boolean
   horario_inicio: string | null
   horario_fim: string | null
   msg_fora_horario: string | null
   created_at: string
+}
+
+export interface CanalCreate {
+  slug: string
+  nome: string
+  provider: CanalProvider
+  evolution_instance?: string | null
+  cloud_phone_id?: string | null
+  cloud_waba_id?: string | null
+  prompt_variant?: string
+  ativo?: boolean
+  horario_inicio?: string | null
+  horario_fim?: string | null
+  msg_fora_horario?: string | null
+}
+
+export interface CanalUpdate {
+  nome?: string
+  provider?: CanalProvider
+  evolution_instance?: string | null
+  cloud_phone_id?: string | null
+  cloud_waba_id?: string | null
+  prompt_variant?: string
+  ativo?: boolean
+  horario_inicio?: string | null
+  horario_fim?: string | null
+  msg_fora_horario?: string | null
 }
 
 // Estoque (F6)
