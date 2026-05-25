@@ -105,8 +105,9 @@ services:
     container_name: blabla-dashboard
     env_file:
       - .env
+    # Bind so localhost — acessivel apenas via nginx (proxy_pass http://127.0.0.1:3002)
     ports:
-      - "3002:3000"
+      - "127.0.0.1:3002:3000"
     depends_on:
       - api
     restart: unless-stopped
@@ -117,8 +118,9 @@ services:
     container_name: blabla-tecnico-pwa
     env_file:
       - .env
+    # Bind so localhost — acessivel apenas via nginx (proxy_pass http://127.0.0.1:3003)
     ports:
-      - "3003:3000"
+      - "127.0.0.1:3003:3000"
     depends_on:
       - api
     restart: unless-stopped
