@@ -23,6 +23,7 @@ from ondeline_api.services.inbound import (
     process_inbound_message,
 )
 from ondeline_api.webhook.parser import ParseError, parse_messages_upsert
+from ondeline_api.webhook.parser_cloud import iter_cloud_messages
 from ondeline_api.workers.celery_app import celery_app
 from ondeline_api.workers.runtime import (
     BufferedOutboundEnqueuer,
@@ -35,8 +36,21 @@ log = structlog.get_logger(__name__)
 
 
 async def _run(payload: dict[str, Any]) -> dict[str, Any]:
+    # Detecta provider pelo shape do payload:
+    # - Cloud API (Meta): {"object": "whatsapp_business_account", "entry": [...]}
+    # - Evolution: {"event": "messages.upsert", "data": {...}}
+    is_cloud = payload.get("object") == "whatsapp_business_account"
     try:
-        evt = parse_messages_upsert(payload)
+        if is_cloud:
+            events = iter_cloud_messages(payload)
+            if not events:
+                return {"skipped": "no_messages_in_cloud_payload"}
+            # Webhook Cloud em geral traz 1 mensagem; processa todas se vierem mais.
+            evt = events[0]
+            extra_events = events[1:]
+        else:
+            evt = parse_messages_upsert(payload)
+            extra_events = []
     except ParseError as e:
         log.warning("inbound.parse_error", error=str(e))
         return {"skipped": "parse_error", "error": str(e)}
@@ -58,6 +72,10 @@ async def _run(payload: dict[str, Any]) -> dict[str, Any]:
             session=session,
         )
         result: InboundResult = await process_inbound_message(evt, deps)
+        # Cloud API as vezes envia >1 message no mesmo payload — processa em
+        # sequencia. Cada uma roda sua propria logica de dedup/persistencia.
+        for extra in extra_events:
+            await process_inbound_message(extra, deps)
     # Session committed — safe to dispatch outbound tasks now.
     outbound_buf.flush()
 

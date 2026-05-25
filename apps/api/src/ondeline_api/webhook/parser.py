@@ -32,6 +32,13 @@ class InboundEvent:
     text: str | None
     from_me: bool
     instance: str = ""  # F4 — Evolution instance ("canal" do payload). Vazio = canal default.
+    # Cloud API (Meta): identificador de media inbound — usado pra baixar o
+    # binario depois via /{media_id}. Vazio em payloads Evolution (la a media
+    # eh resolvida pelo proprio message_key {id, remoteJid, fromMe}).
+    media_id: str | None = None
+    # Cloud API: phone_number_id de quem recebeu a mensagem. Permite rotear
+    # ao canal correto via CanalRepo.get_by_cloud_phone_id. Vazio = Evolution.
+    cloud_phone_id: str = ""
 
 
 def _truthy(v: Any) -> bool:

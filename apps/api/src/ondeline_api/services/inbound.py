@@ -1321,14 +1321,21 @@ async def process_inbound_message(
             # tempo suficiente pro cliente perceber o "digitando..." no WhatsApp.
             # ACK gerava ruido em conversas com varios audios seguidos.
             msg.transcricao_status = "pending"
-            deps.outbound.enqueue_asr(
-                mensagem_id=msg.id,
-                conversa_id=conversa.id,
-                message_key={
+            # message_key shape e provider-especifico: Evolution usa o trio
+            # {id, remoteJid, fromMe}; Cloud usa {media_id}. O ASR worker passa
+            # esse dict opaco direto pro adapter.get_media_base64.
+            if evt.media_id:
+                message_key = {"media_id": evt.media_id}
+            else:
+                message_key = {
                     "id": evt.external_id,
                     "remoteJid": evt.jid,
                     "fromMe": False,
-                },
+                }
+            deps.outbound.enqueue_asr(
+                mensagem_id=msg.id,
+                conversa_id=conversa.id,
+                message_key=message_key,
             )
             return InboundResult(
                 conversa_id=conversa.id, persisted=True, duplicate=False, escalated=False
