@@ -21,6 +21,15 @@ class CanalRepo:
         stmt = select(Canal).where(Canal.evolution_instance == instance)
         return (await self._s.execute(stmt)).scalar_one_or_none()
 
+    async def get_by_cloud_phone_id(self, phone_id: str) -> Canal | None:
+        """Lookup por phone_number_id da Cloud API (Meta).
+
+        Usado pelo webhook /webhook/whatsapp-cloud pra rotear o evento
+        ao canal certo (PR3).
+        """
+        stmt = select(Canal).where(Canal.cloud_phone_id == phone_id)
+        return (await self._s.execute(stmt)).scalar_one_or_none()
+
     async def get_by_slug(self, slug: str) -> Canal | None:
         stmt = select(Canal).where(Canal.slug == slug)
         return (await self._s.execute(stmt)).scalar_one_or_none()

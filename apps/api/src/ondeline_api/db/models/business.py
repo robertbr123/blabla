@@ -114,9 +114,15 @@ class Canal(Base):
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
     slug: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
     nome: Mapped[str] = mapped_column(String(80), nullable=False)
-    evolution_instance: Mapped[str] = mapped_column(
-        String(80), nullable=False, unique=True
+    # 'evolution' (Baileys self-hosted) | 'cloud' (Meta Cloud API oficial)
+    provider: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="evolution", server_default="evolution"
     )
+    # Evolution: obrigatorio se provider='evolution'. UNIQUE parcial via index (migration 0041).
+    evolution_instance: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    # Cloud API (Meta): obrigatorios se provider='cloud'. UNIQUE parcial em cloud_phone_id.
+    cloud_phone_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    cloud_waba_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     prompt_variant: Mapped[str] = mapped_column(
         String(40), nullable=False, default="default", server_default="default"
     )
