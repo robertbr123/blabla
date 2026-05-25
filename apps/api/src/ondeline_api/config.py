@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     evolution_instance: str = "hermes-wa"
     evolution_ip_allowlist: str = ""  # CSV; vazio = sem allowlist
 
+    # WhatsApp Cloud API (Meta) — populado no PR3+; defaults vazios sao OK
+    # enquanto nao houver canal com provider='cloud'.
+    whatsapp_cloud_access_token: str = ""
+    whatsapp_cloud_verify_token: str = ""  # handshake webhook GET
+    whatsapp_cloud_app_secret: str = ""  # X-Hub-Signature-256
+    whatsapp_cloud_graph_version: str = "v21.0"
+
     # Webhook
     webhook_max_body_bytes: int = 1_048_576  # 1 MB
     webhook_rate_limit: str = "100/minute"
