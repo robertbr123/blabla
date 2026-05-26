@@ -25,7 +25,10 @@ from ondeline_api.observability.metrics import (
     webhook_received_total,
 )
 from ondeline_api.webhook.hmac import verify_signature
-from ondeline_api.webhook.parser_cloud import iter_cloud_messages
+from ondeline_api.webhook.parser_cloud import (
+    iter_cloud_messages,
+    iter_cloud_statuses,
+)
 from ondeline_api.workers.inbound import process_inbound_message_task
 
 log = structlog.get_logger(__name__)
@@ -100,21 +103,44 @@ async def whatsapp_cloud_webhook(request: Request) -> JSONResponse:
             status_code=status.HTTP_400_BAD_REQUEST, detail="payload must be object"
         )
 
-    # 4) Extrai messages (ignora statuses, errors, etc)
+    # 4) Status updates (delivered/read/failed/sent) — apenas log, nao
+    # enfileira pra processamento. Ajuda a debugar entrega de midia em
+    # sandbox e identificar falhas de entrega em producao.
+    try:
+        statuses = iter_cloud_statuses(payload)
+    except Exception as e:
+        log.warning("webhook_cloud.statuses_parse_error", error=str(e))
+        statuses = []
+    for st in statuses:
+        if st["status"] == "failed":
+            log.warning(
+                "webhook_cloud.message_failed",
+                msg_id=st["id"],
+                recipient=st["recipient_id"],
+                errors=st["errors"],
+            )
+        else:
+            log.info(
+                "webhook_cloud.message_status",
+                msg_id=st["id"],
+                status=st["status"],
+                recipient=st["recipient_id"],
+            )
+
+    # 5) Extrai messages inbound
     try:
         events = iter_cloud_messages(payload)
     except Exception as e:
         log.warning("webhook_cloud.parse_error", error=str(e))
-        # Retorna 200 mesmo assim pra evitar Meta marcar webhook como down
         return JSONResponse(
             {"status": "ignored", "reason": "parse_error"},
             status_code=status.HTTP_200_OK,
         )
 
     if not events:
-        # Provavelmente um status update — ack e segue
+        # Sem messages — pode ter sido so status update (ja logado acima)
         return JSONResponse(
-            {"status": "ignored", "reason": "no_messages"},
+            {"status": "ignored", "reason": "no_messages", "statuses": len(statuses)},
             status_code=status.HTTP_200_OK,
         )
 

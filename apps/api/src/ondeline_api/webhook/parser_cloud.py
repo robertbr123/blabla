@@ -49,6 +49,53 @@ _TYPE_MAP: dict[str, InboundKind] = {
 }
 
 
+def iter_cloud_statuses(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Itera por todos os status updates (delivered/read/failed/sent) do payload.
+
+    Status updates vem em ``entry[].changes[].value.statuses[]`` quando o Meta
+    notifica sobre o ciclo de vida de uma mensagem outbound:
+
+    - ``sent``: Meta aceitou e ta encaminhando
+    - ``delivered``: chegou no celular do destinatario
+    - ``read``: cliente abriu a conversa
+    - ``failed``: falha de entrega (com codigo de erro em ``errors[]``)
+
+    Retorna lista de dicts achatados pra facilitar logging:
+        {"id": "wamid....", "status": "delivered", "timestamp": "...",
+         "recipient_id": "5511...", "errors": [...] | None}
+    """
+    out: list[dict[str, Any]] = []
+    if payload.get("object") != "whatsapp_business_account":
+        return out
+    for entry in payload.get("entry") or []:
+        if not isinstance(entry, dict):
+            continue
+        for change in entry.get("changes") or []:
+            if not isinstance(change, dict):
+                continue
+            if change.get("field") != "messages":
+                continue
+            value = change.get("value") or {}
+            if not isinstance(value, dict):
+                continue
+            statuses = value.get("statuses") or []
+            if not isinstance(statuses, list):
+                continue
+            for st in statuses:
+                if not isinstance(st, dict):
+                    continue
+                out.append(
+                    {
+                        "id": str(st.get("id") or ""),
+                        "status": str(st.get("status") or ""),
+                        "timestamp": str(st.get("timestamp") or ""),
+                        "recipient_id": str(st.get("recipient_id") or ""),
+                        "errors": st.get("errors"),
+                    }
+                )
+    return out
+
+
 def parse_cloud_message(payload: dict[str, Any]) -> InboundEvent:
     """Extrai a primeira mensagem de um payload Cloud API.
 
