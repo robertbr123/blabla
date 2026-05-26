@@ -780,15 +780,21 @@ async def process_inbound_message(
             conversa_id=None, persisted=False, duplicate=False, escalated=False, skipped_reason="empty_text"
         )
 
-    # F4 — resolve canal pelo `instance` do payload Evolution. Se nao encontrado,
-    # cai pro canal default (slug='suporte') OU ``None`` se nada estiver setup.
+    # F4 / Cloud API — resolve canal pelo identificador do payload.
+    # Evolution traz `evt.instance`, Cloud API traz `evt.cloud_phone_id`.
+    # Se nao encontrado, cai pro canal default (slug='suporte') OU ``None``
+    # se nada estiver setup.
     canal_id: UUID | None = None
-    if deps.session is not None and evt.instance:
+    if deps.session is not None:
         from ondeline_api.repositories.canal import CanalRepo as _CanalRepo
 
         canal_repo = _CanalRepo(deps.session)
-        canal = await canal_repo.get_by_evolution_instance(evt.instance)
-        if canal is None:
+        canal = None
+        if evt.cloud_phone_id:
+            canal = await canal_repo.get_by_cloud_phone_id(evt.cloud_phone_id)
+        elif evt.instance:
+            canal = await canal_repo.get_by_evolution_instance(evt.instance)
+        if canal is None and (evt.instance or evt.cloud_phone_id):
             # fallback pro canal default
             canal = await canal_repo.get_by_slug("suporte")
         if canal is not None:
