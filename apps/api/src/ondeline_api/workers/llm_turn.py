@@ -21,10 +21,8 @@ from ondeline_api.adapters.sgp.ondeline import SgpOndelineProvider
 from ondeline_api.adapters.sgp.router import SgpRouter
 from ondeline_api.config import get_settings
 from ondeline_api.db.models.business import Cliente, Conversa
-from ondeline_api.services.canal_evolution import (
-    evolution_for_instance,
-    resolver_instance,
-)
+from ondeline_api.adapters.whatsapp import WhatsAppAdapter
+from ondeline_api.services.canal_whatsapp import adapter_for_conversa
 from ondeline_api.services.llm_loop import run_turn
 from ondeline_api.services.sgp_cache import SgpCacheService
 from ondeline_api.services.sgp_config import load_sgp_config
@@ -48,13 +46,14 @@ async def _run(conversa_id: UUID) -> dict[str, Any]:
     )
     budget = TokensBudget(redis, daily_limit=s.llm_max_tokens_per_conversa_dia)
     router: SgpRouter | None = None
-    evolution = None
+    evolution: WhatsAppAdapter | None = None
 
     try:
         async with task_session() as session:
-            # F4: resolve a instance Evolution dessa conversa.
-            instance = await resolver_instance(session, conversa_id, s)
-            evolution = evolution_for_instance(instance, s)
+            # F4 + Cloud: devolve EvolutionAdapter OU CloudAdapter conforme
+            # canal.provider da conversa. Variavel mantem nome 'evolution'
+            # por compat com ToolContext / 5+ call sites em llm_loop e tools.
+            evolution = await adapter_for_conversa(session, conversa_id, s)
             sgp_ond = await load_sgp_config(session, "ondeline")
             sgp_lnk = await load_sgp_config(session, "linknetam")
             router = SgpRouter(
