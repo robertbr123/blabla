@@ -47,6 +47,16 @@
                 android:resource="@xml/cliente_widget_info" />
         </receiver>
 
+        <!-- FCM: icone e canal usados quando o SO renderiza a notif sozinho
+             (app em background/fechado). O channel_id bate com o criado em
+             LocalNotifications, pra foreground e background usarem o mesmo. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="ondeline_default" />
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

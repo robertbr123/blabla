@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -22,9 +23,14 @@ import 'features/suporte/novo_chamado_screen.dart';
 import 'features/shell/main_shell.dart';
 import 'features/splash/splash_screen.dart';
 
+/// Chave global do Navigator raiz. Usada pra navegar de fora da arvore de
+/// widgets (ex: tap numa notificacao push, em [PushService]).
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/splash',
+    navigatorKey: rootNavigatorKey,
     refreshListenable: ref.watch(authRefreshProvider),
     redirect: (context, state) async {
       final loc = state.matchedLocation;
