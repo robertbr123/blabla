@@ -1,4 +1,9 @@
-"""Task Celery: envia mensagem do bot para Evolution + persiste em Mensagem(role=BOT)."""
+"""Task Celery: envia mensagem do bot via adapter provider-aware + persiste Mensagem(role=BOT).
+
+Resolve o canal da conversa (Evolution ou Cloud) e usa o WhatsAppAdapter
+correto. Caminho Evolution preservado: ``adapter_for_conversa`` devolve
+EvolutionAdapter quando ``canal.provider='evolution'``.
+"""
 from __future__ import annotations
 
 from typing import Any, cast
@@ -6,17 +11,14 @@ from uuid import UUID
 
 import structlog
 
-from ondeline_api.adapters.evolution import EvolutionError
+from ondeline_api.adapters.whatsapp import WhatsAppError
 from ondeline_api.config import get_settings
 from ondeline_api.observability.metrics import (
     evolution_send_failure_total,
     evolution_send_total,
 )
 from ondeline_api.repositories.mensagem import MensagemRepo
-from ondeline_api.services.canal_evolution import (
-    evolution_for_instance,
-    resolver_instance,
-)
+from ondeline_api.services.canal_whatsapp import adapter_for_conversa
 from ondeline_api.workers.celery_app import celery_app
 from ondeline_api.workers.runtime import get_redis, run_task, task_session
 
@@ -26,16 +28,18 @@ log = structlog.get_logger(__name__)
 async def _run(jid: str, text: str, conversa_id: UUID) -> dict[str, str]:
     settings = get_settings()
     async with task_session() as session:
-        # F4: resolve a instance Evolution correta pra essa conversa.
-        instance = await resolver_instance(session, conversa_id, settings)
-        adapter = evolution_for_instance(instance, settings)
+        # F4 + Cloud: devolve EvolutionAdapter OU CloudAdapter conforme
+        # canal.provider da conversa. Fallback pro Evolution default se
+        # conversa sem canal_id (legado).
+        adapter = await adapter_for_conversa(session, conversa_id, settings)
         try:
             result = await adapter.send_text(jid, text)
             evolution_send_total.inc()
-        except EvolutionError as e:
+        except WhatsAppError as e:
             evolution_send_failure_total.inc()
             log.error(
-                "outbound.send_failed", jid=jid, error=str(e), instance=instance
+                "outbound.send_failed", jid=jid, error=str(e),
+                adapter=type(adapter).__name__,
             )
             raise
         finally:
@@ -61,11 +65,23 @@ async def _run(jid: str, text: str, conversa_id: UUID) -> dict[str, str]:
     except Exception:
         pass
 
+    # msg_id pode vir de 2 shapes diferentes:
+    # - Evolution: result["key"]["id"]
+    # - Cloud API: result["messages"][0]["id"]
+    msg_id: str | None = None
+    if isinstance(result.get("key"), dict):
+        msg_id = result["key"].get("id")
+    elif isinstance(result.get("messages"), list) and result["messages"]:
+        first = result["messages"][0]
+        if isinstance(first, dict):
+            msg_id = first.get("id")
+
     log.info(
         "outbound.sent",
         jid=jid,
         conversa_id=str(conversa_id),
-        evolution_msg_id=(result.get("key") or {}).get("id"),
+        msg_id=msg_id,
+        adapter=type(adapter).__name__,
     )
     return {"status": "ok"}
 
