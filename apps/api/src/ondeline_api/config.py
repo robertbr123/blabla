@@ -142,8 +142,17 @@ class Settings(BaseSettings):
 
     # Firebase Admin (FCM push). Service account JSON em base64 OU caminho
     # absoluto pro arquivo. Vazio = push desligado.
+    #
+    # Multi-projeto: cliente-app e tecnico-app vivem em projetos Firebase
+    # distintos (ondeline-clients vs blabla-mobile). Cada caminho de push usa
+    # a credencial do seu projeto. Os campos _b64/_path abaixo seguem servindo
+    # de FALLBACK do cliente, pra nao quebrar deploys que so setaram o antigo.
     firebase_credentials_b64: str = ""
     firebase_credentials_path: str = ""
+    # ondeline-clients (cliente-app). Se vazio, cai em firebase_credentials_b64.
+    firebase_credentials_cliente_b64: str = ""
+    # blabla-mobile (tecnico-app). Se vazio, push do tecnico fica desligado.
+    firebase_credentials_tecnico_b64: str = ""
 
     def effective_celery_broker(self) -> str:
         return self.celery_broker_url or self.redis_url

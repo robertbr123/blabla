@@ -17,29 +17,37 @@ from ondeline_api.config import get_settings
 log = structlog.get_logger(__name__)
 
 _lock = threading.Lock()
-_initialized = False
+_app = None  # firebase_admin.App nomeado "cliente" (projeto ondeline-clients)
 _disabled = False  # true se nao tem credenciais OU init falhou
 
+# Nome do app firebase_admin do cliente. Isolado do app do tecnico (push.py),
+# que usa outro projeto Firebase — por isso apps nomeados, nao o default.
+_APP_NAME = "cliente"
 
-def _ensure_initialized() -> bool:
-    """Inicializa firebase-admin uma vez. Retorna False se nao for possivel."""
-    global _initialized, _disabled
-    if _initialized:
-        return True
+
+def _ensure_app():
+    """Inicializa o app firebase nomeado 'cliente' uma vez. Retorna o App ou None.
+
+    Credencial: firebase_credentials_cliente_b64 (projeto ondeline-clients) com
+    fallback pro firebase_credentials_b64/_path antigos, mantendo compat com
+    deploys que so setaram a env legada.
+    """
+    global _app, _disabled
+    if _app is not None:
+        return _app
     if _disabled:
-        return False
+        return None
     with _lock:
-        if _initialized:
-            return True
+        if _app is not None:
+            return _app
         if _disabled:
-            return False
+            return None
         s = get_settings()
         cred_dict = None
-        if s.firebase_credentials_b64:
+        cred_b64 = s.firebase_credentials_cliente_b64 or s.firebase_credentials_b64
+        if cred_b64:
             try:
-                cred_dict = json.loads(
-                    base64.b64decode(s.firebase_credentials_b64).decode("utf-8")
-                )
+                cred_dict = json.loads(base64.b64decode(cred_b64).decode("utf-8"))
             except Exception as e:
                 log.warning("fcm.cred_b64_invalid", error=str(e))
         if cred_dict is None and s.firebase_credentials_path:
@@ -51,20 +59,22 @@ def _ensure_initialized() -> bool:
         if cred_dict is None:
             log.info("fcm.disabled_no_credentials")
             _disabled = True
-            return False
+            return None
         try:
             import firebase_admin
             from firebase_admin import credentials
 
             cred = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(cred)
-            _initialized = True
-            log.info("fcm.initialized")
-            return True
+            try:
+                _app = firebase_admin.get_app(_APP_NAME)
+            except ValueError:
+                _app = firebase_admin.initialize_app(cred, name=_APP_NAME)
+            log.info("fcm.initialized", app=_APP_NAME)
+            return _app
         except Exception as e:
             log.error("fcm.init_failed", error=str(e))
             _disabled = True
-            return False
+            return None
 
 
 def send_push(
@@ -83,7 +93,8 @@ def send_push(
     """
     if not token:
         return False, False
-    if not _ensure_initialized():
+    app = _ensure_app()
+    if app is None:
         return False, False
     try:
         from firebase_admin import messaging
@@ -110,7 +121,7 @@ def send_push(
                 ),
             ),
         )
-        msg_id = messaging.send(msg)
+        msg_id = messaging.send(msg, app=app)
         log.info("fcm.sent", msg_id=msg_id, token_prefix=token[:12])
         return True, False
     except NotFoundError:

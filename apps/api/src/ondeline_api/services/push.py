@@ -27,55 +27,59 @@ from ondeline_api.config import get_settings
 
 log = structlog.get_logger(__name__)
 
-_initialized = False
+_app = None  # firebase_admin.App nomeado "tecnico" (projeto blabla-mobile)
 _disabled = False
 
+# Nome do app firebase_admin do tecnico. Projeto Firebase proprio (blabla-mobile),
+# separado do cliente (fcm_service.py / ondeline-clients) — por isso app nomeado.
+_APP_NAME = "tecnico"
 
-def _ensure_initialized() -> bool:
-    """Inicializa firebase_admin uma vez. Retorna True se ativo, False se off."""
-    global _initialized, _disabled
-    if _initialized:
-        return True
+
+def _ensure_app():
+    """Inicializa o app firebase nomeado 'tecnico' uma vez. Retorna o App ou None.
+
+    Credencial: firebase_credentials_tecnico_b64 (projeto blabla-mobile). SEM
+    fallback pro b64 legado — esse aponta pro projeto do cliente e enviaria pro
+    projeto errado. Vazio = push do tecnico desligado (no-op gracioso).
+    """
+    global _app, _disabled
+    if _app is not None:
+        return _app
     if _disabled:
-        return False
+        return None
 
     s = get_settings()
     cred_json: dict[str, Any] | None = None
-    if s.firebase_credentials_b64:
+    if s.firebase_credentials_tecnico_b64:
         try:
-            cred_json = json.loads(base64.b64decode(s.firebase_credentials_b64))
+            cred_json = json.loads(
+                base64.b64decode(s.firebase_credentials_tecnico_b64)
+            )
         except Exception as e:
             log.error("push.config.invalid_b64", error=str(e))
             _disabled = True
-            return False
-    elif s.firebase_credentials_path:
-        try:
-            with open(s.firebase_credentials_path, encoding="utf-8") as f:
-                cred_json = json.load(f)
-        except Exception as e:
-            log.error("push.config.invalid_path", error=str(e))
-            _disabled = True
-            return False
+            return None
 
     if cred_json is None:
         log.info("push.disabled.no_credentials")
         _disabled = True
-        return False
+        return None
 
     try:
         import firebase_admin
         from firebase_admin import credentials
 
         cred = credentials.Certificate(cred_json)
-        if not firebase_admin._apps:
-            firebase_admin.initialize_app(cred)
-        _initialized = True
-        log.info("push.initialized")
-        return True
+        try:
+            _app = firebase_admin.get_app(_APP_NAME)
+        except ValueError:
+            _app = firebase_admin.initialize_app(cred, name=_APP_NAME)
+        log.info("push.initialized", app=_APP_NAME)
+        return _app
     except Exception as e:
         log.error("push.init.failed", error=str(e))
         _disabled = True
-        return False
+        return None
 
 
 async def send_push_to_user(
@@ -94,7 +98,8 @@ async def send_push_to_user(
 
     NAO levanta excecao. Falha de FCM nunca deve quebrar o fluxo de OS.
     """
-    if not _ensure_initialized():
+    app = _ensure_app()
+    if app is None:
         return 0
 
     from firebase_admin import messaging
@@ -133,7 +138,7 @@ async def send_push_to_user(
                     ),
                 ),
             )
-            messaging.send(msg)  # sync — firebase-admin nao tem async API
+            messaging.send(msg, app=app)  # sync — firebase-admin nao tem async API
             sent += 1
         except Exception as e:
             err = str(e).lower()
