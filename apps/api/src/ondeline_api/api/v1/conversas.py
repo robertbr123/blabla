@@ -310,10 +310,11 @@ async def enviar_midia_endpoint(
 
     import structlog
 
-    from ondeline_api.adapters.evolution import EvolutionAdapter, EvolutionError
+    from ondeline_api.adapters.whatsapp.base import WhatsAppError
     from ondeline_api.config import get_settings
     from ondeline_api.db.crypto import encrypt_pii
     from ondeline_api.db.models.business import MensagemRole
+    from ondeline_api.services.canal_whatsapp import adapter_for_conversa
     from ondeline_api.services.conversa_events import publish as publish_event
 
     log = structlog.get_logger(__name__)
@@ -347,13 +348,12 @@ async def enviar_midia_endpoint(
     fpath.chmod(0o600)
 
     s = get_settings()
-    evolution = EvolutionAdapter(
-        base_url=s.evolution_url,
-        instance=s.evolution_instance,
-        api_key=s.evolution_key,
-    )
+    # Provider-aware: respeita o canal da conversa (Cloud oficial ou Evolution).
+    # Antes instanciava EvolutionAdapter fixo — foto sempre vazava pelo Evolution
+    # mesmo em conversa do canal oficial. Falha-aberta cai no Evolution default.
+    adapter = await adapter_for_conversa(session, conversa_id, s)
     try:
-        await evolution.send_media_bytes(
+        await adapter.send_media_bytes(
             conversa.whatsapp,
             data=contents,
             mediatype=mediatype,
@@ -361,15 +361,15 @@ async def enviar_midia_endpoint(
             file_name=file.filename or fname,
             caption=caption or "",
         )
-    except EvolutionError as exc:
+    except WhatsAppError as exc:
         log.warning(
-            "conversa.enviar_midia.evolution_failed",
+            "conversa.enviar_midia.send_failed",
             conversa_id=str(conversa_id),
             error=str(exc),
         )
-        raise HTTPException(status_code=502, detail=f"Evolution: {exc}") from exc
+        raise HTTPException(status_code=502, detail=f"WhatsApp: {exc}") from exc
     finally:
-        await evolution.aclose()
+        await adapter.aclose()
 
     # Registra mensagem (apos envio ok).
     if conversa.first_response_at is None:
