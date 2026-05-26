@@ -11,11 +11,14 @@ import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 
+import structlog
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ondeline_api.adapters.evolution import EvolutionAdapter
+from ondeline_api.adapters.whatsapp import WhatsAppAdapter, WhatsAppError
 from ondeline_api.db.models.cliente_app import ClienteAppOtp
+
+log = structlog.get_logger(__name__)
 
 OTP_TTL_MIN = 10
 OTP_MAX_ATTEMPTS = 5
@@ -42,9 +45,23 @@ async def issue(
     cpf_hash: str,
     telefone: str,
     purpose: str,
-    evolution: EvolutionAdapter,
+    adapter: WhatsAppAdapter,
+    template_name: str | None = None,
+    fallback: WhatsAppAdapter | None = None,
 ) -> None:
-    """Gera, persiste e envia OTP. Idempotente: invalida OTPs anteriores."""
+    """Gera, persiste e envia OTP. Idempotente: invalida OTPs anteriores.
+
+    Envio provider-aware:
+    - ``template_name`` setado (canal Cloud): envia via TEMPLATE de
+      autenticacao (``send_template`` com botao copiar-codigo). E a unica forma
+      de mandar OTP pelo numero oficial fora da janela de 24h da Meta.
+    - ``template_name`` None (canal Evolution): envia texto livre.
+
+    Fallback: se o envio primario levantar ``WhatsAppError`` e houver
+    ``fallback``, reenvia o MESMO codigo via texto livre (Evolution). Mantem o
+    login funcionando se o Cloud estiver com problema. Erros que nao sejam
+    ``WhatsAppError`` propagam (sao bugs, nao falha de provider).
+    """
     stmt = select(ClienteAppOtp).where(
         ClienteAppOtp.cpf_hash == cpf_hash,
         ClienteAppOtp.purpose == purpose,
@@ -63,14 +80,34 @@ async def issue(
     session.add(otp)
     await session.flush()
 
-    await evolution.send_text(
-        _to_jid(telefone),
-        (
-            f"Ondeline: seu codigo de acesso e *{code}*. "
-            f"Valido por {OTP_TTL_MIN} minutos. "
-            f"Se voce nao solicitou, ignore esta mensagem."
-        ),
+    jid = _to_jid(telefone)
+    text = (
+        f"Ondeline: seu codigo de acesso e *{code}*. "
+        f"Valido por {OTP_TTL_MIN} minutos. "
+        f"Se voce nao solicitou, ignore esta mensagem."
     )
+
+    try:
+        if template_name:
+            await adapter.send_template(
+                jid,
+                name=template_name,
+                language="pt_BR",
+                body_params=[code],
+                otp_code=code,
+            )
+        else:
+            await adapter.send_text(jid, text)
+    except WhatsAppError as e:
+        if fallback is None:
+            raise
+        log.warning(
+            "otp.primary_send_failed_fallback",
+            purpose=purpose,
+            template=template_name,
+            error=str(e),
+        )
+        await fallback.send_text(jid, text)
 
 
 class OtpInvalid(Exception):

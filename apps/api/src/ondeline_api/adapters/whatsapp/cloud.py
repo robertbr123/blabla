@@ -150,11 +150,15 @@ class CloudAdapter:
         body_params: list[str] | None = None,
         header_media_url: str | None = None,
         header_media_type: str | None = None,
+        otp_code: str | None = None,
     ) -> dict[str, Any]:
         """Envia mensagem TEMPLATE (unica forma fora da janela 24h).
 
         ``body_params`` ordem segue {{1}}, {{2}}, ... do template.
         ``header_media_url`` so usado se o template tem header com media.
+        ``otp_code`` so para templates de AUTENTICACAO com botao copiar-codigo:
+        o Meta exige o codigo tambem no componente ``button`` (sub_type=url,
+        index=0), alem de estar no body. Veja docs de authentication templates.
         """
         components: list[dict[str, Any]] = []
         if header_media_url and header_media_type:
@@ -174,6 +178,17 @@ class CloudAdapter:
                 {
                     "type": "body",
                     "parameters": [{"type": "text", "text": p} for p in body_params],
+                }
+            )
+        if otp_code is not None:
+            # Botao do template de autenticacao (copiar codigo / one-tap).
+            # Meta usa sub_type='url' e exige o codigo repetido aqui.
+            components.append(
+                {
+                    "type": "button",
+                    "sub_type": "url",
+                    "index": 0,
+                    "parameters": [{"type": "text", "text": otp_code}],
                 }
             )
         payload: dict[str, Any] = {

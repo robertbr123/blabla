@@ -9,11 +9,17 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt as pyjwt
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ondeline_api.adapters.evolution import EvolutionAdapter
 from ondeline_api.adapters.sgp.base import ClienteSgp
+from ondeline_api.adapters.whatsapp import (
+    WhatsAppAdapter,
+    build_for_canal,
+    build_for_instance,
+)
 from ondeline_api.api.schemas.cliente_app_auth import (
     ForgotIn,
     LoginIn,
@@ -30,9 +36,12 @@ from ondeline_api.auth.jwt import CLIENTE_ACCESS_TTL_DAYS
 from ondeline_api.auth.passwords import hash_password, verify_password
 from ondeline_api.config import get_settings
 from ondeline_api.db.crypto import decrypt_pii, hash_pii
+from ondeline_api.db.models.business import Canal
 from ondeline_api.deps import get_db
 from ondeline_api.repositories import cliente_app_user as repo
 from ondeline_api.services import cliente_app_otp as otp_svc
+
+log = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/cliente-app/auth", tags=["cliente-app:auth"])
 
@@ -45,13 +54,35 @@ _RL_OTP = "60/hour"
 _RL_AUTH = "120/hour"
 
 
-def _evolution() -> EvolutionAdapter:
+async def _otp_adapters(
+    session: AsyncSession,
+) -> tuple[WhatsAppAdapter, str | None, WhatsAppAdapter | None]:
+    """Decide por onde enviar o OTP. Retorna (primary, template_name, fallback).
+
+    - Se ``otp_template_name`` setado, token Cloud configurado e existir canal
+      ``provider='cloud'`` ativo: primary=Cloud (template), fallback=Evolution.
+    - Caso contrario: primary=Evolution (texto livre), sem fallback (legado).
+
+    Falha-aberta: qualquer config faltando cai na Evolution e loga uma vez, pra
+    misconfig nao se confundir com problema de aprovacao de template.
+    """
     s = get_settings()
-    return EvolutionAdapter(
-        base_url=s.evolution_url,
-        instance=s.evolution_instance,
-        api_key=s.evolution_key,
-    )
+    evolution: WhatsAppAdapter = build_for_instance(s.evolution_instance, s)
+    template = s.otp_template_name.strip()
+    if not template or not s.whatsapp_cloud_access_token:
+        return evolution, None, None
+
+    stmt = select(Canal).where(Canal.provider == "cloud", Canal.ativo.is_(True))
+    if s.otp_canal_slug:
+        stmt = stmt.where(Canal.slug == s.otp_canal_slug)
+    stmt = stmt.order_by(Canal.created_at)  # determinismo se houver >1
+    canal = (await session.execute(stmt)).scalars().first()
+    if canal is None:
+        log.warning("otp.cloud_canal_not_found", slug=s.otp_canal_slug or None)
+        return evolution, None, None
+
+    cloud: WhatsAppAdapter = build_for_canal(canal, s)
+    return cloud, template, evolution
 
 
 async def _sgp_lookup_by_cpf(session: AsyncSession, cpf: str) -> ClienteSgp | None:
@@ -151,17 +182,21 @@ async def register_start(
     else:
         telefone = decrypt_pii(user.telefone_encrypted)
 
-    evolution = _evolution()
+    primary, template, fallback = await _otp_adapters(session)
     try:
         await otp_svc.issue(
             session,
             cpf_hash=cpf_hash,
             telefone=telefone,
             purpose="register",
-            evolution=evolution,
+            adapter=primary,
+            template_name=template,
+            fallback=fallback,
         )
     finally:
-        await evolution.aclose()
+        await primary.aclose()
+        if fallback is not None and fallback is not primary:
+            await fallback.aclose()
     await session.commit()
     return RegisterStartOut(masked_phone=_mask_phone(telefone))
 
@@ -252,16 +287,20 @@ async def forgot(
     # Resposta sempre 202 — nao revela se CPF existe
     if user is not None and user.status == "active":
         telefone = decrypt_pii(user.telefone_encrypted)
-        evolution = _evolution()
+        primary, template, fallback = await _otp_adapters(session)
         try:
             await otp_svc.issue(
                 session,
                 cpf_hash=cpf_hash,
                 telefone=telefone,
                 purpose="reset_pwd",
-                evolution=evolution,
+                adapter=primary,
+                template_name=template,
+                fallback=fallback,
             )
         finally:
-            await evolution.aclose()
+            await primary.aclose()
+            if fallback is not None and fallback is not primary:
+                await fallback.aclose()
     await session.commit()
     return {"status": "ok"}

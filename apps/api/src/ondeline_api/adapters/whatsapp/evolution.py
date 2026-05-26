@@ -112,6 +112,7 @@ class EvolutionAdapter:
         body_params: list[str] | None = None,
         header_media_url: str | None = None,
         header_media_type: str | None = None,
+        otp_code: str | None = None,
     ) -> dict[str, Any]:
         """Evolution nao tem o conceito de TEMPLATE da Meta.
 

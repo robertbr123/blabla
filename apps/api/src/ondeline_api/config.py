@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     whatsapp_cloud_app_secret: str = ""  # X-Hub-Signature-256
     whatsapp_cloud_graph_version: str = "v21.0"
 
+    # OTP do app cliente. Se ``otp_template_name`` estiver vazio, o OTP sai
+    # pela Evolution (texto livre, comportamento legado). Se setado, o OTP sai
+    # pelo numero oficial (Cloud) via template de autenticacao, com fallback
+    # automatico pra Evolution se o Cloud falhar.
+    otp_template_name: str = ""  # ex: otp_login_cliente_app
+    otp_canal_slug: str = ""  # opcional; desempata se houver >1 canal cloud
+
     # Webhook
     webhook_max_body_bytes: int = 1_048_576  # 1 MB
     webhook_rate_limit: str = "100/minute"

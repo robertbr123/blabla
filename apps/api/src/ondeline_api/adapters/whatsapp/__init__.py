@@ -27,19 +27,19 @@ if TYPE_CHECKING:
 
 
 __all__ = [
+    "CloudAdapter",
+    "CloudError",
+    "EvolutionAdapter",
+    "EvolutionError",
     "SendResult",
     "WhatsAppAdapter",
     "WhatsAppError",
-    "EvolutionAdapter",
-    "EvolutionError",
-    "CloudAdapter",
-    "CloudError",
     "build_for_canal",
     "build_for_instance",
 ]
 
 
-def build_for_canal(canal: "Canal", settings: "Settings") -> WhatsAppAdapter:
+def build_for_canal(canal: Canal, settings: Settings) -> WhatsAppAdapter:
     """Devolve o adapter correto pra um Canal.
 
     PR1: coluna ``canal.provider`` ainda nao existe — sempre devolve Evolution.
@@ -59,7 +59,7 @@ def build_for_canal(canal: "Canal", settings: "Settings") -> WhatsAppAdapter:
     )
 
 
-def build_for_instance(instance: str, settings: "Settings") -> WhatsAppAdapter:
+def build_for_instance(instance: str, settings: Settings) -> WhatsAppAdapter:
     """Compat com ``services.canal_evolution.evolution_for_instance``.
 
     Cria EvolutionAdapter direto pelo nome da instancia. Util pra caminhos
