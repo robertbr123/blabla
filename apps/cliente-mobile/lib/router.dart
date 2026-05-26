@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/auth/auth_state.dart';
+import 'features/auth/forgot_reset_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/conexao/conexao_screen.dart';
 import 'features/contatos/contatos_screen.dart';
@@ -43,7 +44,9 @@ final routerProvider = Provider<GoRouter>((ref) {
             .timeout(const Duration(seconds: 3), onTimeout: () => false);
       } catch (_) {}
 
-      final inAuthArea = loc.startsWith('/onboarding') || loc == '/login';
+      final inAuthArea = loc.startsWith('/onboarding') ||
+          loc.startsWith('/forgot') ||
+          loc == '/login';
       if (!has && !inAuthArea) return '/onboarding/cpf';
       if (has && inAuthArea) return '/home';
       return null;
@@ -51,6 +54,16 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(
+        path: '/forgot/reset',
+        builder: (_, state) {
+          final extra = state.extra as Map<String, String>?;
+          return ForgotResetScreen(
+            cpf: extra?['cpf'] ?? '',
+            maskedPhone: extra?['masked_phone'] ?? '',
+          );
+        },
+      ),
       GoRoute(
         path: '/onboarding/cpf',
         builder: (_, __) => const OnboardingCpfScreen(),

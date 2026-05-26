@@ -74,6 +74,18 @@ class ForgotIn(BaseModel):
         return _normalize_cpf(v)
 
 
+class ForgotResetIn(BaseModel):
+    """Reset de senha em 1 passo: cpf + OTP (reset_pwd) + senha nova."""
+    cpf: str
+    code: str = Field(min_length=6, max_length=6)
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("cpf")
+    @classmethod
+    def _check_cpf(cls, v: str) -> str:
+        return _normalize_cpf(v)
+
+
 # ════════ Fase 3: Me, Plano, Avisos ════════
 
 

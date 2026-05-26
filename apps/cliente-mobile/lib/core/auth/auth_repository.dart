@@ -98,6 +98,34 @@ class AuthRepository {
     }
   }
 
+  /// Conclui o reset de senha: CPF + OTP (reset_pwd) + senha nova.
+  /// Em caso de sucesso o backend ja devolve token (auto-login).
+  Future<AuthResult> forgotReset({
+    required String cpf,
+    required String code,
+    required String password,
+  }) async {
+    try {
+      final r = await _dio.post(
+        '$_base/forgot/reset',
+        data: {'cpf': cpf, 'code': code, 'new_password': password},
+        options: Options(extra: const {'skipAuth': true}),
+      );
+      final token = r.data['access_token'] as String;
+      await writeAccessToken(token);
+      final existingNome = (await readNome()) ?? '';
+      final cpfDigits = cpf.replaceAll(RegExp(r'\D'), '');
+      await writeSession(
+        cpfLast4: cpfDigits.substring(cpfDigits.length - 4),
+        nome: existingNome,
+        biometricEnabled: await readBiometricEnabled(),
+      );
+      return AuthResult.ok(accessToken: token);
+    } on DioException catch (e) {
+      return AuthResult.error(_messageFromDio(e));
+    }
+  }
+
   Future<void> logout() => clearAuth();
 
   String _messageFromDio(DioException e) {

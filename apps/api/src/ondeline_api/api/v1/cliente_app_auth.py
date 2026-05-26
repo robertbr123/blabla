@@ -22,6 +22,7 @@ from ondeline_api.adapters.whatsapp import (
 )
 from ondeline_api.api.schemas.cliente_app_auth import (
     ForgotIn,
+    ForgotResetIn,
     LoginIn,
     RegisterPasswordIn,
     RegisterStartIn,
@@ -304,3 +305,44 @@ async def forgot(
                 await fallback.aclose()
     await session.commit()
     return {"status": "ok"}
+
+
+@router.post("/forgot/reset", response_model=TokenOut)
+@limiter.limit(_RL_AUTH)
+async def forgot_reset(
+    request: Request,
+    response: Response,
+    body: ForgotResetIn,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> TokenOut:
+    """Conclui o reset: valida o OTP ``reset_pwd`` e grava a senha nova.
+
+    OTP de ``reset_pwd`` so e emitido pra usuario ativo (ver /forgot), entao um
+    codigo valido implica conta ativa. Retorna token de acesso (auto-login).
+    """
+    cpf_hash = hash_pii(body.cpf)
+    try:
+        await otp_svc.verify(
+            session, cpf_hash=cpf_hash, code=body.code, purpose="reset_pwd"
+        )
+    except otp_svc.OtpExpired:
+        await session.commit()
+        raise HTTPException(status_code=400, detail="codigo expirado") from None
+    except otp_svc.OtpExhausted:
+        await session.commit()
+        raise HTTPException(status_code=400, detail="muitas tentativas") from None
+    except otp_svc.OtpInvalid:
+        await session.commit()
+        raise HTTPException(status_code=400, detail="codigo invalido") from None
+
+    user = await repo.get_by_cpf_hash(session, cpf_hash)
+    if user is None or user.status != "active":
+        await session.commit()
+        raise HTTPException(status_code=400, detail="nao foi possivel redefinir") from None
+
+    await repo.set_password(session, user, hash_password(body.new_password))
+    await repo.mark_login(session, user)
+    await session.commit()
+
+    access = jwt_mod.encode_cliente_access_token(user.id)
+    return TokenOut(access_token=access, expires_in_seconds=_cliente_access_seconds())

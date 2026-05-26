@@ -71,6 +71,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     setState(() => _loading = false);
     _toast(
         'Se o CPF estiver cadastrado, você recebera um código no WhatsApp.');
+    // Vai pra tela de reset (digita codigo + nova senha). Navega sempre, mesmo
+    // se o CPF nao existir — preserva o "nao revelar se CPF existe"; o reset
+    // simplesmente falha no codigo se nenhum OTP foi enviado.
+    context.push('/forgot/reset', extra: {'cpf': cpf});
   }
 
   void _toast(String s) =>
