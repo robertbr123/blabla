@@ -41,6 +41,10 @@ def _render_qr_png(brcode: str) -> bytes:
     qr.add_data(brcode)
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
+    # qrcode gera PIL no modo "1" (1-bit b/w). Meta Cloud rejeita com
+    # 131053 "Image is invalid" — so aceita PNG em RGB/RGBA. Convert
+    # explicito mantem compat com Evolution (que aceita qualquer modo).
+    img = img.convert("RGB")
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()

@@ -242,6 +242,7 @@ async def enviar_boleto(
 
     enviados = 0
     vencimentos: list[str] = []
+    enviadas: list[dict[str, str]] = []
     n = len(escolhidos_para_enviar)
     for i, t in enumerate(escolhidos_para_enviar):
         if t.link_pdf:
@@ -255,6 +256,12 @@ async def enviar_boleto(
             )
             enviados += 1
             vencimentos.append(t.vencimento)
+            # LLM precisa do valor pra renderizar a mensagem final.
+            # Antes a tool retornava so vencimentos[] e o LLM caia em R$ 0,00.
+            enviadas.append({
+                "vencimento": t.vencimento or "",
+                "valor": f"{t.valor:.2f}".replace(".", ","),
+            })
         # F3 — envia QR Pix + copia-e-cola (best-effort).
         from ondeline_api.services.pix_qr import enviar_pix_qr_best_effort
 
@@ -281,6 +288,7 @@ async def enviar_boleto(
     return {
         "ok": True,
         "enviados": enviados,
-        "vencimentos": vencimentos,
+        "enviadas": enviadas,  # [{vencimento, valor}] — LLM usa pra renderizar resposta
+        "vencimentos": vencimentos,  # mantido por compat (lista de strings)
         "ja_enviadas_nas_ultimas_20min": ja_enviados_recentemente or None,
     }
