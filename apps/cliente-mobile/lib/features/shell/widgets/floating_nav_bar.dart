@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../core/branding/brand_tokens.dart';
@@ -19,8 +21,8 @@ class FloatingNavItem {
   final bool badgeDot;
 }
 
-/// Barra de navegação flutuante. Pílula com sombra suave, ícone+label
-/// animados na seleção, badges por item.
+/// Barra de navegação flutuante. Pílula com sombra suave e uma "bolha"
+/// líquida única que desliza entre os itens na seleção (estilo iOS).
 class FloatingNavBar extends StatelessWidget {
   const FloatingNavBar({
     super.key,
@@ -36,9 +38,7 @@ class FloatingNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark
-        ? BrandTokens.surfaceDark
-        : BrandTokens.surface;
+    final bg = isDark ? BrandTokens.surfaceDark : BrandTokens.surface;
 
     return SafeArea(
       top: false,
@@ -62,21 +62,142 @@ class FloatingNavBar extends StatelessWidget {
             horizontal: BrandTokens.spaceSm,
             vertical: BrandTokens.spaceSm,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Stack: a bolha viaja atrás dos itens (continuidade — um único
+          // elemento desliza em vez de sumir/aparecer em cada tile).
+          child: Stack(
             children: [
-              for (int i = 0; i < items.length; i++)
-                Expanded(
-                  child: _NavItemTile(
-                    item: items[i],
-                    selected: i == currentIndex,
-                    onTap: () => onTap(i),
-                  ),
+              Positioned.fill(
+                child: _NavBubble(
+                  currentIndex: currentIndex,
+                  itemCount: items.length,
                 ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  for (int i = 0; i < items.length; i++)
+                    Expanded(
+                      child: _NavItemTile(
+                        item: items[i],
+                        selected: i == currentIndex,
+                        onTap: () => onTap(i),
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// A bolha líquida. Desliza do slot antigo pro novo (curva iOS) e estica na
+/// horizontal no meio do caminho (squash/stretch), deixando um "rastro" no
+/// sentido oposto ao movimento, como uma gota.
+class _NavBubble extends StatefulWidget {
+  const _NavBubble({required this.currentIndex, required this.itemCount});
+  final int currentIndex;
+  final int itemCount;
+
+  @override
+  State<_NavBubble> createState() => _NavBubbleState();
+}
+
+class _NavBubbleState extends State<_NavBubble>
+    with SingleTickerProviderStateMixin {
+  // Curva de drawer do iOS: desliza com desaceleração suave, sem bounce.
+  static const _curve = Cubic(0.32, 0.72, 0, 1);
+  // Quanto a bolha estica no pico da viagem (0 = só desliza). Calibrável.
+  static const _stretch = 0.45;
+
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 320),
+  )..value = 1.0;
+
+  // Alinhamentos em [-1, 1]. _fromX guarda de onde saiu (pode ser um valor
+  // interpolado, se a troca aconteceu no meio de outra animação → retarget
+  // suave em vez de pulo).
+  late double _fromX = _alignXFor(widget.currentIndex);
+  late double _toX = _fromX;
+  double _currentX = 0;
+
+  double _alignXFor(int index) {
+    if (widget.itemCount <= 1) return 0;
+    return -1 + 2 * index / (widget.itemCount - 1);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _currentX = _fromX;
+  }
+
+  @override
+  void didUpdateWidget(covariant _NavBubble old) {
+    super.didUpdateWidget(old);
+    if (old.currentIndex != widget.currentIndex) {
+      _fromX = _currentX; // posição atual (mesmo se a anterior não terminou)
+      _toX = _alignXFor(widget.currentIndex);
+      _c.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primary = BrandTokens.primary;
+
+    return AnimatedBuilder(
+      animation: _c,
+      builder: (context, _) {
+        final t = _c.value;
+        final curved = _curve.transform(t);
+        final x = _fromX + (_toX - _fromX) * curved;
+        _currentX = x;
+
+        // sin(pi*t): 0 nas pontas, pico no meio → estica e volta.
+        final wave = math.sin(math.pi * t);
+        final scaleX = 1 + _stretch * wave;
+        final scaleY = 1 - 0.12 * wave; // achata de leve (gota)
+        // Ancora o stretch no sentido do movimento → rastro pra trás.
+        final dir = (_toX - _fromX).sign;
+
+        return Align(
+          alignment: Alignment(x, 0),
+          child: FractionallySizedBox(
+            widthFactor: 1 / widget.itemCount,
+            heightFactor: 1,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              child: Transform.scale(
+                scaleX: scaleX,
+                scaleY: scaleY,
+                alignment: Alignment(dir, 0),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        primary.withOpacity(isDark ? 0.26 : 0.16),
+                        primary.withOpacity(isDark ? 0.12 : 0.06),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -104,23 +225,10 @@ class _NavItemTile extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
-        child: AnimatedContainer(
-          duration: BrandTokens.motionMedium,
-          curve: Curves.easeOutCubic,
+        child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: BrandTokens.spaceSm,
             vertical: 10,
-          ),
-          decoration: BoxDecoration(
-            gradient: selected
-                ? LinearGradient(
-                    colors: [
-                      activeColor.withOpacity(0.14),
-                      activeColor.withOpacity(0.06),
-                    ],
-                  )
-                : null,
-            borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
