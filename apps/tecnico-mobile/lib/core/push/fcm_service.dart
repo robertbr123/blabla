@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -41,9 +40,6 @@ class FcmService {
 
     // 3. Registra token + listener de rotação.
     final token = await FirebaseMessaging.instance.getToken();
-    // TEMPORARIO (teste FCM): logar o token pra mandar mensagem de teste pelo
-    // Firebase Console. REMOVER antes de publicar.
-    debugPrint('==== FCM TOKEN ====\n$token\n===================');
     if (token != null) {
       await _registerToken(token);
     }
