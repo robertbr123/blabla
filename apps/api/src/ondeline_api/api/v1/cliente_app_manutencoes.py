@@ -8,7 +8,8 @@ Diferente do /api/v1/manutencoes (admin), este endpoint:
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
+from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -18,6 +19,9 @@ from ondeline_api.auth.cliente_deps import get_current_cliente_user
 from ondeline_api.db.models.cliente_app import ClienteAppUser
 from ondeline_api.deps import get_db
 from ondeline_api.repositories.manutencao import ManutencaoRepo
+
+if TYPE_CHECKING:
+    from ondeline_api.adapters.sgp.base import Contrato
 
 router = APIRouter(
     prefix="/api/v1/cliente-app/manutencoes",
@@ -37,7 +41,7 @@ class ManutencoesBreakingOut(BaseModel):
     items: list[ManutencaoBreakingOut]
 
 
-def _cidades_do_user(sgp_contratos: list[dict[str, Any]]) -> list[str]:
+def _cidades_do_user(sgp_contratos: list[Contrato]) -> list[str]:
     """Coleta todas as cidades distintas dos contratos do user (case-insensitive)."""
     seen: dict[str, str] = {}
     for c in sgp_contratos:
@@ -64,7 +68,7 @@ async def listar(
         items = [m for m in all_active if not m.cidades]
     else:
         # Une o resultado de cada cidade do user, deduplicado por id.
-        seen_ids: set[str] = set()
+        seen_ids: set[UUID] = set()
         items = []
         for cidade in cidades:
             for m in await repo.list_active_in_cidade(cidade):
