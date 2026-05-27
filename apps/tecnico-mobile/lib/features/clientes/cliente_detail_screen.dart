@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart' show launchUrl;
 
@@ -26,6 +27,12 @@ class ClienteDetailScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: scheme.surfaceContainerLowest,
       appBar: AppBar(
+        // Saida garantida: volta na pilha se der, senao cai na lista de clientes.
+        // Evita ficar preso quando se chega aqui sem rota anterior.
+        leading: BackButton(
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/clientes'),
+        ),
         title: const Text('Cliente'),
         actions: [
           IconButton(

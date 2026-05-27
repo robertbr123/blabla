@@ -14,6 +14,9 @@
     <!-- Notificações (FCM) — Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+    <!-- Biometria (login com Face/digital via local_auth) -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+
     <application
         android:label="BlaBla Mobile"
         android:name="${applicationName}"
@@ -45,6 +48,14 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- FCM: icone e canal padrao das notificacoes tratadas pelo sistema
+             (app em background/fechado). Sem isso, mostra o icone do Flutter. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="ondeline_default" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

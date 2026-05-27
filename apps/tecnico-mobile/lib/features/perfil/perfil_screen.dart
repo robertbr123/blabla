@@ -78,15 +78,22 @@ class PerfilScreen extends ConsumerWidget {
         data: (p) => RefreshIndicator(
           onRefresh: () async => ref.invalidate(perfilProvider),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+            // Bottom extra pra ultima opcao nao ficar atras do navbar flutuante
+            // (Scaffold usa extendBody: navbar 60 + margens 14 + safe area).
+            padding: EdgeInsets.fromLTRB(
+              16,
+              12,
+              16,
+              32 + 74 + MediaQuery.paddingOf(context).bottom,
+            ),
             children: [
               _Header(perfil: p),
               const SizedBox(height: 20),
-              _SectionTitle('Atividade do mês'),
+              const _SectionTitle('Atividade do mês'),
               const SizedBox(height: 8),
               _StatsGrid(stats: p.estatisticas),
               const SizedBox(height: 20),
-              _SectionTitle('Conta'),
+              const _SectionTitle('Conta'),
               const SizedBox(height: 8),
               _ActionTile(
                 icon: Icons.lock_outline,
@@ -101,7 +108,7 @@ class PerfilScreen extends ConsumerWidget {
                 onTap: () => _logout(context, ref),
               ),
               const SizedBox(height: 20),
-              _SectionTitle('Sobre'),
+              const _SectionTitle('Sobre'),
               const SizedBox(height: 8),
               _InfoTile(
                 icon: Icons.smartphone,

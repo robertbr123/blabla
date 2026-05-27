@@ -216,8 +216,9 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
       if (!mounted) return;
       // Invalida lista pra refletir o novo cliente
       ref.invalidate(clientesListProvider);
-      // Vai direto pro detalhe
-      context.go('/clientes/$id');
+      // Vai pro detalhe SUBSTITUINDO a tela de cadastro (nao `go`, que apagaria
+      // a pilha e deixaria o detail sem botao de voltar -> usuario preso).
+      context.pushReplacement('/clientes/$id');
     } on DioException catch (e) {
       final body = e.response?.data;
       final detail = body is Map ? body['detail']?.toString() : null;
