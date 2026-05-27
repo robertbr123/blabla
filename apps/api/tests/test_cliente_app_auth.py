@@ -76,10 +76,17 @@ def app(
     fake_sgp_cliente: ClienteSgp,
     monkeypatch: pytest.MonkeyPatch,
 ) -> FastAPI:
-    # Patch ANTES de criar o app pra que o modulo veja a versao mockada
+    # Patch ANTES de criar o app pra que o modulo veja a versao mockada.
+    # _otp_adapters retorna (primary, template, fallback); caminho legado de
+    # texto = (evolution, None, None). Mockamos pra usar o FakeEvolution.
+    async def _fake_otp_adapters(
+        _session: AsyncSession,
+    ) -> tuple[FakeEvolution, None, None]:
+        return fake_evolution, None, None
+
     monkeypatch.setattr(
-        "ondeline_api.api.v1.cliente_app_auth._evolution",
-        lambda: fake_evolution,
+        "ondeline_api.api.v1.cliente_app_auth._otp_adapters",
+        _fake_otp_adapters,
     )
 
     async def _fake_sgp(_session: AsyncSession, cpf: str) -> ClienteSgp | None:
