@@ -198,8 +198,9 @@ async def _run_status_semanal() -> dict[str, int]:
     cutoff = datetime.now(tz=UTC) - timedelta(days=7)
 
     async with task_session() as session:
+        # NOTE: ClienteAppUser nao tem coluna `deleted_at` (sem soft-delete).
+        # O filtro antigo `deleted_at.is_(None)` quebrava esta task em runtime.
         stmt = select(ClienteAppUser).where(
-            ClienteAppUser.deleted_at.is_(None),
             (ClienteAppUser.last_login_at.is_(None))
             | (ClienteAppUser.last_login_at < cutoff),
         )

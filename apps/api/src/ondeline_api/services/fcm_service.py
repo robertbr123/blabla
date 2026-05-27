@@ -9,10 +9,14 @@ from __future__ import annotations
 import base64
 import json
 import threading
+from typing import TYPE_CHECKING
 
 import structlog
 
 from ondeline_api.config import get_settings
+
+if TYPE_CHECKING:
+    import firebase_admin
 
 log = structlog.get_logger(__name__)
 
@@ -25,7 +29,7 @@ _disabled = False  # true se nao tem credenciais OU init falhou
 _APP_NAME = "cliente"
 
 
-def _ensure_app():
+def _ensure_app() -> firebase_admin.App | None:
     """Inicializa o app firebase nomeado 'cliente' uma vez. Retorna o App ou None.
 
     Credencial: firebase_credentials_cliente_b64 (projeto ondeline-clients) com

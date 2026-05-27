@@ -8,6 +8,8 @@ Diferente do /api/v1/manutencoes (admin), este endpoint:
 """
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,7 +37,7 @@ class ManutencoesBreakingOut(BaseModel):
     items: list[ManutencaoBreakingOut]
 
 
-def _cidades_do_user(sgp_contratos: list) -> list[str]:
+def _cidades_do_user(sgp_contratos: list[dict[str, Any]]) -> list[str]:
     """Coleta todas as cidades distintas dos contratos do user (case-insensitive)."""
     seen: dict[str, str] = {}
     for c in sgp_contratos:
@@ -62,7 +64,7 @@ async def listar(
         items = [m for m in all_active if not m.cidades]
     else:
         # Une o resultado de cada cidade do user, deduplicado por id.
-        seen_ids: set = set()
+        seen_ids: set[str] = set()
         items = []
         for cidade in cidades:
             for m in await repo.list_active_in_cidade(cidade):

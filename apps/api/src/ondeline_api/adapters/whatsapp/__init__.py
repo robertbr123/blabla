@@ -54,7 +54,8 @@ def build_for_canal(canal: Canal, settings: Settings) -> WhatsAppAdapter:
         )
     return EvolutionAdapter(
         base_url=settings.evolution_url,
-        instance=canal.evolution_instance,
+        # canal provider='evolution' garante evolution_instance != None (CHECK constraint)
+        instance=canal.evolution_instance,  # type: ignore[arg-type]
         api_key=settings.evolution_key,
     )
 

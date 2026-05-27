@@ -1330,6 +1330,7 @@ async def process_inbound_message(
             # message_key shape e provider-especifico: Evolution usa o trio
             # {id, remoteJid, fromMe}; Cloud usa {media_id}. O ASR worker passa
             # esse dict opaco direto pro adapter.get_media_base64.
+            message_key: dict[str, Any]
             if evt.media_id:
                 message_key = {"media_id": evt.media_id}
             else:

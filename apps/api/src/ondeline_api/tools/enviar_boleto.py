@@ -266,7 +266,7 @@ async def enviar_boleto(
         from ondeline_api.services.pix_qr import enviar_pix_qr_best_effort
 
         await enviar_pix_qr_best_effort(
-            evolution=ctx.evolution,
+            evolution=ctx.evolution,  # type: ignore[arg-type]
             redis=redis,
             jid=ctx.conversa.whatsapp,
             codigo_pix_sgp=t.codigo_pix,

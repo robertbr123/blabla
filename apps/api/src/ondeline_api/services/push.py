@@ -16,8 +16,11 @@ from __future__ import annotations
 import base64
 import json
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
+
+if TYPE_CHECKING:
+    import firebase_admin
 
 import structlog
 from sqlalchemy import select
@@ -35,7 +38,7 @@ _disabled = False
 _APP_NAME = "tecnico"
 
 
-def _ensure_app():
+def _ensure_app() -> firebase_admin.App | None:
     """Inicializa o app firebase nomeado 'tecnico' uma vez. Retorna o App ou None.
 
     Credencial: firebase_credentials_tecnico_b64 (projeto blabla-mobile). SEM

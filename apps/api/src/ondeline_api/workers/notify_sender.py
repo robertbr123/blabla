@@ -17,7 +17,7 @@ from ondeline_api.adapters.whatsapp import WhatsAppAdapter, build_for_canal
 from ondeline_api.config import get_settings
 from ondeline_api.db.models.business import Canal, Cliente, Conversa
 from ondeline_api.repositories.notificacao import NotificacaoRepo
-from ondeline_api.services.canal_whatsapp import build_for_instance
+from ondeline_api.services.canal_whatsapp import build_for_instance  # type: ignore[attr-defined]
 from ondeline_api.services.notify_sender import send_one
 from ondeline_api.workers.celery_app import celery_app
 from ondeline_api.workers.runtime import run_task, task_session
