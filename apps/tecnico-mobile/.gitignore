@@ -27,6 +27,7 @@ web/
 !android/app/build.gradle.kts
 !android/settings.gradle.kts
 !android/app/src/main/AndroidManifest.xml
+!android/app/src/main/res/drawable/ic_notification.xml
 !ios/Runner/Info.plist
 
 # Firebase
