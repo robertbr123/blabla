@@ -34,7 +34,8 @@ import {
   useTecnicosSaldos,
   useUpdateEstoqueItem,
 } from '@/lib/api/queries'
-import type { EstoqueItem } from '@/lib/api/types'
+import type { EstoqueItem, EstoqueUnidade } from '@/lib/api/types'
+import { UNIDADE_LABEL } from '@/lib/api/types'
 import { cn } from '@/lib/utils'
 
 type Aba = 'deposito' | 'tecnicos' | 'itens'
@@ -337,6 +338,7 @@ export default function EstoquePage() {
                   <th className="px-4 py-3">SKU</th>
                   <th className="px-4 py-3">Nome</th>
                   <th className="px-4 py-3">Categoria</th>
+                  <th className="px-4 py-3">Unid.</th>
                   <th className="px-4 py-3">Serial?</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Ações</th>
@@ -359,6 +361,9 @@ export default function EstoquePage() {
                       <td className="px-4 py-3 font-medium">{it.nome}</td>
                       <td className="px-4 py-3 capitalize text-muted-foreground">
                         {it.categoria}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {UNIDADE_LABEL[it.unidade]}
                       </td>
                       <td className="px-4 py-3">
                         {it.serializado ? 'Sim' : 'Não'}
@@ -496,6 +501,7 @@ function TabelaSaldo({
     sku: string
     nome: string
     categoria: string
+    unidade: EstoqueUnidade
     serializado: boolean
     saldo: number
   }>
@@ -552,7 +558,7 @@ function TabelaSaldo({
                       )}
                       style={{ fontVariantNumeric: 'tabular-nums' }}
                     >
-                      {l.saldo}
+                      {l.saldo} {UNIDADE_LABEL[l.unidade]}
                     </span>
                   </td>
                 </tr>

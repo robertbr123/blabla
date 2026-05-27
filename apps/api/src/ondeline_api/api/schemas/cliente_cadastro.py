@@ -236,6 +236,7 @@ class MaterialUsadoOut(BaseModel):
     sku: str
     nome: str
     categoria: str
+    unidade: str = "UN"
     serializado: bool
     quantidade: int
     serial: str | None

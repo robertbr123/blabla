@@ -411,11 +411,23 @@ export interface CanalUpdate {
 }
 
 // Estoque (F6)
+// Unidade de medida do item. Quantidade segue sempre inteira; unidade é só
+// rótulo/exibição (e define como o app insere a quantidade).
+export type EstoqueUnidade = 'UN' | 'metro' | 'CX' | 'PC'
+
+export const UNIDADE_LABEL: Record<EstoqueUnidade, string> = {
+  UN: 'UN',
+  metro: 'm',
+  CX: 'CX',
+  PC: 'PC',
+}
+
 export interface EstoqueItem {
   id: string
   sku: string
   nome: string
   categoria: string
+  unidade: EstoqueUnidade
   serializado: boolean
   ativo: boolean
   created_at: string
@@ -439,6 +451,7 @@ export interface EstoqueSaldoLinha {
   sku: string
   nome: string
   categoria: string
+  unidade: EstoqueUnidade
   serializado: boolean
   saldo: number
 }

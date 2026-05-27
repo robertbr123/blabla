@@ -306,6 +306,7 @@ async def list_materiais_usados(
             sku=item.sku,
             nome=item.nome,
             categoria=item.categoria,
+            unidade=item.unidade,
             serializado=item.serializado,
             quantidade=mov.quantidade,
             serial=mov.serial,
@@ -425,6 +426,15 @@ async def create_cliente_campo(
             )
         tecnico_id = tec.id
 
+    # Serial do equipamento: o app nao manda mais o campo solto "serial".
+    # Deriva do 1o material com serial (item serializado) — preserva
+    # cliente.serial pra SGP/relatorio. body.serial ainda e aceito por compat.
+    serial_equip = body.serial
+    if not serial_equip and body.materiais:
+        serial_equip = next(
+            (m.serial for m in body.materiais if m.serial), None
+        )
+
     cliente = ClienteCadastro(
         cpf_hash=cpf_hash,
         cpf_encrypted=encrypt_pii(cpf_digits),
@@ -447,7 +457,7 @@ async def create_cliente_campo(
         due_date=body.due_date,
         installer_user_id=user.id,
         installer_nome=user.name,
-        serial=body.serial,
+        serial=serial_equip,
         contrato=body.contrato,
         observation=body.observation,
         latitude=body.latitude,

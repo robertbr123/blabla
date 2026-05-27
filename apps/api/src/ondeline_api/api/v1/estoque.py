@@ -99,6 +99,7 @@ async def create_item(
         sku=body.sku,
         nome=body.nome,
         categoria=body.categoria,
+        unidade=body.unidade,
         serializado=body.serializado,
         ativo=body.ativo,
     )
@@ -459,6 +460,7 @@ async def saldo_deposito(
             sku=item.sku,
             nome=item.nome,
             categoria=item.categoria,
+            unidade=item.unidade,
             serializado=item.serializado,
             saldo=saldo,
         )
@@ -623,6 +625,7 @@ async def saldos_tecnicos(
             EstoqueItem.sku,
             EstoqueItem.nome.label("item_nome"),
             EstoqueItem.categoria,
+            EstoqueItem.unidade,
             func.coalesce(func.sum(sign), 0).label("saldo"),
         )
         .select_from(EstoqueMovimento)
@@ -636,6 +639,7 @@ async def saldos_tecnicos(
             EstoqueItem.sku,
             EstoqueItem.nome,
             EstoqueItem.categoria,
+            EstoqueItem.unidade,
         )
         .having(func.coalesce(func.sum(sign), 0) > 0)
         .order_by(TecnicoModel.nome, EstoqueItem.nome)
@@ -649,6 +653,7 @@ async def saldos_tecnicos(
             sku=r.sku,
             nome=r.item_nome,
             categoria=r.categoria,
+            unidade=r.unidade,
             saldo=int(r.saldo),
         )
         for r in rows

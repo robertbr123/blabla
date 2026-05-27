@@ -83,6 +83,12 @@ class EstoqueItem(Base):
     sku: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
     nome: Mapped[str] = mapped_column(String(120), nullable=False)
     categoria: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Unidade de medida: UN (unidade) | metro | CX (caixa) | PC (peca).
+    # Define como o app exibe/insere a quantidade (rotulo + digitar livre).
+    # Quantidade segue sempre inteira; unidade e so semantica/exibicao.
+    unidade: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="UN", server_default="UN"
+    )
     serializado: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )

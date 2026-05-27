@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { useEstoqueCategorias, useUpdateEstoqueItem } from '@/lib/api/queries'
-import type { EstoqueItem } from '@/lib/api/types'
+import type { EstoqueItem, EstoqueUnidade } from '@/lib/api/types'
 
 interface Props {
   item: EstoqueItem
@@ -18,6 +18,7 @@ export function DialogEditarItemEstoque({ item, onClose }: Props) {
   const { data: categorias } = useEstoqueCategorias(true)
   const [nome, setNome] = useState(item.nome)
   const [categoria, setCategoria] = useState<string>(item.categoria)
+  const [unidade, setUnidade] = useState<EstoqueUnidade>(item.unidade)
   const [ativo, setAtivo] = useState(item.ativo)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -26,7 +27,7 @@ export function DialogEditarItemEstoque({ item, onClose }: Props) {
     try {
       await update.mutateAsync({
         id: item.id,
-        body: { nome: nome.trim(), categoria, ativo },
+        body: { nome: nome.trim(), categoria, unidade, ativo },
       })
       onClose()
     } catch (e) {
@@ -78,6 +79,23 @@ export function DialogEditarItemEstoque({ item, onClose }: Props) {
                 <option value={categoria}>{categoria} (inativa)</option>
               )}
           </Select>
+        </div>
+
+        <div>
+          <Label htmlFor="unidade">Unidade de medida *</Label>
+          <Select
+            id="unidade"
+            value={unidade}
+            onChange={(e) => setUnidade(e.target.value as EstoqueUnidade)}
+          >
+            <option value="UN">UN — unidade</option>
+            <option value="metro">Metro — cabo DROP, fio</option>
+            <option value="CX">CX — caixa</option>
+            <option value="PC">PC — peça</option>
+          </Select>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Define como o técnico digita a quantidade no app.
+          </p>
         </div>
 
         <div className="flex items-center justify-between rounded-md border p-3">

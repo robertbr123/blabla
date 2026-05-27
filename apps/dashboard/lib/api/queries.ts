@@ -142,6 +142,7 @@ export interface EstoqueItemCreate {
   sku: string
   nome: string
   categoria: string
+  unidade: import('./types').EstoqueUnidade
   serializado: boolean
   ativo: boolean
 }
@@ -161,6 +162,7 @@ export function useCreateEstoqueItem() {
 export interface EstoqueItemUpdate {
   nome?: string
   categoria?: string
+  unidade?: import('./types').EstoqueUnidade
   ativo?: boolean
 }
 
@@ -217,6 +219,7 @@ export interface SaldoLinha {
   sku: string
   nome: string
   categoria: string
+  unidade: import('./types').EstoqueUnidade
   serializado: boolean
   saldo: number
 }
@@ -396,6 +399,7 @@ export interface TecnicoSaldoResumo {
   sku: string
   nome: string
   categoria: string
+  unidade: import('./types').EstoqueUnidade
   saldo: number
 }
 

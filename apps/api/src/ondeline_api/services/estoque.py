@@ -252,6 +252,7 @@ async def calcular_saldo_tecnico(
             "sku": item.sku,
             "nome": item.nome,
             "categoria": item.categoria,
+            "unidade": item.unidade,
             "serializado": item.serializado,
             "saldo": saldo,
         }

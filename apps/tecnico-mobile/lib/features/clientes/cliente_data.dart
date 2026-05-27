@@ -369,6 +369,7 @@ class MaterialUsado {
   final String sku;
   final String nome;
   final String categoria;
+  final String unidade; // UN | metro | CX | PC
   final bool serializado;
   final int quantidade;
   final String? serial;
@@ -381,6 +382,7 @@ class MaterialUsado {
     required this.sku,
     required this.nome,
     required this.categoria,
+    required this.unidade,
     required this.serializado,
     required this.quantidade,
     required this.serial,
@@ -388,12 +390,16 @@ class MaterialUsado {
     required this.observacao,
   });
 
+  /// Rotulo curto da unidade (ex: "m" pra metro).
+  String get unidadeLabel => unidade == 'metro' ? 'm' : unidade;
+
   factory MaterialUsado.fromJson(Map<String, dynamic> j) => MaterialUsado(
         movimentoId: j['movimento_id'] as String,
         itemId: j['item_id'] as String,
         sku: (j['sku'] ?? '') as String,
         nome: (j['nome'] ?? '') as String,
         categoria: (j['categoria'] ?? '') as String,
+        unidade: (j['unidade'] ?? 'UN') as String,
         serializado: (j['serializado'] ?? false) as bool,
         quantidade: (j['quantidade'] as num).toInt(),
         serial: j['serial'] as String?,

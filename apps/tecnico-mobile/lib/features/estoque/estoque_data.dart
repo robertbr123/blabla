@@ -11,6 +11,7 @@ class EstoqueLinha {
   final String sku;
   final String nome;
   final String categoria;
+  final String unidade; // UN | metro | CX | PC
   final bool serializado;
   final int saldo;
 
@@ -19,15 +20,20 @@ class EstoqueLinha {
     required this.sku,
     required this.nome,
     required this.categoria,
+    required this.unidade,
     required this.serializado,
     required this.saldo,
   });
+
+  /// Rotulo curto da unidade pra exibir ao lado da quantidade (ex: "m").
+  String get unidadeLabel => unidade == 'metro' ? 'm' : unidade;
 
   factory EstoqueLinha.fromJson(Map<String, dynamic> j) => EstoqueLinha(
         itemId: (j['item_id'] ?? '') as String,
         sku: (j['sku'] ?? '') as String,
         nome: (j['nome'] ?? '') as String,
         categoria: (j['categoria'] ?? '') as String,
+        unidade: (j['unidade'] ?? 'UN') as String,
         serializado: (j['serializado'] ?? false) as bool,
         saldo: (j['saldo'] ?? 0) as int,
       );

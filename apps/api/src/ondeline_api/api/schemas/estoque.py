@@ -17,12 +17,18 @@ _TIPOS = (
 )
 
 
+# Unidades de medida aceitas no item. Quantidade segue sempre inteira;
+# unidade e so semantica/exibicao no app (rotulo + digitar livre).
+_UNIDADE_PATTERN = "^(UN|metro|CX|PC)$"
+
+
 class ItemOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
     sku: str
     nome: str
     categoria: str
+    unidade: str
     serializado: bool
     ativo: bool
     created_at: datetime
@@ -32,6 +38,7 @@ class ItemCreate(BaseModel):
     sku: str = Field(min_length=1, max_length=40)
     nome: str = Field(min_length=1, max_length=120)
     categoria: str = Field(min_length=1, max_length=40)
+    unidade: str = Field(default="UN", pattern=_UNIDADE_PATTERN)
     serializado: bool = False
     ativo: bool = True
 
@@ -39,6 +46,7 @@ class ItemCreate(BaseModel):
 class ItemUpdate(BaseModel):
     nome: str | None = Field(default=None, max_length=120)
     categoria: str | None = Field(default=None, max_length=40)
+    unidade: str | None = Field(default=None, pattern=_UNIDADE_PATTERN)
     ativo: bool | None = None
 
 
@@ -102,6 +110,7 @@ class SaldoLinha(BaseModel):
     sku: str
     nome: str
     categoria: str
+    unidade: str = "UN"
     serializado: bool
     saldo: int
 
@@ -150,6 +159,7 @@ class TecnicoSaldoResumo(BaseModel):
     sku: str
     nome: str
     categoria: str
+    unidade: str = "UN"
     saldo: int
 
 

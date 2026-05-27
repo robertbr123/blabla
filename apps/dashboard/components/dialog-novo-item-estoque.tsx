@@ -17,6 +17,7 @@ const schema = z.object({
     .regex(/^[A-Za-z0-9-_]+$/, 'Use letras, números, hífen ou underline'),
   nome: z.string().min(1, 'Obrigatório').max(120),
   categoria: z.string().min(1, 'Selecione uma categoria'),
+  unidade: z.enum(['UN', 'metro', 'CX', 'PC']),
   serializado: z.boolean(),
   ativo: z.boolean(),
 })
@@ -42,6 +43,7 @@ export function DialogNovoItemEstoque({ onClose }: Props) {
       sku: '',
       nome: '',
       categoria: '',
+      unidade: 'UN',
       serializado: false,
       ativo: true,
     },
@@ -105,6 +107,20 @@ export function DialogNovoItemEstoque({ onClose }: Props) {
                 {errors.categoria.message}
               </p>
             )}
+          </div>
+
+          <div>
+            <Label htmlFor="unidade">Unidade de medida *</Label>
+            <Select id="unidade" {...register('unidade')}>
+              <option value="UN">UN — unidade (ONU, roteador, conector)</option>
+              <option value="metro">Metro — cabo DROP, fio</option>
+              <option value="CX">CX — caixa</option>
+              <option value="PC">PC — peça</option>
+            </Select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Define como o técnico digita a quantidade no app. Quantidade é
+              sempre inteira.
+            </p>
           </div>
 
           <div className="flex items-center justify-between rounded-md border p-3">

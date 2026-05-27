@@ -48,7 +48,8 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
   int _dueDate = 10;
 
   // Step 3 — instalação
-  final _serial = TextEditingController();
+  // O serial do equipamento agora vem do item serializado selecionado nos
+  // materiais (sem campo solto). A API deriva ClienteCadastro.serial dali.
   final _contrato = TextEditingController();
   final _observation = TextEditingController();
   final Map<String, int> _materiaisQtd = {}; // itemId -> qtd
@@ -89,7 +90,6 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
     _state.dispose();
     _pppoeUser.dispose();
     _pppoePass.dispose();
-    _serial.dispose();
     _contrato.dispose();
     _observation.dispose();
     _cepDebounce?.cancel();
@@ -156,9 +156,38 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
     return null;
   }
 
-  // Step 3 não tem validação obrigatória — tudo opcional.
+  // Step 3: materiais serializados exigem serial preenchido (alinha com a API,
+  // que rejeita item serializado sem serial — bloqueamos antes de enviar).
+  String? _validaMateriais() {
+    final linhas = ref.read(estoqueSaldoProvider).valueOrNull ?? const [];
+    for (final e in _materiaisQtd.entries) {
+      if (e.value <= 0) continue;
+      EstoqueLinha? linha;
+      for (final l in linhas) {
+        if (l.itemId == e.key) {
+          linha = l;
+          break;
+        }
+      }
+      if (linha != null && linha.serializado) {
+        final serial = (_materiaisSerial[e.key] ?? '').trim();
+        if (serial.isEmpty) {
+          return 'Informe o serial de "${linha.nome}".';
+        }
+      }
+    }
+    return null;
+  }
 
   Future<void> _enviar() async {
+    final erroMat = _validaMateriais();
+    if (erroMat != null) {
+      setState(() {
+        _step = 2; // garante que o usuario ve o erro no step de instalacao
+        _erroEnvio = erroMat;
+      });
+      return;
+    }
     setState(() {
       _enviando = true;
       _erroEnvio = null;
@@ -201,7 +230,8 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
             _pppoeUser.text.trim().isEmpty ? null : _pppoeUser.text.trim(),
         pppoePass: _pppoePass.text.isEmpty ? null : _pppoePass.text,
         dueDate: _dueDate,
-        serial: _serial.text.trim().isEmpty ? null : _serial.text.trim(),
+        // Serial do equipamento e derivado pela API do material serializado.
+        serial: null,
         contrato: _contrato.text.trim().isEmpty ? null : _contrato.text.trim(),
         observation:
             _observation.text.trim().isEmpty ? null : _observation.text.trim(),
@@ -655,14 +685,6 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
                 gps: _gps, capturing: _gpsCapturing, onRetry: _capturarGps),
             const SizedBox(height: 12),
             TextField(
-              controller: _serial,
-              decoration: const InputDecoration(
-                labelText: 'Serial do equipamento (ONU)',
-                prefixIcon: Icon(Icons.qr_code_2),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
               controller: _contrato,
               decoration: const InputDecoration(
                 labelText: 'Contrato (opcional)',
@@ -1036,11 +1058,15 @@ class _MaterialRow extends StatefulWidget {
 
 class _MaterialRowState extends State<_MaterialRow> {
   late final TextEditingController _serialCtrl;
+  late final TextEditingController _qtdCtrl;
 
   @override
   void initState() {
     super.initState();
     _serialCtrl = TextEditingController(text: widget.serial);
+    _qtdCtrl = TextEditingController(
+      text: widget.quantidade > 0 ? '${widget.quantidade}' : '',
+    );
   }
 
   @override
@@ -1050,18 +1076,37 @@ class _MaterialRowState extends State<_MaterialRow> {
     if (widget.serial != _serialCtrl.text && widget.serial.isEmpty) {
       _serialCtrl.text = '';
     }
+    // Sincroniza o campo de qtd quando muda externamente (botoes -/+ ou clamp).
+    if (widget.quantidade != old.quantidade) {
+      final externo = widget.quantidade > 0 ? '${widget.quantidade}' : '';
+      if (externo != _qtdCtrl.text) {
+        _qtdCtrl.text = externo;
+        _qtdCtrl.selection =
+            TextSelection.collapsed(offset: _qtdCtrl.text.length);
+      }
+    }
   }
 
   @override
   void dispose() {
     _serialCtrl.dispose();
+    _qtdCtrl.dispose();
     super.dispose();
+  }
+
+  void _setQtd(int v) {
+    final clamped = v < 0 ? 0 : (v > widget.linha.saldo ? widget.linha.saldo : v);
+    if (clamped != widget.quantidade) widget.onQtdChanged(clamped);
   }
 
   @override
   Widget build(BuildContext context) {
     final linha = widget.linha;
     final selected = widget.quantidade > 0;
+    // Itens serializados: 1 unidade fixa (so liga/desliga). Demais: digitavel.
+    final maxAtingido = linha.serializado
+        ? widget.quantidade >= 1
+        : widget.quantidade >= linha.saldo;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Column(
@@ -1079,7 +1124,8 @@ class _MaterialRowState extends State<_MaterialRow> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      '${linha.sku} · saldo ${linha.saldo}${linha.serializado ? " · serial" : ""}',
+                      '${linha.sku} · saldo ${linha.saldo} ${linha.unidadeLabel}'
+                      '${linha.serializado ? " · serial" : ""}',
                       style: const TextStyle(fontSize: 11, color: Colors.grey),
                     ),
                   ],
@@ -1088,17 +1134,46 @@ class _MaterialRowState extends State<_MaterialRow> {
               IconButton(
                 icon: const Icon(Icons.remove_circle_outline),
                 onPressed: widget.quantidade > 0
-                    ? () => widget.onQtdChanged(widget.quantidade - 1)
+                    ? () => _setQtd(widget.quantidade - 1)
                     : null,
               ),
-              Text('${widget.quantidade}',
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              // Serializado: qtd fixa exibida. Demais: campo digitavel + unidade.
+              if (linha.serializado)
+                Text('${widget.quantidade}',
+                    style: const TextStyle(fontWeight: FontWeight.w700))
+              else
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 46,
+                      child: TextField(
+                        controller: _qtdCtrl,
+                        textAlign: TextAlign.center,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          hintText: '0',
+                          contentPadding: EdgeInsets.symmetric(vertical: 8),
+                        ),
+                        onChanged: (s) => _setQtd(int.tryParse(s) ?? 0),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      linha.unidadeLabel,
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ],
+                ),
               IconButton(
                 icon: const Icon(Icons.add_circle_outline),
-                onPressed: widget.quantidade < linha.saldo &&
-                        (!linha.serializado || widget.quantidade < 1)
-                    ? () => widget.onQtdChanged(widget.quantidade + 1)
-                    : null,
+                onPressed: maxAtingido
+                    ? null
+                    : () => _setQtd(widget.quantidade + 1),
               ),
             ],
           ),

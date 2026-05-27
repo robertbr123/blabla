@@ -199,7 +199,7 @@ class _MaterialLinha extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              '×${material.quantidade}',
+              '${material.quantidade} ${material.unidadeLabel}',
               style: const TextStyle(
                 fontWeight: FontWeight.w700,
                 color: Color(0xFF15803d),
