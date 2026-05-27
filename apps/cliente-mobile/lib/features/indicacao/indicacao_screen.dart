@@ -644,20 +644,26 @@ class _SmallActionButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: BrandTokens.spaceMd,
+            horizontal: BrandTokens.spaceSm,
             vertical: BrandTokens.spaceSm,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, color: Colors.white, size: 16),
               const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 12,
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ],
