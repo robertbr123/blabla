@@ -7,7 +7,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-
 CanalProvider = Literal["evolution", "cloud"]
 
 
@@ -44,7 +43,7 @@ class CanalCreate(BaseModel):
     msg_fora_horario: str | None = None
 
     @model_validator(mode="after")
-    def _check_provider_fields(self) -> "CanalCreate":
+    def _check_provider_fields(self) -> CanalCreate:
         if self.provider == "evolution":
             if not self.evolution_instance:
                 raise ValueError("evolution_instance e obrigatorio quando provider='evolution'")

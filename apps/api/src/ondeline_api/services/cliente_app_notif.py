@@ -73,7 +73,7 @@ def _enqueue_push(
         send_user_push.delay(
             str(user_id), push_token, titulo, corpo, data
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         log.warning("notif.push_enqueue_failed", error=str(e))
 
 

@@ -125,7 +125,7 @@ async def completar(
         # Race condition — outro request gravou primeiro. OK.
         await session.rollback()
         return False
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         log.warning("missao.completar_falhou", slug=slug, error=str(e))
         return False
 
@@ -168,7 +168,7 @@ async def calcular_pontos_missoes(
                 for t in sgp.titulos
                 if t.status == "pago" and (t.dias_atraso or 0) == 0
             )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         log.warning("missao.pagar_em_dia_falhou", error=str(e))
     contagem["pagar_em_dia"] = pagas_em_dia
 
@@ -226,7 +226,7 @@ async def status_missoes(
                 }
             )
         else:  # on_the_fly
-            total_pts, contagem = await calcular_pontos_missoes(session, user)
+            _total_pts, contagem = await calcular_pontos_missoes(session, user)
             count = contagem.get(slug, 0)
             items.append(
                 {

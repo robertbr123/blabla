@@ -10,8 +10,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ondeline_api.adapters.whatsapp import WhatsAppAdapter
 from ondeline_api.adapters.sgp.router import SgpRouter
+from ondeline_api.adapters.whatsapp import WhatsAppAdapter
 from ondeline_api.db.models.business import Cliente, Conversa
 from ondeline_api.services.sgp_cache import SgpCacheService
 

@@ -94,7 +94,7 @@ async def _flush() -> dict[str, int]:
         for adapter in adapter_cache.values():
             try:
                 await adapter.aclose()
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 log.warning("notify.adapter_close_failed", error=str(e))
     return {"sent": sent, "failed": failed}
 

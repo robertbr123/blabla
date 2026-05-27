@@ -205,7 +205,7 @@ async def get_timeline(
         if cli is not None:
             try:
                 nome_claro = decrypt_pii(cli.nome_encrypted)
-            except Exception:  # noqa: BLE001
+            except Exception:
                 nome_claro = ""
             nome = _mask_nome(nome_claro)
         else:

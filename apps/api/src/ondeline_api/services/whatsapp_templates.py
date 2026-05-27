@@ -13,9 +13,9 @@ este registry primeiro e cai pra texto livre se nao houver spec.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Callable
 
 from ondeline_api.db.models.business import Notificacao, NotificacaoTipo
 

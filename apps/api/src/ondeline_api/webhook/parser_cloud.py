@@ -38,7 +38,6 @@ from typing import Any
 
 from ondeline_api.webhook.parser import InboundEvent, InboundKind, ParseError
 
-
 _TYPE_MAP: dict[str, InboundKind] = {
     "text": InboundKind.TEXT,
     "image": InboundKind.IMAGE,

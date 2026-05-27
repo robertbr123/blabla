@@ -19,9 +19,9 @@ from ondeline_api.adapters.llm.hermes import HermesProvider
 from ondeline_api.adapters.sgp.linknetam import SgpLinkNetAMProvider
 from ondeline_api.adapters.sgp.ondeline import SgpOndelineProvider
 from ondeline_api.adapters.sgp.router import SgpRouter
+from ondeline_api.adapters.whatsapp import WhatsAppAdapter
 from ondeline_api.config import get_settings
 from ondeline_api.db.models.business import Cliente, Conversa
-from ondeline_api.adapters.whatsapp import WhatsAppAdapter
 from ondeline_api.services.canal_whatsapp import adapter_for_conversa
 from ondeline_api.services.llm_loop import run_turn
 from ondeline_api.services.sgp_cache import SgpCacheService

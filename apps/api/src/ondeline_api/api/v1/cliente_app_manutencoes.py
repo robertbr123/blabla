@@ -8,8 +8,8 @@ Diferente do /api/v1/manutencoes (admin), este endpoint:
 """
 from __future__ import annotations
 
-from pydantic import BaseModel
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.auth.cliente_deps import get_current_cliente_user

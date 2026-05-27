@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+from datetime import UTC
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -104,7 +105,6 @@ async def submeter_nps(
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> NpsSubmitOut:
     from datetime import datetime as _dt
-    from datetime import timezone as _tz
 
     row = await session.get(ClienteAppOs, os_id)
     if row is None or row.cliente_app_user_id != user.id:
@@ -114,7 +114,7 @@ async def submeter_nps(
     if row.nps_respondido_em is not None:
         raise HTTPException(status_code=409, detail="avaliacao ja enviada")
 
-    now = _dt.now(_tz.utc)
+    now = _dt.now(UTC)
     row.nps_score = body.score
     row.nps_comentario = body.comentario or None
     row.nps_respondido_em = now
@@ -348,7 +348,6 @@ async def admin_patch(
     # Notifica cliente se status mudou.
     if body.status is not None and body.status != status_anterior:
         from datetime import datetime as _dt
-        from datetime import timezone as _tz
 
         status_labels = {
             "aberto": "aberto",
@@ -369,7 +368,7 @@ async def admin_patch(
 
         # Quando concluido pela primeira vez, dispara pedido de NPS.
         if o.status == "concluido" and o.nps_solicitado_em is None:
-            o.nps_solicitado_em = _dt.now(_tz.utc)
+            o.nps_solicitado_em = _dt.now(UTC)
             await notify_user(
                 session,
                 o.cliente_app_user_id,
