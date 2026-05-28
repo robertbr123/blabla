@@ -16,14 +16,17 @@ from __future__ import annotations
 import json
 
 import structlog
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse, PlainTextResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.config import get_settings
+from ondeline_api.deps import get_db
 from ondeline_api.observability.metrics import (
     webhook_invalid_signature_total,
     webhook_received_total,
 )
+from ondeline_api.services.whatsapp_message_log import record_status_update
 from ondeline_api.webhook.hmac import verify_signature
 from ondeline_api.webhook.parser_cloud import (
     iter_cloud_messages,
@@ -55,7 +58,10 @@ async def whatsapp_cloud_verify(request: Request) -> PlainTextResponse:
 
 
 @router.post("/webhook/whatsapp-cloud", status_code=status.HTTP_202_ACCEPTED)
-async def whatsapp_cloud_webhook(request: Request) -> JSONResponse:
+async def whatsapp_cloud_webhook(
+    request: Request,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> JSONResponse:
     settings = get_settings()
     webhook_received_total.inc()
 
@@ -126,6 +132,18 @@ async def whatsapp_cloud_webhook(request: Request) -> JSONResponse:
                 status=st["status"],
                 recipient=st["recipient_id"],
             )
+        # Persiste atualizacao no whatsapp_message_status (Fase 2.2).
+        # Falha-aberta: erro de DB nao quebra o webhook (Meta retentaria).
+        if st["id"]:
+            await record_status_update(
+                session,
+                wamid=st["id"],
+                status=st["status"],
+                timestamp_unix=st.get("timestamp"),
+                error=st.get("errors") if st["status"] == "failed" else None,
+            )
+    if statuses:
+        await session.commit()
 
     # 5) Extrai messages inbound
     try:

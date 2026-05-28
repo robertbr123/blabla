@@ -25,6 +25,7 @@ from ondeline_api.db.models.business import (
 )
 from ondeline_api.repositories.conversa import ConversaRepo
 from ondeline_api.repositories.notificacao import NotificacaoRepo
+from ondeline_api.services.whatsapp_message_log import extract_wamid, record_sent
 from ondeline_api.services.whatsapp_templates import spec_for
 
 log = structlog.get_logger(__name__)
@@ -152,7 +153,7 @@ async def send_one(
             header_media: tuple[str, str] | None = None
             if spec.header_media_fn is not None:
                 header_media = spec.header_media_fn(notificacao)
-            await adapter.send_template(
+            send_result = await adapter.send_template(
                 cliente.whatsapp,
                 name=spec.name,
                 language=spec.language,
@@ -164,6 +165,14 @@ async def send_one(
                 "notify.sent_template",
                 notif_id=str(notificacao.id),
                 template=spec.name,
+            )
+            # Persiste wamid + template pra metricas (Fase 2.2). Falha-aberta:
+            # erro aqui nao quebra envio nem marca notificacao como falha.
+            await record_sent(
+                session,
+                wamid=extract_wamid(send_result),
+                template_name=spec.name,
+                recipient_jid=cliente.whatsapp,
             )
         else:
             text = render_message(notificacao, nome_full)

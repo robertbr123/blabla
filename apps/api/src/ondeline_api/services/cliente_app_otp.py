@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from ondeline_api.adapters.whatsapp import WhatsAppAdapter, WhatsAppError
 from ondeline_api.db.models.cliente_app import ClienteAppOtp
 from ondeline_api.observability.metrics import otp_send_total
+from ondeline_api.services.whatsapp_message_log import extract_wamid, record_sent
 
 log = structlog.get_logger(__name__)
 
@@ -91,12 +92,19 @@ async def issue(
     provider = "cloud" if template_name else "evolution"
     try:
         if template_name:
-            await adapter.send_template(
+            send_result = await adapter.send_template(
                 jid,
                 name=template_name,
                 language="pt_BR",
                 body_params=[code],
                 otp_code=code,
+            )
+            # Persiste pra metricas de template (Fase 2.2).
+            await record_sent(
+                session,
+                wamid=extract_wamid(send_result),
+                template_name=template_name,
+                recipient_jid=jid,
             )
         else:
             await adapter.send_text(jid, text)

@@ -766,3 +766,43 @@ class ClienteCadastro(Base):
         Index("ix_clientes_cadastro_sync", "sgp_synced_at"),
         Index("ix_clientes_cadastro_deleted", "deleted_at"),
     )
+
+
+class WhatsAppMessageStatus(Base):
+    """Tracking de outbound Cloud — delivered/read/failed por template.
+
+    Fase 2.2 do plano de evolucao. Populada por dois lados:
+    - INSERT no envio (notify_sender e cliente_app_otp).
+    - UPDATE no webhook Cloud quando chega status update.
+
+    Migration: 0043_whatsapp_message_status.
+    """
+
+    __tablename__ = "whatsapp_message_status"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    wamid: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
+    template_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    recipient_jid: Mapped[str] = mapped_column(String(40), nullable=False)
+    sent_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    delivered_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    read_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    failed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    error: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
