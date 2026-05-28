@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "W9522QVHGL.dev.robertbr.clienteMobile",
+        "paths": [
+          "/faturas",
+          "/suporte",
+          "/notificacoes"
+        ]
+      }
+    ]
+  }
+}

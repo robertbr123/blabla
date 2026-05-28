@@ -126,6 +126,19 @@ services:
     restart: unless-stopped
     logging: *default-logging
 
+  # Landing + /.well-known/ pra clientes.ondeline.com.br.
+  # Serve assetlinks.json (Android App Links) e apple-app-site-association
+  # (iOS Universal Links) com MIME correto, alem de uma landing fallback
+  # quando o app cliente nao esta instalado no celular.
+  clientes-pwa:
+    image: ghcr.io/${GHCR_OWNER}/blabla-clientes-pwa:latest
+    container_name: blabla-clientes-pwa
+    # Bind so localhost — nginx proxy_pass http://127.0.0.1:3004
+    ports:
+      - "127.0.0.1:3004:80"
+    restart: unless-stopped
+    logging: *default-logging
+
   evolution-api:
     profiles: ["evolution"]
     image: evoapicloud/evolution-api:latest

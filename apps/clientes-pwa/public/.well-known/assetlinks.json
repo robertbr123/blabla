@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "dev.robertbr.cliente_mobile",
+      "sha256_cert_fingerprints": [
+        "EA:70:7A:0B:38:E8:1F:DC:36:B0:75:0C:BD:C5:7B:97:69:6E:5C:8A:6B:38:D8:1D:2A:2F:48:31:AE:DA:BB:09",
+        "99:60:74:8F:EE:E8:49:03:75:32:BC:E1:5E:F6:48:FA:10:6E:E5:63:4A:65:FA:5F:64:90:69:55:D3:05:59:7D"
+      ]
+    }
+  }
+]

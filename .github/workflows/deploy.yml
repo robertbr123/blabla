@@ -30,6 +30,10 @@ jobs:
             context: .
             file: apps/tecnico-pwa/Dockerfile
             image: blabla-tecnico-pwa
+          - app: clientes-pwa
+            context: apps/clientes-pwa
+            file: apps/clientes-pwa/Dockerfile
+            image: blabla-clientes-pwa
     steps:
       - uses: actions/checkout@v4
 

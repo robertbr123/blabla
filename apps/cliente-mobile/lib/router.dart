@@ -21,7 +21,7 @@ import 'features/onboarding/onboarding_password_screen.dart';
 import 'features/perfil/editar_perfil_screen.dart';
 import 'features/perfil/mudar_senha_screen.dart';
 import 'features/suporte/novo_chamado_screen.dart';
-import 'features/shell/main_shell.dart';
+import 'features/shell/main_shell.dart' show MainShell, mainShellTabProvider;
 import 'features/splash/splash_screen.dart';
 
 /// Chave global do Navigator raiz. Usada pra navegar de fora da arvore de
@@ -93,6 +93,24 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const OnboardingBiometricScreen(),
       ),
       GoRoute(path: '/home', builder: (_, __) => const MainShell()),
+      // App Links: botoes "Ver no app" dos templates WhatsApp aterrissam
+      // aqui. Setam a tab certa do shell e redirecionam pra /home pra
+      // reusar o MainShell. Se usuario nao estiver logado, o redirect global
+      // bate antes e manda pro onboarding (tab fica setada pra quando logar).
+      GoRoute(
+        path: '/faturas',
+        redirect: (context, state) {
+          ref.read(mainShellTabProvider.notifier).state = 1;
+          return '/home';
+        },
+      ),
+      GoRoute(
+        path: '/suporte',
+        redirect: (context, state) {
+          ref.read(mainShellTabProvider.notifier).state = 2;
+          return '/home';
+        },
+      ),
       GoRoute(
         path: '/perfil/editar',
         builder: (_, state) {

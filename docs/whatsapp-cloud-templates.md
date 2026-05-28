@@ -28,7 +28,33 @@ Emoji acompanha a saudação **só uma vez** por mensagem; o resto do corpo usa 
 | App | Host atual | Host alvo (futuro) |
 |-----|-----------|--------------------|
 | **tecnico-pwa** | `https://tec.robertbr.dev` ✅ | `https://tecnico.ondeline.com.br` (planejado) |
-| **cliente-pwa** (se houver) | — | a definir |
+| **clientes-pwa** (landing + `/.well-known/`) | `https://clientes.ondeline.com.br` ✅ | mesmo |
+
+### Cliente-mobile — paths suportados pelo App Link (v1)
+
+| Path | Abre no app | Onde leva |
+|------|-------------|-----------|
+| `https://clientes.ondeline.com.br/faturas` | sim | aba **Faturas** do shell |
+| `https://clientes.ondeline.com.br/suporte` | sim | aba **Suporte** do shell |
+| `https://clientes.ondeline.com.br/notificacoes` | sim | tela de **Notificações** |
+| qualquer outro path | não (cai na landing) | landing com botões pra Play/App Store |
+
+Pra futuras versões (não estão no v1):
+- `/faturas/:id` — abrir bottom sheet da fatura específica
+- `/os/:id` — abrir OS específica dentro da aba suporte
+
+### Sugestões de URL nos templates (revisar manualmente no Meta)
+
+Hoje **nenhum** template do cliente tem botão URL. Pra ativar deep link nos
+templates aprovados, editar no Meta Business Manager e re-aprovar:
+
+| Template | Botão URL sugerido |
+|----------|--------------------|
+| `fatura_vencendo` | "Ver fatura no app" → `https://clientes.ondeline.com.br/faturas` |
+| `fatura_vencida` | "Ver fatura no app" → `https://clientes.ondeline.com.br/faturas` |
+| `cobranca_regua_dia0/3/7/15` | "Pagar no app" → `https://clientes.ondeline.com.br/faturas` |
+| `os_concluida_csat` | "Avaliar no app" → `https://clientes.ondeline.com.br/suporte` |
+| `manutencao_programada` | "Detalhes no app" → `https://clientes.ondeline.com.br/notificacoes` |
 
 ### TODO — quando migrar o tecnico pro domínio definitivo
 
