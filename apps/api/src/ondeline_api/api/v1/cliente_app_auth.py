@@ -20,6 +20,7 @@ from ondeline_api.adapters.whatsapp import (
     build_for_canal,
     build_for_instance,
 )
+from ondeline_api.api.rate_limit import cpf_or_ip_key
 from ondeline_api.api.schemas.cliente_app_auth import (
     ForgotIn,
     ForgotResetIn,
@@ -47,10 +48,8 @@ log = structlog.get_logger(__name__)
 router = APIRouter(prefix="/api/v1/cliente-app/auth", tags=["cliente-app:auth"])
 
 SETUP_TTL_MIN = 10
-# Atras do nginx todos requests chegam do bridge Docker (~172.18.0.1),
-# entao o rate-limit por IP vira global. Bumpando pra valores que ainda
-# protegem de spam mas nao bloqueiam debug nem multiplos usuarios.
-# TODO: trocar pra key por CPF (do body) numa proxima passada.
+# Rate limit por CPF (extraido do body por CpfExtractorMiddleware). Rotas sem
+# CPF no body (register/password — usa setup_token) caem em IP como fallback.
 _RL_OTP = "60/hour"
 _RL_AUTH = "120/hour"
 
@@ -150,7 +149,7 @@ def _cliente_access_seconds() -> int:
 
 
 @router.post("/register/start", response_model=RegisterStartOut)
-@limiter.limit(_RL_OTP)
+@limiter.limit(_RL_OTP, key_func=cpf_or_ip_key)
 async def register_start(
     request: Request,
     response: Response,
@@ -203,7 +202,7 @@ async def register_start(
 
 
 @router.post("/register/verify", response_model=RegisterVerifyOut)
-@limiter.limit(_RL_AUTH)
+@limiter.limit(_RL_AUTH, key_func=cpf_or_ip_key)
 async def register_verify(
     request: Request,
     response: Response,
@@ -249,7 +248,7 @@ async def register_password(
 
 
 @router.post("/login", response_model=TokenOut)
-@limiter.limit(_RL_AUTH)
+@limiter.limit(_RL_AUTH, key_func=cpf_or_ip_key)
 async def login(
     request: Request,
     response: Response,
@@ -276,7 +275,7 @@ async def login(
 
 
 @router.post("/forgot", status_code=status.HTTP_202_ACCEPTED)
-@limiter.limit(_RL_OTP)
+@limiter.limit(_RL_OTP, key_func=cpf_or_ip_key)
 async def forgot(
     request: Request,
     response: Response,
@@ -308,7 +307,7 @@ async def forgot(
 
 
 @router.post("/forgot/reset", response_model=TokenOut)
-@limiter.limit(_RL_AUTH)
+@limiter.limit(_RL_AUTH, key_func=cpf_or_ip_key)
 async def forgot_reset(
     request: Request,
     response: Response,

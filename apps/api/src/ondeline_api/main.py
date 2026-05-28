@@ -16,6 +16,7 @@ from ondeline_api.api import auth, health
 from ondeline_api.api import metrics as metrics_router
 from ondeline_api.api import webhook as webhook_router
 from ondeline_api.api import webhook_cloud as webhook_cloud_router
+from ondeline_api.api.rate_limit import CpfExtractorMiddleware
 from ondeline_api.api.v1 import canais as v1_canais
 from ondeline_api.api.v1 import cliente_app_admin_chat as v1_cliente_app_admin_chat
 from ondeline_api.api.v1 import cliente_app_auth as v1_cliente_app_auth
@@ -141,8 +142,10 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
 
-    # Rate limiter (slowapi) — apenas o webhook usa por enquanto
+    # Rate limiter (slowapi). Webhook usa IP; rotas /cliente-app/auth/* usam
+    # CPF via CpfExtractorMiddleware + key_func custom (ver api/rate_limit.py).
     app.state.limiter = webhook_limiter
+    app.add_middleware(CpfExtractorMiddleware)
     app.add_middleware(SlowAPIMiddleware)
 
     @app.exception_handler(RateLimitExceeded)
