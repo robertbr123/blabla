@@ -34,8 +34,8 @@ const TIPOS: Array<{ value: PromocaoTipo; label: string }> = [
 
 const SEGMENTOS: Array<{ value: PromocaoSegmento; label: string }> = [
   { value: 'todos', label: 'Todos os clientes' },
-  { value: 'inadimplentes', label: 'Inadimplentes (TODO)' },
-  { value: 'adimplentes', label: 'Adimplentes (TODO)' },
+  { value: 'inadimplentes', label: 'Inadimplentes (com fatura em atraso)' },
+  { value: 'adimplentes', label: 'Adimplentes (em dia)' },
 ]
 
 function emptyDraft(): PromocaoCreate {

@@ -8,8 +8,11 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 from uuid import UUID
+
+if TYPE_CHECKING:
+    from ondeline_api.adapters.sgp.base import ClienteSgp
 
 import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -67,15 +70,75 @@ def _promo_out(p: Promocao) -> PromocaoOut:
     )
 
 
-def _segmento_aplicavel(segmento: str, _user: ClienteAppUser) -> bool:
-    """Filtro de segmentacao. Por ora so 'todos' aplica universalmente.
+def _segmento_aplicavel(segmento: str, cliente_sgp: ClienteSgp | None) -> bool:
+    """Filtro de segmentacao baseado no estado SGP do cliente.
 
-    Os demais segmentos (inadimplentes/adimplentes/plano:X) exigem consulta
-    SGP em runtime — TODO: implementar quando tiver helper consolidado.
-    Enquanto isso, qualquer segmento != 'todos' fica oculto pra evitar
-    mostrar promo errada pro cliente errado.
+    Valores suportados:
+    - ``todos`` — todo mundo ve.
+    - ``inadimplentes`` — algum titulo aberto com ``dias_atraso > 0``.
+    - ``adimplentes`` — nenhum titulo aberto em atraso.
+    - ``plano:<plano>`` — algum contrato cujo nome do plano bata.
+
+    Conservador: se nao foi possivel carregar o SGP (cliente_sgp=None),
+    qualquer segmento != ``todos`` esconde a promo.
     """
-    return segmento == "todos"
+    if segmento == "todos":
+        return True
+    if cliente_sgp is None:
+        return False
+    if segmento == "inadimplentes":
+        return any(
+            t.status == "aberto" and (t.dias_atraso or 0) > 0
+            for t in cliente_sgp.titulos
+        )
+    if segmento == "adimplentes":
+        return not any(
+            t.status == "aberto" and (t.dias_atraso or 0) > 0
+            for t in cliente_sgp.titulos
+        )
+    if segmento.startswith("plano:"):
+        plano = segmento[len("plano:"):]
+        return any(c.plano == plano for c in cliente_sgp.contratos)
+    return False
+
+
+async def _load_sgp_for_user(
+    session: AsyncSession, user: ClienteAppUser
+) -> ClienteSgp | None:
+    """Carrega ClienteSgp do user via cache. Imports inline pra leveza.
+
+    Mesma estrategia de ``cliente_app_auth._sgp_lookup_by_cpf`` — vale
+    extrair pra service compartilhada num refactor futuro.
+    """
+    from ondeline_api.adapters.sgp.linknetam import SgpLinkNetAMProvider
+    from ondeline_api.adapters.sgp.ondeline import SgpOndelineProvider
+    from ondeline_api.adapters.sgp.router import SgpRouter
+    from ondeline_api.config import get_settings
+    from ondeline_api.db.crypto import decrypt_pii
+    from ondeline_api.services.sgp_cache import SgpCacheService
+    from ondeline_api.services.sgp_config import load_sgp_config
+    from ondeline_api.workers.runtime import get_redis
+
+    try:
+        cpf = decrypt_pii(user.cpf_encrypted)
+    except Exception:
+        return None
+    s = get_settings()
+    redis = await get_redis()
+    sgp_ond = await load_sgp_config(session, "ondeline")
+    sgp_lnk = await load_sgp_config(session, "linknetam")
+    router_sgp = SgpRouter(
+        primary=SgpOndelineProvider(**sgp_ond),
+        secondary=SgpLinkNetAMProvider(**sgp_lnk),
+    )
+    cache = SgpCacheService(
+        redis=redis,
+        session=session,
+        router=router_sgp,
+        ttl_cliente=s.sgp_cache_ttl_cliente,
+        ttl_negativo=s.sgp_cache_ttl_negativo,
+    )
+    return await cache.get_cliente(cpf)
 
 
 @router.get("", response_model=list[PromocaoOut])
@@ -90,13 +153,25 @@ async def listar_para_cliente(
         .order_by(asc(Promocao.ordem), asc(Promocao.created_at))
     )
     rows = list((await session.execute(stmt)).scalars())
+
+    # Pre-carrega SGP UMA vez SE alguma promo ativa tem segmento != 'todos'.
+    # Tudo cai num cache de 1h (sgp_cache_ttl_cliente), entao a chamada e
+    # barata em quase toda request.
+    needs_sgp = any(
+        p.segmento != "todos"
+        for p in rows
+        if (p.valido_de is None or p.valido_de <= now)
+        and (p.valido_ate is None or p.valido_ate >= now)
+    )
+    cliente_sgp = await _load_sgp_for_user(session, user) if needs_sgp else None
+
     out: list[PromocaoOut] = []
     for p in rows:
         if p.valido_de is not None and p.valido_de > now:
             continue
         if p.valido_ate is not None and p.valido_ate < now:
             continue
-        if not _segmento_aplicavel(p.segmento, user):
+        if not _segmento_aplicavel(p.segmento, cliente_sgp):
             continue
         out.append(_promo_out(p))
     return out
