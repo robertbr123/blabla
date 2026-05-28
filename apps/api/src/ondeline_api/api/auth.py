@@ -53,6 +53,29 @@ class LoginResponse(BaseModel):
     token_type: str = "Bearer"
     user_id: str
     role: str
+    # Devolvido SO quando cliente envia ``X-Client: mobile``. Mobile guarda em
+    # secure_storage (Keychain/Keystore) ja que nao tem cookie jar nativo. Web
+    # continua usando o httpOnly cookie e ignora este campo.
+    refresh_token: str | None = None
+
+
+class RefreshRequest(BaseModel):
+    """Body opcional pra `/auth/refresh` quando cliente nao manda cookie.
+
+    Mobile envia o refresh aqui; web continua mandando via cookie httpOnly.
+    """
+
+    refresh_token: str | None = None
+
+
+class LogoutRequest(BaseModel):
+    """Mesma logica do refresh: web manda cookie, mobile manda body."""
+
+    refresh_token: str | None = None
+
+
+def _is_mobile_client(request: Request) -> bool:
+    return request.headers.get("x-client", "").lower() == "mobile"
 
 
 def _client_ip(request: Request) -> str | None:
@@ -174,6 +197,7 @@ async def login(
         access_token=access_token,
         user_id=str(user.id),
         role=user.role.value,
+        refresh_token=refresh_token if _is_mobile_client(request) else None,
     )
 
 
@@ -186,9 +210,11 @@ class RefreshResponse(BaseModel):
 async def refresh(
     request: Request,
     response: Response,
+    body: RefreshRequest | None = None,
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> RefreshResponse:
-    raw = request.cookies.get(REFRESH_COOKIE)
+    # Web manda via cookie httpOnly. Mobile manda no body (sem cookie jar).
+    raw = request.cookies.get(REFRESH_COOKIE) or (body.refresh_token if body else None)
     if not raw:
         raise HTTPException(status_code=401, detail="missing refresh token")
     try:
@@ -216,9 +242,10 @@ async def refresh(
 async def logout(
     request: Request,
     response: Response,
+    body: LogoutRequest | None = None,
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> Response:
-    raw = request.cookies.get(REFRESH_COOKIE)
+    raw = request.cookies.get(REFRESH_COOKIE) or (body.refresh_token if body else None)
     if raw:
         token_hash = jwt_mod.hash_refresh_token(raw)
         res = await session.execute(
