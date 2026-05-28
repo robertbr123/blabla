@@ -838,3 +838,25 @@ export interface OtpMetricasOut {
   cloud_fallback_rate: number
   total: number
 }
+
+// WhatsApp templates — métricas por template (Fase 2.2 do plano de evolução)
+export interface TemplateStats {
+  template_name: string
+  sent: number
+  delivered: number
+  read: number
+  failed: number
+  delivery_rate: number
+  read_rate: number
+  failure_rate: number
+}
+
+export interface WhatsAppMetricasOut {
+  since: string
+  days: number
+  items: TemplateStats[]
+  total_sent: number
+  total_delivered: number
+  total_read: number
+  total_failed: number
+}

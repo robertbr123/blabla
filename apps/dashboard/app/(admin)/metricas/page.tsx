@@ -1,5 +1,6 @@
 import { MetricasDashboard } from '@/components/metricas-dashboard'
 import { OtpMetricasCard } from '@/components/otp-metricas-card'
+import { WhatsAppMetricasCard } from '@/components/whatsapp-metricas-card'
 
 export default function MetricasPage() {
   return (
@@ -9,6 +10,7 @@ export default function MetricasPage() {
         <p className="text-sm text-muted-foreground">Painel operacional</p>
       </div>
       <MetricasDashboard />
+      <WhatsAppMetricasCard />
       <OtpMetricasCard />
     </div>
   )

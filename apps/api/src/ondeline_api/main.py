@@ -18,6 +18,9 @@ from ondeline_api.api import webhook as webhook_router
 from ondeline_api.api import webhook_cloud as webhook_cloud_router
 from ondeline_api.api.rate_limit import CpfExtractorMiddleware
 from ondeline_api.api.v1 import admin_otp_metricas as v1_admin_otp_metricas
+from ondeline_api.api.v1 import (
+    admin_whatsapp_metricas as v1_admin_whatsapp_metricas,
+)
 from ondeline_api.api.v1 import canais as v1_canais
 from ondeline_api.api.v1 import cliente_app_admin_chat as v1_cliente_app_admin_chat
 from ondeline_api.api.v1 import cliente_app_auth as v1_cliente_app_auth
@@ -176,6 +179,7 @@ def create_app() -> FastAPI:
     app.include_router(v1_planos.router)
     app.include_router(v1_canais.router)
     app.include_router(v1_admin_otp_metricas.router)
+    app.include_router(v1_admin_whatsapp_metricas.router)
     app.include_router(v1_prompts.router)
     app.include_router(v1_estoque.router)
     app.include_router(v1_estoque.tecnico_estoque_router)

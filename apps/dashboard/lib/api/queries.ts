@@ -1620,3 +1620,13 @@ export function useOtpMetricas() {
     refetchInterval: 60_000,
   })
 }
+
+/** Métricas de templates WhatsApp (entrega/leitura/falha) — Fase 2.2 do plano. */
+export function useWhatsAppMetricas(days: number = 7) {
+  return useQuery<import('./types').WhatsAppMetricasOut>({
+    queryKey: ['whatsapp-metricas', days],
+    queryFn: () => apiFetch(`/api/v1/admin/whatsapp-metricas?days=${days}`),
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+  })
+}
