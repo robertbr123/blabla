@@ -69,6 +69,14 @@ estoque_movimento_total = _counter_labeled(
     ["tipo"],
 )
 
+# OTP do app cliente — provider (cloud|evolution) + result
+# (success|fallback_to_evolution|error). Fase 2.3 do plano de evolucao.
+otp_send_total = _counter_labeled(
+    "ondeline_otp_send_total",
+    "Envios de OTP por provider e resultado",
+    ["provider", "result"],
+)
+
 # F7 — Bot por voz (OpenAI Whisper)
 asr_audio_total = _counter(
     "ondeline_asr_audio_total",

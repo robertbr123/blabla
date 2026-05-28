@@ -821,3 +821,20 @@ export interface PromocaoCreate {
 }
 
 export type PromocaoPatch = Partial<PromocaoCreate>
+
+// OTP — métricas por provider (Fase 2.3 do plano de evolução)
+export interface OtpProviderStats {
+  success: number
+  fallback_to_evolution: number
+  error: number
+}
+
+export interface OtpMetricasOut {
+  cloud: OtpProviderStats
+  evolution: OtpProviderStats
+  /** Taxa de sucesso do Cloud, fração 0.0–1.0 */
+  cloud_success_rate: number
+  /** Taxa de fallback do Cloud pra Evolution, fração 0.0–1.0 */
+  cloud_fallback_rate: number
+  total: number
+}

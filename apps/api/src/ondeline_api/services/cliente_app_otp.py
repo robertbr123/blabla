@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.adapters.whatsapp import WhatsAppAdapter, WhatsAppError
 from ondeline_api.db.models.cliente_app import ClienteAppOtp
+from ondeline_api.observability.metrics import otp_send_total
 
 log = structlog.get_logger(__name__)
 
@@ -87,6 +88,7 @@ async def issue(
         f"Se voce nao solicitou, ignore esta mensagem."
     )
 
+    provider = "cloud" if template_name else "evolution"
     try:
         if template_name:
             await adapter.send_template(
@@ -98,8 +100,10 @@ async def issue(
             )
         else:
             await adapter.send_text(jid, text)
+        otp_send_total.labels(provider=provider, result="success").inc()
     except WhatsAppError as e:
         if fallback is None:
+            otp_send_total.labels(provider=provider, result="error").inc()
             raise
         log.warning(
             "otp.primary_send_failed_fallback",
@@ -107,7 +111,15 @@ async def issue(
             template=template_name,
             error=str(e),
         )
-        await fallback.send_text(jid, text)
+        try:
+            await fallback.send_text(jid, text)
+            otp_send_total.labels(
+                provider=provider, result="fallback_to_evolution"
+            ).inc()
+        except WhatsAppError:
+            # Fallback tambem falhou — pior cenario; conta como error.
+            otp_send_total.labels(provider=provider, result="error").inc()
+            raise
 
 
 class OtpInvalid(Exception):

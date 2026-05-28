@@ -1610,3 +1610,13 @@ export function usePatchFidelidadeResgate(id: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['fidelidade-resgates'] }),
   })
 }
+
+/** OTP métricas (Cloud vs Evolution) — Fase 2.3 do plano de evolução. */
+export function useOtpMetricas() {
+  return useQuery<import('./types').OtpMetricasOut>({
+    queryKey: ['otp-metricas'],
+    queryFn: () => apiFetch('/api/v1/admin/otp-metricas'),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  })
+}
