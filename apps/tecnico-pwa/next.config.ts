@@ -17,6 +17,20 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  // iOS Universal Links: o `apple-app-site-association` nao tem extensao,
+  // entao o Next serve sem Content-Type — Apple exige `application/json`.
+  // Android `assetlinks.json` ja sai como JSON pela extensao .json.
+  async headers() {
+    return [
+      {
+        source: '/.well-known/apple-app-site-association',
+        headers: [
+          { key: 'Content-Type', value: 'application/json' },
+          { key: 'Cache-Control', value: 'public, max-age=3600' },
+        ],
+      },
+    ]
+  },
 }
 
 export default nextConfig

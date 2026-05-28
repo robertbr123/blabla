@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "W9522QVHGL.br.com.blabla.blablaMobile",
+        "paths": ["/os/*"]
+      }
+    ]
+  }
+}

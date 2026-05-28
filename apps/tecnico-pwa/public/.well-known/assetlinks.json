@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "br.com.linket.blabla",
+      "sha256_cert_fingerprints": [
+        "B9:B4:8D:9E:63:04:6C:17:F8:FB:32:73:9E:2E:B7:68:DD:D7:EB:C3:4F:74:C9:C6:55:C7:55:74:28:88:C1:D0"
+      ]
+    }
+  }
+]
