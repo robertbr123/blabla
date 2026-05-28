@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "br.com.linket.blabla",
       "sha256_cert_fingerprints": [
-        "B9:B4:8D:9E:63:04:6C:17:F8:FB:32:73:9E:2E:B7:68:DD:D7:EB:C3:4F:74:C9:C6:55:C7:55:74:28:88:C1:D0"
+        "B9:B4:8D:9E:63:04:6C:17:F8:FB:32:73:9E:2E:B7:68:DD:D7:EB:C3:4F:74:C9:C6:55:C7:55:74:28:88:C1:D0",
+        "99:60:74:8F:EE:E8:49:03:75:32:BC:E1:5E:F6:48:FA:10:6E:E5:63:4A:65:FA:5F:64:90:69:55:D3:05:59:7D"
       ]
     }
   }
