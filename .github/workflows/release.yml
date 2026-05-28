@@ -1,0 +1,55 @@
+name: Release
+
+# Dispara em push de tag v* (ex: v1.0.0, v1.0.1-rc1). NAO conflita com
+# deploy.yml (que dispara em push pra main).
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Precisa de write em contents pra criar GitHub Release.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Generate changelog + GitHub release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          # git-cliff precisa do historico completo pra gerar diff entre tags.
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        uses: orhun/git-cliff-action@v3
+        with:
+          config: cliff.toml
+          # --latest: so as mudancas desde a tag anterior.
+          # --strip header: remove cabecalho duplicado.
+          args: --latest --strip header
+        env:
+          OUTPUT: CHANGELOG_CURRENT.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: CHANGELOG_CURRENT.md
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          # Pre-release se a tag tem qualquer sufixo (rc, beta, alpha).
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
+      # Anexa o CHANGELOG ao summary do run pra ficar facil de copiar.
+      - name: Summary
+        run: |
+          echo "### Changelog ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat CHANGELOG_CURRENT.md >> $GITHUB_STEP_SUMMARY
+
+      # TODO (quando AAB virar build no CI): adicionar step que sobe o AAB
+      # + as notas (CHANGELOG_CURRENT.md) pra Play via r0adkll/upload-google-play.
+      # Precisa secret GOOGLE_PLAY_SERVICE_ACCOUNT_JSON (setup em
+      # docs/release-play-store.md).

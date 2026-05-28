@@ -1,0 +1,42 @@
+# Configuracao do git-cliff — gera CHANGELOG a partir de conventional commits.
+# Usado pelo workflow .github/workflows/release.yml ao criar tag v*.
+#
+# Convencao adotada no monorepo: feat: fix: chore: docs: refactor: perf: test:
+# Escopos comuns: api, cliente-mobile, tecnico-mobile, dashboard, tecnico-pwa.
+
+[changelog]
+header = ""
+body = """
+{% if version -%}
+## {{ version }} — {{ timestamp | date(format="%Y-%m-%d") }}
+{% endif -%}
+
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | upper_first }}
+{% for commit in commits %}
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif %}{{ commit.message | upper_first }}{% if commit.breaking %} ⚠️ BREAKING{% endif %}
+{%- endfor %}
+{% endfor %}
+"""
+trim = true
+footer = ""
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+commit_parsers = [
+  { message = "^feat", group = "🚀 Features" },
+  { message = "^fix", group = "🐛 Bug Fixes" },
+  { message = "^perf", group = "⚡ Performance" },
+  { message = "^refactor", group = "♻️ Refactor" },
+  { message = "^docs", group = "📚 Docs" },
+  { message = "^test", group = "🧪 Tests" },
+  { message = "^chore", group = "🔧 Chore" },
+  # Filtra commits internos / merges / "wip:"
+  { message = "^Merge", skip = true },
+  { message = "^wip", skip = true },
+]
+filter_commits = false
+tag_pattern = "v[0-9].*"
+sort_commits = "oldest"
