@@ -31,7 +31,7 @@ jobs:
             file: apps/tecnico-pwa/Dockerfile
             image: blabla-tecnico-pwa
           - app: clientes-pwa
-            context: apps/clientes-pwa
+            context: .
             file: apps/clientes-pwa/Dockerfile
             image: blabla-clientes-pwa
     steps:

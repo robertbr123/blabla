@@ -127,15 +127,17 @@ services:
     logging: *default-logging
 
   # Landing + /.well-known/ pra clientes.ondeline.com.br.
-  # Serve assetlinks.json (Android App Links) e apple-app-site-association
-  # (iOS Universal Links) com MIME correto, alem de uma landing fallback
-  # quando o app cliente nao esta instalado no celular.
+  # Mini Next.js (mesmo padrao do tecnico-pwa): serve assetlinks.json (Android
+  # App Links) e apple-app-site-association (iOS Universal Links) com MIME
+  # correto via next.config.ts headers(), alem da landing fallback quando o
+  # app cliente nao esta instalado.
   clientes-pwa:
     image: ghcr.io/${GHCR_OWNER}/blabla-clientes-pwa:latest
     container_name: blabla-clientes-pwa
-    # Bind so localhost — nginx proxy_pass http://127.0.0.1:3004
+    # Bind so localhost — Nginx Proxy Manager roteia
+    # clientes.ondeline.com.br -> 127.0.0.1:3004
     ports:
-      - "127.0.0.1:3004:80"
+      - "127.0.0.1:3004:3000"
     restart: unless-stopped
     logging: *default-logging
 
