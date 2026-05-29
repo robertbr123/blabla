@@ -14,8 +14,8 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from datetime import datetime, timezone
 from dataclasses import asdict
+from datetime import UTC, datetime
 from typing import Any, Protocol
 
 import sqlalchemy as sa
@@ -151,8 +151,8 @@ class SgpCacheService:
         """True se a linha do DB ainda esta dentro do proprio TTL."""
         fetched = row.fetched_at
         if fetched.tzinfo is None:  # defensivo: timestamptz deveria vir aware
-            fetched = fetched.replace(tzinfo=timezone.utc)
-        age = (datetime.now(timezone.utc) - fetched).total_seconds()
+            fetched = fetched.replace(tzinfo=UTC)
+        age = (datetime.now(UTC) - fetched).total_seconds()
         return age <= row.ttl
 
     async def _read_db(self, cpf_hash: str, *, allow_stale: bool = False) -> ClienteSgp | None:
