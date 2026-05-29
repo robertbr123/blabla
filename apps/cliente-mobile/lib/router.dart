@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -33,6 +34,18 @@ final routerProvider = Provider<GoRouter>((ref) {
     initialLocation: '/splash',
     navigatorKey: rootNavigatorKey,
     refreshListenable: ref.watch(authRefreshProvider),
+    // Fallback gracioso pra qualquer rota desconhecida (deep link mal formado,
+    // link velho, etc) — joga pra /home em vez de mostrar GoException feia.
+    // O redirect global ainda decide pra onde levar (onboarding se nao logado,
+    // /home se logado).
+    errorBuilder: (context, state) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) context.go('/home');
+      });
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    },
     redirect: (context, state) async {
       final loc = state.matchedLocation;
       if (loc == '/splash') return null;

@@ -37,13 +37,22 @@
             <!-- App Links: botoes "Ver no app" dos templates WhatsApp abrem
                  o cliente-mobile direto na rota correspondente. Fallback pro
                  clientes-pwa landing se app nao instalado. Requer
-                 /.well-known/assetlinks.json em clientes.ondeline.com.br. -->
+                 /.well-known/assetlinks.json em clientes.ondeline.com.br.
+                 Restrito aos paths que o router conhece — qualquer outro
+                 path cai no browser (landing), evitando GoException no app. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="https"
-                      android:host="clientes.ondeline.com.br"/>
+                      android:host="clientes.ondeline.com.br"
+                      android:path="/faturas"/>
+                <data android:scheme="https"
+                      android:host="clientes.ondeline.com.br"
+                      android:path="/suporte"/>
+                <data android:scheme="https"
+                      android:host="clientes.ondeline.com.br"
+                      android:path="/notificacoes"/>
             </intent-filter>
         </activity>
 
