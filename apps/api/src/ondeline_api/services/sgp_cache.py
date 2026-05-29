@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
+from datetime import datetime, timezone
 from dataclasses import asdict
 from typing import Any, Protocol
 
@@ -115,13 +116,20 @@ class SgpCacheService:
             if neg:
                 return None
         except Exception:
-            # Redis dead — fallback no DB
+            # Redis fora — usa o DB so se ainda estiver dentro do TTL
             db = await self._read_db(cpf_hash)
             if db is not None:
                 return db
 
-        # 2) Miss → router
-        cli = await self._router.buscar_por_cpf(clean)
+        # 2) Miss/stale → router. Se o SGP falhar, serve o stale do DB como
+        #    ultimo recurso (melhor dado velho que erro / pile-up no SGP).
+        try:
+            cli = await self._router.buscar_por_cpf(clean)
+        except Exception:
+            stale = await self._read_db(cpf_hash, allow_stale=True)
+            if stale is not None:
+                return stale
+            raise
         await self._write(cpf_hash, cli)
         return cli
 
@@ -138,7 +146,16 @@ class SgpCacheService:
 
     # ── internal ──────────────────────────────────────────────
 
-    async def _read_db(self, cpf_hash: str) -> ClienteSgp | None:
+    @staticmethod
+    def _is_fresh(row: SgpCache) -> bool:
+        """True se a linha do DB ainda esta dentro do proprio TTL."""
+        fetched = row.fetched_at
+        if fetched.tzinfo is None:  # defensivo: timestamptz deveria vir aware
+            fetched = fetched.replace(tzinfo=timezone.utc)
+        age = (datetime.now(timezone.utc) - fetched).total_seconds()
+        return age <= row.ttl
+
+    async def _read_db(self, cpf_hash: str, *, allow_stale: bool = False) -> ClienteSgp | None:
         stmt = (
             select(SgpCache)
             .where(SgpCache.cpf_hash == cpf_hash)
@@ -147,6 +164,8 @@ class SgpCacheService:
         )
         row = (await self._session.execute(stmt)).scalar_one_or_none()
         if row is None:
+            return None
+        if not allow_stale and not self._is_fresh(row):
             return None
         return _deserialize_cliente(row.payload)
 
