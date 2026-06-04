@@ -71,9 +71,9 @@ export default function PrivacidadePage() {
 
         <h2 style={h2}>1. Quem é o controlador</h2>
         <p>
-          O controlador dos dados é a Ondeline (
-          {'{{RAZÃO SOCIAL}}'}, CNPJ {'{{00.000.000/0000-00}}'}), provedora de
-          internet responsável pelo serviço contratado por você. Contato sobre
+          O controlador dos dados é a Ondeline (ONDELINE TECNOLOGIA E SERVIÇOS
+          DE INFORMÁTICA LTDA, CNPJ 49.840.386/0001-39), provedora de internet
+          responsável pelo serviço contratado por você. Contato sobre
           privacidade:{' '}
           <a href="mailto:privacidade@ondeline.com.br">
             privacidade@ondeline.com.br
