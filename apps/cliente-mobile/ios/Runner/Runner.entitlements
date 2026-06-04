@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Universal Links: abre o app quando o cliente toca num link
+	     https://clientes.ondeline.com.br/... (ex.: vindo do WhatsApp).
+	     O arquivo apple-app-site-association ja e servido nesse dominio. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:clientes.ondeline.com.br</string>
+	</array>
+	<!-- Push (APNs/Firebase). Xcode troca para "production" no archive. -->
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>
