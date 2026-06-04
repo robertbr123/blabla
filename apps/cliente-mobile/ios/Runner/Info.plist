@@ -70,5 +70,10 @@
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
 	</array>
+	<!-- App e portrait-only. UIRequiresFullScreen=true desativa a
+	     multitarefa do iPad, dispensando a exigencia das 4 orientacoes
+	     (senao a App Store rejeita o upload). -->
+	<key>UIRequiresFullScreen</key>
+	<true/>
 </dict>
 </plist>
