@@ -128,9 +128,11 @@ vínculo "qual ONU é de qual contrato". Estratégia escolhida:
 - **Reserva — serial:** o `estoque` já registra serial de ONU/roteador; se estiver
   vinculado ao contrato na instalação, serve de fallback/conferência.
 
-> A confirmar: **o SGP TSMX expõe o login PPPoE por contrato?** (não está mapeado
-> em [sgp-tsmx-fields]). Se não vier no `/clientes`, buscar no RADIUS/auth do TSMX.
-> O spike valida o lado da ONU (ler o PPPoE via TR-069).
+> ✅ **Confirmado (2026-06-07):** o backend **já expõe** o login PPPoE por contrato
+> em `Contrato.pppoe_login` (campo SGP `servicos[].login`), parseado em
+> `adapters/sgp/ondeline.py:190`. Vale pros **dois SGPs** — LinkNetAM herda do
+> Ondeline (`linknetam.py`). Zero código novo no adapter. Falta só ler o PPPoE no
+> lado da ONU via TR-069 (o spike confirma o caminho do parâmetro) e cruzar.
 
 ---
 

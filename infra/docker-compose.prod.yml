@@ -6,6 +6,27 @@ x-logging: &default-logging
     max-size: "10m"
     max-file: "5"
 
+# Config comum aos 4 processos do GenieACS (cwmp/nbi/fs/ui) — todos rodam a
+# mesma imagem, mudando so o `command`. Atras do profile "genieacs" pra NAO
+# subir junto no deploy normal; sobe com:
+#   docker compose --profile genieacs up -d --build
+x-genieacs: &genieacs-common
+  build:
+    context: ./genieacs
+  image: blabla-genieacs:local
+  profiles: ["genieacs"]
+  environment:
+    GENIEACS_MONGODB_CONNECTION_URL: mongodb://genieacs-mongo:27017/genieacs
+    GENIEACS_UI_JWT_SECRET: ${GENIEACS_UI_JWT_SECRET:?GENIEACS_UI_JWT_SECRET required in .env}
+  depends_on:
+    genieacs-mongo:
+      condition: service_healthy
+  # Imagem propria buildada — Watchtower nao mexe (igual Evolution).
+  labels:
+    - "com.centurylinklabs.watchtower.enable=false"
+  restart: unless-stopped
+  logging: *default-logging
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -170,6 +191,83 @@ services:
     restart: unless-stopped
     logging: *default-logging
 
+  # ── GenieACS (TR-069) — profile "genieacs", nao sobe no deploy normal ──
+  # MongoDB dedicado (GenieACS exige Mongo; nada a ver com o postgres da app).
+  genieacs-mongo:
+    image: mongo:6
+    container_name: blabla-genieacs-mongo
+    profiles: ["genieacs"]
+    volumes:
+      - genieacs_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
+    restart: unless-stopped
+    logging: *default-logging
+
+  # cwmp: porta PUBLICA — as ONUs no campo conectam aqui (TR-069 Inform).
+  # ATENCAO seguranca: sem TLS/auth neste estagio (igual o spike). Antes de
+  # apontar a base real, ligar TLS + auth por ONU + firewall em 7547.
+  genieacs-cwmp:
+    <<: *genieacs-common
+    container_name: blabla-genieacs-cwmp
+    command: ["genieacs-cwmp"]
+    ports:
+      - "7547:7547"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('net').connect(7547,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # nbi: API REST — SEM porta no host. So a `api` acessa via rede docker
+  # (http://genieacs-nbi:7557). E onde o backend vai integrar.
+  genieacs-nbi:
+    <<: *genieacs-common
+    container_name: blabla-genieacs-nbi
+    command: ["genieacs-nbi"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('net').connect(7557,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # fs: file server — CPEs baixam firmware aqui (so usado em upgrade de
+  # firmware; deixo exposto desde ja pra nao precisar mexer depois).
+  genieacs-fs:
+    <<: *genieacs-common
+    container_name: blabla-genieacs-fs
+    command: ["genieacs-fs"]
+    ports:
+      - "7567:7567"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('net').connect(7567,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ui: painel admin — so localhost, acessivel via nginx (proxy_pass
+  # http://127.0.0.1:3005). Mesmo padrao do dashboard/pwa.
+  genieacs-ui:
+    <<: *genieacs-common
+    container_name: blabla-genieacs-ui
+    command: ["genieacs-ui"]
+    ports:
+      - "127.0.0.1:3005:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('net').connect(3000,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   watchtower:
     image: containrrr/watchtower:1.7.1
     container_name: blabla-watchtower
@@ -189,3 +287,4 @@ volumes:
   evolution_data:
   cliente_fotos:
   os_fotos:
+  genieacs_mongo_data:
