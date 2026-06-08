@@ -193,14 +193,17 @@ services:
 
   # ── GenieACS (TR-069) — profile "genieacs", nao sobe no deploy normal ──
   # MongoDB dedicado (GenieACS exige Mongo; nada a ver com o postgres da app).
+  # mongo:4.4 (NAO 5+): MongoDB 5+ exige CPU com AVX e crasha com SIGILL
+  # (exit 132 / "Illegal instruction") em VPS sem AVX — caso desta VPS.
+  # GenieACS 1.2 roda bem no 4.4. Shell legado e `mongo` (nao `mongosh`).
   genieacs-mongo:
-    image: mongo:6
+    image: mongo:4.4
     container_name: blabla-genieacs-mongo
     profiles: ["genieacs"]
     volumes:
       - genieacs_mongo_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      test: ["CMD", "mongo", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
       timeout: 5s
       retries: 10
