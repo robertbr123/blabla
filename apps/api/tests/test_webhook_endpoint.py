@@ -46,7 +46,7 @@ def client(monkeypatch) -> TestClient:
 
     app = create_app()
     c = TestClient(app)
-    c.captured = captured  # type: ignore[attr-defined]
+    c.captured = captured
     return c
 
 
