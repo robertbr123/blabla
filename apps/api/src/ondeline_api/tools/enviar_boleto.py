@@ -204,8 +204,11 @@ async def enviar_boleto(
             ),
         }
 
-    # F11 — Rate-limit: nao reenvia a mesma fatura nas ultimas 20 minutos.
-    # Chave Redis: 'boleto:enviado:{conversa_id}:{fatura_id}', TTL 1200s.
+    # F11 — Rate-limit + anti-duplicidade: reserva ATOMICA da fatura no Redis
+    # ANTES de enviar (SET nx). Chave 'boleto:enviado:{conversa}:{fatura}', TTL 1200s.
+    # Antes era check-then-set: dois turnos concorrentes (cliente manda 2 msgs
+    # seguidas) checavam, ambos viam "nao enviado", e enviavam os dois. Com SET nx
+    # so um reserva. Se o envio falhar, a reserva e liberada (mais abaixo).
     redis = getattr(ctx, "redis", None)
     ja_enviados_recentemente: list[dict[str, Any]] = []
     escolhidos_para_enviar = []
@@ -213,17 +216,17 @@ async def enviar_boleto(
         key = f"boleto:enviado:{ctx.conversa.id}:{t.id}"
         if redis is not None:
             try:
-                existe = await redis.exists(key)
+                reservou = bool(await redis.set(key, "1", nx=True, ex=1200))
             except Exception:
-                existe = 0
+                reservou = True  # Redis indisponivel => fail-open, permite enviar
         else:
-            existe = 0
-        if existe:
+            reservou = True
+        if reservou:
+            escolhidos_para_enviar.append(t)
+        else:
             ja_enviados_recentemente.append(
                 {"fatura_id": t.id, "vencimento": t.vencimento, "valor": t.valor}
             )
-        else:
-            escolhidos_para_enviar.append(t)
 
     # Se TUDO o que ele pediu ja foi enviado recentemente, avisa o LLM.
     if ja_enviados_recentemente and not escolhidos_para_enviar:
@@ -244,45 +247,51 @@ async def enviar_boleto(
     vencimentos: list[str] = []
     enviadas: list[dict[str, str]] = []
     n = len(escolhidos_para_enviar)
-    for i, t in enumerate(escolhidos_para_enviar):
-        if t.link_pdf:
-            await ctx.evolution.send_media(
-                ctx.conversa.whatsapp,
-                url=t.link_pdf,
-                mediatype="document",
-                mimetype="application/pdf",
-                file_name=f"fatura_{t.vencimento or i + 1}.pdf",
-                caption=_build_caption(i, n, t),
-            )
-            enviados += 1
-            vencimentos.append(t.vencimento)
-            # LLM precisa do valor pra renderizar a mensagem final.
-            # Antes a tool retornava so vencimentos[] e o LLM caia em R$ 0,00.
-            enviadas.append({
-                "vencimento": t.vencimento or "",
-                "valor": f"{t.valor:.2f}".replace(".", ","),
-            })
-        # F3 — envia QR Pix + copia-e-cola (best-effort).
-        from ondeline_api.services.pix_qr import enviar_pix_qr_best_effort
-
-        await enviar_pix_qr_best_effort(
-            evolution=ctx.evolution,  # type: ignore[arg-type]
-            redis=redis,
-            jid=ctx.conversa.whatsapp,
-            codigo_pix_sgp=t.codigo_pix,
-            valor=t.valor,
-            fatura_id=t.id,
-            session=ctx.session,
-        )
-
-        # Marca como enviado por 20min.
-        if redis is not None:
-            try:
-                await redis.set(
-                    f"boleto:enviado:{ctx.conversa.id}:{t.id}", "1", ex=1200
+    enviados_ids: set[Any] = set()
+    try:
+        for i, t in enumerate(escolhidos_para_enviar):
+            if t.link_pdf:
+                await ctx.evolution.send_media(
+                    ctx.conversa.whatsapp,
+                    url=t.link_pdf,
+                    mediatype="document",
+                    mimetype="application/pdf",
+                    file_name=f"fatura_{t.vencimento or i + 1}.pdf",
+                    caption=_build_caption(i, n, t),
                 )
-            except Exception:
-                pass
+                enviados += 1
+                vencimentos.append(t.vencimento)
+                # LLM precisa do valor pra renderizar a mensagem final.
+                # Antes a tool retornava so vencimentos[] e o LLM caia em R$ 0,00.
+                enviadas.append({
+                    "vencimento": t.vencimento or "",
+                    "valor": f"{t.valor:.2f}".replace(".", ","),
+                })
+            # F3 — envia QR Pix + copia-e-cola (best-effort).
+            from ondeline_api.services.pix_qr import enviar_pix_qr_best_effort
+
+            await enviar_pix_qr_best_effort(
+                evolution=ctx.evolution,  # type: ignore[arg-type]
+                redis=redis,
+                jid=ctx.conversa.whatsapp,
+                codigo_pix_sgp=t.codigo_pix,
+                valor=t.valor,
+                fatura_id=t.id,
+                session=ctx.session,
+            )
+            # Reserva ja foi feita atomicamente (SET nx) na partição acima.
+            enviados_ids.add(t.id)
+    except Exception:
+        # Envio falhou: libera a reserva das faturas que NAO foram enviadas, pra
+        # nao travar 20min sem ter mandado. As ja enviadas mantem a reserva.
+        if redis is not None:
+            for t in escolhidos_para_enviar:
+                if t.id not in enviados_ids:
+                    try:
+                        await redis.delete(f"boleto:enviado:{ctx.conversa.id}:{t.id}")
+                    except Exception:
+                        pass
+        raise
 
     await ctx.sgp_cache.invalidate(cpf_clean)
     return {
