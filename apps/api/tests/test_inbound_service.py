@@ -80,6 +80,11 @@ class FakeMensagemRepo:
         self.inserted.append(m)
         return m
 
+    async def exists_by_external_id(self, external_id: str) -> bool:
+        return external_id in self.dedup_ids or any(
+            m.external_id == external_id for m in self.inserted
+        )
+
     async def insert_bot_reply(self, *, conversa_id, text):
         m = Mensagem(
             id=uuid4(),
@@ -192,6 +197,29 @@ async def test_duplicate_short_circuits_no_ack() -> None:
     assert out.duplicate is True
     assert out.persisted is False
     assert fake_out.sent == []
+
+
+async def test_redelivery_mesmo_external_id_deduplica() -> None:
+    """2a entrega do mesmo external_id (re-entrega Meta/Evolution ou retry Celery)
+    nao reprocessa: nao insere de novo nem reenfileira LLM."""
+    fake_msgs = FakeMensagemRepo()
+    fake_out = FakeOutboundQueue()
+    repos = InboundDeps(
+        conversas=FakeConversaRepo(),
+        mensagens=fake_msgs,
+        outbound=fake_out,
+        ack_text="ACK!",
+    )
+    first = await process_inbound_message(_evt(eid="DUP1"), repos)
+    assert first.duplicate is False
+    assert len(fake_msgs.inserted) == 1
+    llm_apos_primeira = len(fake_out.llm_turns)
+
+    second = await process_inbound_message(_evt(eid="DUP1"), repos)
+    assert second.duplicate is True
+    assert second.persisted is False
+    assert len(fake_msgs.inserted) == 1  # nao inseriu de novo
+    assert len(fake_out.llm_turns) == llm_apos_primeira  # nao reprocessou
 
 
 async def test_from_me_skipped() -> None:

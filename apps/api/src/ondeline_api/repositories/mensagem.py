@@ -1,8 +1,10 @@
 """Repositorio de Mensagem — insercao idempotente para inbound, write-only para bot."""
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -45,6 +47,25 @@ class MensagemRepo:
                 await savepoint.rollback()
                 return None
         return msg
+
+    async def exists_by_external_id(self, external_id: str) -> bool:
+        """True se ja existe mensagem com esse external_id (dedup de re-entrega).
+
+        Usa o indice parcial ix_mensagens_external (external_id e a coluna lider).
+        Retry-safe: so enxerga linhas commitadas; tentativa que deu rollback nao
+        aparece, logo o retry reprocessa.
+
+        Filtra a janela recente (24h): re-entregas/retries sao sempre recentes, e
+        o predicado em created_at permite partition pruning (nao varre todas as
+        particoes mensais).
+        """
+        recente = datetime.now(tz=UTC) - timedelta(hours=24)
+        result = await self._session.execute(
+            select(Mensagem.id)
+            .where(Mensagem.external_id == external_id, Mensagem.created_at > recente)
+            .limit(1)
+        )
+        return result.first() is not None
 
     async def list_history(
         self, conversa_id: UUID, *, limit: int = 12

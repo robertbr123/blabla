@@ -65,6 +65,7 @@ class _MensagemRepoProto(Protocol):
         media_type: str | None,
         media_url: str | None,
     ) -> Mensagem | None: ...
+    async def exists_by_external_id(self, external_id: str) -> bool: ...
     async def insert_bot_reply(
         self, *, conversa_id: UUID, text: str
     ) -> Mensagem: ...
@@ -786,6 +787,21 @@ async def process_inbound_message(
     if evt.kind is InboundKind.TEXT and not evt.text:
         return InboundResult(
             conversa_id=None, persisted=False, duplicate=False, escalated=False, skipped_reason="empty_text"
+        )
+
+    # Dedup — webhook reentregue (Meta/Evolution apos ACK lento) ou retry do
+    # Celery chega com o mesmo external_id. Se a 1a entrega ja foi commitada em
+    # `mensagens`, a 2a para aqui, antes de qualquer efeito colateral. Retry-safe:
+    # tentativa que falhou nao commitou => nao existe => reprocessa normalmente.
+    # (O indice UNIQUE inclui created_at por causa do particionamento, entao nao
+    # serve de trava; o dedup precisa ser explicito aqui.)
+    if evt.external_id and await deps.mensagens.exists_by_external_id(evt.external_id):
+        return InboundResult(
+            conversa_id=None,
+            persisted=False,
+            duplicate=True,
+            escalated=False,
+            skipped_reason="duplicate_external_id",
         )
 
     # F4 / Cloud API — resolve canal pelo identificador do payload.
