@@ -50,6 +50,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY --chown=app:app entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
+# Pastas de midia (volumes nomeados em prod). Pre-criadas com dono `app` para
+# que volumes NOVOS nascam gravaveis pelo usuario nao-root — senao o Docker cria
+# o mountpoint como root:root e a escrita falha (Errno 13 Permission denied).
+RUN mkdir -p /tmp/ondeline_conversa_media /tmp/ondeline_os_fotos /tmp/ondeline_cliente_fotos \
+    && chown -R app:app /tmp/ondeline_conversa_media /tmp/ondeline_os_fotos /tmp/ondeline_cliente_fotos
+
 USER app
 
 EXPOSE 8000
