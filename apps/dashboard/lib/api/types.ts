@@ -27,6 +27,8 @@ export interface MensagemOut {
   content: string | null
   media_type: string | null
   media_url: string | null
+  transcricao?: string | null
+  transcricao_status?: string | null
   created_at: string
 }
 

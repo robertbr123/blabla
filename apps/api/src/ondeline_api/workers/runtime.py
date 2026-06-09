@@ -134,6 +134,21 @@ class CeleryOutboundEnqueuer(_OutboundQueueProto):
             message_key=message_key,
         )
 
+    def enqueue_media_download(
+        self,
+        *,
+        mensagem_id: UUID,
+        conversa_id: UUID,
+        message_key: dict[str, Any] | None = None,
+    ) -> None:
+        from ondeline_api.workers.media_jobs import baixar_midia_task
+
+        baixar_midia_task.delay(
+            mensagem_id=str(mensagem_id),
+            conversa_id=str(conversa_id),
+            message_key=message_key,
+        )
+
 
 @dataclass
 class BufferedOutboundEnqueuer(_OutboundQueueProto):
@@ -148,6 +163,7 @@ class BufferedOutboundEnqueuer(_OutboundQueueProto):
     _pending_followup: list[dict[str, Any]] = field(default_factory=list)
     _pending_handoff_summary: list[UUID] = field(default_factory=list)
     _pending_asr: list[dict[str, Any]] = field(default_factory=list)
+    _pending_media: list[dict[str, Any]] = field(default_factory=list)
 
     def enqueue_send_outbound(self, jid: str, text: str, conversa_id: UUID) -> None:
         self._pending_outbound.append({"jid": jid, "text": text, "conversa_id": str(conversa_id)})
@@ -178,12 +194,28 @@ class BufferedOutboundEnqueuer(_OutboundQueueProto):
             }
         )
 
+    def enqueue_media_download(
+        self,
+        *,
+        mensagem_id: UUID,
+        conversa_id: UUID,
+        message_key: dict[str, Any] | None = None,
+    ) -> None:
+        self._pending_media.append(
+            {
+                "mensagem_id": str(mensagem_id),
+                "conversa_id": str(conversa_id),
+                "message_key": message_key,
+            }
+        )
+
     def flush(self) -> None:
         """Dispara todas as tasks Celery pendentes. Chame APOS o commit da sessao."""
         from ondeline_api.workers.asr_jobs import transcrever_audio_task
         from ondeline_api.workers.followup import followup_os_task
         from ondeline_api.workers.handoff_summary_task import handoff_summary_task
         from ondeline_api.workers.llm_turn import llm_turn_task
+        from ondeline_api.workers.media_jobs import baixar_midia_task
         from ondeline_api.workers.outbound import send_outbound_task
 
         for item in self._pending_outbound:
@@ -196,8 +228,11 @@ class BufferedOutboundEnqueuer(_OutboundQueueProto):
             handoff_summary_task.delay(conversa_id=str(cid))
         for asr_item in self._pending_asr:
             transcrever_audio_task.delay(**asr_item)
+        for media_item in self._pending_media:
+            baixar_midia_task.delay(**media_item)
         self._pending_outbound.clear()
         self._pending_llm_turns.clear()
         self._pending_followup.clear()
         self._pending_handoff_summary.clear()
         self._pending_asr.clear()
+        self._pending_media.clear()

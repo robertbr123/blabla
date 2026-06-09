@@ -75,6 +75,7 @@ services:
     volumes:
       - cliente_fotos:/tmp/ondeline_cliente_fotos
       - os_fotos:/tmp/ondeline_os_fotos
+      - conversa_media:/tmp/ondeline_conversa_media
     restart: unless-stopped
     logging: *default-logging
 
@@ -92,6 +93,7 @@ services:
     volumes:
       - cliente_fotos:/tmp/ondeline_cliente_fotos
       - os_fotos:/tmp/ondeline_os_fotos
+      - conversa_media:/tmp/ondeline_conversa_media
     healthcheck:
       test: ["CMD-SHELL", "celery -A ondeline_api.workers.celery_app:celery_app inspect ping -d celery@$$HOSTNAME || exit 1"]
       interval: 30s
@@ -290,4 +292,5 @@ volumes:
   evolution_data:
   cliente_fotos:
   os_fotos:
+  conversa_media:
   genieacs_mongo_data:

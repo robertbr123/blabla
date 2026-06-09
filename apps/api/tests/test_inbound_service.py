@@ -97,6 +97,7 @@ class FakeOutboundQueue:
     llm_turns: list[UUID] = field(default_factory=list)
     handoff_summaries: list[UUID] = field(default_factory=list)
     asr_jobs: list[dict[str, object]] = field(default_factory=list)
+    media_jobs: list[dict[str, object]] = field(default_factory=list)
 
     def enqueue_send_outbound(self, jid: str, text: str, conversa_id: UUID) -> None:
         self.sent.append((jid, text, conversa_id))
@@ -114,6 +115,13 @@ class FakeOutboundQueue:
         self, *, mensagem_id: UUID, conversa_id: UUID, message_key=None
     ) -> None:
         self.asr_jobs.append(
+            {"mensagem_id": mensagem_id, "conversa_id": conversa_id, "message_key": message_key}
+        )
+
+    def enqueue_media_download(
+        self, *, mensagem_id: UUID, conversa_id: UUID, message_key=None
+    ) -> None:
+        self.media_jobs.append(
             {"mensagem_id": mensagem_id, "conversa_id": conversa_id, "message_key": message_key}
         )
 

@@ -81,6 +81,13 @@ class _OutboundQueueProto(Protocol):
         conversa_id: UUID,
         message_key: dict[str, Any] | None = None,
     ) -> None: ...
+    def enqueue_media_download(
+        self,
+        *,
+        mensagem_id: UUID,
+        conversa_id: UUID,
+        message_key: dict[str, Any] | None = None,
+    ) -> None: ...
 
 
 @dataclass
@@ -815,6 +822,26 @@ async def process_inbound_message(
             conversa_id=conversa.id, persisted=False, duplicate=True, escalated=False
         )
 
+    # Midia inbound (foto/audio/video/doc): seta URL servivel desde ja — assim
+    # o evento SSE e qualquer refetch nao correm contra o download async — e
+    # enfileira o download dos bytes via worker (provider-aware Evolution/Cloud).
+    if media_type is not None:
+        msg.media_url = f"/api/v1/conversas/{conversa.id}/media/{msg.id}"
+        media_key: dict[str, Any]
+        if evt.media_id:
+            media_key = {"media_id": evt.media_id}
+        else:
+            media_key = {
+                "id": evt.external_id,
+                "remoteJid": evt.jid,
+                "fromMe": False,
+            }
+        deps.outbound.enqueue_media_download(
+            mensagem_id=msg.id,
+            conversa_id=conversa.id,
+            message_key=media_key,
+        )
+
     # F2 — opt-out de cobrança via WhatsApp.
     # Cliente responde "PARAR" / "SAIR" / "VOLTAR" / "RECEBER" pra
     # desligar/religar lembretes. So funciona se a conversa ja esta vinculada
@@ -1451,6 +1478,8 @@ async def process_inbound_message(
                     "id": str(msg.id),
                     "role": "cliente",
                     "text": evt.text,
+                    "media_type": msg.media_type,
+                    "media_url": msg.media_url,
                     "ts": msg.created_at.isoformat() if msg.created_at else None,
                 },
             )

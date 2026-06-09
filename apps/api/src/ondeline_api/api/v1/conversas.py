@@ -1,11 +1,14 @@
 """GET/POST /api/v1/conversas* — atendimento de conversas."""
 from __future__ import annotations
 
+import mimetypes
 from pathlib import Path
 from typing import Annotated
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.api.deps_v1 import CursorParam, LimitParam, parse_cursor, parse_limit
@@ -21,7 +24,12 @@ from ondeline_api.api.schemas.pagination import CursorPage, encode_cursor
 from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.rbac import require_role
 from ondeline_api.db.crypto import decrypt_pii
-from ondeline_api.db.models.business import Cliente, ConversaEstado, Mensagem
+from ondeline_api.db.models.business import (
+    Cliente,
+    ConversaEstado,
+    Mensagem,
+    MensagemRole,
+)
 from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db
 from ondeline_api.repositories.cliente import ClienteRepo
@@ -39,13 +47,28 @@ _role_dep = Depends(require_role(Role.ATENDENTE, Role.ADMIN))
 
 
 def _to_msg_out(m: Mensagem) -> MensagemOut:
+    media_url = m.media_url
+    # Midia inbound antiga (anterior a esta feature) tem media_url NULL no banco.
+    # Sintetiza a rota servivel pra que foto/audio do cliente renderizem via
+    # download on-demand. So pro CLIENTE: outbound legado guarda arquivo
+    # uuid-named que a rota nao localiza por mensagem_id.
+    if (
+        media_url is None
+        and m.media_type is not None
+        and m.role == MensagemRole.CLIENTE
+    ):
+        media_url = f"/api/v1/conversas/{m.conversa_id}/media/{m.id}"
     return MensagemOut(
         id=m.id,
         conversa_id=m.conversa_id,
         role=m.role.value,
         content=decrypt_pii(m.content_encrypted) if m.content_encrypted else None,
         media_type=m.media_type,
-        media_url=m.media_url,
+        media_url=media_url,
+        transcricao=(
+            decrypt_pii(m.transcricao_encrypted) if m.transcricao_encrypted else None
+        ),
+        transcricao_status=m.transcricao_status,
         created_at=m.created_at,
     )
 
@@ -286,6 +309,55 @@ def _classify_media(content_type: str) -> str | None:
     if ct.startswith("video/"):
         return "video"
     return None
+
+
+@router.get("/{conversa_id}/media/{mensagem_id}", dependencies=[_role_dep])
+async def get_conversa_media(
+    conversa_id: UUID,
+    mensagem_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> FileResponse:
+    """Serve o binario de uma midia (foto/audio/video/doc) do cliente.
+
+    O download inbound e assincrono (worker). Se o arquivo ainda nao chegou ao
+    disco, tenta um download on-demand best-effort — funciona pro Evolution; no
+    Cloud o ``media_id`` do Meta ja expirou, entao retorna 404 ate o worker rodar.
+    """
+    from ondeline_api.config import get_settings
+    from ondeline_api.services import conversa_media as cm
+
+    repo = ConversaRepo(session)
+    conversa = await repo.get_by_id(conversa_id)
+    if conversa is None:
+        raise HTTPException(status_code=404, detail="conversa not found")
+
+    msg = (
+        await session.execute(
+            select(Mensagem).where(
+                Mensagem.id == mensagem_id,
+                Mensagem.conversa_id == conversa_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if msg is None or msg.media_type is None:
+        raise HTTPException(status_code=404, detail="midia not found")
+
+    path = cm.find_media_file(conversa_id, mensagem_id)
+    if path is None:
+        # Fallback on-demand (so Evolution; Cloud media_id ja expirou).
+        key = {
+            "id": msg.external_id,
+            "remoteJid": conversa.whatsapp,
+            "fromMe": False,
+        }
+        path = await cm.download_and_store(
+            session, mensagem_id, message_key=key, settings=get_settings()
+        )
+    if path is None or not path.exists():
+        raise HTTPException(status_code=404, detail="midia indisponivel")
+
+    mime = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
+    return FileResponse(path, media_type=mime)
 
 
 @router.post(

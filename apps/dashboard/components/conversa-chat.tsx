@@ -32,6 +32,7 @@ import {
 import type { MensagemOut } from '@/lib/api/types'
 import { cn } from '@/lib/utils'
 import { ConversaSlaTimer } from './conversa-sla-timer'
+import { ConversaMedia, mediaKind } from './conversa-media'
 
 type Tab = 'mensagens' | 'cliente' | 'nova-os'
 
@@ -48,6 +49,8 @@ interface SseEvent {
   id?: string
   role?: string
   text?: string | null
+  media_type?: string | null
+  media_url?: string | null
   ts?: string | null
 }
 
@@ -98,7 +101,10 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
     es.onmessage = (ev) => {
       try {
         const payload = JSON.parse(ev.data as string) as SseEvent
-        if (payload.type !== 'msg' || !payload.role || !payload.text) return
+        if (payload.type !== 'msg' || !payload.role) return
+        // Mensagem so de midia (foto/audio sem legenda) chega sem `text` — antes
+        // era descartada aqui. Aceita se tiver texto OU midia.
+        if (!payload.text && !payload.media_url) return
         setLiveMsgs((prev) => [
           ...prev,
           {
@@ -106,8 +112,8 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
             conversa_id: conversaId,
             role: payload.role as MensagemOut['role'],
             content: payload.text ?? null,
-            media_type: null,
-            media_url: null,
+            media_type: payload.media_type ?? null,
+            media_url: payload.media_url ?? null,
             created_at: payload.ts ?? new Date().toISOString(),
           },
         ])
@@ -361,9 +367,7 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
                       </Badge>
                       <span>{new Date(m.created_at).toLocaleTimeString('pt-BR')}</span>
                     </div>
-                    <div className="whitespace-pre-wrap">
-                      {highlightMatches(m.content ?? '', searchQuery)}
-                    </div>
+                    <MensagemBody m={m} searchQuery={searchQuery} />
                   </div>
                 )
               })}
@@ -599,6 +603,42 @@ interface ResponderBoxProps {
   pending: boolean
   onUploadMedia: (file: File) => Promise<void>
   uploading: boolean
+}
+
+/** Corpo de uma mensagem: midia (foto/audio/video/doc) + texto/legenda/transcricao. */
+function MensagemBody({
+  m,
+  searchQuery,
+}: {
+  m: MensagemOut
+  searchQuery: string
+}) {
+  const kind = mediaKind(m.media_type)
+  // So renderiza player/imagem quando a URL aponta pra rota servivel (inbound do
+  // cliente). Midia legada do atendente (media_url = caminho /tmp) cai no texto.
+  const hasMedia = !!m.media_url && m.media_url.startsWith('/api/') && !!kind
+  // ASR espelha a transcricao em `content`; so mostra separada se diferir.
+  const showTranscricao =
+    kind === 'audio' && !!m.transcricao && m.transcricao !== m.content
+
+  return (
+    <div className="space-y-1">
+      {hasMedia && <ConversaMedia src={m.media_url!} kind={kind!} />}
+      {m.content && (
+        <div className="whitespace-pre-wrap">
+          {highlightMatches(m.content, searchQuery)}
+        </div>
+      )}
+      {showTranscricao && (
+        <div className="whitespace-pre-wrap text-xs italic opacity-80">
+          “{highlightMatches(m.transcricao!, searchQuery)}”
+        </div>
+      )}
+      {!m.content && !hasMedia && kind && (
+        <div className="text-xs italic opacity-70">[{kind}]</div>
+      )}
+    </div>
+  )
 }
 
 function escapeRegex(s: string): string {
