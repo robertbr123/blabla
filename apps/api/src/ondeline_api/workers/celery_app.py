@@ -40,6 +40,7 @@ def create_celery_app() -> Celery:
             "ondeline_api.workers.cliente_app_notif_jobs",
             "ondeline_api.workers.fcm_push",
             "ondeline_api.workers.asr_jobs",
+            "ondeline_api.workers.media_jobs",
         ],
     )
     app.conf.update(
