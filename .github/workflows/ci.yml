@@ -304,3 +304,62 @@ jobs:
           name: tecnico-mobile-release-apk
           path: apps/tecnico-mobile/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
+
+  # ── Deploy (gate) ──────────────────────────────────────────────
+  # Só builda+empurra as imagens pro GHCR DEPOIS que api/frontend/pwa passam,
+  # e só na main. CI vermelho => deploy é pulado => imagem quebrada nunca sai.
+  # `mobile` fica fora do needs de propósito: o app é artefato separado (não
+  # entra no deploy do servidor) e o build Flutter é lento.
+  deploy:
+    name: Deploy — build & push ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    needs: [api, frontend, pwa]
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - app: api
+            context: apps/api
+            file: apps/api/Dockerfile
+            image: blabla-api
+          - app: dashboard
+            context: .
+            file: apps/dashboard/Dockerfile
+            image: blabla-dashboard
+          - app: tecnico-pwa
+            context: .
+            file: apps/tecnico-pwa/Dockerfile
+            image: blabla-tecnico-pwa
+          - app: clientes-pwa
+            context: .
+            file: apps/clientes-pwa/Dockerfile
+            image: blabla-clientes-pwa
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.app }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:latest
+            ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:sha-${{ github.sha }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}

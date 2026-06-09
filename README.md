@@ -1,7 +1,6 @@
 # BLABLAv2
 
 [![CI](https://github.com/robertbr123/blabla/actions/workflows/ci.yml/badge.svg)](https://github.com/robertbr123/blabla/actions/workflows/ci.yml)
-[![Deploy](https://github.com/robertbr123/blabla/actions/workflows/deploy.yml/badge.svg)](https://github.com/robertbr123/blabla/actions/workflows/deploy.yml)
 
 Bot WhatsApp + dashboard admin + PWA do técnico para a Ondeline Telecom.  
 Monorepo com 3 apps: API (FastAPI), Dashboard (Next.js) e PWA técnico (Next.js).
@@ -27,7 +26,7 @@ Monorepo com 3 apps: API (FastAPI), Dashboard (Next.js) e PWA técnico (Next.js)
 ## Arquitetura
 
 ```
-GitHub push → CI (lint + tests) → deploy.yml builda 3 imagens → GHCR
+GitHub push → CI (lint + tests) → [se CI passar] job deploy builda 4 imagens → GHCR
                                                                     ↓
 VPS: Watchtower detecta :latest novo → pull → restart automático
        ├── blabla-api         :8000  (FastAPI + Alembic)
@@ -174,8 +173,8 @@ docker compose -f docker-compose.prod.yml --profile evolution up -d
 
 Todo push na branch `main`:
 
-1. CI roda lint + 344 testes em paralelo (api, dashboard, pwa)
-2. Se CI passar, `deploy.yml` builda as 3 imagens e faz push para o GHCR com tags `:latest` e `:sha-{commit}`
+1. CI roda lint + testes em paralelo (api, dashboard, pwa, mobile)
+2. **Só se `api`, `frontend` e `pwa` passarem**, o job `deploy` (no mesmo `ci.yml`) builda as 4 imagens e faz push para o GHCR com tags `:latest` e `:sha-{commit}`. CI vermelho ⇒ deploy é pulado ⇒ imagem quebrada nunca chega no GHCR.
 3. O Watchtower na VPS detecta o `:latest` novo em até 30 segundos e reinicia os containers
 
 Nenhuma ação manual na VPS é necessária após o setup inicial.
