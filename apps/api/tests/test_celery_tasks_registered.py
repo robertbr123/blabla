@@ -28,6 +28,8 @@ EXPECTED_TASKS = {
     "ondeline_api.workers.notify_jobs.manutencao_job",
     "ondeline_api.workers.notify_jobs.lgpd_purge_job",
     "ondeline_api.workers.partition_jobs.ensure_future_mensagens_partitions",
+    "ondeline_api.workers.media_jobs.baixar_midia_task",
+    "ondeline_api.workers.heartbeat.worker_heartbeat_task",
 }
 
 

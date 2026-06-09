@@ -32,6 +32,25 @@ async def test_healthz_returns_200_when_all_ok(
     assert body["status"] == "ok"
     assert body["checks"]["db"] == "ok"
     assert body["checks"]["redis"] == "ok"
+    assert body["checks"]["worker"] == "ok"
+
+
+@pytest.mark.asyncio
+async def test_healthz_503_when_worker_stale(
+    app: FastAPI, client: AsyncClient, stale_worker_deps: dict[str, Any]
+) -> None:
+    """Worker parado (heartbeat velho) => 503 + status degraded, mesmo com db/redis ok."""
+    app.dependency_overrides[get_db] = lambda: stale_worker_deps["db"]
+    app.dependency_overrides[get_redis] = lambda: stale_worker_deps["redis"]
+
+    response = await client.get("/healthz")
+
+    assert response.status_code == 503
+    body = response.json()
+    assert body["status"] == "degraded"
+    assert body["checks"]["db"] == "ok"
+    assert body["checks"]["redis"] == "ok"
+    assert body["checks"]["worker"].startswith("stale")
 
 
 @pytest.mark.asyncio

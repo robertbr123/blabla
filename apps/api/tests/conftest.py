@@ -20,10 +20,15 @@ from sqlalchemy.ext.asyncio import (
 
 
 class FakeRedis:
-    """Minimal Redis stub for health tests."""
+    """Minimal Redis stub for health tests.
 
-    def __init__(self, *, alive: bool = True) -> None:
+    `heartbeat_age` controla o que `.get(health:worker:heartbeat)` devolve:
+    inteiro => idade em segundos (0 = fresco); None => chave ausente.
+    """
+
+    def __init__(self, *, alive: bool = True, heartbeat_age: int | None = 0) -> None:
         self._alive = alive
+        self._heartbeat_age = heartbeat_age
 
     async def ping(self) -> bool:
         if not self._alive:
@@ -34,6 +39,17 @@ class FakeRedis:
         if not self._alive:
             raise ConnectionError("redis down")
         return 0
+
+    async def get(self, name: str) -> str | None:
+        if not self._alive:
+            raise ConnectionError("redis down")
+        if name == "health:worker:heartbeat":
+            if self._heartbeat_age is None:
+                return None
+            import time
+
+            return str(int(time.time()) - self._heartbeat_age)
+        return None
 
     async def aclose(self) -> None:
         return None
@@ -85,6 +101,12 @@ def healthy_deps() -> dict[str, Any]:
 @pytest.fixture
 def broken_db_deps() -> dict[str, Any]:
     return {"db": FakeDB(alive=False), "redis": FakeRedis(alive=True)}
+
+
+@pytest.fixture
+def stale_worker_deps() -> dict[str, Any]:
+    """db/redis ok, mas heartbeat do worker antigo (> 180s) => worker stale."""
+    return {"db": FakeDB(alive=True), "redis": FakeRedis(alive=True, heartbeat_age=9999)}
 
 
 @pytest.fixture

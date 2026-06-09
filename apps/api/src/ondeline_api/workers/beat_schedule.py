@@ -15,6 +15,12 @@ from typing import Any
 from celery.schedules import crontab
 
 BEAT_SCHEDULE: dict[str, dict[str, Any]] = {
+    # Heartbeat do worker (a cada 1 min) — alimenta o /healthz. Se parar de
+    # rodar, a chave em Redis envelhece e o /healthz acusa worker parado.
+    "worker-heartbeat": {
+        "task": "ondeline_api.workers.heartbeat.worker_heartbeat_task",
+        "schedule": crontab(minute="*"),
+    },
     "vencimentos-atrasos-pagamentos": {
         "task": "ondeline_api.workers.notify_jobs.run_planner_jobs",
         "schedule": crontab(minute="*/30"),
