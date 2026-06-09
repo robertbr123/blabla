@@ -8,7 +8,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import pytest
-
 from ondeline_api.services import business_hours as bh
 
 
@@ -16,7 +15,7 @@ class _FakeSettings:
     business_hours_enabled = True
     business_hours_start = "08:00"
     business_hours_end = "18:00"
-    business_days = "1,2,3,4,5"  # Seg–Sex
+    business_days = "1,2,3,4,5"  # Seg-Sex (Seg=1..Sex=5)
 
 
 @pytest.fixture
