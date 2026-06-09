@@ -21,7 +21,7 @@ from ondeline_api.config import get_settings
 from ondeline_api.db.engine import get_sessionmaker, reset_engine_cache
 from ondeline_api.repositories.conversa import ConversaRepo
 from ondeline_api.workers.outbound import _run as outbound_run
-from ondeline_api.workers.runtime import task_session
+from ondeline_api.workers.runtime import get_redis, task_session
 
 pytestmark = pytest.mark.asyncio
 
@@ -68,3 +68,37 @@ async def test_send_outbound_persists_and_calls_evolution() -> None:
             )
         ).scalars().all()
     assert len(msgs) == 1
+
+
+async def test_send_outbound_idempotente_nao_reenvia() -> None:
+    """Com a chave de idempotência já marcada (simula retry após envio), o worker
+    NÃO chama o Evolution de novo, mas ainda persiste o bot_reply."""
+    jid = f"outb_{uuid.uuid4().hex[:8]}@s.whatsapp.net"
+    async with task_session() as session:
+        conv = await ConversaRepo(session).get_or_create_by_whatsapp(jid)
+    conversa_id = conv.id
+
+    key = f"idem_{uuid.uuid4().hex[:8]}"
+    redis = await get_redis()
+    await redis.set(f"outbound:sent:{key}", "1", ex=60)
+
+    # respx sem nenhuma rota: se o worker tentar enviar, levanta. Esperamos 0 calls.
+    with respx.mock() as router:
+        out = await outbound_run(jid, "Recebi!", conversa_id, key)
+    assert out["status"] == "ok"
+    assert router.calls.call_count == 0  # nao reenviou
+
+    from ondeline_api.db.models.business import Mensagem, MensagemRole
+    from sqlalchemy import select
+
+    sm = get_sessionmaker()
+    async with sm() as fresh_session:
+        msgs = (
+            await fresh_session.execute(
+                select(Mensagem).where(
+                    Mensagem.conversa_id == conversa_id,
+                    Mensagem.role == MensagemRole.BOT,
+                )
+            )
+        ).scalars().all()
+    assert len(msgs) == 1  # bot_reply persistido mesmo sem reenviar
