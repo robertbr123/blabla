@@ -62,6 +62,17 @@ class Settings(BaseSettings):
         "Em instantes um de nossos atendentes vai falar com você."
     )
 
+    # Horário comercial (atendimento humano). Fora da janela, as mensagens de
+    # hand-off informam o retorno no próximo horário comercial em vez de prometer
+    # atendimento imediato. O bot continua respondendo 24/7. Timezone fixo
+    # America/Sao_Paulo. business_days em ISO: Seg=1 ... Dom=7.
+    # Default DESLIGADO: o deploy não muda comportamento. Liga em prod via
+    # `BUSINESS_HOURS_ENABLED=true` no .env depois de confirmar o horário real.
+    business_hours_enabled: bool = False
+    business_hours_start: str = "08:00"
+    business_hours_end: str = "18:00"
+    business_days: str = "1,2,3,4,5"
+
     # Celery
     celery_broker_url: str = ""  # default: usa redis_url
     celery_result_backend: str = ""  # default: usa redis_url

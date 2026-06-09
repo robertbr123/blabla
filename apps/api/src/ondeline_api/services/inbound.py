@@ -31,6 +31,7 @@ from ondeline_api.domain.fsm import (
     FsmDecision,
 )
 from ondeline_api.repositories.config import ConfigRepo
+from ondeline_api.services import business_hours
 from ondeline_api.services.media_classifier import (
     CATEGORIES_ESCALATE,
     CATEGORY_ACK,
@@ -991,10 +992,15 @@ async def process_inbound_message(
                 await IndicacaoRepo(deps.session).registrar_uso(
                     ind_lead.id, lead_id=lead.id
                 )
+                _ind_retorno = (
+                    "Em instantes um atendente vai falar com você sobre os planos disponíveis."
+                    if business_hours.is_open()
+                    else business_hours.closed_notice()
+                )
                 deps.outbound.enqueue_send_outbound(
                     evt.jid,
                     "🎁 Bem-vindo(a)! Você foi indicado por um cliente nosso. "
-                    "Em instantes um atendente vai falar com você sobre os planos disponíveis. "
+                    f"{_ind_retorno} "
                     "Quando fechar, vocês dois ganham desconto. ✨",
                     conversa.id,
                 )
@@ -1376,8 +1382,11 @@ async def process_inbound_message(
             )
 
         if category in CATEGORIES_ESCALATE:
-            # Avisa cliente e escala para humano
-            deps.outbound.enqueue_send_outbound(evt.jid, ack, conversa.id)
+            # Avisa cliente e escala para humano. A expectativa de retorno
+            # depende do horário comercial (fora do expediente não promete humano
+            # imediato).
+            ack_escala = f"{ack} {business_hours.handoff_phrase()}"
+            deps.outbound.enqueue_send_outbound(evt.jid, ack_escala, conversa.id)
             if conversa.transferred_at is None:
                 conversa.transferred_at = datetime.now(tz=UTC)
             await deps.conversas.update_estado_status(
@@ -1428,7 +1437,9 @@ async def process_inbound_message(
                 msg_escala = (
                     f"Recebi o novo endereço: {endereco_str}. "
                     "Porém há uma pendência financeira no seu contrato. "
-                    "Um atendente vai te ajudar com os próximos passos. 🙏"
+                    + business_hours.humano_message(
+                        "Um atendente vai te ajudar com os próximos passos. 🙏"
+                    )
                 )
                 deps.outbound.enqueue_send_outbound(evt.jid, msg_escala, conversa.id)
                 if conversa.transferred_at is None:
@@ -1532,7 +1543,12 @@ async def process_inbound_message(
             llm_turn_requested = True
         elif action.kind is ActionKind.SEND_ACK:
             # Backward compat M3 — nao usado em M4 (FSM nao emite mais SEND_ACK)
-            deps.outbound.enqueue_send_outbound(evt.jid, deps.ack_text, conversa.id)
+            _ack_msg = (
+                deps.ack_text
+                if business_hours.is_open()
+                else f"Olá! 😊 Recebi sua mensagem. {business_hours.closed_notice()}"
+            )
+            deps.outbound.enqueue_send_outbound(evt.jid, _ack_msg, conversa.id)
             escalated = True
         elif action.kind is ActionKind.FOLLOWUP_OS_CONFIRMAR:
             deps.outbound.enqueue_followup_os(

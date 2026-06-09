@@ -382,6 +382,14 @@ async def run_turn(
     # - se houve atendente humano antes (reassumir = continuar, nao cumprimentar)
     contexto = _build_contexto_dinamico(ctx, history)
 
+    # Fora do horário comercial, instrui o LLM a não prometer atendimento humano
+    # imediato ao transferir (a tool transferir_para_humano não manda texto).
+    from ondeline_api.services import business_hours
+
+    _bh_hint = business_hours.llm_prompt_hint()
+    if _bh_hint:
+        contexto = f"{contexto}\n\n{_bh_hint}"
+
     messages: list[ChatMessage] = [
         ChatMessage(role=Role.SYSTEM, content=system_prompt),
         ChatMessage(role=Role.SYSTEM, content=contexto),
@@ -454,10 +462,11 @@ async def run_turn(
             if tc.name == "transferir_para_humano":
                 if budget is not None:
                     await budget.add(str(ctx.conversa.id), total_tokens)
-                aviso = (
+                aviso = business_hours.humano_message(
                     "Beleza, vou te passar pra um atendente humano agora. 👤\n"
                     "Em instantes alguém da equipe vai falar com você por aqui. "
-                    "Pode aguardar! 🙏"
+                    "Pode aguardar! 🙏",
+                    closed_prefix="Beleza, vou te passar pra um atendente humano. 👤",
                 )
                 try:
                     await ctx.evolution.send_text(ctx.conversa.whatsapp, aviso)
@@ -483,9 +492,12 @@ async def run_turn(
 
 
 async def _force_escalate(ctx: ToolContext, *, motivo: str) -> LoopOutcome:
-    fallback = (
+    from ondeline_api.services import business_hours
+
+    fallback = business_hours.humano_message(
         "Tive um probleminha tecnico aqui. 😅 Vou te passar pra um atendente humano "
-        "para te ajudar agora."
+        "para te ajudar agora.",
+        closed_prefix="Tive um probleminha tecnico aqui. 😅 Vou te passar pra um atendente humano.",
     )
     try:
         await ctx.evolution.send_text(ctx.conversa.whatsapp, fallback)

@@ -50,27 +50,26 @@ def classify_media(kind: InboundKind, caption: str | None) -> MediaCategory:
     return MediaCategory.OUTRO
 
 
-# Mensagem de ACK por categoria
+# Mensagem de ACK por categoria. As categorias que escalam para humano
+# (CATEGORIES_ESCALATE) terminam com um recebimento SEM promessa de tempo — a
+# expectativa de retorno é acrescentada no envio por
+# `business_hours.handoff_phrase()` (aberto vs fora do expediente).
 CATEGORY_ACK: dict[MediaCategory, str] = {
     MediaCategory.COMPROVANTE: (
-        "Recebi seu comprovante, obrigado! Estou encaminhando para análise. "
-        "Em breve um atendente retornará. 🙏"
+        "Recebi seu comprovante, obrigado! 🙏 Estou encaminhando para análise."
     ),
     MediaCategory.FOTO_EQUIPAMENTO: (
-        "Recebi a foto! Vou abrir um chamado técnico para verificar. "
-        "Em breve entraremos em contato. 🔧"
+        "Recebi a foto! 🔧 Vou abrir um chamado técnico para verificar."
     ),
     MediaCategory.DOCUMENTO: (
-        "Documento recebido! Encaminhando para o setor de cadastro. "
-        "Em breve um atendente retornará. 📄"
+        "Documento recebido! 📄 Encaminhando para o setor de cadastro."
     ),
     MediaCategory.AUDIO: (
         "Não consigo ouvir áudios por aqui. 😅 "
         "Por favor, escreva sua mensagem em texto que te atendo melhor!"
     ),
     MediaCategory.OUTRO: (
-        "Recebi seu arquivo! Encaminhando para um atendente. "
-        "Em breve retornaremos. 📎"
+        "Recebi seu arquivo! 📎 Encaminhando para um atendente."
     ),
 }
 

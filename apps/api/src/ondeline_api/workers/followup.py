@@ -38,6 +38,7 @@ async def _run_followup(conversa_id: UUID, resultado: str, resposta: str) -> Non
     from ondeline_api.adapters.evolution import EvolutionAdapter
     from ondeline_api.config import get_settings
     from ondeline_api.db.models.business import Conversa, OrdemServico
+    from ondeline_api.services import business_hours
 
     s = get_settings()
     evo = EvolutionAdapter(base_url=s.evolution_url, instance=s.evolution_instance, api_key=s.evolution_key)
@@ -50,7 +51,16 @@ async def _run_followup(conversa_id: UUID, resultado: str, resposta: str) -> Non
                 log.warning("followup.conversa_not_found", conversa_id=str(conversa_id))
                 return
 
-            msg = _MSG_CONFIRMAR if resultado == "ok" else _MSG_ESCALAR
+            msg = (
+                _MSG_CONFIRMAR
+                if resultado == "ok"
+                else business_hours.humano_message(
+                    _MSG_ESCALAR,
+                    closed_prefix=(
+                        "Entendido, vou acionar nossa equipe pra resolver o que ficou pendente."
+                    ),
+                )
+            )
             try:
                 await evo.send_text(conversa.whatsapp, msg)
             except Exception:
