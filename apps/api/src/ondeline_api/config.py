@@ -85,6 +85,12 @@ class Settings(BaseSettings):
     sgp_linknetam_token: str = ""
     sgp_linknetam_app: str = "APP"
 
+    # GenieACS (TR-069) - server-to-server pela rede docker interna.
+    # NBI sem auth no MVP (user/password prontos pra futuro).
+    genieacs_url: str = "http://genieacs-nbi:7557"
+    genieacs_user: str = ""
+    genieacs_password: str = ""
+
     # LLM provider switching — escolhe entre openai | xai | hermes (default openai)
     llm_provider: str = "openai"
 
