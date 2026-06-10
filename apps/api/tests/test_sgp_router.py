@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import pytest
-from ondeline_api.adapters.sgp.base import ClienteSgp
+from ondeline_api.adapters.sgp.base import ClienteSgp, SgpUnavailableError
 from ondeline_api.adapters.sgp.fakes import FakeSgpProvider
 from ondeline_api.adapters.sgp.router import SgpRouter
 from ondeline_api.db.models.business import SgpProvider as SgpProviderEnum
@@ -45,8 +45,16 @@ async def test_primario_levanta_consulta_secundario() -> None:
     assert cli.provider is SgpProviderEnum.LINKNETAM
 
 
-async def test_ambos_falham_retorna_none() -> None:
+async def test_ambos_nao_encontram_retorna_none() -> None:
     primary = FakeSgpProvider(clientes={})
     secondary = FakeSgpProvider(clientes={})
     router = SgpRouter(primary=primary, secondary=secondary)
     assert await router.buscar_por_cpf("11122233344") is None
+
+
+async def test_ambos_falham_tecnicamente_levanta_indisponivel() -> None:
+    primary = FakeSgpProvider(raise_on={"11122233344"})
+    secondary = FakeSgpProvider(raise_on={"11122233344"})
+    router = SgpRouter(primary=primary, secondary=secondary)
+    with pytest.raises(SgpUnavailableError):
+        await router.buscar_por_cpf("11122233344")

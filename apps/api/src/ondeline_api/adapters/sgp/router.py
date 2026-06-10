@@ -10,7 +10,7 @@ import re
 
 import structlog
 
-from ondeline_api.adapters.sgp.base import ClienteSgp, SgpProvider
+from ondeline_api.adapters.sgp.base import ClienteSgp, SgpProvider, SgpUnavailableError
 
 log = structlog.get_logger(__name__)
 
@@ -28,14 +28,26 @@ class SgpRouter:
 
     async def buscar_por_cpf(self, cpf: str) -> ClienteSgp | None:
         clean = _clean_cpf(cpf)
+        unavailable = False
         for prov in (self._primary, self._secondary):
             try:
                 cli = await prov.buscar_por_cpf(clean)
             except Exception as e:
-                log.warning("sgp.router.provider_error", provider=prov.name.value, error=str(e))
+                log.warning(
+                    "sgp.router.provider_error",
+                    provider=prov.name.value,
+                    error=str(e),
+                    error_type=type(e).__name__,
+                )
+                unavailable = True
                 continue
             if cli is not None:
                 return cli
+        if unavailable:
+            # Pelo menos um provider falhou tecnicamente e ninguem achou o
+            # cliente - "nao encontrado" nao e confiavel. O caller (cache)
+            # serve stale ou propaga; nunca cacheia negativo.
+            raise SgpUnavailableError("nenhum provider SGP respondeu com sucesso")
         return None
 
     async def aclose(self) -> None:

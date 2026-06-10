@@ -1,6 +1,8 @@
 """SgpCache — Redis primario + DB fallback + write-through + negativo."""
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from fakeredis.aioredis import FakeRedis
 from ondeline_api.adapters.sgp.base import (
@@ -8,9 +10,11 @@ from ondeline_api.adapters.sgp.base import (
     Contrato,
     EnderecoSgp,
     Fatura,
+    SgpUnavailableError,
 )
 from ondeline_api.adapters.sgp.fakes import FakeSgpProvider
 from ondeline_api.adapters.sgp.router import SgpRouter
+from ondeline_api.db.models.business import SgpCache
 from ondeline_api.db.models.business import SgpProvider as SgpProviderEnum
 from ondeline_api.services.sgp_cache import SgpCacheService
 
@@ -170,3 +174,60 @@ def test_deserialize_round_trip_preserva_enderecos_tipados() -> None:
     assert isinstance(restored.endereco, EnderecoSgp)
     assert restored.endereco.cidade == "SP"
     assert restored.contratos[0].endereco.__class__.__name__ == "EnderecoSgp"
+
+
+async def test_sgp_down_serve_stale_do_db(db_session) -> None:
+    """Router levanta SgpUnavailableError; DB tem linha stale (alem do TTL).
+    Cache deve retornar o stale E nao gravar sgp:not_found no redis.
+    """
+    from ondeline_api.services.sgp_cache import _serialize_cliente
+
+    stale_fetched = datetime.now(UTC) - timedelta(seconds=7200)  # 2h atras, TTL=3600
+    db_session.add(
+        SgpCache(
+            cpf_hash="11122233344",
+            provider=SgpProviderEnum.ONDELINE,
+            payload=_serialize_cliente(_cli()),
+            ttl=3600,
+            fetched_at=stale_fetched,
+        )
+    )
+    await db_session.flush()
+
+    redis = FakeRedis(decode_responses=False)
+    cache = SgpCacheService(
+        redis=redis,
+        session=db_session,
+        router=SgpRouter(
+            primary=FakeSgpProvider(raise_on={"11122233344"}),
+            secondary=FakeSgpProvider(raise_on={"11122233344"}),
+        ),
+        ttl_cliente=3600,
+        ttl_negativo=300,
+        cpf_hasher=lambda s: s,
+    )
+    cli = await cache.get_cliente("11122233344")
+    assert cli is not None
+    assert cli.sgp_id == "42"
+    # cache negativo NAO deve ser gravado quando SGP esta fora
+    assert await redis.get("sgp:not_found:11122233344") is None
+
+
+async def test_sgp_down_sem_stale_propaga_erro(db_session) -> None:
+    """Router levanta SgpUnavailableError; DB sem linha.
+    Cache deve re-levantar SgpUnavailableError, nunca retornar None.
+    """
+
+    cache = SgpCacheService(
+        redis=FakeRedis(decode_responses=False),
+        session=db_session,
+        router=SgpRouter(
+            primary=FakeSgpProvider(raise_on={"11122233344"}),
+            secondary=FakeSgpProvider(raise_on={"11122233344"}),
+        ),
+        ttl_cliente=3600,
+        ttl_negativo=300,
+        cpf_hasher=lambda s: s,
+    )
+    with pytest.raises(SgpUnavailableError):
+        await cache.get_cliente("11122233344")
