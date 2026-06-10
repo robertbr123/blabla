@@ -211,3 +211,40 @@ async def test_nao_encontrado(db_session: AsyncSession) -> None:
     )
     out = await buscar_cliente_sgp(ctx, cpf_cnpj="00000000000")
     assert out == {"encontrado": False}
+
+
+async def test_sgp_indisponivel_retorna_instrucao(db_session: AsyncSession) -> None:
+    # FakeSgpProvider levanta RuntimeError para o CPF no raise_on;
+    # SgpRouter converte em SgpUnavailableError quando nenhum provider
+    # responde com sucesso; SgpCacheService repropaga quando nao ha stale.
+    cache = SgpCacheService(
+        redis=FakeRedis(decode_responses=False),
+        session=db_session,
+        router=SgpRouter(
+            primary=FakeSgpProvider(raise_on={"11122233344"}),
+            secondary=FakeSgpProvider(raise_on={"11122233344"}),
+        ),
+        ttl_cliente=3600,
+        ttl_negativo=300,
+    )
+    conv = Conversa(
+        id=uuid4(),
+        whatsapp="5514@s",
+        estado=ConversaEstado.CLIENTE_CPF,
+        status=ConversaStatus.BOT,
+    )
+    db_session.add(conv)
+    await db_session.flush()
+    ctx = ToolContext(
+        session=db_session,
+        conversa=conv,
+        cliente=None,
+        evolution=None,  # type: ignore[arg-type]
+        sgp_router=None,  # type: ignore[arg-type]
+        sgp_cache=cache,
+    )
+    out = await buscar_cliente_sgp(ctx, cpf_cnpj="11122233344")
+    assert out["erro"] == "sgp_indisponivel"
+    assert "encontrado" not in out  # nao pode parecer "nao encontrado"
+    assert isinstance(out["instrucao"], str)
+    assert len(out["instrucao"]) > 0

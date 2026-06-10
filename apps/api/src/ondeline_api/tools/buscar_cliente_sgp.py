@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from typing import Any
 
-from ondeline_api.adapters.sgp.base import Contrato, Fatura
+from ondeline_api.adapters.sgp.base import Contrato, Fatura, SgpUnavailableError
 from ondeline_api.repositories.cliente import ClienteRepo
 from ondeline_api.tools.context import ToolContext
 from ondeline_api.tools.registry import tool
@@ -108,7 +108,18 @@ def _resumo_contrato(c: Contrato) -> dict[str, Any]:
     parameters=SCHEMA,
 )
 async def buscar_cliente_sgp(ctx: ToolContext, *, cpf_cnpj: str) -> dict[str, Any]:
-    cli_sgp = await ctx.sgp_cache.get_cliente(cpf_cnpj)
+    try:
+        cli_sgp = await ctx.sgp_cache.get_cliente(cpf_cnpj)
+    except SgpUnavailableError:
+        return {
+            "erro": "sgp_indisponivel",
+            "instrucao": (
+                "O sistema de consulta de cadastro esta temporariamente "
+                "instavel. Avise o cliente e peca para tentar de novo em "
+                "alguns minutos. NAO diga que o CPF/cadastro nao foi "
+                "encontrado."
+            ),
+        }
     if cli_sgp is None:
         return {"encontrado": False}
 
