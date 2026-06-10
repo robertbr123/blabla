@@ -12,6 +12,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ondeline_api.adapters.genieacs.base import GenieAcsUnavailableError
 from ondeline_api.adapters.genieacs.client import GenieAcsClient
 from ondeline_api.adapters.sgp.linknetam import SgpLinkNetAMProvider
 from ondeline_api.adapters.sgp.ondeline import SgpOndelineProvider
@@ -79,7 +80,10 @@ async def status_rede(
     service: Annotated[RedeService, Depends(get_rede_service)],
     serial: str | None = None,
 ) -> StatusRedeOut:
-    st = await service.status_rede(cliente_id, serial)
+    try:
+        st = await service.status_rede(cliente_id, serial)
+    except GenieAcsUnavailableError as e:
+        raise HTTPException(status_code=503, detail="GenieACS indisponivel") from e
     if not st.encontrada or st.device is None:
         return StatusRedeOut(
             encontrada=False, pppoe_login=st.pppoe_login, motivo=st.motivo
@@ -117,6 +121,8 @@ async def trocar_senha(
         raise HTTPException(status_code=422, detail=str(e)) from e
     except OnuNaoEncontradaError as e:
         raise HTTPException(status_code=404, detail="ONU nao encontrada") from e
+    except GenieAcsUnavailableError as e:
+        raise HTTPException(status_code=503, detail="GenieACS indisponivel") from e
     aviso = AVISO_REBOOT if res.reiniciando else "Senha enviada."
     return TrocarSenhaOut(
         status="enviado",

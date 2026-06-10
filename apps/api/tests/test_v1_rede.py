@@ -37,14 +37,18 @@ class _FakeService:
         status: StatusRede | None = None,
         troca: ResultadoTroca | None = None,
         raise_troca: Exception | None = None,
+        raise_status: Exception | None = None,
     ) -> None:
         self._status = status
         self._troca = troca
         self._raise = raise_troca
+        self._raise_status = raise_status
 
     async def status_rede(
         self, cliente_id: UUID, serial: str | None = None
     ) -> StatusRede:
+        if self._raise_status:
+            raise self._raise_status
         assert self._status is not None
         return self._status
 
@@ -107,19 +111,23 @@ def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-async def _make_tecnico_user(db_session: AsyncSession) -> dict[str, Any]:
-    email = f"tec-{uuid4().hex[:8]}@example.com"
+async def _make_user(db_session: AsyncSession, role: Role) -> dict[str, Any]:
+    email = f"u-{uuid4().hex[:8]}@example.com"
     password = "Pa$$word123"
     user = User(
         email=email,
         password_hash=hash_password(password),
-        role=Role.TECNICO,
-        name="Test Tecnico",
+        role=role,
+        name="Test User",
         is_active=True,
     )
     db_session.add(user)
     await db_session.flush()
     return {"email": email, "password": password, "id": user.id, "user": user}
+
+
+async def _make_tecnico_user(db_session: AsyncSession) -> dict[str, Any]:
+    return await _make_user(db_session, Role.TECNICO)
 
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -215,3 +223,77 @@ async def test_status_rede_sem_token(
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         r = await c.get(f"/api/v1/rede/{uuid4()}")
     assert r.status_code == 401, r.text
+
+
+@pytest.mark.asyncio
+async def test_status_rede_role_errado_403(
+    db_session: AsyncSession, redis_client: Any
+) -> None:
+    """ATENDENTE nao pode mexer na rede (RBAC tecnico/admin) -> 403."""
+    fake = _FakeService(status=StatusRede(encontrada=True, device=_dev()))
+    app = _make_app_overrides(db_session, redis_client, fake)
+    atendente = await _make_user(db_session, Role.ATENDENTE)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        token = await _login(c, atendente["email"], atendente["password"])
+        r = await c.get(f"/api/v1/rede/{uuid4()}", headers=_auth(token))
+    assert r.status_code == 403, r.text
+
+
+@pytest.mark.asyncio
+async def test_status_rede_genieacs_down_503(
+    db_session: AsyncSession, redis_client: Any
+) -> None:
+    """GenieACS fora -> 503 (contrato do adapter), nao 500."""
+    from ondeline_api.adapters.genieacs.base import GenieAcsUnavailableError
+
+    fake = _FakeService(raise_status=GenieAcsUnavailableError("nbi fora"))
+    app = _make_app_overrides(db_session, redis_client, fake)
+    tec = await _make_tecnico_user(db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        token = await _login(c, tec["email"], tec["password"])
+        r = await c.get(f"/api/v1/rede/{uuid4()}", headers=_auth(token))
+    assert r.status_code == 503, r.text
+
+
+@pytest.mark.asyncio
+async def test_trocar_senha_genieacs_down_503(
+    db_session: AsyncSession, redis_client: Any
+) -> None:
+    """POST com GenieACS fora -> 503."""
+    from ondeline_api.adapters.genieacs.base import GenieAcsUnavailableError
+
+    fake = _FakeService(raise_troca=GenieAcsUnavailableError("nbi fora"))
+    app = _make_app_overrides(db_session, redis_client, fake)
+    tec = await _make_tecnico_user(db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        token = await _login(c, tec["email"], tec["password"])
+        r = await c.post(
+            f"/api/v1/rede/{uuid4()}/wifi/senha",
+            json={"senha": "senhaboa123"},
+            headers=_auth(token),
+        )
+    assert r.status_code == 503, r.text
+
+
+@pytest.mark.asyncio
+async def test_trocar_senha_invalida_422(
+    db_session: AsyncSession, redis_client: Any
+) -> None:
+    """SenhaInvalidaError do service vira 422 (mapeamento do endpoint)."""
+    from ondeline_api.services.rede_service import SenhaInvalidaError
+
+    fake = _FakeService(raise_troca=SenhaInvalidaError("control char"))
+    app = _make_app_overrides(db_session, redis_client, fake)
+    tec = await _make_tecnico_user(db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        token = await _login(c, tec["email"], tec["password"])
+        r = await c.post(
+            f"/api/v1/rede/{uuid4()}/wifi/senha",
+            json={"senha": "senhaboa123"},  # passa o Pydantic; o service e quem rejeita
+            headers=_auth(token),
+        )
+    assert r.status_code == 422, r.text
