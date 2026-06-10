@@ -146,6 +146,31 @@ async def test_cliente_so_no_sgp_resolve_por_pppoe(db_session: AsyncSession) -> 
     assert st.pppoe_login == "rosineidesilva"
 
 
+async def test_multi_contrato_usa_o_que_tem_onu(db_session: AsyncSession) -> None:
+    """Cliente com 2 contratos: o 1o pppoe nao tem ONU no GenieACS, o 2o tem.
+    Deve achar pelo 2o (nao parar no 1o como antes)."""
+    cli = ClienteSgp(
+        provider=SgpProviderEnum.ONDELINE, sgp_id="7", nome="Multi", cpf_cnpj=CPF,
+        contratos=[
+            Contrato(id="A", plano="X", status="ativo", pppoe_login="ppp_sem_onu"),
+            Contrato(id="B", plano="Y", status="ativo", pppoe_login="ppp6"),
+        ],
+    )
+
+    class _GenieMulti(_FakeGenie):
+        async def find_device_by_pppoe(self, login: str) -> GenieAcsDevice | None:
+            return _dev() if login == "ppp6" else None
+
+    svc = RedeService(session=db_session, genieacs=_GenieMulti(),
+                      sgp_cache=_FakeSgpCache(cli))
+    res = await svc.trocar_senha_wifi(cpf=CPF, nova_senha="NovaSenha123",
+                                      serial=None, ator_user_id=uuid4())
+    assert res.device_id == "30E1F1-AX1800-X"
+    pedido = (await db_session.execute(select(RedeWifiPedido))).scalar_one()
+    assert pedido.contrato_id == "B"  # o contrato que tinha ONU
+    assert pedido.pppoe_login == "ppp6"
+
+
 async def test_senha_com_caractere_de_controle_rejeitada(db_session: AsyncSession) -> None:
     svc = _svc(db_session, _FakeGenie(by_pppoe=_dev()))
     with pytest.raises(SenhaInvalidaError):

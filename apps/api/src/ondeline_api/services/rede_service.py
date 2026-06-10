@@ -80,11 +80,12 @@ class _Resolucao:
     contrato_id: str | None
 
 
-def _primeiro_contrato(contratos: list[Contrato]) -> Contrato | None:
-    for c in contratos:
-        if c.status and "ativ" in c.status.lower():
-            return c
-    return contratos[0] if contratos else None
+def _contratos_ordenados(contratos: list[Contrato]) -> list[Contrato]:
+    """Contratos com pppoe primeiro (so esses resolvem ONU), ativos antes."""
+    com_pppoe = [c for c in contratos if c.pppoe_login]
+    ativos = [c for c in com_pppoe if c.status and "ativ" in c.status.lower()]
+    inativos = [c for c in com_pppoe if c not in ativos]
+    return ativos + inativos
 
 
 def _so_digitos(cpf: str) -> str:
@@ -116,21 +117,28 @@ class RedeService:
     async def _resolver_por_cpf(self, cpf: str, serial: str | None) -> _Resolucao:
         """CPF -> SGP -> contrato -> pppoe -> device. PPPoE e a chave PRINCIPAL
         (o SGP faz o RADIUS, entao o login bate com o Username na ONU); serial
-        e o fallback. Reusado pelo app do cliente (passa o CPF do login)."""
-        pppoe: str | None = None
-        contrato_id: str | None = None
-        cli = await self._sgp.get_cliente(cpf)
-        contrato = _primeiro_contrato(cli.contratos) if cli else None
-        if contrato is not None:
-            pppoe = contrato.pppoe_login or None
-            contrato_id = contrato.id or None
+        e o fallback. Reusado pelo app do cliente (passa o CPF do login).
 
-        device: GenieAcsDevice | None = None
-        if pppoe:
+        Cliente pode ter VARIOS contratos (varias ONUs): tenta CADA pppoe e usa
+        o primeiro que tem ONU registrada no GenieACS."""
+        cli = await self._sgp.get_cliente(cpf)
+        contratos = _contratos_ordenados(cli.contratos) if cli else []
+
+        for contrato in contratos:
+            pppoe = contrato.pppoe_login
             device = await self._genie.find_device_by_pppoe(pppoe)
-        if device is None and serial:
-            device = await self._genie.find_device_by_serial(serial)
-        return _Resolucao(device=device, pppoe=pppoe, contrato_id=contrato_id)
+            if device is not None:
+                return _Resolucao(device=device, pppoe=pppoe, contrato_id=contrato.id or None)
+
+        # Nenhum contrato resolveu pelo pppoe -> fallback serial. Guarda o pppoe
+        # do 1o contrato como referencia de auditoria.
+        ref = contratos[0] if contratos else None
+        pppoe_ref = ref.pppoe_login if ref else None
+        contrato_ref = (ref.id or None) if ref else None
+        device = (
+            await self._genie.find_device_by_serial(serial) if serial else None
+        )
+        return _Resolucao(device=device, pppoe=pppoe_ref, contrato_id=contrato_ref)
 
     async def status_rede(self, cpf: str, serial: str | None = None) -> StatusRede:
         cpf = _so_digitos(cpf)

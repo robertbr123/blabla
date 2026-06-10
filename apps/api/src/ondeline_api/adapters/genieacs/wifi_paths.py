@@ -43,11 +43,34 @@ def perfil_do_modelo(modelo: str) -> WifiPerfil:
     return PERFIS.get(modelo, DEFAULT_PERFIL)
 
 
+# Prefixos de SSID default de fabrica (rede nunca configurada pelo cliente).
+_SSID_DEFAULT_PREFIXOS = ("fh_", "fh-")
+
+
+def _e_ssid_default(ssid: str) -> bool:
+    s = ssid.lower()
+    return any(s.startswith(p) for p in _SSID_DEFAULT_PREFIXOS)
+
+
+def _redes_alvo(device: GenieAcsDevice) -> list[int]:
+    """Instancias onde setar a senha. Preferimos as Enable=true; mas alguns
+    modelos (FiberHome HG6145D) reportam Enable=false ate nas redes que estao
+    no ar, entao caimos pras redes com SSID customizado (pulando defaults
+    de fabrica fh_*)."""
+    ativas = [r.instancia for r in device.redes if r.enabled and r.ssid]
+    if ativas:
+        return ativas
+    return [
+        r.instancia
+        for r in device.redes
+        if r.ssid and not _e_ssid_default(r.ssid)
+    ]
+
+
 def montar_plano(device: GenieAcsDevice, nova_senha: str) -> PlanoTrocaSenha:
     perfil = perfil_do_modelo(device.modelo)
     params = [
-        (f"{WLAN_BASE}.{r.instancia}.{perfil.passphrase_param}", nova_senha, "xsd:string")
-        for r in device.redes
-        if r.enabled
+        (f"{WLAN_BASE}.{inst}.{perfil.passphrase_param}", nova_senha, "xsd:string")
+        for inst in _redes_alvo(device)
     ]
     return PlanoTrocaSenha(params=params, needs_reboot=perfil.needs_reboot)

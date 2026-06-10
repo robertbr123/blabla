@@ -39,6 +39,39 @@ def test_modelo_desconhecido_usa_default_conservador() -> None:
     assert perfil.passphrase_param == "KeyPassphrase"
 
 
-def test_sem_rede_ativa_plano_vazio() -> None:
-    dev = _device("AX1800", [RedeWlan(instancia=1, ssid="x", enabled=False)])
+def test_fiberhome_enabled_false_usa_ssid_custom() -> None:
+    # HG6145D reporta Enable=false ate nas redes no ar -> cai pras de SSID
+    # customizado (GABRIEL), pulando os defaults de fabrica (fh_ssid*).
+    dev = _device(
+        "HG6145D",
+        [
+            RedeWlan(instancia=1, ssid="GABRIEL", enabled=False),
+            RedeWlan(instancia=5, ssid="GABRIEL", enabled=False),
+            RedeWlan(instancia=2, ssid="fh_ssid2", enabled=False),
+            RedeWlan(instancia=3, ssid="fh_5G_ssid3", enabled=False),
+        ],
+    )
+    paths = [p[0] for p in montar_plano(dev, "s").params]
+    assert any(".1.KeyPassphrase" in p for p in paths)
+    assert any(".5.KeyPassphrase" in p for p in paths)
+    assert not any(".2.KeyPassphrase" in p for p in paths)  # fh_ default pulado
+    assert not any(".3.KeyPassphrase" in p for p in paths)
+
+
+def test_enabled_true_tem_prioridade_sobre_fallback() -> None:
+    # Quando ha rede Enable=true, usa so ela (nao cai no fallback de SSID).
+    dev = _device(
+        "AX1800",
+        [
+            RedeWlan(instancia=1, ssid="CASA", enabled=True),
+            RedeWlan(instancia=2, ssid="EXTRA", enabled=False),
+        ],
+    )
+    paths = [p[0] for p in montar_plano(dev, "s").params]
+    assert paths == ["InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase"]
+
+
+def test_so_ssid_default_plano_vazio() -> None:
+    # Device so com SSID default de fabrica (nenhuma rede do cliente) -> vazio.
+    dev = _device("HG6145D", [RedeWlan(instancia=2, ssid="fh_ssid2", enabled=False)])
     assert montar_plano(dev, "s").params == []
