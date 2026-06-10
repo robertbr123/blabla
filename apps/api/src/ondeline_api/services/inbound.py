@@ -1543,6 +1543,7 @@ async def process_inbound_message(
         event=_to_fsm_event(evt.kind, evt.text),
     )
     prev_status = conversa.status
+    prev_estado = conversa.estado
     await deps.conversas.update_estado_status(
         conversa, estado=decision.new_estado, status=decision.new_status
     )
@@ -1576,6 +1577,10 @@ async def process_inbound_message(
             )
 
     if llm_turn_requested:
+        # Saindo de AGUARDA_CSAT sem nota (cliente mudou de assunto): solta o
+        # vinculo da OS — nao vai mais chegar nota pra esse follow-up.
+        if prev_estado is ConversaEstado.AGUARDA_CSAT:
+            conversa.followup_os_id = None
         deps.outbound.enqueue_llm_turn(conversa.id)
         escalated = True
 

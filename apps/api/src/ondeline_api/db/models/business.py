@@ -48,6 +48,7 @@ class ConversaEstado(StrEnum):
     HUMANO = "humano"
     ENCERRADA = "encerrada"
     AGUARDA_FOLLOWUP_OS = "aguarda_followup_os"
+    AGUARDA_CSAT = "aguarda_csat"  # cliente confirmou OS ok; aguardando so a nota (1-5)
     MUDANCA_ENDERECO = "mudanca_endereco"
     CHECKLIST_OS = "checklist_os"
 

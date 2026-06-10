@@ -106,17 +106,29 @@ class Fsm:
             nota = int(m_csat.group(1)) if m_csat else None
             tem_nota_baixa = nota in (1, 2)
             tem_nota_alta = nota in (3, 4, 5)
-            if any(p in text_norm for p in _PALAVRAS_OK) or tem_nota_alta:
+            tem_ok = any(p in text_norm for p in _PALAVRAS_OK)
+            tem_nok = any(p in text_norm for p in _PALAVRAS_NOK)
+            # Nota baixa OU "nao": cliente insatisfeito -> escala (terminal).
+            if tem_nota_baixa or tem_nok:
+                return FsmDecision(
+                    new_estado=ConversaEstado.AGUARDA_ATENDENTE,
+                    new_status=ConversaStatus.AGUARDANDO,
+                    actions=[Action(kind=ActionKind.FOLLOWUP_OS_ESCALAR)],
+                )
+            # Nota alta presente (com ou sem "sim"): confirma + CSAT capturado -> encerra.
+            if tem_nota_alta:
                 return FsmDecision(
                     new_estado=ConversaEstado.ENCERRADA,
                     new_status=ConversaStatus.ENCERRADA,
                     actions=[Action(kind=ActionKind.FOLLOWUP_OS_CONFIRMAR)],
                 )
-            if any(p in text_norm for p in _PALAVRAS_NOK) or tem_nota_baixa:
+            # "Sim"/ok SEM nota: confirma que resolveu, mas NAO encerra — fica
+            # aguardando a nota numa proxima mensagem (era aqui que o "5" se perdia).
+            if tem_ok:
                 return FsmDecision(
-                    new_estado=ConversaEstado.AGUARDA_ATENDENTE,
-                    new_status=ConversaStatus.AGUARDANDO,
-                    actions=[Action(kind=ActionKind.FOLLOWUP_OS_ESCALAR)],
+                    new_estado=ConversaEstado.AGUARDA_CSAT,
+                    new_status=ConversaStatus.BOT,
+                    actions=[Action(kind=ActionKind.FOLLOWUP_OS_CONFIRMAR)],
                 )
             # Ambíguo: não reengatilha a mesma pergunta. Mantém o follow-up
             # aguardando uma resposta clara do cliente, sem novo prompt ativo.
@@ -124,6 +136,27 @@ class Fsm:
                 new_estado=ConversaEstado.AGUARDA_FOLLOWUP_OS,
                 new_status=ConversaStatus.BOT,
                 actions=[],
+            )
+
+        # ja confirmou que resolveu; so falta a nota. Captura o "5" que vem solto.
+        if estado is ConversaEstado.AGUARDA_CSAT:
+            text_norm = (event.text or "").lower().strip()
+            m_csat = _CSAT_RE.search(f" {text_norm} ")
+            nota = int(m_csat.group(1)) if m_csat else None
+            if nota is not None:
+                # Qualquer nota 1-5 -> registra CSAT e encerra (ja confirmou ok antes).
+                return FsmDecision(
+                    new_estado=ConversaEstado.ENCERRADA,
+                    new_status=ConversaStatus.ENCERRADA,
+                    actions=[Action(kind=ActionKind.FOLLOWUP_OS_CONFIRMAR)],
+                )
+            # Cliente mudou de assunto em vez de dar nota: encerra o follow-up e
+            # deixa o LLM responder (nunca deixa o cliente no vacuo). inbound.py
+            # limpa o followup_os_id nessa transicao.
+            return FsmDecision(
+                new_estado=ConversaEstado.AGUARDA_OPCAO,
+                new_status=ConversaStatus.BOT,
+                actions=[Action(kind=ActionKind.LLM_TURN)],
             )
 
         # encerrada: reabre + LLM cuida da nova interacao desde o inicio

@@ -28,6 +28,10 @@ _MSG_CONFIRMAR = (
     "Sua avaliação ajuda muito a melhorar — se ainda não mandou, "
     "responde com uma nota de *1 a 5* (5 = excelente atendimento). 🌟"
 )
+_MSG_AGRADECE_NOTA = (
+    "Valeu pela nota! 🌟 Anotado aqui. "
+    "Qualquer coisa, é só me chamar. 😊"
+)
 _MSG_ESCALAR = (
     "Entendido, vou acionar nossa equipe agora pra resolver o que ficou pendente. "
     "Em breve um atendente entrará em contato. 🙏"
@@ -51,18 +55,29 @@ async def _run_followup(conversa_id: UUID, resultado: str, resposta: str) -> Non
                 log.warning("followup.conversa_not_found", conversa_id=str(conversa_id))
                 return
 
-            msg = (
-                _MSG_CONFIRMAR
-                if resultado == "ok"
-                else business_hours.humano_message(
+            csat = _parse_csat(resposta)
+            # ok + nota -> agradece (terminal). ok sem nota -> pede a nota e segue
+            # aguardando em AGUARDA_CSAT. nao_ok -> escala.
+            if resultado == "ok":
+                msg = _MSG_AGRADECE_NOTA if csat is not None else _MSG_CONFIRMAR
+            else:
+                msg = business_hours.humano_message(
                     _MSG_ESCALAR,
                     closed_prefix=(
                         "Entendido, vou acionar nossa equipe pra resolver o que ficou pendente."
                     ),
                 )
-            )
             try:
                 await evo.send_text(conversa.whatsapp, msg)
+                # Persiste pra aparecer no historico da dashboard (antes ia direto
+                # pro WhatsApp sem gravar e sumia da conversa).
+                try:
+                    from ondeline_api.repositories.mensagem import MensagemRepo
+                    await MensagemRepo(session).insert_bot_reply(
+                        conversa_id=conversa.id, text=msg
+                    )
+                except Exception:
+                    log.warning("followup.persist_failed", conversa_id=str(conversa.id), exc_info=True)
             except Exception:
                 log.warning("followup.send_failed", whatsapp=conversa.whatsapp, exc_info=True)
 
@@ -77,7 +92,6 @@ async def _run_followup(conversa_id: UUID, resultado: str, resposta: str) -> Non
                     os_.follow_up_resultado = resultado
                     os_.follow_up_resposta = resposta
                     os_.follow_up_respondido_em = datetime.now(tz=UTC)
-                    csat = _parse_csat(resposta)
                     if csat is not None and os_.csat is None:
                         os_.csat = csat
                         log.info(
@@ -85,7 +99,11 @@ async def _run_followup(conversa_id: UUID, resultado: str, resposta: str) -> Non
                             os_id=str(os_.id),
                             csat=csat,
                         )
-            conversa.followup_os_id = None
+            # So solta o vinculo da OS quando terminal: nota capturada (CSAT) ou
+            # escalado. "ok" sem nota mantem o vinculo pra capturar a nota que
+            # ainda vai chegar (estado AGUARDA_CSAT).
+            if csat is not None or resultado != "ok":
+                conversa.followup_os_id = None
     finally:
         await evo.aclose()
 
