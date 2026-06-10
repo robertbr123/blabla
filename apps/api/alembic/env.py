@@ -7,7 +7,7 @@ from logging.config import fileConfig
 from alembic import context
 from ondeline_api.config import get_settings
 from ondeline_api.db.base import Base
-from ondeline_api.db.models import business, identity  # noqa: F401  -- register models
+from ondeline_api.db.models import business, identity, rede  # noqa: F401  -- register models
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
