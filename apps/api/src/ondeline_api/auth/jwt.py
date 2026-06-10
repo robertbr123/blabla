@@ -144,6 +144,34 @@ def decode_refresh_token(token: str) -> dict[str, Any]:
     return _decode(token, "refresh")
 
 
+SSE_TICKET_TTL_SECONDS = 60
+
+
+def encode_sse_ticket(user_id: UUID, role: str, conversa_id: UUID) -> str:
+    """Ticket curto pro EventSource (que nao envia Authorization header).
+
+    type=sse: nao e aceito como access token (e vice-versa) - _decode valida.
+    Amarrado a UMA conversa; 60s de vida (so pra abrir a conexao).
+    """
+    iat = _now()
+    exp = iat + timedelta(seconds=SSE_TICKET_TTL_SECONDS)
+    payload = {
+        "sub": str(user_id),
+        "role": role,
+        "conversa_id": str(conversa_id),
+        "kind": "staff",
+        "type": "sse",
+        "jti": str(uuid4()),
+        "iat": int(iat.timestamp()),
+        "exp": int(exp.timestamp()),
+    }
+    return pyjwt.encode(payload, _secret(), algorithm=ALGO)
+
+
+def decode_sse_ticket(token: str) -> dict[str, Any]:
+    return _decode(token, "sse")
+
+
 def hash_refresh_token(token: str) -> str:
     """SHA256 hex — used to persist refresh tokens server-side without raw value."""
     return hashlib.sha256(token.encode()).hexdigest()

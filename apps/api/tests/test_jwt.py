@@ -80,3 +80,25 @@ def test_hash_refresh_token_deterministic() -> None:
     h2 = jwt_mod.hash_refresh_token("abc")
     assert h1 == h2
     assert len(h1) == 64
+
+
+def test_sse_ticket_roundtrip() -> None:
+    uid, cid = uuid4(), uuid4()
+    t = jwt_mod.encode_sse_ticket(uid, "atendente", cid)
+    p = jwt_mod.decode_sse_ticket(t)
+    assert p["sub"] == str(uid)
+    assert p["conversa_id"] == str(cid)
+    assert p["role"] == "atendente"
+    assert p["kind"] == "staff"
+
+
+def test_sse_ticket_nao_e_aceito_como_access_token() -> None:
+    t = jwt_mod.encode_sse_ticket(uuid4(), "admin", uuid4())
+    with pytest.raises(jwt_mod.InvalidTokenType):
+        jwt_mod.decode_access_token(t)
+
+
+def test_access_token_nao_e_aceito_como_ticket() -> None:
+    t = jwt_mod.encode_access_token(uuid4(), "admin")
+    with pytest.raises(jwt_mod.InvalidTokenType):
+        jwt_mod.decode_sse_ticket(t)
