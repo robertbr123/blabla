@@ -187,7 +187,7 @@ class RedeService:
         # envio falhar (GenieAcsUnavailableError), o registro sobrevive como
         # 'pendente' e o erro propaga. So depois do envio OK vira 'enviado'.
         pedido = RedeWifiPedido(
-            cliente_id=cadastro_id,
+            cliente_id=cadastro_id,  # coluna legada cliente_id guarda o id do ClienteCadastro
             contrato_id=res.contrato_id,
             pppoe_login=res.pppoe,
             device_id=res.device.device_id,
