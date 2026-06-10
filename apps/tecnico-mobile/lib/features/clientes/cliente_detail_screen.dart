@@ -400,7 +400,7 @@ class _SecaoConexao extends StatelessWidget {
             child: OutlinedButton.icon(
               icon: const Icon(Icons.wifi_password, size: 18),
               label: const Text('Gerenciar rede WiFi'),
-              onPressed: () => context.push('/rede/${cliente.id}'),
+              onPressed: () => context.push('/rede/${cliente.cpf}'),
             ),
           ),
         ],

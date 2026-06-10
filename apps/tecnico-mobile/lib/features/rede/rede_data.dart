@@ -47,23 +47,29 @@ class StatusRede {
       );
 }
 
+/// Status da rede por CPF. O CPF vai no body (POST), nunca na URL, pra nao
+/// vazar em access log. O backend resolve CPF -> SGP -> pppoe -> ONU.
 final redeStatusProvider =
-    FutureProvider.autoDispose.family<StatusRede, String>((ref, clienteId) async {
+    FutureProvider.autoDispose.family<StatusRede, String>((ref, cpf) async {
   final dio = ref.watch(apiClientProvider);
-  final r = await dio.get('/api/v1/rede/$clienteId');
+  final r = await dio.post('/api/v1/rede/status', data: {'cpf': cpf});
   return StatusRede.fromJson(r.data as Map<String, dynamic>);
 });
 
 /// Troca a senha. Retorna o aviso pra UI. Lanca em erro (tratado na tela).
 Future<String> trocarSenhaWifi(
   Dio dio, {
-  required String clienteId,
+  required String cpf,
   required String senha,
   String? serial,
 }) async {
   final r = await dio.post(
-    '/api/v1/rede/$clienteId/wifi/senha',
-    data: {'senha': senha, if (serial != null && serial.isNotEmpty) 'serial': serial},
+    '/api/v1/rede/wifi/senha',
+    data: {
+      'cpf': cpf,
+      'senha': senha,
+      if (serial != null && serial.isNotEmpty) 'serial': serial,
+    },
   );
   return (r.data['aviso'] ?? 'Senha enviada.') as String;
 }

@@ -5,8 +5,8 @@ import '../../core/api/api_client.dart';
 import 'rede_data.dart';
 
 class RedeScreen extends ConsumerStatefulWidget {
-  const RedeScreen({super.key, required this.clienteId});
-  final String clienteId;
+  const RedeScreen({super.key, required this.cpf});
+  final String cpf;
 
   @override
   ConsumerState<RedeScreen> createState() => _RedeScreenState();
@@ -53,7 +53,7 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
       final dio = ref.read(apiClientProvider);
       final aviso = await trocarSenhaWifi(
         dio,
-        clienteId: widget.clienteId,
+        cpf: widget.cpf,
         senha: senha,
         serial: precisaSerial ? _serial.text.trim() : null,
       );
@@ -70,7 +70,7 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final status = ref.watch(redeStatusProvider(widget.clienteId));
+    final status = ref.watch(redeStatusProvider(widget.cpf));
     return Scaffold(
       appBar: AppBar(
         title: const Text('Rede do cliente'),
@@ -78,7 +78,7 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Atualizar',
-            onPressed: () => ref.invalidate(redeStatusProvider(widget.clienteId)),
+            onPressed: () => ref.invalidate(redeStatusProvider(widget.cpf)),
           ),
         ],
       ),
@@ -92,7 +92,7 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
               const SizedBox(height: 8),
               FilledButton(
                 onPressed: () =>
-                    ref.invalidate(redeStatusProvider(widget.clienteId)),
+                    ref.invalidate(redeStatusProvider(widget.cpf)),
                 child: const Text('Tentar novamente'),
               ),
             ],

@@ -84,8 +84,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, st) => ClienteDetailScreen(id: st.pathParameters['id']!),
       ),
       GoRoute(
-        path: '/rede/:clienteId',
-        builder: (_, st) => RedeScreen(clienteId: st.pathParameters['clienteId']!),
+        path: '/rede/:cpf',
+        builder: (_, st) => RedeScreen(cpf: st.pathParameters['cpf']!),
       ),
     ],
     errorBuilder: (_, st) => Scaffold(
