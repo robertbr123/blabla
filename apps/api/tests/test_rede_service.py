@@ -5,8 +5,7 @@ from uuid import uuid4
 
 import pytest
 from ondeline_api.adapters.genieacs.base import GenieAcsDevice, RedeWlan
-from ondeline_api.adapters.sgp.base import ClienteSgp, Contrato
-from ondeline_api.adapters.sgp.base import SgpProvider as SgpProviderEnum
+from ondeline_api.adapters.sgp.base import ClienteSgp, Contrato, SgpProviderEnum
 from ondeline_api.db.crypto import encrypt_pii, hash_pii
 from ondeline_api.db.models.business import Cliente
 from ondeline_api.db.models.rede import RedeWifiPedido
@@ -25,7 +24,7 @@ class _FakeGenie:
     def __init__(self, *, by_pppoe=None, by_serial=None) -> None:
         self._by_pppoe = by_pppoe
         self._by_serial = by_serial
-        self.set_calls: list[tuple[str, list]] = []
+        self.set_calls: list[tuple[str, list[tuple[str, str, str]]]] = []
         self.reboots: list[str] = []
 
     async def find_device_by_pppoe(self, login: str):
