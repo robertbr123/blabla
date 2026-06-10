@@ -1,6 +1,8 @@
 """ORM model para auditoria de troca de senha WiFi (TR-069).
 
 Registra o FATO da troca (quem, qual ONU, quando) - NUNCA a senha em si.
+A identificacao do cliente e por cpf_hash (PII-safe): o cliente e localizado
+por CPF -> SGP -> pppoe, entao nem sempre existe um id de cliente local.
 Status comeca em 'enviado'; fatias futuras (app cliente) podem evoluir
 para 'confirmado'/'falhou'.
 """
@@ -23,8 +25,10 @@ class RedeWifiPedido(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    cliente_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False, index=True
+    # cpf_hash (HMAC) e a chave de cliente PII-safe; cliente_id local e opcional.
+    cpf_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    cliente_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True
     )
     contrato_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     pppoe_login: Mapped[str | None] = mapped_column(String(128), nullable=True)

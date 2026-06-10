@@ -1,14 +1,14 @@
-"""GET/POST /api/v1/rede/{cadastro_id} - gerencia da rede WiFi via TR-069.
+"""POST /api/v1/rede/* - gerencia da rede WiFi via TR-069.
 
-cadastro_id = UUID do ClienteCadastro (cliente cadastrado em campo). O app
-tecnico navega com esse id. O service resolve a ONU pelo PPPoE do cadastro
-(principal) com fallback no serial.
+Identificacao por CPF (no body, nao no path -> nao vaza em access log). O
+service resolve a ONU por CPF -> SGP -> pppoe_login (o SGP faz o RADIUS, entao
+o login bate com o Username na ONU), com fallback no serial. Cobre clientes
+antigos que so existem no SGP, e e a mesma resolucao do futuro app do cliente.
 """
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from typing import Annotated
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +20,7 @@ from ondeline_api.adapters.sgp.ondeline import SgpOndelineProvider
 from ondeline_api.adapters.sgp.router import SgpRouter
 from ondeline_api.api.schemas.rede import (
     RedeWlanOut,
+    StatusRedeIn,
     StatusRedeOut,
     TrocarSenhaIn,
     TrocarSenhaOut,
@@ -30,6 +31,7 @@ from ondeline_api.config import get_settings
 from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db
 from ondeline_api.services.rede_service import (
+    CpfInvalidoError,
     OnuNaoEncontradaError,
     RedeService,
     SenhaInvalidaError,
@@ -76,14 +78,15 @@ async def get_rede_service(
         await router_sgp.aclose()
 
 
-@router.get("/{cadastro_id}", response_model=StatusRedeOut, dependencies=[_role_dep])
+@router.post("/status", response_model=StatusRedeOut, dependencies=[_role_dep])
 async def status_rede(
-    cadastro_id: UUID,
+    payload: StatusRedeIn,
     service: Annotated[RedeService, Depends(get_rede_service)],
-    serial: str | None = None,
 ) -> StatusRedeOut:
     try:
-        st = await service.status_rede(cadastro_id, serial)
+        st = await service.status_rede(payload.cpf, payload.serial)
+    except CpfInvalidoError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
     except GenieAcsUnavailableError as e:
         raise HTTPException(status_code=503, detail="GenieACS indisponivel") from e
     if not st.encontrada or st.device is None:
@@ -104,22 +107,21 @@ async def status_rede(
 
 
 @router.post(
-    "/{cadastro_id}/wifi/senha", response_model=TrocarSenhaOut, dependencies=[_role_dep]
+    "/wifi/senha", response_model=TrocarSenhaOut, dependencies=[_role_dep]
 )
 async def trocar_senha(
-    cadastro_id: UUID,
     payload: TrocarSenhaIn,
     service: Annotated[RedeService, Depends(get_rede_service)],
     user: Annotated[User, Depends(get_current_user)],
 ) -> TrocarSenhaOut:
     try:
         res = await service.trocar_senha_wifi(
-            cadastro_id=cadastro_id,
+            cpf=payload.cpf,
             nova_senha=payload.senha,
             serial=payload.serial,
             ator_user_id=user.id,
         )
-    except SenhaInvalidaError as e:
+    except (SenhaInvalidaError, CpfInvalidoError) as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
     except OnuNaoEncontradaError as e:
         raise HTTPException(status_code=404, detail="ONU nao encontrada") from e

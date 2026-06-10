@@ -45,7 +45,7 @@ class _FakeService:
         self._raise_status = raise_status
 
     async def status_rede(
-        self, cadastro_id: UUID, serial: str | None = None
+        self, cpf: str, serial: str | None = None
     ) -> StatusRede:
         if self._raise_status:
             raise self._raise_status
@@ -55,7 +55,7 @@ class _FakeService:
     async def trocar_senha_wifi(
         self,
         *,
-        cadastro_id: UUID,
+        cpf: str,
         nova_senha: str,
         serial: str | None,
         ator_user_id: UUID,
@@ -144,22 +144,23 @@ async def redis_client() -> Any:
 
 # ─── Tests ───────────────────────────────────────────────────────────────────
 
+CPF = "04099889289"
+
 
 @pytest.mark.asyncio
 async def test_status_rede_encontrada(
     db_session: AsyncSession, redis_client: Any
 ) -> None:
-    """GET /api/v1/rede/{id} retorna 200 com modelo quando ONU encontrada."""
-    dev = _dev()
+    """POST /api/v1/rede/status retorna 200 com modelo quando ONU encontrada."""
     fake = _FakeService(
-        status=StatusRede(encontrada=True, device=dev, pppoe_login="cli123")
+        status=StatusRede(encontrada=True, device=_dev(), pppoe_login="rosineidesilva")
     )
     app = _make_app_overrides(db_session, redis_client, fake)
     tec = await _make_tecnico_user(db_session)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         token = await _login(c, tec["email"], tec["password"])
-        r = await c.get(f"/api/v1/rede/{uuid4()}", headers=_auth(token))
+        r = await c.post("/api/v1/rede/status", json={"cpf": CPF}, headers=_auth(token))
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["encontrada"] is True
@@ -173,7 +174,7 @@ async def test_status_rede_encontrada(
 async def test_trocar_senha_ok(
     db_session: AsyncSession, redis_client: Any
 ) -> None:
-    """POST /api/v1/rede/{id}/wifi/senha retorna 200 com reiniciando=True."""
+    """POST /api/v1/rede/wifi/senha retorna 200 com reiniciando=True."""
     fake = _FakeService(
         troca=ResultadoTroca(device_id="30E1F1-AX1800-X", reiniciando=True)
     )
@@ -183,8 +184,8 @@ async def test_trocar_senha_ok(
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         token = await _login(c, tec["email"], tec["password"])
         r = await c.post(
-            f"/api/v1/rede/{uuid4()}/wifi/senha",
-            json={"senha": "senhaboa123"},
+            "/api/v1/rede/wifi/senha",
+            json={"cpf": CPF, "senha": "senhaboa123"},
             headers=_auth(token),
         )
     assert r.status_code == 200, r.text
@@ -197,7 +198,7 @@ async def test_trocar_senha_ok(
 async def test_trocar_senha_onu_nao_encontrada(
     db_session: AsyncSession, redis_client: Any
 ) -> None:
-    """POST /api/v1/rede/{id}/wifi/senha retorna 404 quando ONU nao achada."""
+    """POST /api/v1/rede/wifi/senha retorna 404 quando ONU nao achada."""
     fake = _FakeService(raise_troca=OnuNaoEncontradaError("sem device"))
     app = _make_app_overrides(db_session, redis_client, fake)
     tec = await _make_tecnico_user(db_session)
@@ -205,8 +206,8 @@ async def test_trocar_senha_onu_nao_encontrada(
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         token = await _login(c, tec["email"], tec["password"])
         r = await c.post(
-            f"/api/v1/rede/{uuid4()}/wifi/senha",
-            json={"senha": "senhaboa123"},
+            "/api/v1/rede/wifi/senha",
+            json={"cpf": CPF, "senha": "senhaboa123"},
             headers=_auth(token),
         )
     assert r.status_code == 404, r.text
@@ -216,12 +217,12 @@ async def test_trocar_senha_onu_nao_encontrada(
 async def test_status_rede_sem_token(
     db_session: AsyncSession, redis_client: Any
 ) -> None:
-    """GET /api/v1/rede/{id} sem token retorna 401."""
+    """POST /api/v1/rede/status sem token retorna 401."""
     fake = _FakeService()
     app = _make_app_overrides(db_session, redis_client, fake)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
-        r = await c.get(f"/api/v1/rede/{uuid4()}")
+        r = await c.post("/api/v1/rede/status", json={"cpf": CPF})
     assert r.status_code == 401, r.text
 
 
@@ -236,7 +237,7 @@ async def test_status_rede_role_errado_403(
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         token = await _login(c, atendente["email"], atendente["password"])
-        r = await c.get(f"/api/v1/rede/{uuid4()}", headers=_auth(token))
+        r = await c.post("/api/v1/rede/status", json={"cpf": CPF}, headers=_auth(token))
     assert r.status_code == 403, r.text
 
 
@@ -253,7 +254,7 @@ async def test_status_rede_genieacs_down_503(
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         token = await _login(c, tec["email"], tec["password"])
-        r = await c.get(f"/api/v1/rede/{uuid4()}", headers=_auth(token))
+        r = await c.post("/api/v1/rede/status", json={"cpf": CPF}, headers=_auth(token))
     assert r.status_code == 503, r.text
 
 
@@ -271,8 +272,8 @@ async def test_trocar_senha_genieacs_down_503(
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         token = await _login(c, tec["email"], tec["password"])
         r = await c.post(
-            f"/api/v1/rede/{uuid4()}/wifi/senha",
-            json={"senha": "senhaboa123"},
+            "/api/v1/rede/wifi/senha",
+            json={"cpf": CPF, "senha": "senhaboa123"},
             headers=_auth(token),
         )
     assert r.status_code == 503, r.text
@@ -292,8 +293,8 @@ async def test_trocar_senha_invalida_422(
     async with AsyncClient(transport=transport, base_url="http://test") as c:
         token = await _login(c, tec["email"], tec["password"])
         r = await c.post(
-            f"/api/v1/rede/{uuid4()}/wifi/senha",
-            json={"senha": "senhaboa123"},  # passa o Pydantic; o service e quem rejeita
+            "/api/v1/rede/wifi/senha",
+            json={"cpf": CPF, "senha": "senhaboa123"},  # passa Pydantic; service rejeita
             headers=_auth(token),
         )
     assert r.status_code == 422, r.text

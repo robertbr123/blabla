@@ -24,7 +24,15 @@ class StatusRedeOut(BaseModel):
     motivo: str | None = None  # quando encontrada=False
 
 
+class StatusRedeIn(BaseModel):
+    # CPF no body (nao no path) pra nao vazar em access log. O cliente e
+    # localizado por CPF -> SGP -> pppoe -> ONU (cobre clientes antigos).
+    cpf: str = Field(min_length=11, max_length=18)
+    serial: str | None = None
+
+
 class TrocarSenhaIn(BaseModel):
+    cpf: str = Field(min_length=11, max_length=18)
     senha: str = Field(min_length=8, max_length=63)
     serial: str | None = None
 
