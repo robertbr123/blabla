@@ -163,6 +163,17 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
     }
   }, [conversaId])
 
+  // Prune: quando o refetch já trouxe a mensagem (mesmo id), tira do buffer
+  // live — senão liveMsgs cresce sem teto num plantão longo.
+  useEffect(() => {
+    const ids = new Set((data?.mensagens ?? []).map((m) => m.id))
+    if (ids.size === 0) return
+    setLiveMsgs((prev) => {
+      const next = prev.filter((m) => !ids.has(m.id))
+      return next.length === prev.length ? prev : next
+    })
+  }, [data?.mensagens])
+
   const baseMsgs = data?.mensagens ?? []
   const baseIds = new Set(baseMsgs.map((m) => m.id))
   const allMsgs = [...baseMsgs, ...liveMsgs.filter((m) => !baseIds.has(m.id))]
