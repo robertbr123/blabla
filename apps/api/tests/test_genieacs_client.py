@@ -1,6 +1,8 @@
 """GenieAcsClient contra o NBI (mockado com respx)."""
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 import pytest
 import respx
@@ -12,7 +14,7 @@ pytestmark = pytest.mark.asyncio
 BASE = "http://genieacs.test:7557"
 
 
-def _device_raw(device_id: str = "30E1F1-AX1800-ITBSF1") -> dict:
+def _device_raw(device_id: str = "30E1F1-AX1800-ITBSF1") -> dict[str, Any]:
     return {
         "_id": device_id,
         "_lastInform": "2026-06-10T12:00:00.000Z",
