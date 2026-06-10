@@ -29,6 +29,7 @@ import {
   useTecnicos,
   useVincularCliente,
 } from '@/lib/api/queries'
+import { apiFetch } from '@/lib/api/client'
 import type { MensagemOut } from '@/lib/api/types'
 import { cn } from '@/lib/utils'
 import { ConversaSlaTimer } from './conversa-sla-timer'
@@ -56,7 +57,8 @@ interface SseEvent {
 
 export function ConversaChat({ conversaId }: { conversaId: string }) {
   const router = useRouter()
-  const { data, isLoading, refetch } = useConversa(conversaId)
+  const [sseDown, setSseDown] = useState(false)
+  const { data, isLoading, refetch } = useConversa(conversaId, { refetchInterval: sseDown ? 10_000 : false })
   const responder = useResponder(conversaId)
   const atender = useAtender(conversaId)
   const encerrar = useEncerrar(conversaId)
@@ -92,38 +94,78 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
     }
   }, [data?.cliente?.endereco, osEndereco])
 
-  // SSE real-time
+  // SSE real-time (ticket de 60s: EventSource nao envia Authorization)
   useEffect(() => {
     if (!conversaId) return
-    const es = new EventSource(`/api/v1/conversas/${conversaId}/stream`, {
-      withCredentials: true,
-    })
-    es.onmessage = (ev) => {
+    let es: EventSource | null = null
+    let cancelled = false
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
+
+    async function connect(attempt: number) {
       try {
-        const payload = JSON.parse(ev.data as string) as SseEvent
-        if (payload.type !== 'msg' || !payload.role) return
-        // Mensagem so de midia (foto/audio sem legenda) chega sem `text` — antes
-        // era descartada aqui. Aceita se tiver texto OU midia.
-        if (!payload.text && !payload.media_url) return
-        setLiveMsgs((prev) => [
-          ...prev,
-          {
-            id: payload.id ?? `live-${Date.now()}`,
-            conversa_id: conversaId,
-            role: payload.role as MensagemOut['role'],
-            content: payload.text ?? null,
-            media_type: payload.media_type ?? null,
-            media_url: payload.media_url ?? null,
-            created_at: payload.ts ?? new Date().toISOString(),
-          },
-        ])
-      } catch { /* ignore */ }
+        const { ticket } = await apiFetch<{ ticket: string }>(
+          `/api/v1/conversas/${conversaId}/stream-ticket`,
+          { method: 'POST' },
+        )
+        if (cancelled) return
+        es = new EventSource(
+          `/api/v1/conversas/${conversaId}/stream?ticket=${encodeURIComponent(ticket)}`,
+        )
+        es.onopen = () => setSseDown(false)
+        // Backend emite eventos nomeados com `event: msg` (sse-starlette).
+        // es.onmessage so captura eventos sem nome ou `event: message`,
+        // entao usamos addEventListener('msg', ...) para pegar os eventos reais.
+        es.addEventListener('msg', (ev) => {
+          try {
+            const payload = JSON.parse(ev.data as string) as SseEvent
+            if (payload.type !== 'msg' || !payload.role) return
+            // Mensagem so de midia (foto/audio sem legenda) chega sem `text` — antes
+            // era descartada aqui. Aceita se tiver texto OU midia.
+            if (!payload.text && !payload.media_url) return
+            setLiveMsgs((prev) => [
+              ...prev,
+              {
+                id: payload.id ?? `live-${Date.now()}`,
+                conversa_id: conversaId,
+                role: payload.role as MensagemOut['role'],
+                content: payload.text ?? null,
+                media_type: payload.media_type ?? null,
+                media_url: payload.media_url ?? null,
+                created_at: payload.ts ?? new Date().toISOString(),
+              },
+            ])
+          } catch { /* ignore */ }
+        })
+        es.onerror = () => {
+          es?.close()
+          if (cancelled) return
+          setSseDown(true)
+          retryTimer = setTimeout(
+            () => connect(attempt + 1),
+            Math.min(30_000, 2_000 * 2 ** attempt),
+          )
+        }
+      } catch {
+        if (cancelled) return
+        setSseDown(true)
+        retryTimer = setTimeout(
+          () => connect(attempt + 1),
+          Math.min(30_000, 2_000 * 2 ** attempt),
+        )
+      }
     }
-    es.onerror = () => {}
-    return () => es.close()
+
+    void connect(0)
+    return () => {
+      cancelled = true
+      if (retryTimer) clearTimeout(retryTimer)
+      es?.close()
+    }
   }, [conversaId])
 
-  const allMsgs = [...(data?.mensagens ?? []), ...liveMsgs]
+  const baseMsgs = data?.mensagens ?? []
+  const baseIds = new Set(baseMsgs.map((m) => m.id))
+  const allMsgs = [...baseMsgs, ...liveMsgs.filter((m) => !baseIds.has(m.id))]
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [allMsgs.length])

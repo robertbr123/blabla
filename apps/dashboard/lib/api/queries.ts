@@ -436,11 +436,15 @@ export function useEstoqueMovimentos(filters: { tecnico_id?: string; item_id?: s
   })
 }
 
-export function useConversa(id: string) {
+export function useConversa(
+  id: string,
+  opts?: { refetchInterval?: number | false },
+) {
   return useQuery<ConversaDetail>({
     queryKey: ['conversa', id],
     queryFn: () => apiFetch(`/api/v1/conversas/${id}`),
     enabled: Boolean(id),
+    refetchInterval: opts?.refetchInterval ?? false,
   })
 }
 
