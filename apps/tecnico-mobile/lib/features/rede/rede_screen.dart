@@ -30,6 +30,10 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
       _msg('A senha deve ter de 8 a 63 caracteres.');
       return;
     }
+    if (precisaSerial && _serial.text.trim().isEmpty) {
+      _msg('Informe o serial da ONU.');
+      return;
+    }
     final ok = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
@@ -68,10 +72,32 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
   Widget build(BuildContext context) {
     final status = ref.watch(redeStatusProvider(widget.clienteId));
     return Scaffold(
-      appBar: AppBar(title: const Text('Rede do cliente')),
+      appBar: AppBar(
+        title: const Text('Rede do cliente'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Atualizar',
+            onPressed: () => ref.invalidate(redeStatusProvider(widget.clienteId)),
+          ),
+        ],
+      ),
       body: status.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => const Center(child: Text('Erro ao carregar a rede.')),
+        error: (e, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Erro ao carregar a rede.'),
+              const SizedBox(height: 8),
+              FilledButton(
+                onPressed: () =>
+                    ref.invalidate(redeStatusProvider(widget.clienteId)),
+                child: const Text('Tentar novamente'),
+              ),
+            ],
+          ),
+        ),
         data: _body,
       ),
     );
@@ -98,7 +124,7 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
             ListTile(leading: const Icon(Icons.router), title: Text(r.ssid), dense: true),
         ] else ...[
           const Text(
-            'Nao localizei a ONU pelo cadastro. Informe o serial da etiqueta:',
+            'Não localizei a ONU pelo cadastro. Informe o serial da etiqueta:',
           ),
           const SizedBox(height: 8),
           TextField(
@@ -116,6 +142,8 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
           ),
         ),
         const SizedBox(height: 16),
+        // Bloqueia so se a ONU foi encontrada mas esta offline (GenieACS nao
+        // alcanca). Se !encontrada, o tecnico informa o serial e tenta mesmo assim.
         FilledButton.icon(
           onPressed: (s.encontrada && !s.online) || _enviando
               ? null
