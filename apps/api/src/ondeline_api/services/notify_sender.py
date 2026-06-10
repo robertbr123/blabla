@@ -185,23 +185,38 @@ async def send_one(
     await repo.mark_sent(notificacao)
     log.info("notify.sent", notif_id=str(notificacao.id), tipo=notificacao.tipo.value)
 
+    # Acha a conversa ativa do cliente (se houver) pra: (1) gravar a mensagem no
+    # historico da dashboard e (2) preparar o follow-up de CSAT no OS_CONCLUIDA.
+    conversa = await ConversaRepo(session).find_active_by_cliente_id(cliente.id)
+
+    if conversa is not None:
+        # Persiste o texto legivel na conversa — antes a notificacao ia direto pro
+        # WhatsApp sem gravar e sumia do historico da dashboard. Best-effort:
+        # falha aqui nao quebra o envio (mensagem ja foi entregue).
+        try:
+            from ondeline_api.repositories.mensagem import MensagemRepo
+            await MensagemRepo(session).insert_bot_reply(
+                conversa_id=conversa.id,
+                text=render_message(notificacao, nome_full),
+            )
+        except Exception:
+            log.warning("notify.persist_failed", notif_id=str(notificacao.id), exc_info=True)
+
     # OS_CONCLUIDA: prepara a conversa pra capturar CSAT na proxima resposta do cliente.
     # Sem isso, o FSM nao sabe que estamos aguardando avaliacao e roteia pro LLM.
-    if notificacao.tipo is NotificacaoTipo.OS_CONCLUIDA:
+    if notificacao.tipo is NotificacaoTipo.OS_CONCLUIDA and conversa is not None:
         os_id_raw = (notificacao.payload or {}).get("os_id")
         if os_id_raw:
-            conversa = await ConversaRepo(session).find_active_by_cliente_id(cliente.id)
-            if conversa is not None:
-                try:
-                    conversa.followup_os_id = UUID(str(os_id_raw))
-                except ValueError:
-                    log.warning("notify.os_concluida.bad_os_id", os_id=str(os_id_raw))
-                else:
-                    conversa.estado = ConversaEstado.AGUARDA_FOLLOWUP_OS
-                    await session.flush()
-                    log.info(
-                        "notify.os_concluida.state_set",
-                        conversa_id=str(conversa.id),
-                        os_id=str(os_id_raw),
-                    )
+            try:
+                conversa.followup_os_id = UUID(str(os_id_raw))
+            except ValueError:
+                log.warning("notify.os_concluida.bad_os_id", os_id=str(os_id_raw))
+            else:
+                conversa.estado = ConversaEstado.AGUARDA_FOLLOWUP_OS
+                await session.flush()
+                log.info(
+                    "notify.os_concluida.state_set",
+                    conversa_id=str(conversa.id),
+                    os_id=str(os_id_raw),
+                )
     return True
