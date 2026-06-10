@@ -7,6 +7,7 @@ import 'features/auth/login_screen.dart';
 import 'features/auth/reentry_screen.dart';
 import 'features/clientes/cliente_detail_screen.dart';
 import 'features/clientes/cliente_novo_screen.dart';
+import 'features/rede/rede_screen.dart';
 import 'features/design_preview/design_preview_screen.dart';
 import 'features/os/os_detail_screen.dart';
 import 'features/shell/main_shell.dart';
@@ -81,6 +82,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/clientes/:id',
         builder: (_, st) => ClienteDetailScreen(id: st.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/rede/:clienteId',
+        builder: (_, st) => RedeScreen(clienteId: st.pathParameters['clienteId']!),
       ),
     ],
     errorBuilder: (_, st) => Scaffold(
