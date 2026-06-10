@@ -1,7 +1,8 @@
-"""GET/POST /api/v1/rede/{cliente_id} - gerencia da rede WiFi via TR-069.
+"""GET/POST /api/v1/rede/{cadastro_id} - gerencia da rede WiFi via TR-069.
 
-cliente_id = UUID do Cliente local (o app tecnico tem da OS). O service
-resolve a ONU por PPPoE (do contrato no SGP) com fallback serial.
+cadastro_id = UUID do ClienteCadastro (cliente cadastrado em campo). O app
+tecnico navega com esse id. O service resolve a ONU pelo PPPoE do cadastro
+(principal) com fallback no serial.
 """
 from __future__ import annotations
 
@@ -49,7 +50,8 @@ async def get_rede_service(
 ) -> AsyncIterator[RedeService]:
     """Monta GenieAcsClient + SgpCacheService e injeta o RedeService.
 
-    Sobrescrita inteira nos testes (app.dependency_overrides[get_rede_service]).
+    O SGP e a fonte do PPPoE. Sobrescrita inteira nos testes
+    (app.dependency_overrides[get_rede_service]).
     """
     s = get_settings()
     redis = await get_redis()
@@ -74,14 +76,14 @@ async def get_rede_service(
         await router_sgp.aclose()
 
 
-@router.get("/{cliente_id}", response_model=StatusRedeOut, dependencies=[_role_dep])
+@router.get("/{cadastro_id}", response_model=StatusRedeOut, dependencies=[_role_dep])
 async def status_rede(
-    cliente_id: UUID,
+    cadastro_id: UUID,
     service: Annotated[RedeService, Depends(get_rede_service)],
     serial: str | None = None,
 ) -> StatusRedeOut:
     try:
-        st = await service.status_rede(cliente_id, serial)
+        st = await service.status_rede(cadastro_id, serial)
     except GenieAcsUnavailableError as e:
         raise HTTPException(status_code=503, detail="GenieACS indisponivel") from e
     if not st.encontrada or st.device is None:
@@ -102,17 +104,17 @@ async def status_rede(
 
 
 @router.post(
-    "/{cliente_id}/wifi/senha", response_model=TrocarSenhaOut, dependencies=[_role_dep]
+    "/{cadastro_id}/wifi/senha", response_model=TrocarSenhaOut, dependencies=[_role_dep]
 )
 async def trocar_senha(
-    cliente_id: UUID,
+    cadastro_id: UUID,
     payload: TrocarSenhaIn,
     service: Annotated[RedeService, Depends(get_rede_service)],
     user: Annotated[User, Depends(get_current_user)],
 ) -> TrocarSenhaOut:
     try:
         res = await service.trocar_senha_wifi(
-            cliente_id=cliente_id,
+            cadastro_id=cadastro_id,
             nova_senha=payload.senha,
             serial=payload.serial,
             ator_user_id=user.id,

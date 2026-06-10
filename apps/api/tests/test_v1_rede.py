@@ -45,7 +45,7 @@ class _FakeService:
         self._raise_status = raise_status
 
     async def status_rede(
-        self, cliente_id: UUID, serial: str | None = None
+        self, cadastro_id: UUID, serial: str | None = None
     ) -> StatusRede:
         if self._raise_status:
             raise self._raise_status
@@ -55,7 +55,7 @@ class _FakeService:
     async def trocar_senha_wifi(
         self,
         *,
-        cliente_id: UUID,
+        cadastro_id: UUID,
         nova_senha: str,
         serial: str | None,
         ator_user_id: UUID,

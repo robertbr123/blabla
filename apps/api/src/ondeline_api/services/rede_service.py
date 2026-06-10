@@ -1,9 +1,18 @@
 """RedeService - orquestra a troca de senha WiFi via GenieACS.
 
-Resolve a ONU a partir do cliente local: Cliente.cpf -> SGP -> contrato ->
-pppoe_login -> device no GenieACS (fallback serial). Valida a senha (WPA),
-envia Set(senha nas redes ativas)+Reboot, registra o pedido. Otimista:
-a senha e write-only, nao da pra confirmar por read-back.
+Resolucao da ONU = CPF -> SGP -> contrato -> pppoe_login -> device no GenieACS,
+com fallback no serial. O SGP e a FONTE de verdade do PPPoE (todos os clientes
+estao la, inclusive os antigos que nenhum tecnico cadastrou). O metodo core
+`_resolver_por_cpf` e reusavel: hoje o app do tecnico chega no CPF via cadastro
+de campo (clientes_cadastro); no futuro o app do cliente chega no CPF pelo
+proprio login (cliente que so existe no SGP tambem funciona).
+
+Cadastro de campo (clientes_cadastro) e opcional: so da o CPF e o serial de
+fallback quando existe. Senha write-only -> confirmacao otimista (sem read-back).
+
+Obs: pra o PPPoE resolver, o GenieACS precisa ter lido o WANPPPConnection.Username
+do device (preset/refresh). Enquanto isso nao estiver provisionado, o serial
+fallback cobre (o tecnico tem o serial na instalacao).
 """
 from __future__ import annotations
 
@@ -19,7 +28,7 @@ from ondeline_api.adapters.genieacs.base import GenieAcsDevice
 from ondeline_api.adapters.genieacs.wifi_paths import montar_plano
 from ondeline_api.adapters.sgp.base import ClienteSgp, Contrato
 from ondeline_api.db.crypto import decrypt_pii
-from ondeline_api.db.models.business import Cliente
+from ondeline_api.db.models.business import ClienteCadastro
 from ondeline_api.db.models.rede import RedeWifiPedido
 
 log = structlog.get_logger(__name__)
@@ -28,15 +37,7 @@ SENHA_MIN = 8
 SENHA_MAX = 63
 
 
-class SenhaInvalidaError(ValueError):
-    """Senha fora do range WPA-PSK (8-63 chars ASCII)."""
-
-
-class OnuNaoEncontradaError(Exception):
-    """Nao foi possivel resolver a ONU (sem PPPoE no GenieACS e sem serial)."""
-
-
-class _GenieProto(Protocol):
+class GenieProto(Protocol):
     async def find_device_by_pppoe(self, login: str) -> GenieAcsDevice | None: ...
     async def find_device_by_serial(self, serial: str) -> GenieAcsDevice | None: ...
     async def set_parameter_values(
@@ -45,8 +46,16 @@ class _GenieProto(Protocol):
     async def reboot(self, device_id: str) -> None: ...
 
 
-class _SgpCacheProto(Protocol):
+class SgpCacheProto(Protocol):
     async def get_cliente(self, cpf: str) -> ClienteSgp | None: ...
+
+
+class SenhaInvalidaError(ValueError):
+    """Senha fora do range WPA-PSK (8-63 chars ASCII imprimivel)."""
+
+
+class OnuNaoEncontradaError(Exception):
+    """Nao foi possivel resolver a ONU (sem PPPoE no GenieACS e sem serial)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,6 +70,15 @@ class StatusRede:
 class ResultadoTroca:
     device_id: str
     reiniciando: bool
+
+
+@dataclass(frozen=True, slots=True)
+class _Resolucao:
+    """Resultado da resolucao da ONU + dados de auditoria associados."""
+
+    device: GenieAcsDevice | None
+    pppoe: str | None
+    contrato_id: str | None
 
 
 def _primeiro_contrato(contratos: list[Contrato]) -> Contrato | None:
@@ -85,74 +103,94 @@ class RedeService:
         self,
         *,
         session: AsyncSession,
-        genieacs: _GenieProto,
-        sgp_cache: _SgpCacheProto,
+        genieacs: GenieProto,
+        sgp_cache: SgpCacheProto,
     ) -> None:
         self._session = session
         self._genie = genieacs
         self._sgp = sgp_cache
 
-    async def _contrato_do_cliente(self, cliente_id: UUID) -> Contrato | None:
-        cliente = (
-            await self._session.execute(select(Cliente).where(Cliente.id == cliente_id))
-        ).scalar_one_or_none()
-        if cliente is None:
-            return None
-        cpf = decrypt_pii(cliente.cpf_cnpj_encrypted)
-        cli_sgp = await self._sgp.get_cliente(cpf)
-        if cli_sgp is None:
-            return None
-        return _primeiro_contrato(cli_sgp.contratos)
+    async def _cpf_serial_do_cadastro(
+        self, cadastro_id: UUID
+    ) -> tuple[str | None, str | None]:
+        """Pega (cpf, serial) do cadastro de campo, se existir.
 
-    async def _resolver_device(
-        self, cliente_id: UUID, serial: str | None
-    ) -> tuple[GenieAcsDevice | None, Contrato | None]:
-        """Retorna (device, contrato). Resolve o contrato UMA vez e devolve
-        junto pra quem precisar do id/pppoe sem reconsultar. Tenta achar a ONU
-        pelo PPPoE do contrato; cai pro serial."""
-        contrato = await self._contrato_do_cliente(cliente_id)
-        pppoe = contrato.pppoe_login if contrato and contrato.pppoe_login else None
+        Cliente sem cadastro de campo (so no SGP) retorna (None, None) e a
+        resolucao depende do serial digitado pelo tecnico OU, no fluxo do app
+        cliente, do CPF vindo do login (que e passado direto a _resolver_por_cpf).
+        """
+        cad = (
+            await self._session.execute(
+                select(ClienteCadastro).where(ClienteCadastro.id == cadastro_id)
+            )
+        ).scalar_one_or_none()
+        if cad is None:
+            return None, None
+        return decrypt_pii(cad.cpf_encrypted), cad.serial
+
+    async def _resolver_por_cpf(self, cpf: str | None, serial: str | None) -> _Resolucao:
+        """Core reusavel: CPF -> SGP -> contrato -> pppoe -> device.
+
+        O SGP e a fonte do PPPoE (todos os clientes). PPPoE e a chave PRINCIPAL;
+        serial e o fallback. Reusado pelo app do cliente no futuro (passa o CPF
+        do login direto, sem cadastro de campo).
+        """
+        pppoe: str | None = None
+        contrato_id: str | None = None
+        if cpf:
+            cli = await self._sgp.get_cliente(cpf)
+            contrato = _primeiro_contrato(cli.contratos) if cli else None
+            if contrato is not None:
+                pppoe = contrato.pppoe_login or None
+                contrato_id = contrato.id or None
+
         device: GenieAcsDevice | None = None
         if pppoe:
             device = await self._genie.find_device_by_pppoe(pppoe)
         if device is None and serial:
             device = await self._genie.find_device_by_serial(serial)
-        return device, contrato
+        return _Resolucao(device=device, pppoe=pppoe, contrato_id=contrato_id)
 
-    async def status_rede(self, cliente_id: UUID, serial: str | None = None) -> StatusRede:
-        device, contrato = await self._resolver_device(cliente_id, serial)
-        pppoe = contrato.pppoe_login if contrato and contrato.pppoe_login else None
-        if device is None:
+    async def _resolver_por_cadastro(
+        self, cadastro_id: UUID, serial_manual: str | None
+    ) -> _Resolucao:
+        cpf, serial_cad = await self._cpf_serial_do_cadastro(cadastro_id)
+        return await self._resolver_por_cpf(cpf, serial_manual or serial_cad)
+
+    async def status_rede(
+        self, cadastro_id: UUID, serial: str | None = None
+    ) -> StatusRede:
+        res = await self._resolver_por_cadastro(cadastro_id, serial)
+        if res.device is None:
             return StatusRede(
-                encontrada=False, pppoe_login=pppoe, motivo="onu_nao_encontrada"
+                encontrada=False, pppoe_login=res.pppoe, motivo="onu_nao_encontrada"
             )
-        return StatusRede(encontrada=True, device=device, pppoe_login=pppoe)
+        return StatusRede(encontrada=True, device=res.device, pppoe_login=res.pppoe)
 
     async def trocar_senha_wifi(
         self,
         *,
-        cliente_id: UUID,
+        cadastro_id: UUID,
         nova_senha: str,
         serial: str | None,
         ator_user_id: UUID,
     ) -> ResultadoTroca:
         _validar_senha(nova_senha)
-        device, contrato = await self._resolver_device(cliente_id, serial)
-        if device is None:
+        res = await self._resolver_por_cadastro(cadastro_id, serial)
+        if res.device is None:
             raise OnuNaoEncontradaError("ONU nao encontrada por PPPoE nem serial")
 
-        plano = montar_plano(device, nova_senha)
-        pppoe = contrato.pppoe_login if contrato and contrato.pppoe_login else None
+        plano = montar_plano(res.device, nova_senha)
 
         # Registra ANTES do envio (status=pendente) e da flush: auditoria de
         # troca de senha nao pode perder uma troca que JA aplicou na ONU. Se o
         # envio falhar (GenieAcsUnavailableError), o registro sobrevive como
         # 'pendente' e o erro propaga. So depois do envio OK vira 'enviado'.
         pedido = RedeWifiPedido(
-            cliente_id=cliente_id,
-            contrato_id=contrato.id if contrato else None,
-            pppoe_login=pppoe,
-            device_id=device.device_id,
+            cliente_id=cadastro_id,
+            contrato_id=res.contrato_id,
+            pppoe_login=res.pppoe,
+            device_id=res.device.device_id,
             ator_user_id=ator_user_id,
             status="pendente",
             reiniciou=plano.needs_reboot,
@@ -161,17 +199,19 @@ class RedeService:
         await self._session.flush()
 
         if plano.params:
-            await self._genie.set_parameter_values(device.device_id, plano.params)
+            await self._genie.set_parameter_values(res.device.device_id, plano.params)
         if plano.needs_reboot:
-            await self._genie.reboot(device.device_id)
+            await self._genie.reboot(res.device.device_id)
 
         pedido.status = "enviado"
         await self._session.flush()
         log.info(
             "rede.senha_trocada",
-            cliente_id=str(cliente_id),
-            device_id=device.device_id,
+            cadastro_id=str(cadastro_id),
+            device_id=res.device.device_id,
             redes=len(plano.params),
             reboot=plano.needs_reboot,
         )
-        return ResultadoTroca(device_id=device.device_id, reiniciando=plano.needs_reboot)
+        return ResultadoTroca(
+            device_id=res.device.device_id, reiniciando=plano.needs_reboot
+        )
