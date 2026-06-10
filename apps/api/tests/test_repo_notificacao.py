@@ -57,6 +57,28 @@ async def test_schedule_dedup_returns_none(db_session: AsyncSession) -> None:
     assert b is None
 
 
+async def test_followup_os_check_tolera_duplicatas(db_session: AsyncSession) -> None:
+    """Regressao: 2 notificacoes pro mesmo cliente+OS nao podem explodir o
+    check com MultipleResultsFound (derrubava o followup_os_job inteiro)."""
+    cliente = await _make_cliente(db_session)
+    repo = NotificacaoRepo(db_session)
+    os_id = uuid4()
+    base = datetime.now(tz=UTC)
+    # agendada_para diferente passa pelo dedup do schedule() e cria a duplicata
+    a = await repo.schedule(
+        cliente_id=cliente.id, tipo=NotificacaoTipo.OS_CONCLUIDA,
+        agendada_para=base + timedelta(hours=1), payload={"os_id": str(os_id)},
+    )
+    b = await repo.schedule(
+        cliente_id=cliente.id, tipo=NotificacaoTipo.OS_CONCLUIDA,
+        agendada_para=base + timedelta(hours=2), payload={"os_id": str(os_id)},
+    )
+    assert a is not None
+    assert b is not None  # duplicata real no banco
+    ok = await repo.already_scheduled_followup_os(cliente_id=cliente.id, os_id=os_id)
+    assert ok is True
+
+
 async def test_list_due_filters_by_status_and_date(db_session: AsyncSession) -> None:
     cliente = await _make_cliente(db_session)
     repo = NotificacaoRepo(db_session)

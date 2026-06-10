@@ -26,12 +26,18 @@ class NotificacaoRepo:
         tipo: NotificacaoTipo,
         agendada_para: datetime,
     ) -> bool:
-        stmt = select(Notificacao.id).where(
-            and_(
-                Notificacao.cliente_id == cliente_id,
-                Notificacao.tipo == tipo,
-                Notificacao.agendada_para == agendada_para,
+        # limit(1): com duplicatas no banco, scalar_one_or_none levantaria
+        # MultipleResultsFound e derrubaria o job inteiro do beat.
+        stmt = (
+            select(Notificacao.id)
+            .where(
+                and_(
+                    Notificacao.cliente_id == cliente_id,
+                    Notificacao.tipo == tipo,
+                    Notificacao.agendada_para == agendada_para,
+                )
             )
+            .limit(1)
         )
         return (await self._session.execute(stmt)).scalar_one_or_none() is not None
 
@@ -41,12 +47,16 @@ class NotificacaoRepo:
         cliente_id: UUID,
         os_id: UUID,
     ) -> bool:
-        stmt = select(Notificacao.id).where(
-            and_(
-                Notificacao.cliente_id == cliente_id,
-                Notificacao.tipo == NotificacaoTipo.OS_CONCLUIDA,
-                Notificacao.payload["os_id"].as_string() == str(os_id),
+        stmt = (
+            select(Notificacao.id)
+            .where(
+                and_(
+                    Notificacao.cliente_id == cliente_id,
+                    Notificacao.tipo == NotificacaoTipo.OS_CONCLUIDA,
+                    Notificacao.payload["os_id"].as_string() == str(os_id),
+                )
             )
+            .limit(1)
         )
         return (await self._session.execute(stmt)).scalar_one_or_none() is not None
 
