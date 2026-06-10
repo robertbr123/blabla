@@ -107,7 +107,8 @@ class Settings(BaseSettings):
     # LLM controls
     llm_max_iter: int = 5
     llm_timeout_seconds: float = 30.0
-    llm_max_tokens_per_conversa_dia: int = 50_000
+    # ~35 turnos/dia por conversa a ~4.2k tokens/turno (system prompt + historico)
+    llm_max_tokens_per_conversa_dia: int = 150_000
     llm_history_turns: int = 12  # ultimas N mensagens incluidas no prompt
 
     # F7 — OpenAI Whisper API (ASR de audios entrantes).

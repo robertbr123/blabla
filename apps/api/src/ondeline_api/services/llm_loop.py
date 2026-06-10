@@ -374,7 +374,20 @@ async def run_turn(
     tool_calls_made: list[str] = []
 
     if budget is not None and await budget.is_over(str(ctx.conversa.id)):
-        return await _force_escalate(ctx, motivo="orcamento de tokens diario excedido")
+        # Mensagem propria: "probleminha tecnico" confundia o cliente quando
+        # na verdade foi o disjuntor de custo diario da conversa.
+        return await _force_escalate(
+            ctx,
+            motivo="orcamento de tokens diario excedido",
+            texto_aberto=(
+                "Nosso atendimento virtual chegou ao limite de uso de hoje nesta "
+                "conversa. 😅 Vou te passar pra um atendente humano para te ajudar agora."
+            ),
+            texto_fechado=(
+                "Nosso atendimento virtual chegou ao limite de uso de hoje nesta "
+                "conversa. 😅 Vou te passar pra um atendente humano."
+            ),
+        )
 
     # F5 — resolve prompt variant (A/B test). Imutavel apos primeira atribuicao.
     system_prompt = await _resolve_system_prompt(ctx)
@@ -497,13 +510,23 @@ async def run_turn(
     return outcome
 
 
-async def _force_escalate(ctx: ToolContext, *, motivo: str) -> LoopOutcome:
+async def _force_escalate(
+    ctx: ToolContext,
+    *,
+    motivo: str,
+    texto_aberto: str | None = None,
+    texto_fechado: str | None = None,
+) -> LoopOutcome:
     from ondeline_api.services import business_hours
 
     fallback = business_hours.humano_message(
-        "Tive um probleminha tecnico aqui. 😅 Vou te passar pra um atendente humano "
-        "para te ajudar agora.",
-        closed_prefix="Tive um probleminha tecnico aqui. 😅 Vou te passar pra um atendente humano.",
+        texto_aberto
+        or (
+            "Tive um probleminha tecnico aqui. 😅 Vou te passar pra um atendente humano "
+            "para te ajudar agora."
+        ),
+        closed_prefix=texto_fechado
+        or "Tive um probleminha tecnico aqui. 😅 Vou te passar pra um atendente humano.",
     )
     try:
         await ctx.evolution.send_text(ctx.conversa.whatsapp, fallback)
