@@ -15,6 +15,7 @@ educada ao cliente.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 
 import structlog
@@ -361,6 +362,31 @@ async def _resolve_system_prompt(ctx: ToolContext) -> str:
     return chosen.system_prompt
 
 
+_PAY_DOC_RE = re.compile(
+    r"(fatura|boleto|2[ªa]?\s*via|segunda via|\bpix\b|c[oó]digo de barras|qr\s*code)"
+)
+# Frases que AFIRMAM envio (em andamento/concluido), nao oferta/pergunta.
+_SEND_CLAIM_RE = re.compile(
+    r"(enviando|mandando|vou (te )?enviar|vou (te )?mandar|estou (te )?(enviando|mandando)|"
+    r"segue (a |o |aqui|abaixo)|aqui est[aá]|fatura enviada|boleto enviado|um momento)"
+)
+
+
+def _looks_like_fake_invoice_send(text: str) -> bool:
+    """True se o texto afirma que vai enviar/esta enviando a fatura, sem ser uma
+    oferta/pergunta. Barra a alucinacao do modelo prometer envio sem chamar a
+    tool enviar_boleto (nesse caso NADA e enviado de verdade)."""
+    t = text.lower()
+    if not _PAY_DOC_RE.search(t):
+        return False
+    # Oferta/pergunta ("posso te enviar a fatura?") nao conta como envio.
+    if "?" in t and any(
+        w in t for w in ("posso", "quer que", "deseja", "gostaria", "quer receber")
+    ):
+        return False
+    return bool(_SEND_CLAIM_RE.search(t))
+
+
 async def run_turn(
     *,
     ctx: ToolContext,
@@ -436,6 +462,33 @@ async def run_turn(
         if not resp.tool_calls:
             text = resp.content or ""
             if text.strip():
+                # Guard anti-alucinacao: modelo prometeu enviar fatura mas NAO
+                # chamou enviar_boleto -> nada seria enviado. Re-prompta forcando
+                # a tool em vez de mandar a promessa falsa ao cliente.
+                if (
+                    "enviar_boleto" not in tool_calls_made
+                    and _looks_like_fake_invoice_send(text)
+                ):
+                    log.warning(
+                        "llm_loop.fake_invoice_send_blocked",
+                        text_preview=mask_pii(text[:100]),
+                        iteration=it,
+                    )
+                    messages.append(ChatMessage(role=Role.ASSISTANT, content=text))
+                    messages.append(
+                        ChatMessage(
+                            role=Role.SYSTEM,
+                            content=(
+                                "[sistema] Voce afirmou que vai enviar a fatura/boleto, "
+                                "mas NAO chamou a tool `enviar_boleto` — entao NADA foi "
+                                "enviado de verdade ao cliente. Chame a tool "
+                                "`enviar_boleto` AGORA. So escreva a confirmacao "
+                                "'💳 Fatura enviada' DEPOIS que a tool retornar ok. Se "
+                                "nao for caso de enviar fatura, responda sem prometer envio."
+                            ),
+                        )
+                    )
+                    continue
                 masked_log = mask_pii(text[:100])
                 log.info("llm_loop.final", text_preview=masked_log, tokens=total_tokens)
                 await ctx.evolution.send_text(ctx.conversa.whatsapp, text)
