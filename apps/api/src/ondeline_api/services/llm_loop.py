@@ -370,21 +370,63 @@ _SEND_CLAIM_RE = re.compile(
     r"(enviando|mandando|vou (te )?enviar|vou (te )?mandar|estou (te )?(enviando|mandando)|"
     r"segue (a |o |aqui|abaixo)|aqui est[aá]|fatura enviada|boleto enviado|um momento)"
 )
+# Abertura de OS: verbo de abrir/registrar + substantivo confiavel. "ordem de
+# servi" pega "ordem de servico/serviço"; a abreviacao so conta em MAIUSCULO
+# ("OS") pra nao confundir com o artigo "os" ("vou abrir os detalhes").
+_OS_VERB_RE = re.compile(
+    r"\b(abrir|abrindo|abri|abriu|registrar|registrando|registrei|gerar|"
+    r"gerando|gerei|aberta|aberto|abertura)\b"
+)
+_OS_NOUN_RE = re.compile(r"ordem de servi")
+_OS_ABBR_RE = re.compile(r"\bOS\b")
+_OS_NEG_RE = re.compile(
+    r"n[ãa]o\s+(vou\s+|precisa\s+|e\s+|sera\s+|ser[áa]\s+)?(abr|abertura|registrar|gerar)"
+)
 
 
-def _looks_like_fake_invoice_send(text: str) -> bool:
-    """True se o texto afirma que vai enviar/esta enviando a fatura, sem ser uma
-    oferta/pergunta. Barra a alucinacao do modelo prometer envio sem chamar a
-    tool enviar_boleto (nesse caso NADA e enviado de verdade)."""
+def _is_offer(t: str) -> bool:
+    """Oferta/pergunta ('posso abrir a OS?') nao conta como afirmacao de acao."""
+    return "?" in t and any(
+        w in t
+        for w in ("posso", "quer que", "deseja", "gostaria", "quer receber", "confirma")
+    )
+
+
+def _promete_envio_fatura(t: str) -> bool:
+    return bool(_PAY_DOC_RE.search(t) and _SEND_CLAIM_RE.search(t))
+
+
+def _promete_abrir_os(text: str, t: str) -> bool:
+    if not _OS_VERB_RE.search(t) or _OS_NEG_RE.search(t):
+        return False
+    return bool(_OS_NOUN_RE.search(t) or _OS_ABBR_RE.search(text))
+
+
+def _missing_tool_for_promise(text: str, tool_calls_made: list[str]) -> str | None:
+    """Se o texto AFIRMA uma acao (enviar fatura / abrir OS) cuja tool NAO foi
+    chamada no turno, devolve a instrucao de correcao pro modelo. Senao, None.
+    Barra a alucinacao de narrar a acao como texto sem executar a tool (nesse
+    caso NADA acontece de verdade)."""
     t = text.lower()
-    if not _PAY_DOC_RE.search(t):
-        return False
-    # Oferta/pergunta ("posso te enviar a fatura?") nao conta como envio.
-    if "?" in t and any(
-        w in t for w in ("posso", "quer que", "deseja", "gostaria", "quer receber")
-    ):
-        return False
-    return bool(_SEND_CLAIM_RE.search(t))
+    if _is_offer(t):
+        return None
+    if "enviar_boleto" not in tool_calls_made and _promete_envio_fatura(t):
+        return (
+            "[sistema] Voce afirmou que vai enviar a fatura/boleto, mas NAO chamou "
+            "a tool `enviar_boleto` — entao NADA foi enviado de verdade ao cliente. "
+            "Chame a tool `enviar_boleto` AGORA. So escreva a confirmacao "
+            "'💳 Fatura enviada' DEPOIS que a tool retornar ok. Se nao for caso de "
+            "enviar fatura, responda sem prometer envio."
+        )
+    if "abrir_ordem_servico" not in tool_calls_made and _promete_abrir_os(text, t):
+        return (
+            "[sistema] Voce afirmou que vai abrir/registrar a ordem de servico, mas "
+            "NAO chamou a tool `abrir_ordem_servico` — entao NENHUMA OS foi criada. "
+            "Chame a tool `abrir_ordem_servico` AGORA (basta o parametro `problema`). "
+            "So confirme a OS aberta DEPOIS que a tool retornar ok. Se ainda faltar "
+            "alguma info, pergunte ao cliente em vez de prometer."
+        )
+    return None
 
 
 async def run_turn(
@@ -462,32 +504,19 @@ async def run_turn(
         if not resp.tool_calls:
             text = resp.content or ""
             if text.strip():
-                # Guard anti-alucinacao: modelo prometeu enviar fatura mas NAO
-                # chamou enviar_boleto -> nada seria enviado. Re-prompta forcando
-                # a tool em vez de mandar a promessa falsa ao cliente.
-                if (
-                    "enviar_boleto" not in tool_calls_made
-                    and _looks_like_fake_invoice_send(text)
-                ):
+                # Guard anti-alucinacao: modelo prometeu uma acao (enviar fatura /
+                # abrir OS) como texto mas NAO chamou a tool -> nada acontece de
+                # verdade. Re-prompta forcando a tool em vez de mandar a promessa
+                # falsa ao cliente.
+                corrective = _missing_tool_for_promise(text, tool_calls_made)
+                if corrective is not None:
                     log.warning(
-                        "llm_loop.fake_invoice_send_blocked",
+                        "llm_loop.fake_action_blocked",
                         text_preview=mask_pii(text[:100]),
                         iteration=it,
                     )
                     messages.append(ChatMessage(role=Role.ASSISTANT, content=text))
-                    messages.append(
-                        ChatMessage(
-                            role=Role.SYSTEM,
-                            content=(
-                                "[sistema] Voce afirmou que vai enviar a fatura/boleto, "
-                                "mas NAO chamou a tool `enviar_boleto` — entao NADA foi "
-                                "enviado de verdade ao cliente. Chame a tool "
-                                "`enviar_boleto` AGORA. So escreva a confirmacao "
-                                "'💳 Fatura enviada' DEPOIS que a tool retornar ok. Se "
-                                "nao for caso de enviar fatura, responda sem prometer envio."
-                            ),
-                        )
-                    )
+                    messages.append(ChatMessage(role=Role.SYSTEM, content=corrective))
                     continue
                 masked_log = mask_pii(text[:100])
                 log.info("llm_loop.final", text_preview=masked_log, tokens=total_tokens)
