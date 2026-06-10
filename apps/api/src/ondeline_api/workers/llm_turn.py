@@ -177,7 +177,9 @@ async def _run(conversa_id: UUID) -> dict[str, Any]:
         # Libera o lock SEMPRE (apos commit da task_session), mas so se ainda
         # for o nosso token. O TTL derivado e o backstop se o worker morrer.
         try:
-            released = await redis.eval(_RELEASE_LOCK_LUA, 1, lock_key, lock_token)
+            released = await redis.eval(  # type: ignore[no-untyped-call]
+                _RELEASE_LOCK_LUA, 1, lock_key, lock_token
+            )
             if not released:
                 # lock expirou durante o turno e (possivelmente) outro turno
                 # ja esta rodando - nao deletamos o lock dele
