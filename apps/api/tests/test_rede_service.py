@@ -124,3 +124,30 @@ async def test_sem_pppoe_e_sem_serial_levanta(db_session: AsyncSession) -> None:
     with pytest.raises(OnuNaoEncontradaError):
         await svc.trocar_senha_wifi(cliente_id=cli.id, nova_senha="NovaSenha123",
                                     serial=None, ator_user_id=uuid4())
+
+
+async def test_senha_com_caractere_de_controle_rejeitada(db_session: AsyncSession) -> None:
+    cli = await _make_cliente(db_session)
+    svc = RedeService(session=db_session, genieacs=_FakeGenie(by_pppoe=_dev()),
+                      sgp_cache=_FakeSgpCache(_cli_sgp()))
+    with pytest.raises(SenhaInvalidaError):
+        await svc.trocar_senha_wifi(cliente_id=cli.id, nova_senha="Senha\n123", serial=None,
+                                    ator_user_id=uuid4())
+
+
+async def test_falha_no_envio_deixa_pedido_pendente(db_session: AsyncSession) -> None:
+    from ondeline_api.adapters.genieacs.base import GenieAcsUnavailableError
+
+    class _GenieQuebra(_FakeGenie):
+        async def set_parameter_values(self, device_id, params):
+            raise GenieAcsUnavailableError("nbi fora")
+
+    cli = await _make_cliente(db_session)
+    svc = RedeService(session=db_session, genieacs=_GenieQuebra(by_pppoe=_dev()),
+                      sgp_cache=_FakeSgpCache(_cli_sgp()))
+    with pytest.raises(GenieAcsUnavailableError):
+        await svc.trocar_senha_wifi(cliente_id=cli.id, nova_senha="NovaSenha123",
+                                    serial=None, ator_user_id=uuid4())
+    # O registro do pedido sobrevive como 'pendente' (auditoria nao perde a troca).
+    pedido = (await db_session.execute(select(RedeWifiPedido))).scalar_one()
+    assert pedido.status == "pendente"

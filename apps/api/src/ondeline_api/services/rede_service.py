@@ -54,7 +54,7 @@ class StatusRede:
     encontrada: bool
     device: GenieAcsDevice | None = None
     pppoe_login: str | None = None
-    motivo: str | None = None  # "onu_nao_encontrada" | "cliente_sem_contrato"
+    motivo: str | None = None  # "onu_nao_encontrada" quando encontrada=False
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,8 +71,13 @@ def _primeiro_contrato(contratos: list[Contrato]) -> Contrato | None:
 
 
 def _validar_senha(senha: str) -> None:
-    if not (SENHA_MIN <= len(senha) <= SENHA_MAX) or not senha.isascii():
-        raise SenhaInvalidaError("senha WiFi deve ter 8 a 63 caracteres ASCII")
+    if not (SENHA_MIN <= len(senha) <= SENHA_MAX):
+        raise SenhaInvalidaError("senha WiFi deve ter 8 a 63 caracteres")
+    # So ASCII imprimivel (0x20 espaco ate 0x7e ~). Rejeita controle (\n, \t,
+    # \x00): senha write-only, nao da pra ler de volta pra notar o erro, e o
+    # cliente ficaria sem conseguir conectar.
+    if not all(0x20 <= ord(c) <= 0x7E for c in senha):
+        raise SenhaInvalidaError("senha WiFi so aceita caracteres ASCII imprimiveis")
 
 
 class RedeService:
@@ -101,8 +106,10 @@ class RedeService:
 
     async def _resolver_device(
         self, cliente_id: UUID, serial: str | None
-    ) -> tuple[GenieAcsDevice | None, str | None]:
-        """Retorna (device, pppoe_login). Tenta PPPoE; cai pro serial."""
+    ) -> tuple[GenieAcsDevice | None, Contrato | None]:
+        """Retorna (device, contrato). Resolve o contrato UMA vez e devolve
+        junto pra quem precisar do id/pppoe sem reconsultar. Tenta achar a ONU
+        pelo PPPoE do contrato; cai pro serial."""
         contrato = await self._contrato_do_cliente(cliente_id)
         pppoe = contrato.pppoe_login if contrato and contrato.pppoe_login else None
         device: GenieAcsDevice | None = None
@@ -110,10 +117,11 @@ class RedeService:
             device = await self._genie.find_device_by_pppoe(pppoe)
         if device is None and serial:
             device = await self._genie.find_device_by_serial(serial)
-        return device, pppoe
+        return device, contrato
 
     async def status_rede(self, cliente_id: UUID, serial: str | None = None) -> StatusRede:
-        device, pppoe = await self._resolver_device(cliente_id, serial)
+        device, contrato = await self._resolver_device(cliente_id, serial)
+        pppoe = contrato.pppoe_login if contrato and contrato.pppoe_login else None
         if device is None:
             return StatusRede(
                 encontrada=False, pppoe_login=pppoe, motivo="onu_nao_encontrada"
@@ -129,28 +137,35 @@ class RedeService:
         ator_user_id: UUID,
     ) -> ResultadoTroca:
         _validar_senha(nova_senha)
-        device, pppoe = await self._resolver_device(cliente_id, serial)
+        device, contrato = await self._resolver_device(cliente_id, serial)
         if device is None:
             raise OnuNaoEncontradaError("ONU nao encontrada por PPPoE nem serial")
 
         plano = montar_plano(device, nova_senha)
+        pppoe = contrato.pppoe_login if contrato and contrato.pppoe_login else None
+
+        # Registra ANTES do envio (status=pendente) e da flush: auditoria de
+        # troca de senha nao pode perder uma troca que JA aplicou na ONU. Se o
+        # envio falhar (GenieAcsUnavailableError), o registro sobrevive como
+        # 'pendente' e o erro propaga. So depois do envio OK vira 'enviado'.
+        pedido = RedeWifiPedido(
+            cliente_id=cliente_id,
+            contrato_id=contrato.id if contrato else None,
+            pppoe_login=pppoe,
+            device_id=device.device_id,
+            ator_user_id=ator_user_id,
+            status="pendente",
+            reiniciou=plano.needs_reboot,
+        )
+        self._session.add(pedido)
+        await self._session.flush()
+
         if plano.params:
             await self._genie.set_parameter_values(device.device_id, plano.params)
         if plano.needs_reboot:
             await self._genie.reboot(device.device_id)
 
-        contrato = await self._contrato_do_cliente(cliente_id)
-        self._session.add(
-            RedeWifiPedido(
-                cliente_id=cliente_id,
-                contrato_id=contrato.id if contrato else None,
-                pppoe_login=pppoe,
-                device_id=device.device_id,
-                ator_user_id=ator_user_id,
-                status="enviado",
-                reiniciou=plano.needs_reboot,
-            )
-        )
+        pedido.status = "enviado"
         await self._session.flush()
         log.info(
             "rede.senha_trocada",
