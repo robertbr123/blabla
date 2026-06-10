@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 import respx
+from ondeline_api.adapters.sgp.base import SgpUnavailableError
 from ondeline_api.adapters.sgp.ondeline import SgpOndelineProvider
 
 pytestmark = pytest.mark.asyncio
@@ -80,15 +81,16 @@ async def test_buscar_nao_encontrado_retorna_none() -> None:
         await p.aclose()
 
 
-async def test_buscar_http_error_retorna_none() -> None:
+async def test_buscar_http_error_levanta_unavailable() -> None:
     async with respx.mock(assert_all_called=True) as router:
         router.post(f"{BASE}/api/ura/clientes/").respond(500, json={"err": "x"})
         p = SgpOndelineProvider(base_url=BASE, token="t")
-        assert await p.buscar_por_cpf("11122233344") is None
+        with pytest.raises(SgpUnavailableError):
+            await p.buscar_por_cpf("11122233344")
         await p.aclose()
 
 
-async def test_buscar_network_error_retorna_none() -> None:
+async def test_buscar_network_error_levanta_unavailable() -> None:
     import httpx as _httpx
 
     async with respx.mock() as router:
@@ -96,7 +98,17 @@ async def test_buscar_network_error_retorna_none() -> None:
             side_effect=_httpx.ConnectError("boom")
         )
         p = SgpOndelineProvider(base_url=BASE, token="t")
-        assert await p.buscar_por_cpf("11122233344") is None
+        with pytest.raises(SgpUnavailableError):
+            await p.buscar_por_cpf("11122233344")
+        await p.aclose()
+
+
+async def test_buscar_json_invalido_levanta_unavailable() -> None:
+    async with respx.mock(assert_all_called=True) as router:
+        router.post(f"{BASE}/api/ura/clientes/").respond(200, content=b"not json")
+        p = SgpOndelineProvider(base_url=BASE, token="t")
+        with pytest.raises(SgpUnavailableError):
+            await p.buscar_por_cpf("11122233344")
         await p.aclose()
 
 

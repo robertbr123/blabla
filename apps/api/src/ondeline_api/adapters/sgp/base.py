@@ -24,7 +24,17 @@ __all__ = [
     "EnderecoSgp",
     "SgpProvider",
     "SgpProviderEnum",
+    "SgpUnavailableError",
 ]
+
+
+class SgpUnavailableError(RuntimeError):
+    """Falha tecnica ao consultar o SGP (rede / HTTP != 200 / JSON invalido).
+
+    Distinto de "cliente nao encontrado" (retorno None). Quem cacheia NAO
+    deve gravar cache negativo quando isto e levantado; quem responde ao
+    cliente NAO deve dizer "cadastro nao encontrado".
+    """
 
 
 @dataclass(frozen=True, slots=True)

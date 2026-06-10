@@ -13,6 +13,7 @@ from ondeline_api.adapters.sgp.base import (
     EnderecoSgp,
     Fatura,
     SgpProvider,
+    SgpUnavailableError,
 )
 from ondeline_api.db.models.business import SgpProvider as SgpProviderEnum
 
@@ -160,15 +161,15 @@ class SgpOndelineProvider(SgpProvider):
             )
         except httpx.HTTPError as e:
             log.warning("sgp.ondeline.network_error", error=str(e))
-            return None
+            raise SgpUnavailableError(f"network error: {e}") from e
         if r.status_code != 200:
             log.warning("sgp.ondeline.http_error", status=r.status_code)
-            return None
+            raise SgpUnavailableError(f"http {r.status_code}")
         try:
             data = r.json()
-        except Exception:
+        except Exception as e:
             log.warning("sgp.ondeline.json_decode_error")
-            return None
+            raise SgpUnavailableError("invalid json body") from e
         clientes = data if isinstance(data, list) else (data.get("clientes") or [])
         if not clientes:
             return None
