@@ -232,9 +232,13 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
   async function handleSend() {
     const trimmed = text.trim()
     if (!trimmed) return
-    await responder.mutateAsync(trimmed)
-    setText('')
-    void refetch()
+    try {
+      await responder.mutateAsync(trimmed)
+      setText('')
+      void refetch()
+    } catch {
+      // toast já emitido no onError do hook; mantém o texto pro retry
+    }
   }
 
   async function handleUploadMedia(file: File) {
@@ -263,8 +267,12 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
 
   async function handleDelete() {
     if (!confirm('Excluir esta conversa? O histórico será preservado por 30 dias.')) return
-    await deleteConversa.mutateAsync()
-    router.push('/conversas')
+    try {
+      await deleteConversa.mutateAsync()
+      router.push('/conversas')
+    } catch {
+      // toast já emitido no onError do hook
+    }
   }
 
   if (isLoading) return <p className="text-sm text-muted-foreground">Carregando…</p>

@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { apiFetch } from './client'
 import { getAccessToken } from '@/lib/api/token'
 import type {
@@ -457,6 +458,10 @@ export function useResponder(conversaId: string) {
         body: JSON.stringify({ text }),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['conversa', conversaId] }),
+    onError: (err) =>
+      toast.error(
+        err instanceof Error ? `Falha ao enviar: ${err.message}` : 'Falha ao enviar mensagem',
+      ),
   })
 }
 
@@ -469,6 +474,10 @@ export function useAtender(conversaId: string) {
       qc.invalidateQueries({ queryKey: ['conversa', conversaId] })
       qc.invalidateQueries({ queryKey: ['conversas'] })
     },
+    onError: (err) =>
+      toast.error(
+        err instanceof Error ? `Falha ao assumir conversa: ${err.message}` : 'Falha ao assumir conversa',
+      ),
   })
 }
 
@@ -481,6 +490,10 @@ export function useEncerrar(conversaId: string) {
       qc.invalidateQueries({ queryKey: ['conversa', conversaId] })
       qc.invalidateQueries({ queryKey: ['conversas'] })
     },
+    onError: (err) =>
+      toast.error(
+        err instanceof Error ? `Falha ao encerrar: ${err.message}` : 'Falha ao encerrar',
+      ),
   })
 }
 
@@ -531,6 +544,10 @@ export function useDeleteConversa(conversaId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['conversas'] })
     },
+    onError: (err) =>
+      toast.error(
+        err instanceof Error ? `Falha ao excluir: ${err.message}` : 'Falha ao excluir',
+      ),
   })
 }
 

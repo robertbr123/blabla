@@ -24,12 +24,16 @@ function ConversaRowActions({
 
   async function handleEncerrar() {
     if (!confirm('Encerrar esta conversa?')) return
-    await encerrar.mutateAsync()
+    try {
+      await encerrar.mutateAsync()
+    } catch { /* toast no onError do hook */ }
   }
 
   async function handleExcluir() {
     if (!confirm('Excluir esta conversa? O histórico será preservado por 30 dias.')) return
-    await excluir.mutateAsync()
+    try {
+      await excluir.mutateAsync()
+    } catch { /* toast no onError do hook */ }
   }
 
   return (
