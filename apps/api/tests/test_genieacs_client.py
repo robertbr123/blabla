@@ -31,7 +31,28 @@ def _device_raw(device_id: str = "30E1F1-AX1800-ITBSF1") -> dict[str, Any]:
                         "1": {"SSID": {"_value": "CASA_5G"}, "Enable": {"_value": True}},
                         "6": {"SSID": {"_value": "CASA"}, "Enable": {"_value": True}},
                         "2": {"SSID": {"_value": "OFF"}, "Enable": {"_value": False}},
-                    }
+                    },
+                    "Hosts": {
+                        "Host": {
+                            "1": {
+                                "HostName": {"_value": "Celular-Joao"},
+                                "IPAddress": {"_value": "192.168.1.20"},
+                                "MACAddress": {"_value": "AA:BB:CC:DD:EE:01"},
+                                "Active": {"_value": True},
+                                "InterfaceType": {"_value": "802.11"},
+                            },
+                            "2": {
+                                "HostName": {"_value": "TV"},
+                                "IPAddress": {"_value": "192.168.1.21"},
+                                "MACAddress": {"_value": "AA:BB:CC:DD:EE:02"},
+                                "Active": {"_value": False},
+                            },
+                            "3": {  # linha-fantasma sem MAC -> deve ser ignorada
+                                "HostName": {"_value": "ghost"},
+                                "IPAddress": {"_value": "0.0.0.0"},
+                            },
+                        }
+                    },
                 }
             }
         },
@@ -120,6 +141,22 @@ async def test_online_por_inform_recente_e_offline_por_antigo() -> None:
         c = GenieAcsClient(base_url=BASE)
         dev = await c.get_device("x")
         assert dev is not None and dev.online is False
+        await c.aclose()
+
+
+async def test_parse_aparelhos_lista_hosts_com_mac() -> None:
+    async with respx.mock(base_url=BASE) as mock:
+        mock.get("/devices/").respond(200, json=[_device_raw()])
+        c = GenieAcsClient(base_url=BASE)
+        dev = await c.get_device("x")
+        assert dev is not None
+        macs = {a.mac for a in dev.aparelhos}
+        assert macs == {"AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:02"}  # ghost sem MAC fora
+        joao = next(a for a in dev.aparelhos if a.mac == "AA:BB:CC:DD:EE:01")
+        assert joao.nome == "Celular-Joao"
+        assert joao.ip == "192.168.1.20"
+        assert joao.ativo is True
+        assert joao.interface == "802.11"
         await c.aclose()
 
 

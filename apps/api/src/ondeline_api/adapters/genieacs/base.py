@@ -10,9 +10,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 __all__ = [
+    "Aparelho",
     "GenieAcsDevice",
     "GenieAcsUnavailableError",
     "RedeWlan",
+    "SinalFibra",
 ]
 
 
@@ -34,6 +36,31 @@ class RedeWlan:
 
 
 @dataclass(frozen=True, slots=True)
+class Aparelho:
+    """Um host na LAN/WiFi do cliente (tabela Hosts, TR-098 padrao)."""
+
+    nome: str
+    ip: str
+    mac: str
+    ativo: bool
+    interface: str = ""  # InterfaceType / Layer1Interface quando disponivel
+
+
+@dataclass(frozen=True, slots=True)
+class SinalFibra:
+    """Diagnostico optico (GPON) + PPPoE. Todos opcionais: o que nao veio da
+    arvore fica None e a UI omite."""
+
+    rx_power: float | None = None
+    tx_power: float | None = None
+    status_gpon: str | None = None
+    conexao_pppoe: str | None = None
+    ip_externo: str | None = None
+    uptime_s: int | None = None
+    ultimo_erro: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class GenieAcsDevice:
     device_id: str
     fabricante: str = ""
@@ -42,3 +69,5 @@ class GenieAcsDevice:
     last_inform: datetime | None = None
     online: bool = False
     redes: list[RedeWlan] = field(default_factory=list)
+    aparelhos: list[Aparelho] = field(default_factory=list)
+    sinal: "SinalFibra | None" = None

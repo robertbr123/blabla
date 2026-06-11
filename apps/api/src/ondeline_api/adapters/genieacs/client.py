@@ -15,6 +15,7 @@ import httpx
 import structlog
 
 from ondeline_api.adapters.genieacs.base import (
+    Aparelho,
     GenieAcsDevice,
     GenieAcsUnavailableError,
     RedeWlan,
@@ -33,6 +34,7 @@ PPPOE_USERNAME_PATHS = [
 ]
 
 _WLAN_PATH = ("InternetGatewayDevice", "LANDevice", "1", "WLANConfiguration")
+_HOSTS_PATH = ("InternetGatewayDevice", "LANDevice", "1", "Hosts", "Host")
 
 
 def _leaf(node: Any, key: str) -> Any:
@@ -50,6 +52,33 @@ def _parse_last_inform(raw: str | None) -> datetime | None:
     # Defensivo: se vier naive (sem timezone), assume UTC pra a subtracao
     # com datetime.now(UTC) nao levantar TypeError aware-vs-naive.
     return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
+
+
+def _parse_aparelhos(raw: dict[str, Any]) -> list[Aparelho]:
+    node: Any = raw
+    for k in _HOSTS_PATH:
+        node = node.get(k) if isinstance(node, dict) else None
+        if node is None:
+            return []
+    out: list[Aparelho] = []
+    for inst, h in node.items():
+        if not inst.isdigit() or not isinstance(h, dict):
+            continue
+        mac = _leaf(h, "MACAddress")
+        if not mac:
+            continue  # linha-fantasma sem MAC: nao e um aparelho util
+        out.append(
+            Aparelho(
+                nome=str(_leaf(h, "HostName") or ""),
+                ip=str(_leaf(h, "IPAddress") or ""),
+                mac=str(mac),
+                ativo=bool(_leaf(h, "Active")),
+                interface=str(
+                    _leaf(h, "InterfaceType") or _leaf(h, "Layer1Interface") or ""
+                ),
+            )
+        )
+    return out
 
 
 def _parse_redes(raw: dict[str, Any]) -> list[RedeWlan]:
@@ -87,6 +116,7 @@ def _parse_device(raw: dict[str, Any]) -> GenieAcsDevice:
         last_inform=last,
         online=online,
         redes=_parse_redes(raw),
+        aparelhos=_parse_aparelhos(raw),
     )
 
 
