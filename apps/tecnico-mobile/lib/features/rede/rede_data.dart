@@ -73,3 +73,92 @@ Future<String> trocarSenhaWifi(
   );
   return (r.data['aviso'] ?? 'Senha enviada.') as String;
 }
+
+class Aparelho {
+  Aparelho({
+    required this.nome,
+    required this.ip,
+    required this.mac,
+    required this.ativo,
+    this.interface = '',
+  });
+  final String nome;
+  final String ip;
+  final String mac;
+  final bool ativo;
+  final String interface;
+
+  factory Aparelho.fromJson(Map<String, dynamic> j) => Aparelho(
+        nome: (j['nome'] ?? '') as String,
+        ip: (j['ip'] ?? '') as String,
+        mac: (j['mac'] ?? '') as String,
+        ativo: (j['ativo'] ?? false) as bool,
+        interface: (j['interface'] ?? '') as String,
+      );
+}
+
+class SinalFibra {
+  SinalFibra({
+    this.rxPower,
+    this.txPower,
+    this.statusGpon,
+    this.conexaoPppoe,
+    this.ipExterno,
+    this.uptimeS,
+    this.ultimoErro,
+  });
+  final double? rxPower;
+  final double? txPower;
+  final String? statusGpon;
+  final String? conexaoPppoe;
+  final String? ipExterno;
+  final int? uptimeS;
+  final String? ultimoErro;
+
+  factory SinalFibra.fromJson(Map<String, dynamic> j) => SinalFibra(
+        rxPower: (j['rx_power'] as num?)?.toDouble(),
+        txPower: (j['tx_power'] as num?)?.toDouble(),
+        statusGpon: j['status_gpon'] as String?,
+        conexaoPppoe: j['conexao_pppoe'] as String?,
+        ipExterno: j['ip_externo'] as String?,
+        uptimeS: (j['uptime_s'] as num?)?.toInt(),
+        ultimoErro: j['ultimo_erro'] as String?,
+      );
+}
+
+class Diagnostico {
+  Diagnostico({
+    required this.encontrada,
+    this.lastInform,
+    this.aparelhos = const [],
+    this.sinal,
+    this.motivo,
+  });
+  final bool encontrada;
+  final DateTime? lastInform;
+  final List<Aparelho> aparelhos;
+  final SinalFibra? sinal;
+  final String? motivo;
+
+  factory Diagnostico.fromJson(Map<String, dynamic> j) => Diagnostico(
+        encontrada: (j['encontrada'] ?? false) as bool,
+        lastInform: j['last_inform'] != null
+            ? DateTime.tryParse(j['last_inform'] as String)?.toLocal()
+            : null,
+        aparelhos: ((j['aparelhos'] ?? []) as List)
+            .map((e) => Aparelho.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        sinal: j['sinal'] != null
+            ? SinalFibra.fromJson(j['sinal'] as Map<String, dynamic>)
+            : null,
+        motivo: j['motivo'] as String?,
+      );
+}
+
+/// Diagnostico read-only (aparelhos + sinal da fibra). CPF no body (POST).
+final redeDiagnosticoProvider =
+    FutureProvider.autoDispose.family<Diagnostico, String>((ref, cpf) async {
+  final dio = ref.watch(apiClientProvider);
+  final r = await dio.post('/api/v1/rede/diagnostico', data: {'cpf': cpf});
+  return Diagnostico.fromJson(r.data as Map<String, dynamic>);
+});
