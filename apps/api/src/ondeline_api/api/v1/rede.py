@@ -90,7 +90,9 @@ def status_out(st: StatusRede) -> StatusRedeOut:
 
 def diagnostico_out(diag: DiagnosticoRede) -> DiagnosticoOut:
     if not diag.encontrada or diag.device is None:
-        return DiagnosticoOut(encontrada=False, motivo=diag.motivo)
+        return DiagnosticoOut(
+            encontrada=False, pppoe_login=diag.pppoe_login, motivo=diag.motivo
+        )
     d = diag.device
     return DiagnosticoOut(
         encontrada=True,
@@ -100,6 +102,7 @@ def diagnostico_out(diag: DiagnosticoRede) -> DiagnosticoOut:
             for a in d.aparelhos
         ],
         sinal=_sinal_out(d.sinal),
+        pppoe_login=diag.pppoe_login,
     )
 
 

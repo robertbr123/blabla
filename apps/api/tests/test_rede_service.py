@@ -256,6 +256,14 @@ async def test_reiniciar_onu_sem_device_levanta(db_session: AsyncSession) -> Non
         await svc.reiniciar_onu(cpf=CPF, serial=None, ator_user_id=uuid4())
 
 
+async def test_diagnostico_inclui_pppoe(db_session: AsyncSession) -> None:
+    genie = _FakeGenie(by_pppoe=_dev_diag())
+    svc = _svc(db_session, genie)
+    diag = await svc.diagnostico_rede(CPF)
+    assert diag.encontrada is True
+    assert diag.pppoe_login == "rosineidesilva"
+
+
 def test_qualidade_sinal_faixas() -> None:
     from ondeline_api.services.rede_service import qualidade_sinal
     assert qualidade_sinal(None) == ("desconhecido", "⚪")

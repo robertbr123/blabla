@@ -84,6 +84,7 @@ class StatusRede:
 class DiagnosticoRede:
     encontrada: bool
     device: GenieAcsDevice | None = None
+    pppoe_login: str | None = None
     motivo: str | None = None  # "onu_nao_encontrada" quando encontrada=False
 
 
@@ -187,9 +188,11 @@ class RedeService:
             raise CpfInvalidoError("CPF invalido")
         res = await self._resolver_por_cpf(cpf, serial)
         if res.device is None:
-            return DiagnosticoRede(encontrada=False, motivo="onu_nao_encontrada")
+            return DiagnosticoRede(
+                encontrada=False, pppoe_login=res.pppoe, motivo="onu_nao_encontrada"
+            )
         await self._genie.refresh_wan(res.device.device_id)  # best-effort no client
-        return DiagnosticoRede(encontrada=True, device=res.device)
+        return DiagnosticoRede(encontrada=True, device=res.device, pppoe_login=res.pppoe)
 
     async def trocar_senha_wifi(
         self,

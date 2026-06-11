@@ -72,4 +72,5 @@ class DiagnosticoOut(BaseModel):
     last_inform: datetime | None = None
     aparelhos: list[AparelhoOut] = Field(default_factory=list)
     sinal: SinalFibraOut | None = None
+    pppoe_login: str | None = None
     motivo: str | None = None  # quando encontrada=False
