@@ -4,6 +4,29 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
 import 'rede_data.dart';
 
+/// Cor do RX power (GPON, dBm). Verde -8..-25 (bom), amarelo -25..-27 (atencao),
+/// vermelho < -27 ou > -8 (sinal quente demais / fraco demais).
+Color _corRx(double? rx) {
+  if (rx == null) return Colors.grey;
+  if (rx > -8 || rx < -27) return Colors.red;
+  if (rx < -25) return Colors.orange;
+  return Colors.green;
+}
+
+String _fmtUptime(int? s) {
+  if (s == null) return '—';
+  final d = s ~/ 86400, h = (s % 86400) ~/ 3600, m = (s % 3600) ~/ 60;
+  if (d > 0) return '${d}d ${h}h';
+  if (h > 0) return '${h}h ${m}min';
+  return '${m}min';
+}
+
+String _fmtHora(DateTime? t) {
+  if (t == null) return '—';
+  String dois(int n) => n.toString().padLeft(2, '0');
+  return '${dois(t.hour)}:${dois(t.minute)}';
+}
+
 class RedeScreen extends ConsumerStatefulWidget {
   const RedeScreen({super.key, required this.cpf});
   final String cpf;
@@ -78,7 +101,10 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Atualizar',
-            onPressed: () => ref.invalidate(redeStatusProvider(widget.cpf)),
+            onPressed: () {
+              ref.invalidate(redeStatusProvider(widget.cpf));
+              ref.invalidate(redeDiagnosticoProvider(widget.cpf));
+            },
           ),
         ],
       ),
@@ -122,6 +148,8 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
           const Text('Redes WiFi ativas:'),
           for (final r in s.redes.where((r) => r.enabled))
             ListTile(leading: const Icon(Icons.router), title: Text(r.ssid), dense: true),
+          const Divider(height: 32),
+          _diagnostico(),
         ] else ...[
           const Text(
             'Não localizei a ONU pelo cadastro. Informe o serial da etiqueta:',
@@ -161,6 +189,76 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
                 style: TextStyle(color: Colors.grey)),
           ),
       ],
+    );
+  }
+
+  Widget _diagnostico() {
+    final diag = ref.watch(redeDiagnosticoProvider(widget.cpf));
+    return diag.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (e, _) => const Text('Não foi possível carregar o diagnóstico.',
+          style: TextStyle(color: Colors.grey)),
+      data: (d) {
+        if (!d.encontrada) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Sinal da fibra ──
+            Row(children: [
+              const Icon(Icons.settings_input_antenna, size: 20),
+              const SizedBox(width: 8),
+              const Text('Sinal da fibra',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const Spacer(),
+              Text('última leitura: ${_fmtHora(d.lastInform)}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            ]),
+            const SizedBox(height: 8),
+            if (d.sinal == null)
+              const Text('Sinal ainda não disponível — puxe pra atualizar (~5min).',
+                  style: TextStyle(color: Colors.grey))
+            else ...[
+              Row(children: [
+                Icon(Icons.circle, size: 12, color: _corRx(d.sinal!.rxPower)),
+                const SizedBox(width: 8),
+                Text('RX: ${d.sinal!.rxPower?.toStringAsFixed(1) ?? '—'} dBm'),
+                const SizedBox(width: 16),
+                Text('TX: ${d.sinal!.txPower?.toStringAsFixed(1) ?? '—'} dBm'),
+              ]),
+              const SizedBox(height: 4),
+              Text('GPON: ${d.sinal!.statusGpon ?? '—'}   •   '
+                  'PPPoE: ${d.sinal!.conexaoPppoe ?? '—'}'),
+              if (d.sinal!.ipExterno != null) Text('IP: ${d.sinal!.ipExterno}'),
+              Text('Uptime: ${_fmtUptime(d.sinal!.uptimeS)}'
+                  '${d.sinal!.ultimoErro != null && d.sinal!.ultimoErro != 'ERROR_NONE' ? '   •   Último erro: ${d.sinal!.ultimoErro}' : ''}'),
+            ],
+            const Divider(height: 32),
+            // ── Aparelhos conectados ──
+            Text('Aparelhos conectados (${d.aparelhos.length})',
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            if (d.aparelhos.isEmpty)
+              const Text('Nenhum aparelho conectado no momento.',
+                  style: TextStyle(color: Colors.grey))
+            else
+              for (final a in d.aparelhos)
+                ListTile(
+                  dense: true,
+                  leading: Icon(
+                      a.interface.contains('11') || a.interface.toLowerCase().contains('wifi')
+                          ? Icons.wifi
+                          : Icons.lan,
+                      size: 20,
+                      color: a.ativo ? Colors.green : Colors.grey),
+                  title: Text(a.nome.isEmpty ? a.ip : a.nome),
+                  subtitle: Text('${a.ip}  •  ${a.mac}'),
+                ),
+          ],
+        );
+      },
     );
   }
 }
