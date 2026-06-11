@@ -34,8 +34,9 @@ import type { MensagemOut } from '@/lib/api/types'
 import { cn } from '@/lib/utils'
 import { ConversaSlaTimer } from './conversa-sla-timer'
 import { ConversaMedia, mediaKind } from './conversa-media'
+import { ConversaRedePanel, RedeBadge } from './conversa-rede-panel'
 
-type Tab = 'mensagens' | 'cliente' | 'nova-os'
+type Tab = 'mensagens' | 'cliente' | 'nova-os' | 'rede'
 
 const ROLE_LABEL: Record<string, string> = {
   cliente: 'Cliente',
@@ -281,6 +282,7 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
   const TABS: { id: Tab; label: string }[] = [
     { id: 'mensagens', label: 'Mensagens' },
     { id: 'cliente', label: 'Cliente SGP' },
+    { id: 'rede', label: 'Rede' },
     { id: 'nova-os', label: '+ Nova OS' },
   ]
 
@@ -318,6 +320,11 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
             </p>
           </div>
         )}
+
+        {/* Rede health badge */}
+        <div className="mb-2">
+          <RedeBadge conversaId={conversaId} temCliente={!!data.cliente_id} />
+        </div>
 
         {/* Tab bar */}
         <div className="flex border-b mb-0">
@@ -502,6 +509,20 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* Tab: Rede */}
+        {tab === 'rede' && (
+          <div className="p-4">
+            <ConversaRedePanel
+              conversaId={conversaId}
+              temCliente={!!data.cliente_id}
+              onColarDiagnostico={(texto) => {
+                setText(texto)
+                setTab('mensagens')
+              }}
+            />
           </div>
         )}
 
