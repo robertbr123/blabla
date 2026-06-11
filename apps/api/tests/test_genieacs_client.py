@@ -171,3 +171,71 @@ async def test_last_inform_naive_nao_quebra() -> None:
         assert dev is not None
         assert dev.last_inform is not None and dev.last_inform.tzinfo is not None
         await c.aclose()
+
+
+def _wan_raw(prefixo_gpon: str = "X_GponInterafceConfig") -> dict[str, Any]:
+    """Subarvore WANDevice com GPON (prefixo varia por modelo) + PPPoE diag."""
+    return {
+        "WANDevice": {
+            "1": {
+                prefixo_gpon: {
+                    "RXPower": {"_value": -26.5},
+                    "TXPower": {"_value": 2.1},
+                    "Status": {"_value": "Up"},
+                },
+                "WANConnectionDevice": {
+                    "1": {
+                        "WANPPPConnection": {
+                            "1": {
+                                "ConnectionStatus": {"_value": "Connected"},
+                                "ExternalIPAddress": {"_value": "100.64.0.5"},
+                                "Uptime": {"_value": 3600},
+                                "LastConnectionError": {"_value": "ERROR_NONE"},
+                            }
+                        }
+                    }
+                },
+            }
+        }
+    }
+
+
+async def test_parse_sinal_le_gpon_e_pppoe() -> None:
+    raw = _device_raw()
+    raw["InternetGatewayDevice"].update(_wan_raw())
+    async with respx.mock(base_url=BASE) as mock:
+        mock.get("/devices/").respond(200, json=[raw])
+        c = GenieAcsClient(base_url=BASE)
+        dev = await c.get_device("x")
+        assert dev is not None and dev.sinal is not None
+        assert dev.sinal.rx_power == -26.5
+        assert dev.sinal.tx_power == 2.1
+        assert dev.sinal.status_gpon == "Up"
+        assert dev.sinal.conexao_pppoe == "Connected"
+        assert dev.sinal.ip_externo == "100.64.0.5"
+        assert dev.sinal.uptime_s == 3600
+        assert dev.sinal.ultimo_erro == "ERROR_NONE"
+        await c.aclose()
+
+
+async def test_parse_sinal_prefixo_gpon_alternativo() -> None:
+    raw = _device_raw()
+    raw["InternetGatewayDevice"].update(_wan_raw(prefixo_gpon="X_GponInterfaceConfig"))
+    async with respx.mock(base_url=BASE) as mock:
+        mock.get("/devices/").respond(200, json=[raw])
+        c = GenieAcsClient(base_url=BASE)
+        dev = await c.get_device("x")
+        assert dev is not None and dev.sinal is not None
+        assert dev.sinal.rx_power == -26.5
+        await c.aclose()
+
+
+async def test_parse_sinal_ausente_retorna_none() -> None:
+    # _device_raw() sem subarvore WAN -> nenhum campo de sinal -> sinal None
+    async with respx.mock(base_url=BASE) as mock:
+        mock.get("/devices/").respond(200, json=[_device_raw()])
+        c = GenieAcsClient(base_url=BASE)
+        dev = await c.get_device("x")
+        assert dev is not None
+        assert dev.sinal is None
+        await c.aclose()

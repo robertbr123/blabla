@@ -19,6 +19,7 @@ from ondeline_api.adapters.genieacs.base import (
     GenieAcsDevice,
     GenieAcsUnavailableError,
     RedeWlan,
+    SinalFibra,
 )
 
 log = structlog.get_logger(__name__)
@@ -31,6 +32,20 @@ PPPOE_USERNAME_PATHS = [
     "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username",
     "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1.Username",
     "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.3.WANPPPConnection.1.Username",
+]
+
+# GPON e vendor-specific: o nome do container varia por modelo (AX1800 tem o
+# typo de fabrica "X_GponInterafceConfig"). Tenta os candidatos, usa o 1o.
+GPON_CFG_PATHS = [
+    "InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig",
+    "InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig",
+    "InternetGatewayDevice.WANDevice.1.X_FH_GponInterfaceConfig",
+]
+# O indice do WANConnectionDevice varia por modelo (igual ao PPPoE Username).
+PPPOE_CONN_PATHS = [
+    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1",
+    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1",
+    "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.3.WANPPPConnection.1",
 ]
 
 _WLAN_PATH = ("InternetGatewayDevice", "LANDevice", "1", "WLANConfiguration")
@@ -52,6 +67,72 @@ def _parse_last_inform(raw: str | None) -> datetime | None:
     # Defensivo: se vier naive (sem timezone), assume UTC pra a subtracao
     # com datetime.now(UTC) nao levantar TypeError aware-vs-naive.
     return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
+
+
+def _dig(raw: dict[str, Any], dotted: str) -> Any:
+    node: Any = raw
+    for k in dotted.split("."):
+        node = node.get(k) if isinstance(node, dict) else None
+        if node is None:
+            return None
+    return node
+
+
+def _as_float(v: Any) -> float | None:
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _as_int(v: Any) -> int | None:
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_sinal(raw: dict[str, Any]) -> SinalFibra | None:
+    rx = tx = None
+    status: str | None = None
+    for p in GPON_CFG_PATHS:
+        node = _dig(raw, p)
+        if not isinstance(node, dict):
+            continue
+        rx = _as_float(_leaf(node, "RXPower"))
+        tx = _as_float(_leaf(node, "TXPower"))
+        st = _leaf(node, "Status")
+        if rx is not None or tx is not None or st is not None:
+            status = str(st) if st is not None else None
+            break
+
+    conexao = ip_ext = ultimo = None
+    uptime: int | None = None
+    for p in PPPOE_CONN_PATHS:
+        node = _dig(raw, p)
+        if not isinstance(node, dict):
+            continue
+        cs = _leaf(node, "ConnectionStatus")
+        if cs is not None:
+            conexao = str(cs)
+            ipv = _leaf(node, "ExternalIPAddress")
+            ip_ext = str(ipv) if ipv is not None else None
+            uptime = _as_int(_leaf(node, "Uptime"))
+            err = _leaf(node, "LastConnectionError")
+            ultimo = str(err) if err is not None else None
+            break
+
+    if all(v is None for v in (rx, tx, status, conexao, ip_ext, uptime, ultimo)):
+        return None
+    return SinalFibra(
+        rx_power=rx,
+        tx_power=tx,
+        status_gpon=status,
+        conexao_pppoe=conexao,
+        ip_externo=ip_ext,
+        uptime_s=uptime,
+        ultimo_erro=ultimo,
+    )
 
 
 def _parse_aparelhos(raw: dict[str, Any]) -> list[Aparelho]:
@@ -117,6 +198,7 @@ def _parse_device(raw: dict[str, Any]) -> GenieAcsDevice:
         online=online,
         redes=_parse_redes(raw),
         aparelhos=_parse_aparelhos(raw),
+        sinal=_parse_sinal(raw),
     )
 
 
