@@ -82,6 +82,11 @@ class ResultadoTroca:
 
 
 @dataclass(frozen=True, slots=True)
+class ResultadoReboot:
+    device_id: str
+
+
+@dataclass(frozen=True, slots=True)
 class _Resolucao:
     device: GenieAcsDevice | None
     pppoe: str | None
@@ -224,3 +229,32 @@ class RedeService:
         return ResultadoTroca(
             device_id=res.device.device_id, reiniciando=plano.needs_reboot
         )
+
+    async def reiniciar_onu(
+        self, *, cpf: str, serial: str | None, ator_user_id: UUID
+    ) -> ResultadoReboot:
+        """Reinicia a ONU (acao de suporte). Audita em rede_wifi_pedido com
+        tipo='reboot' (mesma tabela da troca de senha, PII-safe)."""
+        cpf = _so_digitos(cpf)
+        if not cpf:
+            raise CpfInvalidoError("CPF invalido")
+        res = await self._resolver_por_cpf(cpf, serial)
+        if res.device is None:
+            raise OnuNaoEncontradaError("ONU nao encontrada por PPPoE nem serial")
+        pedido = RedeWifiPedido(
+            cpf_hash=hash_pii(cpf),
+            contrato_id=res.contrato_id,
+            pppoe_login=res.pppoe,
+            device_id=res.device.device_id,
+            ator_user_id=ator_user_id,
+            status="pendente",
+            reiniciou=True,
+            tipo="reboot",
+        )
+        self._session.add(pedido)
+        await self._session.flush()
+        await self._genie.reboot(res.device.device_id)
+        pedido.status = "enviado"
+        await self._session.flush()
+        log.info("rede.onu_reiniciada", device_id=res.device.device_id)
+        return ResultadoReboot(device_id=res.device.device_id)

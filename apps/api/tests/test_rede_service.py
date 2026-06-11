@@ -232,3 +232,25 @@ async def test_diagnostico_cpf_vazio_rejeitado(db_session: AsyncSession) -> None
     svc = _svc(db_session, _FakeGenie(by_pppoe=_dev_diag()))
     with pytest.raises(CpfInvalidoError):
         await svc.diagnostico_rede("---")
+
+
+async def test_reiniciar_onu_reboota_e_audita(db_session: AsyncSession) -> None:
+    genie = _FakeGenie(by_pppoe=_dev())
+    svc = _svc(db_session, genie)
+    ator = uuid4()
+    res = await svc.reiniciar_onu(cpf=CPF, serial=None, ator_user_id=ator)
+    assert res.device_id == "30E1F1-AX1800-X"
+    assert genie.reboots == ["30E1F1-AX1800-X"]
+    pedido = (await db_session.execute(select(RedeWifiPedido))).scalar_one()
+    assert pedido.tipo == "reboot"
+    assert pedido.reiniciou is True
+    assert pedido.status == "enviado"
+    assert pedido.ator_user_id == ator
+    assert pedido.cpf_hash == hash_pii(CPF)
+
+
+async def test_reiniciar_onu_sem_device_levanta(db_session: AsyncSession) -> None:
+    genie = _FakeGenie(by_pppoe=None, by_serial=None)
+    svc = _svc(db_session, genie)
+    with pytest.raises(OnuNaoEncontradaError):
+        await svc.reiniciar_onu(cpf=CPF, serial=None, ator_user_id=uuid4())
