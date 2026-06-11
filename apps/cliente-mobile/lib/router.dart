@@ -7,6 +7,7 @@ import 'core/auth/auth_state.dart';
 import 'features/auth/forgot_reset_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'features/conexao/conexao_screen.dart';
+import 'features/rede/rede_screen.dart';
 import 'features/contatos/contatos_screen.dart';
 import 'features/faq/faq_artigo_screen.dart';
 import 'features/fidelidade/fidelidade_screen.dart';
@@ -149,6 +150,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/conexao',
         builder: (_, __) => const ConexaoScreen(),
+      ),
+      GoRoute(
+        path: '/rede',
+        builder: (_, __) => const RedeScreen(),
       ),
       GoRoute(
         path: '/notificacoes',

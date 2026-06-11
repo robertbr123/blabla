@@ -113,6 +113,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               QuickActions(
                 actions: [
                   QuickAction(
+                    icon: Icons.wifi_rounded,
+                    label: 'Minha rede',
+                    color: BrandTokens.primary,
+                    onTap: () => context.push('/rede'),
+                  ),
+                  QuickAction(
                     icon: Icons.receipt_long_outlined,
                     label: '2a via',
                     color: BrandTokens.catBilling,

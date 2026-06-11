@@ -39,8 +39,11 @@ class ConexaoScreen extends ConsumerWidget {
               const SizedBox(height: BrandTokens.spaceLg),
               if (c.status != 'ativo')
                 _CtaSuporte(status: c.status)
-              else
+              else ...[
+                const _GerenciarRedeButton(),
+                const SizedBox(height: BrandTokens.spaceLg),
                 const _DicaPanel(),
+              ],
               if (!c.temTelemetriaReal) ...[
                 const SizedBox(height: BrandTokens.spaceLg),
                 const _TelemetriaInfo(),
@@ -413,6 +416,45 @@ class _TelemetriaInfo extends StatelessWidget {
                 fontStyle: FontStyle.italic,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GerenciarRedeButton extends StatelessWidget {
+  const _GerenciarRedeButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(BrandTokens.spaceLg),
+      decoration: BoxDecoration(
+        color: BrandTokens.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
+        border: Border.all(color: BrandTokens.primary.withOpacity(0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.wifi_rounded, color: BrandTokens.primary),
+              SizedBox(width: BrandTokens.spaceSm),
+              Expanded(
+                child: Text(
+                  'Quer trocar a senha do seu WiFi? Faça por aqui, na hora.',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: BrandTokens.spaceMd),
+          FilledButton.icon(
+            icon: const Icon(Icons.settings_rounded, size: 18),
+            label: const Text('Gerenciar rede WiFi'),
+            onPressed: () => context.push('/rede'),
           ),
         ],
       ),
