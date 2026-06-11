@@ -23,6 +23,9 @@ class IndicacaoScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(indicacaoMeuProvider);
+    final topPadding = MediaQuery.paddingOf(context).top +
+        kToolbarHeight +
+        BrandTokens.spaceMd;
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: GlassAppBar(title: 'Indique e ganhe'),
@@ -33,26 +36,23 @@ class IndicacaoScreen extends ConsumerWidget {
           ref.invalidate(indicacaoTimelineProvider);
           await ref.read(indicacaoMeuProvider.future);
         },
-        child: async.when(
-          data: (data) => _Content(data: data),
-          loading: () => ListView(
+        child: AsyncBuilder<IndicacaoMeuDto>(
+          value: async,
+          loading: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(
-              top: MediaQuery.paddingOf(context).top +
-                  kToolbarHeight +
-                  BrandTokens.spaceMd,
-            ),
+            padding: EdgeInsets.only(top: topPadding),
             children: const [
               Center(child: CircularProgressIndicator()),
             ],
           ),
-          error: (e, _) => _ErrorView(
-            message: e.toString(),
-            onRetry: () => ref.invalidate(indicacaoMeuProvider),
-            topPadding: MediaQuery.paddingOf(context).top +
-                kToolbarHeight +
-                BrandTokens.spaceMd,
-          ),
+          error: async.hasError
+              ? _ErrorView(
+                  message: async.error.toString(),
+                  onRetry: () => ref.invalidate(indicacaoMeuProvider),
+                  topPadding: topPadding,
+                )
+              : null,
+          builder: (data) => _Content(data: data),
         ),
       ),
     );

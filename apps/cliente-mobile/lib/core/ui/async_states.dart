@@ -117,6 +117,12 @@ class AsyncBuilder<T> extends StatelessWidget {
   final Widget Function(T data) builder;
   final Widget? loading;
   final Widget? error;
+
+  /// Callback de retry passado pro [ErrorCard] padrão.
+  /// Só tem efeito quando [error] é null — nesse caso o fallback [ErrorCard]
+  /// exibe o botão "Tentar de novo" e chama este callback.
+  /// Se [error] for fornecido (widget customizado), o retry deve ser gerenciado
+  /// dentro do próprio widget customizado.
   final VoidCallback? onRetry;
 
   @override

@@ -33,6 +33,18 @@ void main() {
     expect(find.text('Quando algo chegar, aparece nesta tela.'), findsOneWidget);
   });
 
+  testWidgets('ErrorCard sem onRetry não mostra botão', (tester) async {
+    await tester.pumpWidget(wrap(const ErrorCard()));
+    expect(find.text('Tentar de novo'), findsNothing);
+  });
+
+  testWidgets('EmptyState sem subtitulo', (tester) async {
+    await tester.pumpWidget(wrap(
+      const EmptyState(icon: Icons.inbox_rounded, title: 'Nada por aqui'),
+    ));
+    expect(find.text('Nada por aqui'), findsOneWidget);
+  });
+
   testWidgets('AsyncBuilder renderiza data/loading/error', (tester) async {
     // data
     await tester.pumpWidget(wrap(
