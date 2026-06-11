@@ -13,13 +13,17 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ondeline_api.adapters.genieacs.base import GenieAcsUnavailableError
+from ondeline_api.adapters.genieacs.base import GenieAcsUnavailableError, SinalFibra
 from ondeline_api.adapters.genieacs.client import GenieAcsClient
 from ondeline_api.adapters.sgp.linknetam import SgpLinkNetAMProvider
 from ondeline_api.adapters.sgp.ondeline import SgpOndelineProvider
 from ondeline_api.adapters.sgp.router import SgpRouter
 from ondeline_api.api.schemas.rede import (
+    AparelhoOut,
+    DiagnosticoIn,
+    DiagnosticoOut,
     RedeWlanOut,
+    SinalFibraOut,
     StatusRedeIn,
     StatusRedeOut,
     TrocarSenhaIn,
@@ -45,6 +49,20 @@ router = APIRouter(prefix="/api/v1/rede", tags=["rede"])
 _role_dep = Depends(require_role(Role.TECNICO, Role.ADMIN))
 
 AVISO_REBOOT = "A internet do cliente vai reiniciar e voltar em cerca de 2 minutos."
+
+
+def _sinal_out(s: SinalFibra | None) -> SinalFibraOut | None:
+    if s is None:
+        return None
+    return SinalFibraOut(
+        rx_power=s.rx_power,
+        tx_power=s.tx_power,
+        status_gpon=s.status_gpon,
+        conexao_pppoe=s.conexao_pppoe,
+        ip_externo=s.ip_externo,
+        uptime_s=s.uptime_s,
+        ultimo_erro=s.ultimo_erro,
+    )
 
 
 async def get_rede_service(
@@ -103,6 +121,31 @@ async def status_rede(
         last_inform=d.last_inform,
         redes=[RedeWlanOut(instancia=r.instancia, ssid=r.ssid, enabled=r.enabled) for r in d.redes],
         pppoe_login=st.pppoe_login,
+    )
+
+
+@router.post("/diagnostico", response_model=DiagnosticoOut, dependencies=[_role_dep])
+async def diagnostico_rede(
+    payload: DiagnosticoIn,
+    service: Annotated[RedeService, Depends(get_rede_service)],
+) -> DiagnosticoOut:
+    try:
+        diag = await service.diagnostico_rede(payload.cpf, payload.serial)
+    except CpfInvalidoError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except GenieAcsUnavailableError as e:
+        raise HTTPException(status_code=503, detail="GenieACS indisponivel") from e
+    if not diag.encontrada or diag.device is None:
+        return DiagnosticoOut(encontrada=False, motivo=diag.motivo)
+    d = diag.device
+    return DiagnosticoOut(
+        encontrada=True,
+        last_inform=d.last_inform,
+        aparelhos=[
+            AparelhoOut(nome=a.nome, ip=a.ip, mac=a.mac, ativo=a.ativo, interface=a.interface)
+            for a in d.aparelhos
+        ],
+        sinal=_sinal_out(d.sinal),
     )
 
 

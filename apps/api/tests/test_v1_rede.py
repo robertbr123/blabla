@@ -17,6 +17,7 @@ from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db, get_redis
 from ondeline_api.main import create_app
 from ondeline_api.services.rede_service import (
+    DiagnosticoRede,
     OnuNaoEncontradaError,
     ResultadoTroca,
     StatusRede,
@@ -38,11 +39,13 @@ class _FakeService:
         troca: ResultadoTroca | None = None,
         raise_troca: Exception | None = None,
         raise_status: Exception | None = None,
+        diag: "DiagnosticoRede | None" = None,
     ) -> None:
         self._status = status
         self._troca = troca
         self._raise = raise_troca
         self._raise_status = raise_status
+        self._diag = diag
 
     async def status_rede(
         self, cpf: str, serial: str | None = None
@@ -64,6 +67,10 @@ class _FakeService:
             raise self._raise
         assert self._troca is not None
         return self._troca
+
+    async def diagnostico_rede(self, cpf: str, serial: str | None = None):
+        assert self._diag is not None
+        return self._diag
 
 
 def _dev() -> GenieAcsDevice:
@@ -298,3 +305,54 @@ async def test_trocar_senha_invalida_422(
             headers=_auth(token),
         )
     assert r.status_code == 422, r.text
+
+
+@pytest.mark.asyncio
+async def test_diagnostico_encontrada(
+    db_session: AsyncSession, redis_client: Any
+) -> None:
+    """POST /api/v1/rede/diagnostico retorna aparelhos + sinal quando achada."""
+    from datetime import UTC, datetime
+    from ondeline_api.adapters.genieacs.base import Aparelho, SinalFibra
+
+    dev = GenieAcsDevice(
+        device_id="30E1F1-AX1800-X",
+        modelo="AX1800",
+        online=True,
+        last_inform=datetime(2026, 6, 10, 12, 0, tzinfo=UTC),
+        aparelhos=[Aparelho(nome="Cel", ip="192.168.1.2", mac="AA:01", ativo=True)],
+        sinal=SinalFibra(rx_power=-26.5, conexao_pppoe="Connected"),
+    )
+    fake = _FakeService(diag=DiagnosticoRede(encontrada=True, device=dev))
+    app = _make_app_overrides(db_session, redis_client, fake)
+    tec = await _make_tecnico_user(db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        token = await _login(c, tec["email"], tec["password"])
+        r = await c.post(
+            "/api/v1/rede/diagnostico", json={"cpf": CPF}, headers=_auth(token)
+        )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["encontrada"] is True
+    assert body["aparelhos"][0]["mac"] == "AA:01"
+    assert body["sinal"]["rx_power"] == -26.5
+    assert body["sinal"]["conexao_pppoe"] == "Connected"
+
+
+@pytest.mark.asyncio
+async def test_diagnostico_nao_encontrada_200(
+    db_session: AsyncSession, redis_client: Any
+) -> None:
+    """ONU nao achada -> encontrada=false no corpo (nao 404)."""
+    fake = _FakeService(diag=DiagnosticoRede(encontrada=False, motivo="onu_nao_encontrada"))
+    app = _make_app_overrides(db_session, redis_client, fake)
+    tec = await _make_tecnico_user(db_session)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        token = await _login(c, tec["email"], tec["password"])
+        r = await c.post(
+            "/api/v1/rede/diagnostico", json={"cpf": CPF}, headers=_auth(token)
+        )
+    assert r.status_code == 200, r.text
+    assert r.json()["encontrada"] is False
