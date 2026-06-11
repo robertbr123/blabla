@@ -37,6 +37,28 @@ class BrandTokens {
   static const Color catConnection = Color(0xFFE0455A); // vermelho/coral
   static const Color catPlan = Color(0xFFE8A33D); // âmbar
 
+  // Tons derivados de status (usados em gradientes/ênfase)
+  static const Color successBright = Color(0xFF22E0A1); // verde conexão ok
+  static const Color dangerDeep = Color(0xFFB12B40); // fim de gradiente vencida
+  static const Color dangerStrong = Color(0xFFCC2233); // barra breaking de manutenção
+  static const Color warningBright = Color(0xFFF59E0B);
+  static const Color neutralGrey = Color(0xFF6B7280); // status desconhecido
+  static const Color neutralGreyDark = Color(0xFF374151);
+
+  // Cores de marca de terceiros (canais de contato)
+  static const Color brandWhatsapp = Color(0xFF25D366);
+  static const Color brandWhatsappDark = Color(0xFF128C7E);
+  static const Color brandInstagram = Color(0xFFE1306C);
+  static const Color brandFacebook = Color(0xFF1877F2);
+
+  // Tons de destaque pontuais
+  static const Color accentOrange = Color(0xFFFF8E53); // gradiente quick card
+  static const Color accentPink = Color(0xFFFF6B9D); // banner aniversariante
+
+  // Fallback de gradiente de promoção (quando admin não define cores)
+  static const Color promoFallbackFrom = Color(0xFF8B5CF6);
+  static const Color promoFallbackTo = Color(0xFF5B6CFF);
+
   // Raios
   static const double radiusSm = 12;
   static const double radiusMd = 16;

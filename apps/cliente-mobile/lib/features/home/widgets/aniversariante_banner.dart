@@ -83,14 +83,14 @@ class _AniversarianteBannerState extends ConsumerState<AniversarianteBanner> {
           ),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFFFF6B9D), Color(0xFFFF8E53)],
+              colors: [BrandTokens.accentPink, BrandTokens.accentOrange],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
             borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFFF6B9D).withOpacity(0.30),
+                color: BrandTokens.accentPink.withOpacity(0.30),
                 blurRadius: 14,
                 offset: const Offset(0, 6),
               ),

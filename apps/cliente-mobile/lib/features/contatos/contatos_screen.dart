@@ -56,7 +56,7 @@ class _ContatoCard extends StatelessWidget {
   (IconData, Color) _visual() {
     switch (contato.tipo) {
       case 'whatsapp':
-        return (Icons.chat_bubble_rounded, const Color(0xFF25D366));
+        return (Icons.chat_bubble_rounded, BrandTokens.brandWhatsapp);
       case 'telefone':
         return (Icons.phone_rounded, BrandTokens.primary);
       case 'email':
@@ -64,9 +64,9 @@ class _ContatoCard extends StatelessWidget {
       case 'endereco':
         return (Icons.location_on_outlined, BrandTokens.warning);
       case 'instagram':
-        return (Icons.camera_alt_outlined, const Color(0xFFE1306C));
+        return (Icons.camera_alt_outlined, BrandTokens.brandInstagram);
       case 'facebook':
-        return (Icons.facebook, const Color(0xFF1877F2));
+        return (Icons.facebook, BrandTokens.brandFacebook);
       case 'site':
         return (Icons.language_rounded, BrandTokens.primaryDark);
       default:

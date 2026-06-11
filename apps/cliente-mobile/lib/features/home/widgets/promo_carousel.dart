@@ -130,8 +130,8 @@ class _PromoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final from = hexColor(item.gradientFrom) ?? const Color(0xFF8B5CF6);
-    final to = hexColor(item.gradientTo) ?? const Color(0xFF5B6CFF);
+    final from = hexColor(item.gradientFrom) ?? BrandTokens.promoFallbackFrom;
+    final to = hexColor(item.gradientTo) ?? BrandTokens.promoFallbackTo;
     final imagemUrl = item.imagemUrl;
     final imagemAbs = imagemUrl == null
         ? null

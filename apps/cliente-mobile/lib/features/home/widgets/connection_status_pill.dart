@@ -61,7 +61,7 @@ class _PillState extends State<_Pill>
     switch (widget.status) {
       case 'ativo':
         return (
-          color: const Color(0xFF22E0A1),
+          color: BrandTokens.successBright,
           label: 'Serviço ativo',
           icon: null,
         );

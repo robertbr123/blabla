@@ -52,14 +52,14 @@ class _FidelidadeMiniCard extends ConsumerWidget {
           padding: const EdgeInsets.all(BrandTokens.spaceMd),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFFE8A33D), Color(0xFFFF8E53)],
+              colors: [BrandTokens.warning, BrandTokens.accentOrange],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFE8A33D).withOpacity(0.25),
+                color: BrandTokens.warning.withOpacity(0.25),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -203,14 +203,14 @@ class _FaleConoscoMiniCard extends ConsumerWidget {
           padding: const EdgeInsets.all(BrandTokens.spaceMd),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF25D366), Color(0xFF128C7E)],
+              colors: [BrandTokens.brandWhatsapp, BrandTokens.brandWhatsappDark],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF25D366).withOpacity(0.25),
+                color: BrandTokens.brandWhatsapp.withOpacity(0.25),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),

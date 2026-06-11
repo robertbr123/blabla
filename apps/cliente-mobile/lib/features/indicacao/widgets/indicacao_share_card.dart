@@ -36,8 +36,8 @@ class IndicacaoShareCard extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFF0B1F3A),
-                  Color(0xFF14B8B0),
+                  BrandTokens.primaryDark,
+                  BrandTokens.primary,
                 ],
               ),
             ),

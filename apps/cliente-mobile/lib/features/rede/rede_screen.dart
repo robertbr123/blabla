@@ -245,7 +245,7 @@ class _HeroRede extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF14B8B0), Color(0xFF22E0A1)],
+          colors: [BrandTokens.primary, BrandTokens.successBright],
         ),
         borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
         boxShadow: BrandTokens.elevation2,

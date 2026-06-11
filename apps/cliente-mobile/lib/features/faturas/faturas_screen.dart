@@ -176,7 +176,7 @@ class _AbertaHeroCard extends StatelessWidget {
                   end: Alignment.bottomRight,
                   colors: [
                     BrandTokens.danger,
-                    Color(0xFFB12B40),
+                    BrandTokens.dangerDeep,
                   ],
                 )
               : BrandTokens.gradientHero,
@@ -250,7 +250,7 @@ class _AbertaHeroCard extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8A33D).withOpacity(0.95),
+                    color: BrandTokens.warning.withOpacity(0.95),
                     borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
                   ),
                   child: const Row(

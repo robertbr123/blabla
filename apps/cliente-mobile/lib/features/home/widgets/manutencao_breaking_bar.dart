@@ -90,14 +90,14 @@ class _MarqueeBarState extends State<_MarqueeBar>
       ),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFE0455A), Color(0xFFCC2233)],
+          colors: [BrandTokens.danger, BrandTokens.dangerStrong],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
         borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFE0455A).withOpacity(0.30),
+            color: BrandTokens.danger.withOpacity(0.30),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -119,14 +119,14 @@ class _MarqueeBarState extends State<_MarqueeBar>
               children: [
                 Icon(
                   Icons.warning_amber_rounded,
-                  color: Color(0xFFCC2233),
+                  color: BrandTokens.dangerStrong,
                   size: 13,
                 ),
                 SizedBox(width: 4),
                 Text(
                   'AVISO',
                   style: TextStyle(
-                    color: Color(0xFFCC2233),
+                    color: BrandTokens.dangerStrong,
                     fontSize: 10,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 0.4,

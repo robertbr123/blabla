@@ -264,7 +264,7 @@ class _StreakBadge extends ConsumerWidget {
                       TextSpan(
                         text: '${s.atual} ',
                         style: const TextStyle(
-                          color: Color(0xFFE8A33D),
+                          color: BrandTokens.warning,
                           fontWeight: FontWeight.w900,
                         ),
                       ),

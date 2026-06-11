@@ -126,7 +126,7 @@ class _StatusHeroState extends State<_StatusHero>
           grad: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF14B8B0), Color(0xFF22E0A1)],
+            colors: [BrandTokens.primary, BrandTokens.successBright],
           ),
           titulo: 'Serviço ativo',
           sub: 'Seu contrato esta vigente.',
@@ -137,7 +137,7 @@ class _StatusHeroState extends State<_StatusHero>
           grad: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFE8A33D), Color(0xFFF59E0B)],
+            colors: [BrandTokens.warning, BrandTokens.warningBright],
           ),
           titulo: 'Serviço suspenso',
           sub: widget.conexao.motivo.isNotEmpty
@@ -150,7 +150,7 @@ class _StatusHeroState extends State<_StatusHero>
           grad: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [BrandTokens.danger, Color(0xFFB12B40)],
+            colors: [BrandTokens.danger, BrandTokens.dangerDeep],
           ),
           titulo: 'Contrato cancelado',
           sub: widget.conexao.motivo.isNotEmpty
@@ -163,7 +163,7 @@ class _StatusHeroState extends State<_StatusHero>
           grad: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF6B7280), Color(0xFF374151)],
+            colors: [BrandTokens.neutralGrey, BrandTokens.neutralGreyDark],
           ),
           titulo: 'Status indisponivel',
           sub: 'Não conseguimos identificar seu contrato no momento.',

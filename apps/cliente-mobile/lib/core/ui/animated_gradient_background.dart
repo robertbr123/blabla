@@ -119,7 +119,7 @@ class _BlobsPainter extends CustomPainter {
 
     // Blob 3 — marinho, embaixo esquerda (bem difuso pra não formar banda)
     final p3 = Paint()
-      ..color = const Color(0xFF1B4D8C).withOpacity(0.22)
+      ..color = const Color(0xFF1B4D8C).withOpacity(0.22) // tom exclusivo do blob de fundo da tela de auth
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 140);
     canvas.drawCircle(
       Offset(

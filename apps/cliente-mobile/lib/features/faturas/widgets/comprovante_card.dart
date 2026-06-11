@@ -34,9 +34,9 @@ class ComprovanteCard extends StatelessWidget {
 
   static const Size designSize = Size(600, 980);
 
-  static const Color _gold = Color(0xFFE8A33D);
-  static const Color _navy = Color(0xFF0B1F3A);
-  static const Color _teal = Color(0xFF14B8B0);
+  static const Color _gold = BrandTokens.warning;
+  static const Color _navy = BrandTokens.primaryDark;
+  static const Color _teal = BrandTokens.primary;
 
   String _idCurto(String id) {
     final clean = id.replaceAll('-', '').toUpperCase();
@@ -59,7 +59,7 @@ class ComprovanteCard extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF051329), Color(0xFF0B1F3A)],
+            colors: [BrandTokens.backgroundDark, BrandTokens.primaryDark],
           ),
         ),
         padding: const EdgeInsets.all(32),
@@ -146,7 +146,7 @@ class ComprovanteCard extends StatelessWidget {
                                 vertical: 12,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF4F8FA),
+                                color: BrandTokens.background,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
                                   color: BrandTokens.divider,
@@ -249,7 +249,7 @@ class _Header extends StatelessWidget {
   final NumberFormat fmtValor;
   final ui.Image? logoImage;
 
-  static const Color _gold = Color(0xFFE8A33D);
+  static const Color _gold = BrandTokens.warning;
 
   @override
   Widget build(BuildContext context) {
@@ -260,9 +260,9 @@ class _Header extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFF0B1F3A),
-            Color(0xFF134A6F),
-            Color(0xFF14B8B0),
+            BrandTokens.primaryDark,
+            Color(0xFF134A6F), // tom intermediário do gradiente, exclusivo deste card
+            BrandTokens.primary,
           ],
           stops: [0.0, 0.55, 1.0],
         ),
@@ -291,12 +291,12 @@ class _Header extends StatelessWidget {
                 child: logoImage != null
                     ? RawImage(image: logoImage, fit: BoxFit.cover)
                     : Container(
-                        color: const Color(0xFF0B1F3A),
+                        color: BrandTokens.primaryDark,
                         alignment: Alignment.center,
                         child: const Text(
                           'O',
                           style: TextStyle(
-                            color: Color(0xFF14B8B0),
+                            color: BrandTokens.primary,
                             fontWeight: FontWeight.w900,
                             fontSize: 28,
                           ),
@@ -409,7 +409,7 @@ class _InfoBlock extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F8FA),
+        color: BrandTokens.background,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -428,7 +428,7 @@ class _InfoBlock extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              color: Color(0xFF0B1F3A),
+              color: BrandTokens.primaryDark,
               fontWeight: FontWeight.w900,
               fontSize: 16,
             ),
@@ -512,7 +512,7 @@ class _WatermarkPago extends StatelessWidget {
           child: Text(
             'PAGO',
             style: TextStyle(
-              color: const Color(0xFFE8A33D).withOpacity(0.06),
+              color: BrandTokens.warning.withOpacity(0.06),
               fontSize: 200,
               fontWeight: FontWeight.w900,
               letterSpacing: -6,

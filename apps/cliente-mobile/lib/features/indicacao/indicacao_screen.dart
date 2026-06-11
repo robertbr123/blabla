@@ -231,14 +231,14 @@ class _Content extends ConsumerWidget {
           height: 52,
           child: OutlinedButton.icon(
             onPressed: () => _shareWhatsApp(context, ref),
-            icon: const Icon(Icons.chat_rounded, color: Color(0xFF25D366)),
+            icon: const Icon(Icons.chat_rounded, color: BrandTokens.brandWhatsapp),
             label: const Text(
               'Enviar pelo WhatsApp',
               style: TextStyle(fontWeight: FontWeight.w800),
             ),
             style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Color(0xFF25D366), width: 1.5),
-              foregroundColor: const Color(0xFF128C7E),
+              side: const BorderSide(color: BrandTokens.brandWhatsapp, width: 1.5),
+              foregroundColor: BrandTokens.brandWhatsappDark,
             ),
           ),
         ),
