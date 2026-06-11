@@ -862,3 +862,52 @@ export interface WhatsAppMetricasOut {
   total_read: number
   total_failed: number
 }
+
+// ════════ Rede WiFi (GenieACS) ════════
+
+export interface RedeAparelho {
+  nome: string
+  ip: string
+  mac: string
+  ativo: boolean
+  interface: string
+}
+
+export interface RedeSinal {
+  rx_power: number | null
+  tx_power: number | null
+  status_gpon: string | null
+  conexao_pppoe: string | null
+  ip_externo: string | null
+  uptime_s: number | null
+  ultimo_erro: string | null
+}
+
+export interface RedeStatus {
+  encontrada: boolean
+  device_id?: string | null
+  modelo?: string | null
+  online: boolean
+  motivo?: string | null
+}
+
+export interface RedeDiagnostico {
+  encontrada: boolean
+  last_inform: string | null
+  aparelhos: RedeAparelho[]
+  sinal: RedeSinal | null
+  motivo: string | null
+}
+
+export interface TrocarSenhaResult {
+  status: string
+  device_id: string
+  reiniciando: boolean
+  aviso: string
+}
+
+export interface RebootResult {
+  status: string
+  device_id: string
+  aviso: string
+}

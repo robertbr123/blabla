@@ -1651,3 +1651,51 @@ export function useWhatsAppMetricas(days: number = 7) {
     refetchInterval: 120_000,
   })
 }
+
+// ════════ Rede WiFi (GenieACS) — por conversa ════════
+
+export function useRedeStatusConversa(conversaId: string, enabled: boolean) {
+  return useQuery<import('./types').RedeStatus>({
+    queryKey: ['rede-status', conversaId],
+    queryFn: () => apiFetch(`/api/v1/conversas/${conversaId}/rede/status`),
+    enabled,
+    staleTime: 30_000,
+  })
+}
+
+export function useRedeDiagnostico(conversaId: string, enabled: boolean) {
+  return useQuery<import('./types').RedeDiagnostico>({
+    queryKey: ['rede-diagnostico', conversaId],
+    queryFn: () => apiFetch(`/api/v1/conversas/${conversaId}/rede/diagnostico`),
+    enabled,
+  })
+}
+
+export function useTrocarSenhaConversa(conversaId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (senha: string) =>
+      apiFetch<import('./types').TrocarSenhaResult>(
+        `/api/v1/conversas/${conversaId}/rede/wifi/senha`,
+        { method: 'POST', body: JSON.stringify({ senha }) },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['rede-diagnostico', conversaId] })
+      qc.invalidateQueries({ queryKey: ['rede-status', conversaId] })
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : 'Falha ao trocar a senha'),
+  })
+}
+
+export function useReiniciarOnu(conversaId: string) {
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<import('./types').RebootResult>(
+        `/api/v1/conversas/${conversaId}/rede/reboot`,
+        { method: 'POST' },
+      ),
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : 'Falha ao reiniciar'),
+  })
+}
