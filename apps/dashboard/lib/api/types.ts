@@ -897,6 +897,7 @@ export interface RedeDiagnostico {
   aparelhos: RedeAparelho[]
   sinal: RedeSinal | null
   motivo: string | null
+  pppoe_login: string | null
 }
 
 export interface TrocarSenhaResult {

@@ -114,6 +114,7 @@ export function ConversaRedePanel({ conversaId, temCliente, onColarDiagnostico }
             <p>Uptime: {fmtUptime(d.sinal.uptime_s)}</p>
           </div>
         )}
+        {d.pppoe_login && <p>PPPoE: {d.pppoe_login}</p>}
       </div>
 
       <div>
