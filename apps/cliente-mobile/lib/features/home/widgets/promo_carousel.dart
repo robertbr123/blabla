@@ -64,6 +64,9 @@ class _PromoCarouselState extends ConsumerState<PromoCarousel> {
     if (widget.items.length < 2) return;
     _autoTimer = Timer.periodic(const Duration(seconds: 6), (_) {
       if (!mounted || !_ctrl.hasClients) return;
+      // Home coberta por outra rota → não avança nem registra view falsa.
+      final route = ModalRoute.of(context);
+      if (route != null && !route.isCurrent) return;
       final next = (_idx + 1) % widget.items.length;
       _ctrl.animateToPage(
         next,

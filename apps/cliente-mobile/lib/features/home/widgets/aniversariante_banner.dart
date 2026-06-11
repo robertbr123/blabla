@@ -90,7 +90,7 @@ class _AniversarianteBannerState extends ConsumerState<AniversarianteBanner> {
             borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
             boxShadow: [
               BoxShadow(
-                color: BrandTokens.accentPink.withOpacity(0.30),
+                color: BrandTokens.accentPink.withValues(alpha: 0.30),
                 blurRadius: 14,
                 offset: const Offset(0, 6),
               ),

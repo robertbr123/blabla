@@ -57,7 +57,7 @@ class _FidelidadeMiniCard extends ConsumerWidget {
             borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
             boxShadow: [
               BoxShadow(
-                color: BrandTokens.warning.withOpacity(0.25),
+                color: BrandTokens.warning.withValues(alpha: 0.25),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -204,7 +204,7 @@ class _FaleConoscoMiniCard extends ConsumerWidget {
             borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
             boxShadow: [
               BoxShadow(
-                color: BrandTokens.brandWhatsapp.withOpacity(0.25),
+                color: BrandTokens.brandWhatsapp.withValues(alpha: 0.25),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),

@@ -250,7 +250,7 @@ class _AbertaHeroCard extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: BrandTokens.warning.withOpacity(0.95),
+                    color: BrandTokens.warning.withValues(alpha: 0.95),
                     borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
                   ),
                   child: const Row(

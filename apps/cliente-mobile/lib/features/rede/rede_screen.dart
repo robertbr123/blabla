@@ -98,7 +98,17 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
           await ref.read(redeStatusProvider.future);
         },
         child: async.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.only(
+              top: MediaQuery.paddingOf(context).top +
+                  kToolbarHeight +
+                  BrandTokens.spaceMd,
+            ),
+            children: const [
+              Center(child: CircularProgressIndicator()),
+            ],
+          ),
           error: (_, __) => const _EmConstrucao(
             titulo: 'Não conseguimos carregar agora',
             texto: 'Tente novamente em instantes.',

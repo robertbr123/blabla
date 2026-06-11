@@ -138,7 +138,7 @@ class NotificacoesScreen extends ConsumerWidget {
               separatorBuilder: (_, __) => const Divider(
                 height: 1,
                 indent: 72,
-                color: Color(0x11000000),
+                color: Color(0x11000000), // preto translúcido de divisor — não é cor de marca
               ),
               itemBuilder: (_, i) => _NotifTile(notif: lista[i]),
             );

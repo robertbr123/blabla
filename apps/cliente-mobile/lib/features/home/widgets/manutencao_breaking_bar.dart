@@ -97,7 +97,7 @@ class _MarqueeBarState extends State<_MarqueeBar>
         borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
         boxShadow: [
           BoxShadow(
-            color: BrandTokens.danger.withOpacity(0.30),
+            color: BrandTokens.danger.withValues(alpha: 0.30),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),

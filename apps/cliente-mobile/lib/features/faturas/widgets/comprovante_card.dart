@@ -512,7 +512,7 @@ class _WatermarkPago extends StatelessWidget {
           child: Text(
             'PAGO',
             style: TextStyle(
-              color: BrandTokens.warning.withOpacity(0.06),
+              color: BrandTokens.warning.withValues(alpha: 0.06),
               fontSize: 200,
               fontWeight: FontWeight.w900,
               letterSpacing: -6,
