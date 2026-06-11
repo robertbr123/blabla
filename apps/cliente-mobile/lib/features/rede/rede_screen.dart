@@ -91,7 +91,7 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
         },
         child: async.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, __) => _EmConstrucao(
+          error: (_, __) => const _EmConstrucao(
             titulo: 'Não conseguimos carregar agora',
             texto: 'Tente novamente em instantes.',
           ),

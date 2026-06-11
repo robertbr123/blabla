@@ -6,11 +6,9 @@ ClienteAppUser e roda o cooldown contra a sessao real.
 from __future__ import annotations
 
 import collections.abc
-from typing import Any
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import pytest
-import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from ondeline_api.adapters.genieacs.base import GenieAcsDevice, RedeWlan
