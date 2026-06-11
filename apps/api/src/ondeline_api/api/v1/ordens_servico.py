@@ -26,6 +26,7 @@ from ondeline_api.api.schemas.os import (
     OsReatribuirIn,
 )
 from ondeline_api.api.schemas.pagination import CursorPage, encode_cursor
+from ondeline_api.api.v1.rede import get_rede_service
 from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.rbac import require_role
 from ondeline_api.db.crypto import decrypt_pii
@@ -37,6 +38,7 @@ from ondeline_api.repositories.conversa import ConversaRepo
 from ondeline_api.repositories.ordem_servico import OrdemServicoRepo
 from ondeline_api.repositories.tecnico import TecnicoRepo
 from ondeline_api.services.os_pdf import generate_os_pdf
+from ondeline_api.services.rede_service import RedeService, qualidade_sinal, snapshot_sinal
 
 router = APIRouter(prefix="/api/v1/os", tags=["ordens-servico"])
 
@@ -155,6 +157,7 @@ async def list_os(
 async def create_os(
     body: OsCreate,
     session: Annotated[AsyncSession, Depends(get_db)],
+    rede: Annotated[RedeService, Depends(get_rede_service)],
 ) -> OsOut:
     repo = OrdemServicoRepo(session)
     tecnico = await TecnicoRepo(session).get_by_id(body.tecnico_id)
@@ -163,6 +166,19 @@ async def create_os(
     if not tecnico.ativo:
         raise HTTPException(status_code=422, detail="Técnico inativo")
     codigo = await next_codigo(session)
+
+    sinal_snap: dict[str, Any] | None = None
+    if body.cliente_id is not None:
+        try:
+            from sqlalchemy import select
+            cli = (await session.execute(
+                select(Cliente).where(Cliente.id == body.cliente_id)
+            )).scalar_one_or_none()
+            if cli is not None and cli.cpf_cnpj_encrypted:
+                sinal_snap = await snapshot_sinal(rede, decrypt_pii(cli.cpf_cnpj_encrypted))
+        except Exception as e:  # nunca bloqueia a criacao da OS
+            log.warning("create_os.sinal_snapshot_falhou", error=str(e))
+
     os_ = await repo.create(
         codigo=codigo,
         cliente_id=body.cliente_id,
@@ -172,6 +188,7 @@ async def create_os(
         plano=body.plano,
         pppoe_login=body.pppoe_login,
         pppoe_senha=body.pppoe_senha,
+        sinal=sinal_snap,
     )
     if body.nome_sgp:
         os_.nome_sgp = body.nome_sgp
@@ -199,6 +216,9 @@ async def create_os(
             msg += f"🔑 *PPPoE Login:* {body.pppoe_login}\n"
         if body.pppoe_senha:
             msg += f"🔐 *PPPoE Senha:* {body.pppoe_senha}\n"
+        if sinal_snap and sinal_snap.get("rx_power") is not None:
+            _, emoji = qualidade_sinal(sinal_snap["rx_power"])
+            msg += f"📶 *Sinal:* {emoji} {sinal_snap['rx_power']} dBm\n"
         msg += f"\n⚠️ *Problema:*\n{body.problema}\n"
         msg += f"\n🗓️ *Agendamento:* {agendamento_str}\n"
         msg += f"\n_Para concluir via WhatsApp, envie:_ *CONCLUIR {codigo}*"

@@ -2,13 +2,16 @@
 from __future__ import annotations
 
 import io
+from collections.abc import AsyncIterator
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
+from ondeline_api.adapters.genieacs.base import GenieAcsDevice, SinalFibra
+from ondeline_api.api.v1.rede import get_rede_service
 from ondeline_api.auth.passwords import hash_password
 from ondeline_api.config import get_settings
 from ondeline_api.db.crypto import encrypt_pii
@@ -16,6 +19,7 @@ from ondeline_api.db.models.business import Cliente, OrdemServico, OsStatus
 from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db, get_redis
 from ondeline_api.main import create_app
+from ondeline_api.services.rede_service import DiagnosticoRede
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -444,3 +448,96 @@ async def test_delete_os(
             )
     assert r.status_code == 200
     assert r.json()["notif_tecnico"] is True
+
+
+# ─── Sinal snapshot on create ────────────────────────────────────────────────
+
+_CPF_SINAL = "01882354265"
+
+
+class _FakeRedeService:
+    async def diagnostico_rede(
+        self, cpf: str, serial: str | None = None
+    ) -> DiagnosticoRede:
+        device = GenieAcsDevice(
+            device_id="X",
+            sinal=SinalFibra(rx_power=-13.0, status_gpon="Up"),
+        )
+        return DiagnosticoRede(encontrada=True, device=device)
+
+
+def _make_app_with_rede(
+    db_session: AsyncSession,
+    redis_client: Redis,  # type: ignore[type-arg]
+    fake_rede: _FakeRedeService,
+) -> FastAPI:
+    app = create_app()
+
+    async def _override_db() -> Any:
+        yield db_session
+
+    async def _override_redis() -> Any:
+        return redis_client
+
+    async def _override_rede() -> AsyncIterator[_FakeRedeService]:
+        yield fake_rede
+
+    app.dependency_overrides[get_db] = _override_db
+    app.dependency_overrides[get_redis] = _override_redis
+    app.dependency_overrides[get_rede_service] = _override_rede
+    return app
+
+
+@pytest.mark.asyncio
+async def test_create_os_grava_sinal(
+    db_session: AsyncSession, redis_client: Redis  # type: ignore[type-arg]
+) -> None:
+    """POST /api/v1/os captura sinal best-effort e grava no DB."""
+    from unittest.mock import AsyncMock, patch
+
+    from ondeline_api.db.crypto import encrypt_pii as _enc
+    from ondeline_api.db.crypto import hash_pii
+
+    cli = Cliente(
+        cpf_cnpj_encrypted=_enc(_CPF_SINAL),
+        cpf_hash=hash_pii(_CPF_SINAL),
+        nome_encrypted=_enc("Cliente Sinal"),
+        whatsapp="5592900000000",
+    )
+    db_session.add(cli)
+    await db_session.flush()
+
+    tec = await _make_tecnico(db_session)
+    admin = await _make_admin(db_session)
+
+    fake_rede = _FakeRedeService()
+    app = _make_app_with_rede(db_session, redis_client, fake_rede)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        token = await _login(c, admin["email"], admin["password"])
+        with patch(
+            "ondeline_api.api.v1.ordens_servico._send_whatsapp",
+            new_callable=AsyncMock,
+        ):
+            r = await c.post(
+                "/api/v1/os",
+                json={
+                    "cliente_id": str(cli.id),
+                    "tecnico_id": str(tec.id),
+                    "problema": "Sinal fraco",
+                    "endereco": "Rua Fibra, 10",
+                },
+                headers=_auth(token),
+            )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["sinal"] is not None
+    assert body["sinal"]["qualidade"] == "bom"
+
+    from sqlalchemy import select as _select
+
+    from ondeline_api.db.models.business import OrdemServico as _OS
+    os_id = UUID(body["id"])
+    os_row = (
+        await db_session.execute(_select(_OS).where(_OS.id == os_id))
+    ).scalar_one()
+    assert os_row.sinal is not None
