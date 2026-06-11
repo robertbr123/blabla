@@ -36,9 +36,11 @@ from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db
 from ondeline_api.services.rede_service import (
     CpfInvalidoError,
+    DiagnosticoRede,
     OnuNaoEncontradaError,
     RedeService,
     SenhaInvalidaError,
+    StatusRede,
 )
 from ondeline_api.services.sgp_cache import SgpCacheService
 from ondeline_api.services.sgp_config import load_sgp_config
@@ -62,6 +64,42 @@ def _sinal_out(s: SinalFibra | None) -> SinalFibraOut | None:
         ip_externo=s.ip_externo,
         uptime_s=s.uptime_s,
         ultimo_erro=s.ultimo_erro,
+    )
+
+
+def status_out(st: StatusRede) -> StatusRedeOut:
+    if not st.encontrada or st.device is None:
+        return StatusRedeOut(
+            encontrada=False, pppoe_login=st.pppoe_login, motivo=st.motivo
+        )
+    d = st.device
+    return StatusRedeOut(
+        encontrada=True,
+        device_id=d.device_id,
+        fabricante=d.fabricante,
+        modelo=d.modelo,
+        online=d.online,
+        last_inform=d.last_inform,
+        redes=[
+            RedeWlanOut(instancia=r.instancia, ssid=r.ssid, enabled=r.enabled)
+            for r in d.redes
+        ],
+        pppoe_login=st.pppoe_login,
+    )
+
+
+def diagnostico_out(diag: DiagnosticoRede) -> DiagnosticoOut:
+    if not diag.encontrada or diag.device is None:
+        return DiagnosticoOut(encontrada=False, motivo=diag.motivo)
+    d = diag.device
+    return DiagnosticoOut(
+        encontrada=True,
+        last_inform=d.last_inform,
+        aparelhos=[
+            AparelhoOut(nome=a.nome, ip=a.ip, mac=a.mac, ativo=a.ativo, interface=a.interface)
+            for a in d.aparelhos
+        ],
+        sinal=_sinal_out(d.sinal),
     )
 
 
@@ -107,21 +145,7 @@ async def status_rede(
         raise HTTPException(status_code=422, detail=str(e)) from e
     except GenieAcsUnavailableError as e:
         raise HTTPException(status_code=503, detail="GenieACS indisponivel") from e
-    if not st.encontrada or st.device is None:
-        return StatusRedeOut(
-            encontrada=False, pppoe_login=st.pppoe_login, motivo=st.motivo
-        )
-    d = st.device
-    return StatusRedeOut(
-        encontrada=True,
-        device_id=d.device_id,
-        fabricante=d.fabricante,
-        modelo=d.modelo,
-        online=d.online,
-        last_inform=d.last_inform,
-        redes=[RedeWlanOut(instancia=r.instancia, ssid=r.ssid, enabled=r.enabled) for r in d.redes],
-        pppoe_login=st.pppoe_login,
-    )
+    return status_out(st)
 
 
 @router.post("/diagnostico", response_model=DiagnosticoOut, dependencies=[_role_dep])
@@ -135,18 +159,7 @@ async def diagnostico_rede(
         raise HTTPException(status_code=422, detail=str(e)) from e
     except GenieAcsUnavailableError as e:
         raise HTTPException(status_code=503, detail="GenieACS indisponivel") from e
-    if not diag.encontrada or diag.device is None:
-        return DiagnosticoOut(encontrada=False, motivo=diag.motivo)
-    d = diag.device
-    return DiagnosticoOut(
-        encontrada=True,
-        last_inform=d.last_inform,
-        aparelhos=[
-            AparelhoOut(nome=a.nome, ip=a.ip, mac=a.mac, ativo=a.ativo, interface=a.interface)
-            for a in d.aparelhos
-        ],
-        sinal=_sinal_out(d.sinal),
-    )
+    return diagnostico_out(diag)
 
 
 @router.post(
