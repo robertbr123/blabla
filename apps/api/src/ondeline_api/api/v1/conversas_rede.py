@@ -15,20 +15,25 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.adapters.genieacs.base import GenieAcsUnavailableError
-from ondeline_api.api.schemas.rede import DiagnosticoOut, StatusRedeOut
+from ondeline_api.api.schemas.conversa_rede import RebootOut, TrocarSenhaConversaIn
+from ondeline_api.api.schemas.rede import DiagnosticoOut, StatusRedeOut, TrocarSenhaOut
 from ondeline_api.api.v1.rede import (
+    AVISO_REBOOT,
     diagnostico_out,
     get_rede_service,
     status_out,
 )
+from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.rbac import require_role
 from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.business import Cliente, Conversa
-from ondeline_api.db.models.identity import Role
+from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db
 from ondeline_api.services.rede_service import (
     CpfInvalidoError,
+    OnuNaoEncontradaError,
     RedeService,
+    SenhaInvalidaError,
 )
 
 router = APIRouter(prefix="/api/v1/conversas", tags=["conversas:rede"])
@@ -99,3 +104,59 @@ async def diagnostico_conversa(
     except GenieAcsUnavailableError as e:
         raise HTTPException(status_code=503, detail="GenieACS indisponivel") from e
     return diagnostico_out(diag)
+
+
+@router.post(
+    "/{conversa_id}/rede/wifi/senha",
+    response_model=TrocarSenhaOut,
+    dependencies=[_role_dep],
+)
+async def trocar_senha_conversa(
+    conversa_id: UUID,
+    payload: TrocarSenhaConversaIn,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[RedeService, Depends(get_rede_service)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> TrocarSenhaOut:
+    try:
+        cpf = await _cpf_da_conversa(session, conversa_id)
+    except ConversaSemClienteError as e:
+        raise _sem_cliente_http() from e
+    try:
+        res = await service.trocar_senha_wifi(
+            cpf=cpf, nova_senha=payload.senha, serial=None, ator_user_id=user.id
+        )
+    except (SenhaInvalidaError, CpfInvalidoError) as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except OnuNaoEncontradaError as e:
+        raise HTTPException(status_code=404, detail="ONU nao encontrada") from e
+    except GenieAcsUnavailableError as e:
+        raise HTTPException(status_code=503, detail="GenieACS indisponivel") from e
+    aviso = AVISO_REBOOT if res.reiniciando else "Senha enviada."
+    return TrocarSenhaOut(
+        status="enviado", device_id=res.device_id, reiniciando=res.reiniciando, aviso=aviso
+    )
+
+
+@router.post(
+    "/{conversa_id}/rede/reboot", response_model=RebootOut, dependencies=[_role_dep]
+)
+async def reboot_conversa(
+    conversa_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    service: Annotated[RedeService, Depends(get_rede_service)],
+    user: Annotated[User, Depends(get_current_user)],
+) -> RebootOut:
+    try:
+        cpf = await _cpf_da_conversa(session, conversa_id)
+    except ConversaSemClienteError as e:
+        raise _sem_cliente_http() from e
+    try:
+        res = await service.reiniciar_onu(cpf=cpf, serial=None, ator_user_id=user.id)
+    except CpfInvalidoError as e:
+        raise HTTPException(status_code=422, detail=str(e)) from e
+    except OnuNaoEncontradaError as e:
+        raise HTTPException(status_code=404, detail="ONU nao encontrada") from e
+    except GenieAcsUnavailableError as e:
+        raise HTTPException(status_code=503, detail="GenieACS indisponivel") from e
+    return RebootOut(status="enviado", device_id=res.device_id, aviso=AVISO_REBOOT)

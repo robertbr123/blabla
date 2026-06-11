@@ -168,3 +168,38 @@ async def test_conversa_sem_cliente_vinculado_409(
         token = await _login(c, user["email"], user["password"])
         r = await c.get(f"/api/v1/conversas/{conv_id}/rede/diagnostico", headers=_auth(token))
     assert r.status_code == 409, r.text
+
+
+async def test_trocar_senha_da_conversa(
+    db_session: AsyncSession, redis_client: Any
+) -> None:
+    fake = _FakeService()
+    app = _make_app(db_session, redis_client, fake)
+    user = await _make_user(db_session, Role.ATENDENTE)
+    conv_id = await _make_conversa(db_session, com_cliente=True)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        token = await _login(c, user["email"], user["password"])
+        r = await c.post(
+            f"/api/v1/conversas/{conv_id}/rede/wifi/senha",
+            json={"senha": "senhaboa123"}, headers=_auth(token),
+        )
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "enviado"
+    assert fake.cpf_recebido == CPF
+
+
+async def test_reboot_da_conversa(
+    db_session: AsyncSession, redis_client: Any
+) -> None:
+    fake = _FakeService()
+    app = _make_app(db_session, redis_client, fake)
+    user = await _make_user(db_session, Role.ATENDENTE)
+    conv_id = await _make_conversa(db_session, com_cliente=True)
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        token = await _login(c, user["email"], user["password"])
+        r = await c.post(f"/api/v1/conversas/{conv_id}/rede/reboot", headers=_auth(token))
+    assert r.status_code == 200, r.text
+    assert r.json()["device_id"] == "DEV-X"
+    assert fake.cpf_recebido == CPF
