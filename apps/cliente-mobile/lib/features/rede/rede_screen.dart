@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/rede_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/contrato/contrato_atual_provider.dart';
 
 enum _Fase { editando, enviando, reconectando, pronto }
 
@@ -55,7 +56,10 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
 
     setState(() => _fase = _Fase.enviando);
     try {
-      final res = await ref.read(redeRepositoryProvider).trocarSenha(_senha.text);
+      final contratoId = ref.read(contratoAtualProvider);
+      final res = await ref
+          .read(redeRepositoryProvider)
+          .trocarSenha(_senha.text, contratoId: contratoId);
       if (!mounted) return;
       setState(() => _fase = res.reiniciando ? _Fase.reconectando : _Fase.pronto);
     } on CooldownException catch (e) {
@@ -87,6 +91,7 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(redeStatusProvider);
+          ref.invalidate(redeAparelhosProvider);
           await ref.read(redeStatusProvider.future);
         },
         child: async.when(
@@ -194,6 +199,7 @@ class _FormTroca extends StatelessWidget {
               ],
               const SizedBox(height: BrandTokens.spaceSm),
               const Text(
+                'Esta senha vale para suas duas redes (2.4GHz e 5GHz). '
                 'De 8 a 63 caracteres. Ao trocar, sua internet reinicia por ~2 min.',
                 style: TextStyle(color: BrandTokens.textSecondary, fontSize: 12),
               ),
@@ -212,6 +218,8 @@ class _FormTroca extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: BrandTokens.spaceLg),
+        const _SaudeEDispositivos(),
       ],
     );
   }
@@ -429,6 +437,198 @@ class _EmConstrucao extends StatelessWidget {
           style: const TextStyle(color: BrandTokens.textSecondary, fontSize: 15, height: 1.4),
         ),
       ],
+    );
+  }
+}
+
+class _SaudeEDispositivos extends ConsumerWidget {
+  const _SaudeEDispositivos();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(redeAparelhosProvider);
+    return async.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.all(BrandTokens.spaceMd),
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (d) {
+        if (!d.encontrada) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _SaudeBadge(saude: d.saude),
+            const SizedBox(height: BrandTokens.spaceLg),
+            _DispositivosCard(aparelhos: d.aparelhos, total: d.total),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _SaudeBadge extends StatelessWidget {
+  const _SaudeBadge({required this.saude});
+  final String saude;
+
+  ({Color cor, IconData icon, String label, String sub}) _ui() {
+    switch (saude) {
+      case 'excelente':
+        return (
+          cor: BrandTokens.success,
+          icon: Icons.signal_cellular_alt_rounded,
+          label: 'Sinal excelente',
+          sub: 'Sua fibra está com sinal ótimo.',
+        );
+      case 'boa':
+        return (
+          cor: BrandTokens.primary,
+          icon: Icons.signal_cellular_alt_rounded,
+          label: 'Sinal bom',
+          sub: 'Sua conexão está saudável.',
+        );
+      case 'fraca':
+        return (
+          cor: BrandTokens.warning,
+          icon: Icons.signal_cellular_alt_2_bar_rounded,
+          label: 'Sinal fraco',
+          sub: 'Pode valer a pena falar com o suporte.',
+        );
+      default:
+        return (
+          cor: BrandTokens.info,
+          icon: Icons.wifi_tethering_rounded,
+          label: 'Conexão ativa',
+          sub: 'Sua rede está no ar.',
+        );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ui = _ui();
+    return Container(
+      padding: const EdgeInsets.all(BrandTokens.spaceMd),
+      decoration: BoxDecoration(
+        color: ui.cor.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
+        border: Border.all(color: ui.cor.withOpacity(0.30)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: ui.cor.withOpacity(0.16),
+              borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
+            ),
+            child: Icon(ui.icon, color: ui.cor, size: 22),
+          ),
+          const SizedBox(width: BrandTokens.spaceMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(ui.label,
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: ui.cor)),
+                Text(ui.sub,
+                    style: const TextStyle(color: BrandTokens.textSecondary, fontSize: 12)),
+              ],
+            ),
+          ),
+          if (saude == 'fraca')
+            TextButton(
+              onPressed: () => context.push('/suporte/novo'),
+              child: const Text('Suporte'),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DispositivosCard extends StatelessWidget {
+  const _DispositivosCard({required this.aparelhos, required this.total});
+  final List<RedeAparelho> aparelhos;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? BrandTokens.surfaceDark : BrandTokens.surface,
+        borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
+        border: Border.all(color: isDark ? Colors.white12 : BrandTokens.divider),
+        boxShadow: BrandTokens.elevation1,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(BrandTokens.spaceMd),
+            child: Text(
+              'Dispositivos conectados ($total)',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+            ),
+          ),
+          if (aparelhos.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(
+                  BrandTokens.spaceMd, 0, BrandTokens.spaceMd, BrandTokens.spaceMd),
+              child: Text(
+                'Nenhum aparelho conectado agora.',
+                style: TextStyle(color: BrandTokens.textSecondary, fontSize: 13),
+              ),
+            )
+          else
+            ...aparelhos.map((a) => _DispositivoRow(aparelho: a)),
+        ],
+      ),
+    );
+  }
+}
+
+class _DispositivoRow extends StatelessWidget {
+  const _DispositivoRow({required this.aparelho});
+  final RedeAparelho aparelho;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: BrandTokens.spaceMd, vertical: BrandTokens.spaceSm),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: BrandTokens.primary.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
+            ),
+            child: const Icon(Icons.devices_other_rounded,
+                color: BrandTokens.primary, size: 18),
+          ),
+          const SizedBox(width: BrandTokens.spaceMd),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(aparelho.nomeExibicao,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (aparelho.ip.isNotEmpty)
+                  Text(aparelho.ip,
+                      style: const TextStyle(
+                          color: BrandTokens.textSecondary, fontSize: 12)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
