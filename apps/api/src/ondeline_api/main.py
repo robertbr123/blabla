@@ -27,7 +27,6 @@ from ondeline_api.api.v1 import cliente_app_auth as v1_cliente_app_auth
 from ondeline_api.api.v1 import cliente_app_card_dia as v1_cliente_app_card_dia
 from ondeline_api.api.v1 import cliente_app_chat as v1_cliente_app_chat
 from ondeline_api.api.v1 import cliente_app_conexao as v1_cliente_app_conexao
-from ondeline_api.api.v1 import cliente_app_rede as v1_cliente_app_rede
 from ondeline_api.api.v1 import cliente_app_contatos as v1_cliente_app_contatos
 from ondeline_api.api.v1 import cliente_app_fidelidade as v1_cliente_app_fidelidade
 from ondeline_api.api.v1 import cliente_app_indicacao as v1_cliente_app_indicacao
@@ -37,6 +36,7 @@ from ondeline_api.api.v1 import cliente_app_missoes as v1_cliente_app_missoes
 from ondeline_api.api.v1 import cliente_app_notificacoes as v1_cliente_app_notificacoes
 from ondeline_api.api.v1 import cliente_app_os as v1_cliente_app_os
 from ondeline_api.api.v1 import cliente_app_promocoes as v1_cliente_app_promocoes
+from ondeline_api.api.v1 import cliente_app_rede as v1_cliente_app_rede
 from ondeline_api.api.v1 import cliente_app_streak as v1_cliente_app_streak
 from ondeline_api.api.v1 import clientes as v1_clientes
 from ondeline_api.api.v1 import clientes_cadastro as v1_clientes_cadastro

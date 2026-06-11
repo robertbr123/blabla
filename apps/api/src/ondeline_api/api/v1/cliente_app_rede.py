@@ -7,7 +7,7 @@ do body: o cliente so mexe na propria ONU. Cooldown anti-flood de reboots.
 from __future__ import annotations
 
 import math
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -50,7 +50,7 @@ async def _minutos_cooldown_restante(session: AsyncSession, cpf_digits: str) -> 
     Olha a troca mais recente do mesmo cpf_hash dentro da janela. cpf_hash e
     escrito pelo RedeService como hash_pii(_so_digitos(cpf)); replicamos igual.
     """
-    since = datetime.now(timezone.utc) - timedelta(minutes=COOLDOWN_MINUTOS)
+    since = datetime.now(UTC) - timedelta(minutes=COOLDOWN_MINUTOS)
     stmt = select(func.max(RedeWifiPedido.created_at)).where(
         RedeWifiPedido.cpf_hash == hash_pii(cpf_digits),
         RedeWifiPedido.created_at >= since,
@@ -59,7 +59,7 @@ async def _minutos_cooldown_restante(session: AsyncSession, cpf_digits: str) -> 
     if last is None:
         return 0
     libera = last + timedelta(minutes=COOLDOWN_MINUTOS)
-    restante = (libera - datetime.now(timezone.utc)).total_seconds()
+    restante = (libera - datetime.now(UTC)).total_seconds()
     return max(0, math.ceil(restante / 60))
 
 
