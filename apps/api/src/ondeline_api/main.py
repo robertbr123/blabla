@@ -42,6 +42,7 @@ from ondeline_api.api.v1 import clientes as v1_clientes
 from ondeline_api.api.v1 import clientes_cadastro as v1_clientes_cadastro
 from ondeline_api.api.v1 import config as v1_config
 from ondeline_api.api.v1 import conversas as v1_conversas
+from ondeline_api.api.v1 import conversas_rede as v1_conversas_rede
 from ondeline_api.api.v1 import conversas_stream as v1_conversas_stream
 from ondeline_api.api.v1 import estoque as v1_estoque
 from ondeline_api.api.v1 import indicacoes as v1_indicacoes
@@ -168,6 +169,7 @@ def create_app() -> FastAPI:
     app.include_router(metrics_router.router)
     app.include_router(v1_conversas.router)
     app.include_router(v1_conversas_stream.router)
+    app.include_router(v1_conversas_rede.router)
     app.include_router(v1_os.router)
     app.include_router(v1_rede.router)
     app.include_router(v1_leads.router)
