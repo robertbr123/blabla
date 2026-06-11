@@ -29,6 +29,7 @@ class _FakeGenie:
         self._by_serial = by_serial
         self.set_calls: list[tuple[str, list[tuple[str, str, str]]]] = []
         self.reboots: list[str] = []
+        self.refresh_calls: list[str] = []
 
     async def find_device_by_pppoe(self, login: str) -> GenieAcsDevice | None:
         return self._by_pppoe
@@ -41,6 +42,9 @@ class _FakeGenie:
 
     async def reboot(self, device_id):
         self.reboots.append(device_id)
+
+    async def refresh_wan(self, device_id):
+        self.refresh_calls.append(device_id)
 
 
 class _FakeSgpCache:
@@ -191,3 +195,40 @@ async def test_falha_no_envio_deixa_pedido_pendente(db_session: AsyncSession) ->
                                     serial=None, ator_user_id=uuid4())
     pedido = (await db_session.execute(select(RedeWifiPedido))).scalar_one()
     assert pedido.status == "pendente"
+
+
+def _dev_diag() -> GenieAcsDevice:
+    from ondeline_api.adapters.genieacs.base import Aparelho, SinalFibra
+    return GenieAcsDevice(
+        device_id="30E1F1-AX1800-X",
+        modelo="AX1800",
+        online=True,
+        aparelhos=[Aparelho(nome="Cel", ip="192.168.1.2", mac="AA:01", ativo=True)],
+        sinal=SinalFibra(rx_power=-26.5, conexao_pppoe="Connected"),
+    )
+
+
+async def test_diagnostico_resolve_dispara_refresh_e_retorna(db_session: AsyncSession) -> None:
+    genie = _FakeGenie(by_pppoe=_dev_diag())
+    svc = _svc(db_session, genie)
+    diag = await svc.diagnostico_rede(CPF)
+    assert diag.encontrada is True
+    assert diag.device is not None
+    assert diag.device.aparelhos[0].mac == "AA:01"
+    assert diag.device.sinal is not None and diag.device.sinal.rx_power == -26.5
+    assert genie.refresh_calls == ["30E1F1-AX1800-X"]  # refresh disparado
+
+
+async def test_diagnostico_onu_nao_encontrada(db_session: AsyncSession) -> None:
+    genie = _FakeGenie(by_pppoe=None, by_serial=None)
+    svc = _svc(db_session, genie)
+    diag = await svc.diagnostico_rede(CPF)
+    assert diag.encontrada is False
+    assert diag.motivo == "onu_nao_encontrada"
+    assert genie.refresh_calls == []  # sem device, sem refresh
+
+
+async def test_diagnostico_cpf_vazio_rejeitado(db_session: AsyncSession) -> None:
+    svc = _svc(db_session, _FakeGenie(by_pppoe=_dev_diag()))
+    with pytest.raises(CpfInvalidoError):
+        await svc.diagnostico_rede("---")

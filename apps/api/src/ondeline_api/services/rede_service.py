@@ -41,6 +41,7 @@ class GenieProto(Protocol):
         self, device_id: str, params: list[tuple[str, str, str]]
     ) -> None: ...
     async def reboot(self, device_id: str) -> None: ...
+    async def refresh_wan(self, device_id: str) -> None: ...
 
 
 class SgpCacheProto(Protocol):
@@ -64,6 +65,13 @@ class StatusRede:
     encontrada: bool
     device: GenieAcsDevice | None = None
     pppoe_login: str | None = None
+    motivo: str | None = None  # "onu_nao_encontrada" quando encontrada=False
+
+
+@dataclass(frozen=True, slots=True)
+class DiagnosticoRede:
+    encontrada: bool
+    device: GenieAcsDevice | None = None
     motivo: str | None = None  # "onu_nao_encontrada" quando encontrada=False
 
 
@@ -150,6 +158,21 @@ class RedeService:
                 encontrada=False, pppoe_login=res.pppoe, motivo="onu_nao_encontrada"
             )
         return StatusRede(encontrada=True, device=res.device, pppoe_login=res.pppoe)
+
+    async def diagnostico_rede(
+        self, cpf: str, serial: str | None = None
+    ) -> DiagnosticoRede:
+        """Read-only: aparelhos conectados + sinal da fibra. Dispara um
+        refreshObject best-effort do WANDevice (popula optico/PPPoE no proximo
+        inform) e retorna o que ja esta na arvore do device."""
+        cpf = _so_digitos(cpf)
+        if not cpf:
+            raise CpfInvalidoError("CPF invalido")
+        res = await self._resolver_por_cpf(cpf, serial)
+        if res.device is None:
+            return DiagnosticoRede(encontrada=False, motivo="onu_nao_encontrada")
+        await self._genie.refresh_wan(res.device.device_id)  # best-effort no client
+        return DiagnosticoRede(encontrada=True, device=res.device)
 
     async def trocar_senha_wifi(
         self,
