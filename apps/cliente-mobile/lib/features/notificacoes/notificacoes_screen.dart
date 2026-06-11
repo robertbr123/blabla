@@ -8,6 +8,7 @@ import '../../core/api/dto.dart';
 import '../../core/api/notificacoes_repository.dart';
 import '../../core/api/os_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/async_states.dart';
 import '../../core/ui/glass_app_bar.dart';
 import '../nps/nps_bottom_sheet.dart';
 import '../shell/main_shell.dart';
@@ -68,8 +69,25 @@ class NotificacoesScreen extends ConsumerWidget {
         },
         child: async.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, __) => const Center(
-            child: Text('Não conseguimos carregar as notificações.'),
+          error: (_, __) => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.only(
+              top: MediaQuery.paddingOf(context).top +
+                  kToolbarHeight +
+                  BrandTokens.spaceMd,
+              left: BrandTokens.spaceLg,
+              right: BrandTokens.spaceLg,
+              bottom: BrandTokens.spaceMd,
+            ),
+            children: [
+              ErrorCard(
+                message: 'Não conseguimos carregar as notificações.',
+                onRetry: () {
+                  ref.invalidate(notificacoesProvider);
+                  ref.invalidate(notificacoesUnreadCountProvider);
+                },
+              ),
+            ],
           ),
           data: (lista) {
             if (lista.isEmpty) return const _Empty();

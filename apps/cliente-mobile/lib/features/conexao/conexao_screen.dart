@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/conexao_repository.dart';
 import '../../core/api/dto.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/async_states.dart';
 import '../../core/ui/glass_app_bar.dart';
 
 class ConexaoScreen extends ConsumerWidget {
@@ -24,8 +25,22 @@ class ConexaoScreen extends ConsumerWidget {
         },
         child: async.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, __) => _Error(
-            onRetry: () => ref.invalidate(conexaoProvider),
+          error: (_, __) => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.only(
+              top: MediaQuery.paddingOf(context).top +
+                  kToolbarHeight +
+                  BrandTokens.spaceMd,
+              left: BrandTokens.spaceLg,
+              right: BrandTokens.spaceLg,
+              bottom: BrandTokens.spaceLg,
+            ),
+            children: [
+              ErrorCard(
+                message: 'Não conseguimos carregar o status agora.',
+                onRetry: () => ref.invalidate(conexaoProvider),
+              ),
+            ],
           ),
           data: (c) => ListView(
             physics: const BouncingScrollPhysics(
@@ -467,32 +482,3 @@ class _GerenciarRedeButton extends StatelessWidget {
   }
 }
 
-class _Error extends StatelessWidget {
-  const _Error({required this.onRetry});
-  final VoidCallback onRetry;
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(BrandTokens.spaceLg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              color: BrandTokens.danger,
-              size: 40,
-            ),
-            const SizedBox(height: BrandTokens.spaceMd),
-            const Text(
-              'Não conseguimos carregar o status agora.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: BrandTokens.spaceLg),
-            FilledButton(onPressed: onRetry, child: const Text('Tentar de novo')),
-          ],
-        ),
-      ),
-    );
-  }
-}

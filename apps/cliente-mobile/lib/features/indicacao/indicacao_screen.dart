@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/api/dto.dart';
 import '../../core/api/indicacao_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/async_states.dart';
 import '../../core/ui/glass_app_bar.dart';
 import '../../core/share/render_to_png.dart';
 import '../../core/ui/haptics.dart';
@@ -25,20 +26,33 @@ class IndicacaoScreen extends ConsumerWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: GlassAppBar(title: 'Indique e ganhe'),
-      body: async.when(
-        data: (data) => RefreshIndicator(
-          edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
-          onRefresh: () async {
-            ref.invalidate(indicacaoMeuProvider);
-            ref.invalidate(indicacaoTimelineProvider);
-            await ref.read(indicacaoMeuProvider.future);
-          },
-          child: _Content(data: data),
-        ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => _ErrorView(
-          message: e.toString(),
-          onRetry: () => ref.invalidate(indicacaoMeuProvider),
+      body: RefreshIndicator(
+        edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
+        onRefresh: () async {
+          ref.invalidate(indicacaoMeuProvider);
+          ref.invalidate(indicacaoTimelineProvider);
+          await ref.read(indicacaoMeuProvider.future);
+        },
+        child: async.when(
+          data: (data) => _Content(data: data),
+          loading: () => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.only(
+              top: MediaQuery.paddingOf(context).top +
+                  kToolbarHeight +
+                  BrandTokens.spaceMd,
+            ),
+            children: const [
+              Center(child: CircularProgressIndicator()),
+            ],
+          ),
+          error: (e, _) => _ErrorView(
+            message: e.toString(),
+            onRetry: () => ref.invalidate(indicacaoMeuProvider),
+            topPadding: MediaQuery.paddingOf(context).top +
+                kToolbarHeight +
+                BrandTokens.spaceMd,
+          ),
         ),
       ),
     );
@@ -770,33 +784,31 @@ class _Step extends StatelessWidget {
 }
 
 class _ErrorView extends StatelessWidget {
-  const _ErrorView({required this.message, required this.onRetry});
+  const _ErrorView({
+    required this.message,
+    required this.onRetry,
+    this.topPadding = 0,
+  });
   final String message;
   final VoidCallback onRetry;
+  final double topPadding;
 
   @override
   Widget build(BuildContext context) {
     final friendlier = message.contains('409')
         ? 'Sua conta ainda não esta vinculada ao cadastro de cliente. Entre em contato com o suporte.'
         : 'Não conseguimos carregar agora. Tente novamente em instantes.';
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(BrandTokens.spaceLg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              color: BrandTokens.danger,
-              size: 40,
-            ),
-            const SizedBox(height: BrandTokens.spaceMd),
-            Text(friendlier, textAlign: TextAlign.center),
-            const SizedBox(height: BrandTokens.spaceLg),
-            FilledButton(onPressed: onRetry, child: const Text('Tentar de novo')),
-          ],
-        ),
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.fromLTRB(
+        BrandTokens.spaceLg,
+        topPadding,
+        BrandTokens.spaceLg,
+        BrandTokens.spaceLg,
       ),
+      children: [
+        ErrorCard(message: friendlier, onRetry: onRetry),
+      ],
     );
   }
 }

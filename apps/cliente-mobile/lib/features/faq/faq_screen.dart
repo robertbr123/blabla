@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/async_states.dart';
 import '../../core/ui/glass_app_bar.dart';
 import 'faq_data.dart';
 
@@ -257,30 +258,10 @@ class _Empty extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(BrandTokens.spaceXl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.search_off_rounded,
-              size: 48,
-              color: BrandTokens.textSecondary,
-            ),
-            const SizedBox(height: BrandTokens.spaceMd),
-            Text(
-              'Nada encontrado pra "$query"',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: BrandTokens.spaceXs),
-            const Text(
-              'Tente outras palavras ou abra um chamado.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: BrandTokens.textSecondary),
-            ),
-          ],
-        ),
+      child: EmptyState(
+        icon: Icons.search_off_rounded,
+        title: 'Nada encontrado pra "$query"',
+        subtitle: 'Tente outras palavras ou abra um chamado.',
       ),
     );
   }
