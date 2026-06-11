@@ -26,7 +26,7 @@ class BrandTokens {
   static const Color textSecondaryDark = Color(0xFF8FA3BD);
 
   // Status
-  static const Color success = Color(0xFF14B8B0);
+  static const Color success = Color(0xFF14B8B0); // ciano da marca — ver successBright pra gradientes de "ativo"
   static const Color warning = Color(0xFFE8A33D);
   static const Color danger = Color(0xFFE0455A);
   static const Color info = Color(0xFF3B82F6);
@@ -41,9 +41,9 @@ class BrandTokens {
   static const Color successBright = Color(0xFF22E0A1); // verde conexão ok
   static const Color dangerDeep = Color(0xFFB12B40); // fim de gradiente vencida
   static const Color dangerStrong = Color(0xFFCC2233); // barra breaking de manutenção
-  static const Color warningBright = Color(0xFFF59E0B);
+  static const Color warningBright = Color(0xFFF59E0B); // fim de gradiente de status suspenso
   static const Color neutralGrey = Color(0xFF6B7280); // status desconhecido
-  static const Color neutralGreyDark = Color(0xFF374151);
+  static const Color neutralGreyDark = Color(0xFF374151); // fundo do gradiente de status desconhecido
 
   // Cores de marca de terceiros (canais de contato)
   static const Color brandWhatsapp = Color(0xFF25D366);
@@ -56,7 +56,7 @@ class BrandTokens {
   static const Color accentPink = Color(0xFFFF6B9D); // banner aniversariante
 
   // Fallback de gradiente de promoção (quando admin não define cores)
-  static const Color promoFallbackFrom = Color(0xFF8B5CF6);
+  static const Color promoFallbackFrom = Color(0xFF8B5CF6); // mesmo tom de catSupport — coincidência de paleta, não dependência
   static const Color promoFallbackTo = Color(0xFF5B6CFF);
 
   // Raios
