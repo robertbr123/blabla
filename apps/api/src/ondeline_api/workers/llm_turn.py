@@ -14,7 +14,7 @@ import ondeline_api.tools.consultar_planos
 import ondeline_api.tools.consultar_rede
 import ondeline_api.tools.enviar_boleto
 
-# Importacoes que registram as 6 tools no registry global
+# Importacoes que registram as tools no registry global
 import ondeline_api.tools.transferir_para_humano  # noqa: F401
 from ondeline_api.adapters.llm.hermes import HermesProvider
 from ondeline_api.adapters.sgp.linknetam import SgpLinkNetAMProvider
