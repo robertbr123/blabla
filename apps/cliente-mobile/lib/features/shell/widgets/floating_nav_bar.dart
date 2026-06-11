@@ -63,12 +63,12 @@ class FloatingNavBar extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   // Translúcido: o conteúdo desfocado aparece através (liquid glass).
-                  color: bg.withOpacity(isDark ? 0.55 : 0.62),
+                  color: bg.withValues(alpha: isDark ? 0.55 : 0.62),
                   borderRadius: BorderRadius.circular(BrandTokens.radius2xl),
                   border: Border.all(
                     color: isDark
-                        ? Colors.white.withOpacity(0.10)
-                        : Colors.white.withOpacity(0.65),
+                        ? Colors.white.withValues(alpha: 0.10)
+                        : Colors.white.withValues(alpha: 0.65),
                     width: 1.2,
                   ),
                 ),
@@ -171,7 +171,7 @@ class _NavBubbleState extends State<_NavBubble>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primary = BrandTokens.primary;
+    const primary = BrandTokens.primary;
 
     return AnimatedBuilder(
       animation: _c,
@@ -203,8 +203,8 @@ class _NavBubbleState extends State<_NavBubble>
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        primary.withOpacity(isDark ? 0.26 : 0.16),
-                        primary.withOpacity(isDark ? 0.12 : 0.06),
+                        primary.withValues(alpha: isDark ? 0.26 : 0.16),
+                        primary.withValues(alpha: isDark ? 0.12 : 0.06),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
@@ -217,8 +217,8 @@ class _NavBubbleState extends State<_NavBubble>
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Colors.white.withOpacity(isDark ? 0.10 : 0.35),
-                          Colors.white.withOpacity(0.0),
+                          Colors.white.withValues(alpha: isDark ? 0.10 : 0.35),
+                          Colors.white.withValues(alpha: 0.0),
                         ],
                         stops: const [0.0, 0.55],
                       ),
@@ -247,7 +247,7 @@ class _NavItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = BrandTokens.primary;
+    const activeColor = BrandTokens.primary;
     final inactiveColor = Theme.of(context).brightness == Brightness.dark
         ? BrandTokens.textSecondaryDark
         : BrandTokens.textSecondary;
