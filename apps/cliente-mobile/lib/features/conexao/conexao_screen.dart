@@ -23,9 +23,23 @@ class ConexaoScreen extends ConsumerWidget {
           ref.invalidate(conexaoProvider);
           await ref.read(conexaoProvider.future);
         },
-        child: async.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, __) => ListView(
+        child: AsyncBuilder<ConexaoDto>(
+          value: async,
+          loading: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.only(
+              top: MediaQuery.paddingOf(context).top +
+                  kToolbarHeight +
+                  BrandTokens.spaceMd,
+            ),
+            children: const [
+              Padding(
+                padding: EdgeInsets.all(BrandTokens.spaceXl),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ],
+          ),
+          error: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.only(
               top: MediaQuery.paddingOf(context).top +
@@ -42,13 +56,15 @@ class ConexaoScreen extends ConsumerWidget {
               ),
             ],
           ),
-          data: (c) => ListView(
+          builder: (c) => ListView(
             physics: const BouncingScrollPhysics(
               parent: AlwaysScrollableScrollPhysics(),
             ),
             padding: EdgeInsets.fromLTRB(
               BrandTokens.spaceLg,
-              MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd,
+              MediaQuery.paddingOf(context).top +
+                  kToolbarHeight +
+                  BrandTokens.spaceMd,
               BrandTokens.spaceLg,
               BrandTokens.spaceLg,
             ),

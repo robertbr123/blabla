@@ -67,9 +67,23 @@ class NotificacoesScreen extends ConsumerWidget {
           ref.invalidate(notificacoesUnreadCountProvider);
           await ref.read(notificacoesProvider.future);
         },
-        child: async.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, __) => ListView(
+        child: AsyncBuilder<List<NotificacaoDto>>(
+          value: async,
+          loading: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.only(
+              top: MediaQuery.paddingOf(context).top +
+                  kToolbarHeight +
+                  BrandTokens.spaceMd,
+            ),
+            children: const [
+              Padding(
+                padding: EdgeInsets.all(BrandTokens.spaceXl),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ],
+          ),
+          error: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.only(
               top: MediaQuery.paddingOf(context).top +
@@ -89,15 +103,34 @@ class NotificacoesScreen extends ConsumerWidget {
               ),
             ],
           ),
-          data: (lista) {
-            if (lista.isEmpty) return const _Empty();
+          builder: (lista) {
+            if (lista.isEmpty) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.only(
+                  top: MediaQuery.paddingOf(context).top +
+                      kToolbarHeight +
+                      BrandTokens.spaceMd,
+                ),
+                children: const [
+                  EmptyState(
+                    icon: Icons.notifications_off_outlined,
+                    title: 'Sem notificações por aqui',
+                    subtitle:
+                        'Avisos importantes (fatura, OS, manutenção, promoção) aparecem aqui.',
+                  ),
+                ],
+              );
+            }
             return ListView.separated(
               physics: const BouncingScrollPhysics(
                 parent: AlwaysScrollableScrollPhysics(),
               ),
               padding: EdgeInsets.fromLTRB(
                 0,
-                MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd,
+                MediaQuery.paddingOf(context).top +
+                    kToolbarHeight +
+                    BrandTokens.spaceMd,
                 0,
                 BrandTokens.spaceMd,
               ),
@@ -284,45 +317,3 @@ class _NotifTile extends ConsumerWidget {
   }
 }
 
-class _Empty extends StatelessWidget {
-  const _Empty();
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.only(
-        top: MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd,
-      ),
-      children: const [
-        Padding(
-          padding: EdgeInsets.all(BrandTokens.spaceXl),
-          child: Column(
-            children: [
-              Icon(
-                Icons.notifications_off_outlined,
-                size: 56,
-                color: BrandTokens.textSecondary,
-              ),
-              SizedBox(height: BrandTokens.spaceMd),
-              Text(
-                'Sem notificações por aqui',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                ),
-              ),
-              SizedBox(height: BrandTokens.spaceXs),
-              Text(
-                'Avisos importantes (fatura, OS, manutenção, promoção) aparecem aqui.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: BrandTokens.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
