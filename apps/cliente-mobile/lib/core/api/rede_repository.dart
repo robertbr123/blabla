@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../contrato/contrato_atual_provider.dart';
 import 'api_client.dart';
 
 class RedeWifiInfo {
@@ -32,8 +33,43 @@ class RedeStatusDto {
   final String? modelo;
   final List<RedeWifiInfo> redes;
 
-  /// Nome amigavel da rede pro hero (primeiro SSID, ou fallback).
   String get nomeRede => redes.isNotEmpty ? redes.first.ssid : 'Sua rede WiFi';
+}
+
+class RedeAparelho {
+  RedeAparelho({required this.nome, required this.ip});
+  factory RedeAparelho.fromJson(Map<String, dynamic> j) => RedeAparelho(
+        nome: (j['nome'] as String?) ?? '',
+        ip: (j['ip'] as String?) ?? '',
+      );
+  final String nome;
+  final String ip;
+
+  /// Nome pra exibir, com fallback quando a ONU nao reporta o hostname.
+  String get nomeExibicao => nome.trim().isNotEmpty ? nome : 'Dispositivo';
+}
+
+class RedeAparelhosDto {
+  RedeAparelhosDto({
+    required this.encontrada,
+    required this.total,
+    required this.aparelhos,
+    required this.saude,
+  });
+
+  factory RedeAparelhosDto.fromJson(Map<String, dynamic> j) => RedeAparelhosDto(
+        encontrada: (j['encontrada'] as bool?) ?? false,
+        total: (j['total'] as int?) ?? 0,
+        aparelhos: ((j['aparelhos'] as List?) ?? const [])
+            .map((e) => RedeAparelho.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        saude: (j['saude'] as String?) ?? 'indisponivel',
+      );
+
+  final bool encontrada;
+  final int total;
+  final List<RedeAparelho> aparelhos;
+  final String saude; // excelente | boa | fraca | indisponivel
 }
 
 class TrocaResultDto {
@@ -65,14 +101,28 @@ class RedeRepository {
   final Dio _dio;
   static const _base = '/api/v1/cliente-app/rede';
 
-  Future<RedeStatusDto> status() async {
-    final r = await _dio.get('$_base/status');
+  Future<RedeStatusDto> status({String? contratoId}) async {
+    final r = await _dio.get(
+      '$_base/status',
+      queryParameters: contratoId != null ? {'contrato_id': contratoId} : null,
+    );
     return RedeStatusDto.fromJson(r.data as Map<String, dynamic>);
   }
 
-  Future<TrocaResultDto> trocarSenha(String senha) async {
+  Future<RedeAparelhosDto> aparelhos({String? contratoId}) async {
+    final r = await _dio.get(
+      '$_base/aparelhos',
+      queryParameters: contratoId != null ? {'contrato_id': contratoId} : null,
+    );
+    return RedeAparelhosDto.fromJson(r.data as Map<String, dynamic>);
+  }
+
+  Future<TrocaResultDto> trocarSenha(String senha, {String? contratoId}) async {
     try {
-      final r = await _dio.post('$_base/wifi/senha', data: {'senha': senha});
+      final r = await _dio.post('$_base/wifi/senha', data: {
+        'senha': senha,
+        if (contratoId != null) 'contrato_id': contratoId,
+      });
       return TrocaResultDto.fromJson(r.data as Map<String, dynamic>);
     } on DioException catch (e) {
       if (e.response?.statusCode == 429) {
@@ -95,8 +145,14 @@ final redeRepositoryProvider = Provider<RedeRepository>(
   (ref) => RedeRepository(ref.watch(apiClientProvider)),
 );
 
-/// Status da rede do cliente. O backend resolve a ONU iterando TODOS os
-/// contratos do CPF, entao nao precisa de contrato_id aqui (MVP).
-final redeStatusProvider = FutureProvider<RedeStatusDto>(
-  (ref) => ref.watch(redeRepositoryProvider).status(),
-);
+/// Status da rede do contrato SELECIONADO (observa contratoAtualProvider).
+final redeStatusProvider = FutureProvider<RedeStatusDto>((ref) {
+  final contratoId = ref.watch(contratoAtualProvider);
+  return ref.watch(redeRepositoryProvider).status(contratoId: contratoId);
+});
+
+/// Dispositivos + saude do contrato selecionado.
+final redeAparelhosProvider = FutureProvider<RedeAparelhosDto>((ref) {
+  final contratoId = ref.watch(contratoAtualProvider);
+  return ref.watch(redeRepositoryProvider).aparelhos(contratoId: contratoId);
+});
