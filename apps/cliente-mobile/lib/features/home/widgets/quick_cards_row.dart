@@ -8,6 +8,7 @@ import '../../../core/api/dto.dart';
 import '../../../core/api/fidelidade_repository.dart';
 import '../../../core/branding/brand_tokens.dart';
 import '../../../core/ui/haptics.dart';
+import '../../../core/ui/pressable_scale.dart';
 
 /// Linha com 2 mini-cards lado a lado:
 /// [Fidelidade — pontos] [Fale conosco — WhatsApp 24h]
@@ -43,12 +44,9 @@ class _FidelidadeMiniCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(fidelidadeProvider);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
-        onTap: () => context.push('/fidelidade'),
-        child: Container(
+    return PressableScale(
+      onTap: () => context.push('/fidelidade'),
+      child: Container(
           padding: const EdgeInsets.all(BrandTokens.spaceMd),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
@@ -143,7 +141,6 @@ class _FidelidadeMiniCard extends ConsumerWidget {
             ],
           ),
         ),
-      ),
     );
   }
 }
@@ -188,18 +185,15 @@ class _FaleConoscoMiniCard extends ConsumerWidget {
       }
     });
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
-        onTap: () {
-          if (whats != null) {
-            _abrirWhats(context, whats!);
-          } else {
-            context.push('/contatos');
-          }
-        },
-        child: Container(
+    return PressableScale(
+      onTap: () {
+        if (whats != null) {
+          _abrirWhats(context, whats!);
+        } else {
+          context.push('/contatos');
+        }
+      },
+      child: Container(
           padding: const EdgeInsets.all(BrandTokens.spaceMd),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
@@ -263,7 +257,6 @@ class _FaleConoscoMiniCard extends ConsumerWidget {
             ],
           ),
         ),
-      ),
     );
   }
 }

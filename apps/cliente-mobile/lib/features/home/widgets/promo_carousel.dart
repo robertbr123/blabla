@@ -10,6 +10,7 @@ import '../../../core/api/dto.dart';
 import '../../../core/api/promocoes_repository.dart';
 import '../../../core/branding/brand_tokens.dart';
 import '../../../core/ui/hex_color.dart';
+import '../../../core/ui/pressable_scale.dart';
 import '../promo_icon_map.dart';
 
 /// Carrossel horizontal de promocoes na home, consumindo a API real.
@@ -178,12 +179,9 @@ class _PromoCard extends StatelessWidget {
         ? null
         : (imagemUrl.startsWith('http') ? imagemUrl : '$apiBaseUrl$imagemUrl');
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => onTap(item),
-        borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
-        child: Container(
+    return PressableScale(
+      onTap: () => onTap(item),
+      child: Container(
           padding: const EdgeInsets.all(BrandTokens.spaceLg),
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -283,7 +281,6 @@ class _PromoCard extends StatelessWidget {
             ],
           ),
         ),
-      ),
     );
   }
 }
