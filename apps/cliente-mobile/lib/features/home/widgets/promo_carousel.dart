@@ -40,6 +40,16 @@ class _PromoCarouselState extends ConsumerState<PromoCarousel> {
   }
 
   @override
+  void didUpdateWidget(covariant PromoCarousel old) {
+    super.didUpdateWidget(old);
+    // Lista mudou de tamanho (ex: refresh trouxe mais promos) → re-liga/desliga
+    // o auto-scroll conforme o caso.
+    if (old.items.length != widget.items.length) {
+      _startAuto();
+    }
+  }
+
+  @override
   void dispose() {
     _autoTimer?.cancel();
     _resumeTimer?.cancel();
