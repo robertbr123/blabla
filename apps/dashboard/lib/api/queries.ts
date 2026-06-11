@@ -1668,6 +1668,7 @@ export function useRedeDiagnostico(conversaId: string, enabled: boolean) {
     queryKey: ['rede-diagnostico', conversaId],
     queryFn: () => apiFetch(`/api/v1/conversas/${conversaId}/rede/diagnostico`),
     enabled,
+    staleTime: 30_000,
   })
 }
 
@@ -1689,12 +1690,14 @@ export function useTrocarSenhaConversa(conversaId: string) {
 }
 
 export function useReiniciarOnu(conversaId: string) {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: () =>
       apiFetch<import('./types').RebootResult>(
         `/api/v1/conversas/${conversaId}/rede/reboot`,
         { method: 'POST' },
       ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rede-status', conversaId] }),
     onError: (err) =>
       toast.error(err instanceof Error ? err.message : 'Falha ao reiniciar'),
   })
