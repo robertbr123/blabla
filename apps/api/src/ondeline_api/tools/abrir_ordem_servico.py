@@ -11,11 +11,14 @@ from typing import Any
 
 import structlog
 
+from ondeline_api.adapters.genieacs.client import GenieAcsClient
 from ondeline_api.adapters.sgp.base import EnderecoSgp
+from ondeline_api.config import get_settings
 from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.domain.os_sequence import next_codigo
 from ondeline_api.repositories.ordem_servico import OrdemServicoRepo
 from ondeline_api.repositories.tecnico import TecnicoRepo
+from ondeline_api.services.rede_service import RedeService, qualidade_sinal, snapshot_sinal
 from ondeline_api.tools.context import ToolContext
 from ondeline_api.tools.registry import tool
 
@@ -108,6 +111,23 @@ async def _resolve_endereco_do_cadastro(ctx: ToolContext) -> tuple[str, str, str
     return endereco_str, rua, cidade
 
 
+async def _capturar_sinal(ctx: ToolContext) -> dict[str, Any] | None:
+    """Snapshot best-effort do sinal pra gravar na OS. Nunca propaga erro."""
+    if ctx.cliente is None:
+        return None
+    try:
+        cpf_cli = decrypt_pii(ctx.cliente.cpf_cnpj_encrypted)
+        genie = GenieAcsClient(base_url=get_settings().genieacs_url)
+        try:
+            rede = RedeService(session=ctx.session, genieacs=genie, sgp_cache=ctx.sgp_cache)
+            return await snapshot_sinal(rede, cpf_cli)
+        finally:
+            await genie.aclose()
+    except Exception as e:  # nunca bloqueia a criacao da OS
+        log.warning("abrir_os.sinal_snapshot_falhou", error=str(e))
+        return None
+
+
 @tool(
     name="abrir_ordem_servico",
     description=(
@@ -179,12 +199,14 @@ async def abrir_ordem_servico(
 
     codigo = await next_codigo(ctx.session)
     tecnico = await TecnicoRepo(ctx.session).find_by_area(cidade=cidade, rua=rua)
+    sinal_snap = await _capturar_sinal(ctx)
     os_ = await OrdemServicoRepo(ctx.session).create(
         codigo=codigo,
         cliente_id=ctx.cliente.id,
         tecnico_id=tecnico.id if tecnico else None,
         problema=problema,
         endereco=endereco_final,
+        sinal=sinal_snap,
     )
 
     tecnico_notificado = False
@@ -209,13 +231,18 @@ async def abrir_ordem_servico(
         else:
             wpp_fmt = ctx.conversa.whatsapp or ""
 
+        linha_sinal = ""
+        if sinal_snap and sinal_snap.get("rx_power") is not None:
+            _, emoji = qualidade_sinal(sinal_snap["rx_power"])
+            linha_sinal = f"*Sinal:* {emoji} {sinal_snap['rx_power']} dBm\n"
         msg = (
             f"🔧 *Nova OS atribuída a você*\n\n"
             f"*Código:* {codigo}\n"
             f"*Cliente:* {nome_cliente}\n"
             f"*WhatsApp:* {wpp_fmt}\n"
             f"*Endereço:* {endereco_final}\n"
-            f"*Problema:* {problema}\n\n"
+            f"*Problema:* {problema}\n"
+            f"{linha_sinal}\n"
             f"Quando concluir, mande no chat:\n"
             f"_CONCLUIR {codigo}_"
         )
