@@ -11,7 +11,7 @@ import ondeline_api.tools.abrir_ordem_servico
 import ondeline_api.tools.buscar_cliente_sgp
 import ondeline_api.tools.consultar_manutencoes
 import ondeline_api.tools.consultar_planos
-import ondeline_api.tools.consultar_rede  # noqa: F401
+import ondeline_api.tools.consultar_rede
 import ondeline_api.tools.enviar_boleto
 
 # Importacoes que registram as 6 tools no registry global
