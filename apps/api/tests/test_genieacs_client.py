@@ -230,6 +230,26 @@ async def test_parse_sinal_prefixo_gpon_alternativo() -> None:
         await c.aclose()
 
 
+async def test_parse_sinal_prefixo_gpon_fiberhome() -> None:
+    # HG6145D (FiberHome, maioria do parque) usa o container
+    # "X_FH_GponInterfaceConfig" com os MESMOS leaves RXPower/TXPower/Status.
+    # Confirmado ao vivo 2026-06-11 (RX -13.6 dBm). Trava o suporte ao parque
+    # FiberHome contra um refactor futuro do GPON_CFG_PATHS.
+    raw = _device_raw()
+    raw["InternetGatewayDevice"].update(
+        _wan_raw(prefixo_gpon="X_FH_GponInterfaceConfig")
+    )
+    async with respx.mock(base_url=BASE) as mock:
+        mock.get("/devices/").respond(200, json=[raw])
+        c = GenieAcsClient(base_url=BASE)
+        dev = await c.get_device("x")
+        assert dev is not None and dev.sinal is not None
+        assert dev.sinal.rx_power == -26.5
+        assert dev.sinal.tx_power == 2.1
+        assert dev.sinal.status_gpon == "Up"
+        await c.aclose()
+
+
 async def test_parse_sinal_ausente_retorna_none() -> None:
     # _device_raw() sem subarvore WAN -> nenhum campo de sinal -> sinal None
     async with respx.mock(base_url=BASE) as mock:
