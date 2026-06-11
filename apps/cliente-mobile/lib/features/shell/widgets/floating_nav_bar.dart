@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -49,43 +50,59 @@ class FloatingNavBar extends StatelessWidget {
           BrandTokens.spaceMd,
           BrandTokens.spaceMd,
         ),
-        child: Container(
+        // Sombra fica fora do ClipRRect — dentro seria clipada junto com o blur.
+        child: DecoratedBox(
           decoration: BoxDecoration(
-            color: bg,
             borderRadius: BorderRadius.circular(BrandTokens.radius2xl),
             boxShadow: BrandTokens.elevation3,
-            border: Border.all(
-              color: isDark ? Colors.white12 : BrandTokens.divider,
-            ),
           ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: BrandTokens.spaceSm,
-            vertical: BrandTokens.spaceSm,
-          ),
-          // Stack: a bolha viaja atrás dos itens (continuidade — um único
-          // elemento desliza em vez de sumir/aparecer em cada tile).
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: _NavBubble(
-                  currentIndex: currentIndex,
-                  itemCount: items.length,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(BrandTokens.radius2xl),
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+              child: Container(
+                decoration: BoxDecoration(
+                  // Translúcido: o conteúdo desfocado aparece através (liquid glass).
+                  color: bg.withOpacity(isDark ? 0.55 : 0.62),
+                  borderRadius: BorderRadius.circular(BrandTokens.radius2xl),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.10)
+                        : Colors.white.withOpacity(0.65),
+                    width: 1.2,
+                  ),
                 ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  for (int i = 0; i < items.length; i++)
-                    Expanded(
-                      child: _NavItemTile(
-                        item: items[i],
-                        selected: i == currentIndex,
-                        onTap: () => onTap(i),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: BrandTokens.spaceSm,
+                  vertical: BrandTokens.spaceSm,
+                ),
+                // Stack: a bolha viaja atrás dos itens (continuidade — um único
+                // elemento desliza em vez de sumir/aparecer em cada tile).
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: _NavBubble(
+                        currentIndex: currentIndex,
+                        itemCount: items.length,
                       ),
                     ),
-                ],
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        for (int i = 0; i < items.length; i++)
+                          Expanded(
+                            child: _NavItemTile(
+                              item: items[i],
+                              selected: i == currentIndex,
+                              onTap: () => onTap(i),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -191,6 +208,22 @@ class _NavBubbleState extends State<_NavBubble>
                       ],
                     ),
                     borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
+                  ),
+                  child: DecoratedBox(
+                    // Specular highlight: faixa de luz no topo da bolha,
+                    // simulando vidro refratando a luz ambiente.
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.white.withOpacity(isDark ? 0.10 : 0.35),
+                          Colors.white.withOpacity(0.0),
+                        ],
+                        stops: const [0.0, 0.55],
+                      ),
+                      borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
+                    ),
                   ),
                 ),
               ),
