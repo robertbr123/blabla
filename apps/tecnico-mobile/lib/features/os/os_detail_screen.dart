@@ -18,6 +18,13 @@ import '../../core/ui/app_surfaces.dart';
 import 'os_data.dart';
 import 'widgets/cliente_avatar.dart';
 
+Color _corSinal(num? rx) {
+  if (rx == null) return Colors.grey;
+  if (rx > -8 || rx < -27) return Colors.red;
+  if (rx < -25) return Colors.orange;
+  return Colors.green;
+}
+
 class OsDetailScreen extends ConsumerWidget {
   final String id;
   const OsDetailScreen({super.key, required this.id});
@@ -82,6 +89,8 @@ class _Body extends ConsumerWidget {
           plano: os.readOptionalString('plano'),
           login: os.readOptionalString('pppoe_login'),
           senha: os.readOptionalString('pppoe_senha'),
+          sinalRx: (os['sinal'] as Map<String, dynamic>?)?['rx_power'] as num?,
+          sinalStatus: (os['sinal'] as Map<String, dynamic>?)?['status_gpon'] as String?,
         ),
         if (_visitLocation(os) case final location?) ...[
           const SizedBox(height: 12),
@@ -544,6 +553,8 @@ class _ContextSection extends StatelessWidget {
   final String? plano;
   final String? login;
   final String? senha;
+  final num? sinalRx;
+  final String? sinalStatus;
 
   const _ContextSection({
     required this.endereco,
@@ -551,6 +562,8 @@ class _ContextSection extends StatelessWidget {
     required this.plano,
     required this.login,
     required this.senha,
+    this.sinalRx,
+    this.sinalStatus,
   });
 
   @override
@@ -581,6 +594,16 @@ class _ContextSection extends StatelessWidget {
             const SizedBox(height: 18),
             _ConnectionBlock(plano: plano, login: login, senha: senha),
           ],
+          if (sinalRx != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(children: [
+                Icon(Icons.circle, size: 12, color: _corSinal(sinalRx)),
+                const SizedBox(width: 8),
+                Text('Sinal: $sinalRx dBm'
+                    '${sinalStatus != null ? ' · $sinalStatus' : ''}'),
+              ]),
+            ),
         ],
       ),
     );
