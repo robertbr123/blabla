@@ -30,6 +30,32 @@ import 'features/splash/splash_screen.dart';
 /// widgets (ex: tap numa notificacao push, em [PushService]).
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
+/// Transição padrão das telas internas: fade + slide sutil (curva iOS).
+CustomTransitionPage<void> _glassPage(GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 320),
+    reverseTransitionDuration: const Duration(milliseconds: 280),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: const Cubic(0.32, 0.72, 0, 1),
+      );
+      return FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.04, 0),
+            end: Offset.zero,
+          ).animate(curved),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: '/splash',
@@ -127,71 +153,85 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/perfil/editar',
-        builder: (_, state) {
+        pageBuilder: (_, state) {
           final extra = state.extra as Map<String, String>?;
-          return EditarPerfilScreen(
-            campo: extra?['campo'] ?? 'telefone',
-            valor: extra?['valor'] ?? '',
+          return _glassPage(
+            state,
+            EditarPerfilScreen(
+              campo: extra?['campo'] ?? 'telefone',
+              valor: extra?['valor'] ?? '',
+            ),
           );
         },
       ),
       GoRoute(
         path: '/perfil/mudar-senha',
-        builder: (_, __) => const MudarSenhaScreen(),
+        pageBuilder: (_, state) => _glassPage(state, const MudarSenhaScreen()),
       ),
       GoRoute(
         path: '/suporte/novo',
-        builder: (_, __) => const NovoChamadoScreen(),
+        pageBuilder: (_, state) =>
+            _glassPage(state, const NovoChamadoScreen()),
       ),
       GoRoute(
         path: '/indicacao',
-        builder: (_, __) => const IndicacaoScreen(),
+        pageBuilder: (_, state) => _glassPage(state, const IndicacaoScreen()),
       ),
       GoRoute(
         path: '/conexao',
-        builder: (_, __) => const ConexaoScreen(),
+        pageBuilder: (_, state) => _glassPage(state, const ConexaoScreen()),
       ),
       GoRoute(
         path: '/rede',
-        builder: (_, __) => const RedeScreen(),
+        pageBuilder: (_, state) => _glassPage(state, const RedeScreen()),
       ),
       GoRoute(
         path: '/notificacoes',
-        builder: (_, __) => const NotificacoesScreen(),
+        pageBuilder: (_, state) =>
+            _glassPage(state, const NotificacoesScreen()),
       ),
       GoRoute(
         path: '/notificacoes/preferencias',
-        builder: (_, __) => const NotifPrefsScreen(),
+        pageBuilder: (_, state) =>
+            _glassPage(state, const NotifPrefsScreen()),
       ),
       GoRoute(
         path: '/contatos',
-        builder: (_, __) => const ContatosScreen(),
+        pageBuilder: (_, state) => _glassPage(state, const ContatosScreen()),
       ),
       GoRoute(
         path: '/fidelidade',
-        builder: (_, __) => const FidelidadeScreen(),
+        pageBuilder: (_, state) => _glassPage(state, const FidelidadeScreen()),
       ),
       GoRoute(
         path: '/faq',
-        builder: (_, __) => const FaqScreen(),
+        pageBuilder: (_, state) => _glassPage(state, const FaqScreen()),
       ),
       GoRoute(
         path: '/faq/:artigoId',
-        builder: (_, state) =>
-            FaqArtigoScreen(artigoId: state.pathParameters['artigoId']!),
+        pageBuilder: (_, state) => _glassPage(
+          state,
+          FaqArtigoScreen(artigoId: state.pathParameters['artigoId']!),
+        ),
       ),
       GoRoute(
         path: '/legal/termos',
-        builder: (_, __) => const LegalScreen(
-          title: 'Termos de Uso',
-          body: termosUsoBody,
+        pageBuilder: (_, state) => _glassPage(
+          state,
+          const LegalScreen(
+            title: 'Termos de Uso',
+            body: termosUsoBody,
+          ),
         ),
       ),
       GoRoute(
         path: '/legal/privacidade',
-        builder: (_, __) => const LegalScreen(
-          title: 'Politica de Privacidade',
-          body: politicaPrivacidadeBody,
+        pageBuilder: (_, state) => _glassPage(
+          state,
+          const LegalScreen(
+            title: 'Politica de Privacidade',
+            body: politicaPrivacidadeBody,
+          ),
         ),
       ),
     ],
