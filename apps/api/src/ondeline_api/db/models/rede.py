@@ -36,6 +36,9 @@ class RedeWifiPedido(Base):
     ator_user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="enviado")
     reiniciou: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    tipo: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default="senha", default="senha"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
