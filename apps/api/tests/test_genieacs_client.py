@@ -239,3 +239,23 @@ async def test_parse_sinal_ausente_retorna_none() -> None:
         assert dev is not None
         assert dev.sinal is None
         await c.aclose()
+
+
+async def test_refresh_wan_posta_refresh_object() -> None:
+    async with respx.mock(base_url=BASE) as mock:
+        route = mock.post("/devices/d1/tasks").respond(200, json={"_id": "t1"})
+        c = GenieAcsClient(base_url=BASE)
+        await c.refresh_wan("d1")
+        body = route.calls.last.request.content.decode()
+        assert "refreshObject" in body
+        assert "InternetGatewayDevice.WANDevice" in body
+        await c.aclose()
+
+
+async def test_refresh_wan_engole_erro_tecnico() -> None:
+    # best-effort: falha do NBI nao pode propagar (a leitura nao depende disso).
+    async with respx.mock(base_url=BASE) as mock:
+        mock.post("/devices/d1/tasks").respond(500, text="erro")
+        c = GenieAcsClient(base_url=BASE)
+        await c.refresh_wan("d1")  # nao levanta
+        await c.aclose()

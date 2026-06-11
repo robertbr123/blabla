@@ -269,3 +269,19 @@ class GenieAcsClient:
 
     async def reboot(self, device_id: str) -> None:
         await self._post_task(device_id, {"name": "reboot"})
+
+    async def refresh_wan(self, device_id: str) -> None:
+        """Best-effort: enfileira refreshObject do WANDevice (popula o sinal
+        optico + diag PPPoE no proximo inform). Falha tecnica do NBI NAO
+        propaga: a leitura do que ja existe na arvore nao pode quebrar por
+        causa do refresh."""
+        try:
+            await self._post_task(
+                device_id,
+                {
+                    "name": "refreshObject",
+                    "objectName": "InternetGatewayDevice.WANDevice",
+                },
+            )
+        except GenieAcsUnavailableError as e:
+            log.warning("genieacs.refresh_wan_falhou", device_id=device_id, error=str(e))
