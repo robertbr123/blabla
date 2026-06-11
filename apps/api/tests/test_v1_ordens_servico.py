@@ -21,6 +21,7 @@ from ondeline_api.deps import get_db, get_redis
 from ondeline_api.main import create_app
 from ondeline_api.services.rede_service import DiagnosticoRede
 from redis.asyncio import Redis
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
@@ -533,11 +534,8 @@ async def test_create_os_grava_sinal(
     assert body["sinal"] is not None
     assert body["sinal"]["qualidade"] == "bom"
 
-    from sqlalchemy import select as _select
-
-    from ondeline_api.db.models.business import OrdemServico as _OS
     os_id = UUID(body["id"])
     os_row = (
-        await db_session.execute(_select(_OS).where(_OS.id == os_id))
+        await db_session.execute(select(OrdemServico).where(OrdemServico.id == os_id))
     ).scalar_one()
     assert os_row.sinal is not None
