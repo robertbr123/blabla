@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/api/fidelidade_repository.dart';
 import '../../core/api/missoes_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/glass_app_bar.dart';
 import '../../core/ui/haptics.dart';
 import '../home/promo_icon_map.dart';
 
@@ -15,8 +16,10 @@ class FidelidadeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(fidelidadeProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Programa de fidelidade')),
+      extendBodyBehindAppBar: true,
+      appBar: GlassAppBar(title: 'Programa de fidelidade'),
       body: RefreshIndicator(
+        edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
         onRefresh: () async {
           ref.invalidate(fidelidadeProvider);
           ref.invalidate(missoesProvider);
@@ -26,8 +29,10 @@ class FidelidadeScreen extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, __) => ListView(
             physics: const AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.only(
+              top: MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd,
+            ),
             children: const [
-              SizedBox(height: 120),
               Icon(Icons.error_outline, size: 64, color: BrandTokens.danger),
               SizedBox(height: BrandTokens.spaceMd),
               Center(
@@ -53,7 +58,12 @@ class _Content extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(BrandTokens.spaceLg),
+      padding: EdgeInsets.fromLTRB(
+        BrandTokens.spaceLg,
+        MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd,
+        BrandTokens.spaceLg,
+        BrandTokens.spaceLg,
+      ),
       children: [
         _SaldoCard(data: data),
         const SizedBox(height: BrandTokens.spaceLg),

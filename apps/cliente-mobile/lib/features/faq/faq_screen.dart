@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/glass_app_bar.dart';
 import 'faq_data.dart';
 
 const _catColors = <String, Color>{
@@ -62,12 +63,12 @@ class _FaqScreenState extends State<FaqScreen> {
   Widget build(BuildContext context) {
     final cats = _filtradas;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Perguntas frequentes'),
-        elevation: 0,
-      ),
+      extendBodyBehindAppBar: true,
+      appBar: GlassAppBar(title: 'Perguntas frequentes'),
       body: Column(
         children: [
+          // Offset para compensar o GlassAppBar (status bar + toolbar)
+          SizedBox(height: MediaQuery.paddingOf(context).top + kToolbarHeight),
           // Barra de busca
           Padding(
             padding: const EdgeInsets.all(BrandTokens.spaceMd),

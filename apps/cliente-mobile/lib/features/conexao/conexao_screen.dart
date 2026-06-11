@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/conexao_repository.dart';
 import '../../core/api/dto.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/glass_app_bar.dart';
 
 class ConexaoScreen extends ConsumerWidget {
   const ConexaoScreen({super.key});
@@ -13,11 +14,10 @@ class ConexaoScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(conexaoProvider);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Status da conexão'),
-        elevation: 0,
-      ),
+      extendBodyBehindAppBar: true,
+      appBar: GlassAppBar(title: 'Status da conexão'),
       body: RefreshIndicator(
+        edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
         onRefresh: () async {
           ref.invalidate(conexaoProvider);
           await ref.read(conexaoProvider.future);
@@ -31,7 +31,12 @@ class ConexaoScreen extends ConsumerWidget {
             physics: const BouncingScrollPhysics(
               parent: AlwaysScrollableScrollPhysics(),
             ),
-            padding: const EdgeInsets.all(BrandTokens.spaceLg),
+            padding: EdgeInsets.fromLTRB(
+              BrandTokens.spaceLg,
+              MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd,
+              BrandTokens.spaceLg,
+              BrandTokens.spaceLg,
+            ),
             children: [
               _StatusHero(conexao: c),
               const SizedBox(height: BrandTokens.spaceLg),

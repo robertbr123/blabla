@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/rede_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/contrato/contrato_atual_provider.dart';
+import '../../core/ui/glass_app_bar.dart';
 
 enum _Fase { editando, enviando, reconectando, pronto }
 
@@ -87,8 +88,10 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
   Widget build(BuildContext context) {
     final async = ref.watch(redeStatusProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Minha Rede WiFi'), elevation: 0),
+      extendBodyBehindAppBar: true,
+      appBar: GlassAppBar(title: 'Minha Rede WiFi'),
       body: RefreshIndicator(
+        edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
         onRefresh: () async {
           ref.invalidate(redeStatusProvider);
           ref.invalidate(redeAparelhosProvider);
@@ -156,7 +159,12 @@ class _FormTroca extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListView(
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-      padding: const EdgeInsets.all(BrandTokens.spaceLg),
+      padding: EdgeInsets.fromLTRB(
+        BrandTokens.spaceLg,
+        MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd,
+        BrandTokens.spaceLg,
+        BrandTokens.spaceLg,
+      ),
       children: [
         _HeroRede(rede: rede),
         const SizedBox(height: BrandTokens.spaceLg),
@@ -410,9 +418,13 @@ class _EmConstrucao extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-      padding: const EdgeInsets.all(BrandTokens.spaceXl),
+      padding: EdgeInsets.fromLTRB(
+        BrandTokens.spaceXl,
+        MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd,
+        BrandTokens.spaceXl,
+        BrandTokens.spaceXl,
+      ),
       children: [
-        const SizedBox(height: BrandTokens.spaceXxl),
         Center(
           child: Container(
             width: 96,

@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/api/dto.dart';
 import '../../core/api/indicacao_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/glass_app_bar.dart';
 import '../../core/share/render_to_png.dart';
 import '../../core/ui/haptics.dart';
 import 'widgets/indicacao_share_card.dart';
@@ -22,12 +23,11 @@ class IndicacaoScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(indicacaoMeuProvider);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Indique e ganhe'),
-        elevation: 0,
-      ),
+      extendBodyBehindAppBar: true,
+      appBar: GlassAppBar(title: 'Indique e ganhe'),
       body: async.when(
         data: (data) => RefreshIndicator(
+          edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
           onRefresh: () async {
             ref.invalidate(indicacaoMeuProvider);
             ref.invalidate(indicacaoTimelineProvider);
@@ -175,7 +175,12 @@ class _Content extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListView(
-      padding: const EdgeInsets.all(BrandTokens.spaceLg),
+      padding: EdgeInsets.fromLTRB(
+        BrandTokens.spaceLg,
+        MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd,
+        BrandTokens.spaceLg,
+        BrandTokens.spaceLg,
+      ),
       children: [
         _HeroCard(
           data: data,

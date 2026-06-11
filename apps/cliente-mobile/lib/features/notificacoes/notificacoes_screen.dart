@@ -8,6 +8,7 @@ import '../../core/api/dto.dart';
 import '../../core/api/notificacoes_repository.dart';
 import '../../core/api/os_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/glass_app_bar.dart';
 import '../nps/nps_bottom_sheet.dart';
 import '../shell/main_shell.dart';
 
@@ -36,9 +37,9 @@ class NotificacoesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(notificacoesProvider);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Notificações'),
-        elevation: 0,
+      extendBodyBehindAppBar: true,
+      appBar: GlassAppBar(
+        title: 'Notificações',
         actions: [
           IconButton(
             icon: const Icon(Icons.done_all_rounded),
@@ -59,6 +60,7 @@ class NotificacoesScreen extends ConsumerWidget {
         ],
       ),
       body: RefreshIndicator(
+        edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
         onRefresh: () async {
           ref.invalidate(notificacoesProvider);
           ref.invalidate(notificacoesUnreadCountProvider);
@@ -75,8 +77,11 @@ class NotificacoesScreen extends ConsumerWidget {
               physics: const BouncingScrollPhysics(
                 parent: AlwaysScrollableScrollPhysics(),
               ),
-              padding: const EdgeInsets.symmetric(
-                vertical: BrandTokens.spaceMd,
+              padding: EdgeInsets.fromLTRB(
+                0,
+                MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd,
+                0,
+                BrandTokens.spaceMd,
               ),
               itemCount: lista.length,
               separatorBuilder: (_, __) => const Divider(
@@ -267,8 +272,10 @@ class _Empty extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.only(
+        top: MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd,
+      ),
       children: const [
-        SizedBox(height: 120),
         Padding(
           padding: EdgeInsets.all(BrandTokens.spaceXl),
           child: Column(
