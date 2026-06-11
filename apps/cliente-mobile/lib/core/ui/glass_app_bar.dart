@@ -31,6 +31,8 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = isDark ? BrandTokens.surfaceDark : BrandTokens.background;
+    final fg = Theme.of(context).appBarTheme.foregroundColor ??
+        Theme.of(context).colorScheme.onSurface;
 
     return ClipRect(
       child: BackdropFilter(
@@ -41,6 +43,7 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
           leading: leading,
           bottom: bottom,
           backgroundColor: bg.withValues(alpha: isDark ? 0.55 : 0.62),
+          foregroundColor: fg,
           surfaceTintColor: Colors.transparent,
           scrolledUnderElevation: 0,
           elevation: 0,

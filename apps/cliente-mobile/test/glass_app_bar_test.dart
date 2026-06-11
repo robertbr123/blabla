@@ -33,4 +33,9 @@ void main() {
     );
     expect(find.byIcon(Icons.add), findsOneWidget);
   });
+
+  test('GlassAppBar preferredSize sem bottom', () {
+    const bar = GlassAppBar(title: 'X');
+    expect(bar.preferredSize.height, kToolbarHeight);
+  });
 }
