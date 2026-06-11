@@ -162,15 +162,23 @@ class RedeService:
         self._genie = genieacs
         self._sgp = sgp_cache
 
-    async def _resolver_por_cpf(self, cpf: str, serial: str | None) -> _Resolucao:
+    async def _resolver_por_cpf(
+        self, cpf: str, serial: str | None, contrato_id: str | None = None
+    ) -> _Resolucao:
         """CPF -> SGP -> contrato -> pppoe -> device. PPPoE e a chave PRINCIPAL
         (o SGP faz o RADIUS, entao o login bate com o Username na ONU); serial
         e o fallback. Reusado pelo app do cliente (passa o CPF do login).
 
         Cliente pode ter VARIOS contratos (varias ONUs): tenta CADA pppoe e usa
-        o primeiro que tem ONU registrada no GenieACS."""
+        o primeiro que tem ONU registrada no GenieACS.
+
+        Se contrato_id for fornecido, resolve SOMENTE aquele contrato (matching
+        estrito): sem fallback para outros contratos. Usado pelo app do cliente
+        quando o usuario selecionou um contrato especifico."""
         cli = await self._sgp.get_cliente(cpf)
         contratos = _contratos_ordenados(cli.contratos) if cli else []
+        if contrato_id:
+            contratos = [c for c in contratos if c.id == contrato_id]
 
         for contrato in contratos:
             pppoe = contrato.pppoe_login
@@ -188,11 +196,13 @@ class RedeService:
         )
         return _Resolucao(device=device, pppoe=pppoe_ref, contrato_id=contrato_ref)
 
-    async def status_rede(self, cpf: str, serial: str | None = None) -> StatusRede:
+    async def status_rede(
+        self, cpf: str, serial: str | None = None, contrato_id: str | None = None
+    ) -> StatusRede:
         cpf = _so_digitos(cpf)
         if not cpf:
             raise CpfInvalidoError("CPF invalido")
-        res = await self._resolver_por_cpf(cpf, serial)
+        res = await self._resolver_por_cpf(cpf, serial, contrato_id)
         if res.device is None:
             return StatusRede(
                 encontrada=False, pppoe_login=res.pppoe, motivo="onu_nao_encontrada"
@@ -200,7 +210,7 @@ class RedeService:
         return StatusRede(encontrada=True, device=res.device, pppoe_login=res.pppoe)
 
     async def diagnostico_rede(
-        self, cpf: str, serial: str | None = None
+        self, cpf: str, serial: str | None = None, contrato_id: str | None = None
     ) -> DiagnosticoRede:
         """Read-only: aparelhos conectados + sinal da fibra. Dispara um
         refreshObject best-effort do WANDevice (popula optico/PPPoE no proximo
@@ -208,7 +218,7 @@ class RedeService:
         cpf = _so_digitos(cpf)
         if not cpf:
             raise CpfInvalidoError("CPF invalido")
-        res = await self._resolver_por_cpf(cpf, serial)
+        res = await self._resolver_por_cpf(cpf, serial, contrato_id)
         if res.device is None:
             return DiagnosticoRede(
                 encontrada=False, pppoe_login=res.pppoe, motivo="onu_nao_encontrada"
@@ -223,12 +233,13 @@ class RedeService:
         nova_senha: str,
         serial: str | None,
         ator_user_id: UUID,
+        contrato_id: str | None = None,
     ) -> ResultadoTroca:
         cpf = _so_digitos(cpf)
         if not cpf:
             raise CpfInvalidoError("CPF invalido")
         _validar_senha(nova_senha)
-        res = await self._resolver_por_cpf(cpf, serial)
+        res = await self._resolver_por_cpf(cpf, serial, contrato_id)
         if res.device is None:
             raise OnuNaoEncontradaError("ONU nao encontrada por PPPoE nem serial")
 

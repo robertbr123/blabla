@@ -306,3 +306,69 @@ def test_qualidade_sinal_faixas() -> None:
     assert qualidade_sinal(-26.0) == ("atencao", "🟡")
     assert qualidade_sinal(-28.0) == ("critico", "🔴")  # < -27
     assert qualidade_sinal(-5.0) == ("critico", "🔴")   # > -8 quente demais
+
+
+async def test_status_contrato_id_resolve_so_aquele(db_session: AsyncSession) -> None:
+    """Multi-contrato: com contrato_id, resolve SO aquele contrato. O contrato
+    'A' nao tem ONU -> encontrada=False (NAO cai pro 'B' que tem)."""
+    cli = ClienteSgp(
+        provider=SgpProviderEnum.ONDELINE, sgp_id="7", nome="Multi", cpf_cnpj=CPF,
+        contratos=[
+            Contrato(id="A", plano="X", status="ativo", pppoe_login="ppp_sem_onu"),
+            Contrato(id="B", plano="Y", status="ativo", pppoe_login="ppp6"),
+        ],
+    )
+
+    class _GenieMulti(_FakeGenie):
+        async def find_device_by_pppoe(self, login: str) -> GenieAcsDevice | None:
+            return _dev() if login == "ppp6" else None
+
+    svc = RedeService(session=db_session, genieacs=_GenieMulti(),
+                      sgp_cache=_FakeSgpCache(cli))
+    st_a = await svc.status_rede(CPF, contrato_id="A")
+    assert st_a.encontrada is False
+    st_b = await svc.status_rede(CPF, contrato_id="B")
+    assert st_b.encontrada is True and st_b.device is not None
+
+
+async def test_status_sem_contrato_id_mantem_primeiro_com_onu(db_session: AsyncSession) -> None:
+    """Sem contrato_id (tecnico/dashboard): comportamento atual — acha o 1o com ONU."""
+    cli = ClienteSgp(
+        provider=SgpProviderEnum.ONDELINE, sgp_id="7", nome="Multi", cpf_cnpj=CPF,
+        contratos=[
+            Contrato(id="A", plano="X", status="ativo", pppoe_login="ppp_sem_onu"),
+            Contrato(id="B", plano="Y", status="ativo", pppoe_login="ppp6"),
+        ],
+    )
+
+    class _GenieMulti(_FakeGenie):
+        async def find_device_by_pppoe(self, login: str) -> GenieAcsDevice | None:
+            return _dev() if login == "ppp6" else None
+
+    svc = RedeService(session=db_session, genieacs=_GenieMulti(),
+                      sgp_cache=_FakeSgpCache(cli))
+    st = await svc.status_rede(CPF)
+    assert st.encontrada is True
+
+
+async def test_troca_contrato_id_targeta_o_contrato_certo(db_session: AsyncSession) -> None:
+    """Troca com contrato_id usa o pppoe daquele contrato (auditoria registra ele)."""
+    cli = ClienteSgp(
+        provider=SgpProviderEnum.ONDELINE, sgp_id="7", nome="Multi", cpf_cnpj=CPF,
+        contratos=[
+            Contrato(id="A", plano="X", status="ativo", pppoe_login="ppp5"),
+            Contrato(id="B", plano="Y", status="ativo", pppoe_login="ppp6"),
+        ],
+    )
+
+    class _GenieMulti(_FakeGenie):
+        async def find_device_by_pppoe(self, login: str) -> GenieAcsDevice | None:
+            return _dev()
+
+    svc = RedeService(session=db_session, genieacs=_GenieMulti(),
+                      sgp_cache=_FakeSgpCache(cli))
+    await svc.trocar_senha_wifi(cpf=CPF, nova_senha="NovaSenha123",
+                                serial=None, ator_user_id=uuid4(), contrato_id="B")
+    pedido = (await db_session.execute(select(RedeWifiPedido))).scalar_one()
+    assert pedido.contrato_id == "B"
+    assert pedido.pppoe_login == "ppp6"
