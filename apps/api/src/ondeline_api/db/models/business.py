@@ -445,6 +445,7 @@ class OrdemServico(Base):
     houve_visita: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     materiais: Mapped[str | None] = mapped_column(Text, nullable=True)
     nome_sgp: Mapped[str | None] = mapped_column(Text, nullable=True)
+    sinal: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     __table_args__ = (
         Index("ix_os_codigo", "codigo", unique=True),

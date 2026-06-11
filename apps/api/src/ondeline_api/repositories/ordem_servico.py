@@ -25,6 +25,7 @@ class OrdemServicoRepo:
         plano: str | None = None,
         pppoe_login: str | None = None,
         pppoe_senha: str | None = None,
+        sinal: dict[str, Any] | None = None,
     ) -> OrdemServico:
         os_ = OrdemServico(
             codigo=codigo,
@@ -36,6 +37,7 @@ class OrdemServicoRepo:
             plano=plano,
             pppoe_login=pppoe_login,
             pppoe_senha=pppoe_senha,
+            sinal=sinal,
         )
         self._session.add(os_)
         await self._session.flush()

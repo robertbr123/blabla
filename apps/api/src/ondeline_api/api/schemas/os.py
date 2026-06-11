@@ -47,6 +47,7 @@ class OsOut(OsListItem):
     reaberta_por: UUID | None = None
     reabertura_motivo: str | None = None
     historico_reaberturas: list[dict[str, Any]] | None = None
+    sinal: dict[str, Any] | None = None
 
 
 class OsCreate(BaseModel):
