@@ -16,13 +16,13 @@ fallback cobre (o tecnico tem o serial na instalacao).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 from uuid import UUID
 
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ondeline_api.adapters.genieacs.base import GenieAcsDevice
+from ondeline_api.adapters.genieacs.base import GenieAcsDevice, GenieAcsUnavailableError
 from ondeline_api.adapters.genieacs.wifi_paths import montar_plano
 from ondeline_api.adapters.sgp.base import ClienteSgp, Contrato
 from ondeline_api.db.crypto import hash_pii
@@ -86,6 +86,28 @@ class DiagnosticoRede:
     device: GenieAcsDevice | None = None
     pppoe_login: str | None = None
     motivo: str | None = None  # "onu_nao_encontrada" quando encontrada=False
+
+
+class _DiagProto(Protocol):
+    async def diagnostico_rede(self, cpf: str) -> DiagnosticoRede: ...
+
+
+async def snapshot_sinal(rede: _DiagProto, cpf: str) -> dict[str, Any] | None:
+    """Snapshot do sinal optico pra gravar numa OS. Best-effort: GenieACS fora
+    ou sem ONU -> None (a OS e criada mesmo assim)."""
+    try:
+        diag = await rede.diagnostico_rede(cpf)
+    except GenieAcsUnavailableError:
+        return None
+    if not diag.encontrada or diag.device is None or diag.device.sinal is None:
+        return None
+    s = diag.device.sinal
+    return {
+        "rx_power": s.rx_power,
+        "tx_power": s.tx_power,
+        "status_gpon": s.status_gpon,
+        "qualidade": qualidade_sinal(s.rx_power)[0],
+    }
 
 
 @dataclass(frozen=True, slots=True)

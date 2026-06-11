@@ -264,6 +264,40 @@ async def test_diagnostico_inclui_pppoe(db_session: AsyncSession) -> None:
     assert diag.pppoe_login == "rosineidesilva"
 
 
+async def test_snapshot_sinal_ok_e_best_effort(db_session: AsyncSession) -> None:
+    from ondeline_api.adapters.genieacs.base import (
+        GenieAcsDevice,
+        GenieAcsUnavailableError,
+        SinalFibra,
+    )
+    from ondeline_api.services.rede_service import DiagnosticoRede, snapshot_sinal
+
+    class _OkRede:
+        async def diagnostico_rede(self, cpf: str) -> DiagnosticoRede:
+            dev = GenieAcsDevice(
+                device_id="X",
+                sinal=SinalFibra(rx_power=-26.0, tx_power=2.0, status_gpon="Up"),
+            )
+            return DiagnosticoRede(encontrada=True, device=dev)
+
+    snap = await snapshot_sinal(_OkRede(), "04099889289")
+    assert snap is not None
+    assert snap["rx_power"] == -26.0
+    assert snap["qualidade"] == "atencao"
+
+    class _DownRede:
+        async def diagnostico_rede(self, cpf: str) -> DiagnosticoRede:
+            raise GenieAcsUnavailableError("fora")
+
+    assert await snapshot_sinal(_DownRede(), "04099889289") is None
+
+    class _SemOnu:
+        async def diagnostico_rede(self, cpf: str) -> DiagnosticoRede:
+            return DiagnosticoRede(encontrada=False, motivo="onu_nao_encontrada")
+
+    assert await snapshot_sinal(_SemOnu(), "04099889289") is None
+
+
 def test_qualidade_sinal_faixas() -> None:
     from ondeline_api.services.rede_service import qualidade_sinal
     assert qualidade_sinal(None) == ("desconhecido", "⚪")
