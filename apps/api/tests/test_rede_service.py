@@ -254,3 +254,13 @@ async def test_reiniciar_onu_sem_device_levanta(db_session: AsyncSession) -> Non
     svc = _svc(db_session, genie)
     with pytest.raises(OnuNaoEncontradaError):
         await svc.reiniciar_onu(cpf=CPF, serial=None, ator_user_id=uuid4())
+
+
+def test_qualidade_sinal_faixas() -> None:
+    from ondeline_api.services.rede_service import qualidade_sinal
+    assert qualidade_sinal(None) == ("desconhecido", "⚪")
+    assert qualidade_sinal(-13.0) == ("bom", "🟢")
+    assert qualidade_sinal(-25.0) == ("bom", "🟢")      # -25 inclusive = bom
+    assert qualidade_sinal(-26.0) == ("atencao", "🟡")
+    assert qualidade_sinal(-28.0) == ("critico", "🔴")  # < -27
+    assert qualidade_sinal(-5.0) == ("critico", "🔴")   # > -8 quente demais

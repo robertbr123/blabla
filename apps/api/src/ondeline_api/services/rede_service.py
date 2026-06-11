@@ -34,6 +34,18 @@ SENHA_MIN = 8
 SENHA_MAX = 63
 
 
+def qualidade_sinal(rx_power: float | None) -> tuple[str, str]:
+    """(label, emoji) do RX power GPON (dBm). Mesmas faixas da Fatia 2/3:
+    verde -8..-25, amarelo -25..-27, vermelho fora; cinza se desconhecido."""
+    if rx_power is None:
+        return ("desconhecido", "⚪")
+    if rx_power > -8 or rx_power < -27:
+        return ("critico", "🔴")
+    if rx_power < -25:
+        return ("atencao", "🟡")
+    return ("bom", "🟢")
+
+
 class GenieProto(Protocol):
     async def find_device_by_pppoe(self, login: str) -> GenieAcsDevice | None: ...
     async def find_device_by_serial(self, serial: str) -> GenieAcsDevice | None: ...
