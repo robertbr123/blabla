@@ -21,6 +21,7 @@ from ondeline_api.db.models.rede import RedeWifiPedido
 from ondeline_api.deps import get_db
 from ondeline_api.main import create_app
 from ondeline_api.services.rede_service import (
+    DiagnosticoRede,
     OnuNaoEncontradaError,
     ResultadoTroca,
     StatusRede,
@@ -39,18 +40,33 @@ class _FakeService:
         status: StatusRede | None = None,
         troca: ResultadoTroca | None = None,
         raise_troca: Exception | None = None,
+        diag: DiagnosticoRede | None = None,
     ) -> None:
         self._status = status
         self._troca = troca
         self._raise = raise_troca
+        self._diag = diag
+        self.last_contrato_id: str | None = None
 
-    async def status_rede(self, cpf: str, serial: str | None = None) -> StatusRede:
+    async def status_rede(
+        self, cpf: str, serial: str | None = None, contrato_id: str | None = None
+    ) -> StatusRede:
+        self.last_contrato_id = contrato_id
         assert self._status is not None
         return self._status
 
+    async def diagnostico_rede(
+        self, cpf: str, serial: str | None = None, contrato_id: str | None = None
+    ) -> DiagnosticoRede:
+        self.last_contrato_id = contrato_id
+        assert self._diag is not None
+        return self._diag
+
     async def trocar_senha_wifi(
-        self, *, cpf: str, nova_senha: str, serial: str | None, ator_user_id: UUID
+        self, *, cpf: str, nova_senha: str, serial: str | None, ator_user_id: UUID,
+        contrato_id: str | None = None,
     ) -> ResultadoTroca:
+        self.last_contrato_id = contrato_id
         if self._raise:
             raise self._raise
         assert self._troca is not None
@@ -191,3 +207,69 @@ async def test_cooldown_429(db_session: AsyncSession) -> None:
         )
     assert r.status_code == 429, r.text
     assert r.json()["detail"]["minutos_restantes"] >= 1
+
+
+def _dev_com_sinal(rx: float | None):
+    from ondeline_api.adapters.genieacs.base import Aparelho, SinalFibra
+    return GenieAcsDevice(
+        device_id="30E1F1-AX1800-X", modelo="AX1800", online=True,
+        redes=[RedeWlan(instancia=1, ssid="CASA", enabled=True)],
+        aparelhos=[
+            Aparelho(nome="Celular", ip="192.168.1.10", mac="AA:BB", ativo=True),
+            Aparelho(nome="", ip="192.168.1.11", mac="CC:DD", ativo=False),
+        ],
+        sinal=SinalFibra(rx_power=rx) if rx is not None else None,
+    )
+
+
+async def test_aparelhos_encontrada_com_saude(db_session: AsyncSession) -> None:
+    fake = _FakeService(diag=DiagnosticoRede(encontrada=True, device=_dev_com_sinal(-13.6)))
+    app = _make_app(db_session, fake)
+    u = await _make_cliente(db_session)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.get("/api/v1/cliente-app/rede/aparelhos", headers=_auth(u))
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["encontrada"] is True
+    assert body["total"] == 2
+    assert body["saude"] == "excelente"
+    assert body["aparelhos"][0]["nome"] == "Celular"
+    assert body["aparelhos"][0]["ip"] == "192.168.1.10"
+
+
+async def test_aparelhos_saude_boa_no_limite(db_session: AsyncSession) -> None:
+    fake = _FakeService(diag=DiagnosticoRede(encontrada=True, device=_dev_com_sinal(-26.0)))
+    app = _make_app(db_session, fake)
+    u = await _make_cliente(db_session)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.get("/api/v1/cliente-app/rede/aparelhos", headers=_auth(u))
+    assert r.json()["saude"] == "boa"
+
+
+async def test_aparelhos_sem_sinal_indisponivel(db_session: AsyncSession) -> None:
+    fake = _FakeService(diag=DiagnosticoRede(encontrada=True, device=_dev_com_sinal(None)))
+    app = _make_app(db_session, fake)
+    u = await _make_cliente(db_session)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.get("/api/v1/cliente-app/rede/aparelhos", headers=_auth(u))
+    assert r.json()["saude"] == "indisponivel"
+
+
+async def test_aparelhos_nao_encontrada(db_session: AsyncSession) -> None:
+    fake = _FakeService(diag=DiagnosticoRede(encontrada=False, motivo="onu_nao_encontrada"))
+    app = _make_app(db_session, fake)
+    u = await _make_cliente(db_session)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.get("/api/v1/cliente-app/rede/aparelhos", headers=_auth(u))
+    assert r.status_code == 200, r.text
+    assert r.json()["encontrada"] is False
+    assert r.json()["total"] == 0
+
+
+async def test_status_repassa_contrato_id(db_session: AsyncSession) -> None:
+    fake = _FakeService(status=StatusRede(encontrada=True, device=_dev()))
+    app = _make_app(db_session, fake)
+    u = await _make_cliente(db_session)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        await c.get("/api/v1/cliente-app/rede/status?contrato_id=XYZ", headers=_auth(u))
+    assert fake.last_contrato_id == "XYZ"

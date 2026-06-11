@@ -14,8 +14,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ondeline_api.adapters.genieacs.base import GenieAcsUnavailableError
+from ondeline_api.adapters.genieacs.base import GenieAcsUnavailableError, SinalFibra
 from ondeline_api.api.schemas.cliente_app_rede import (
+    AparelhoClienteOut,
+    AparelhosClienteOut,
     RedeClienteStatusOut,
     RedeWifiOut,
     TrocarSenhaClienteIn,
@@ -38,6 +40,18 @@ router = APIRouter(prefix="/api/v1/cliente-app/rede", tags=["cliente-app:rede"])
 
 COOLDOWN_MINUTOS = 5
 AVISO_REBOOT = "Sua internet vai reiniciar e voltar em cerca de 2 minutos."
+
+
+def _saude_from_sinal(sinal: SinalFibra | None) -> str:
+    """Traduz o RX optico (dBm) num selo amigavel, escondendo o numero."""
+    if sinal is None or sinal.rx_power is None:
+        return "indisponivel"
+    rx = sinal.rx_power
+    if -24 <= rx <= -8:
+        return "excelente"
+    if -27 <= rx < -24:
+        return "boa"
+    return "fraca"  # rx < -27 (fraco) ou rx > -8 (forte demais)
 
 
 def _so_digitos(cpf: str) -> str:
@@ -67,10 +81,11 @@ async def _minutos_cooldown_restante(session: AsyncSession, cpf_digits: str) -> 
 async def status_rede_cliente(
     user: Annotated[ClienteAppUser, Depends(get_current_cliente_user)],
     service: Annotated[RedeService, Depends(get_rede_service)],
+    contrato_id: str | None = None,
 ) -> RedeClienteStatusOut:
     cpf = decrypt_pii(user.cpf_encrypted)
     try:
-        st = await service.status_rede(cpf)
+        st = await service.status_rede(cpf, contrato_id=contrato_id)
     except CpfInvalidoError:
         # Cliente logado deveria ter CPF valido; trata defensivamente como
         # "sem ONU" (mostra em construcao) em vez de 500.
@@ -90,6 +105,30 @@ async def status_rede_cliente(
         online=d.online,
         modelo=d.modelo,
         redes=[RedeWifiOut(ssid=s) for s in vistos],
+    )
+
+
+@router.get("/aparelhos", response_model=AparelhosClienteOut)
+async def aparelhos_rede_cliente(
+    user: Annotated[ClienteAppUser, Depends(get_current_cliente_user)],
+    service: Annotated[RedeService, Depends(get_rede_service)],
+    contrato_id: str | None = None,
+) -> AparelhosClienteOut:
+    cpf = decrypt_pii(user.cpf_encrypted)
+    try:
+        diag = await service.diagnostico_rede(cpf, contrato_id=contrato_id)
+    except CpfInvalidoError:
+        return AparelhosClienteOut(encontrada=False)
+    except GenieAcsUnavailableError as e:
+        raise HTTPException(status_code=503, detail="GenieACS indisponivel") from e
+    if not diag.encontrada or diag.device is None:
+        return AparelhosClienteOut(encontrada=False)
+    d = diag.device
+    return AparelhosClienteOut(
+        encontrada=True,
+        total=len(d.aparelhos),
+        aparelhos=[AparelhoClienteOut(nome=a.nome, ip=a.ip) for a in d.aparelhos],
+        saude=_saude_from_sinal(d.sinal),
     )
 
 
@@ -116,6 +155,7 @@ async def trocar_senha_cliente(
             nova_senha=payload.senha,
             serial=None,
             ator_user_id=user.id,
+            contrato_id=payload.contrato_id,
         )
     except (SenhaInvalidaError, CpfInvalidoError) as e:
         raise HTTPException(status_code=422, detail=str(e)) from e

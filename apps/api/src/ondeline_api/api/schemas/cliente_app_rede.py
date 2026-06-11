@@ -25,6 +25,20 @@ class RedeClienteStatusOut(BaseModel):
 class TrocarSenhaClienteIn(BaseModel):
     # SEM cpf: o cliente so pode trocar a propria rede (CPF do token).
     senha: str = Field(min_length=8, max_length=63)
+    contrato_id: str | None = None  # qual contrato (multi-contrato); None = atual
+
+
+class AparelhoClienteOut(BaseModel):
+    nome: str
+    ip: str
+
+
+class AparelhosClienteOut(BaseModel):
+    encontrada: bool
+    total: int = 0
+    aparelhos: list[AparelhoClienteOut] = Field(default_factory=list)
+    # "excelente" | "boa" | "fraca" | "indisponivel"
+    saude: str = "indisponivel"
 
 
 class TrocarSenhaClienteOut(BaseModel):
