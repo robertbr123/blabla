@@ -29,18 +29,46 @@ class _PromoCarouselState extends ConsumerState<PromoCarousel> {
   int _idx = 0;
   final Set<String> _viewedIds = {};
   Timer? _viewTimer;
+  Timer? _autoTimer;
+  Timer? _resumeTimer;
 
   @override
   void initState() {
     super.initState();
     _scheduleView(0);
+    _startAuto();
   }
 
   @override
   void dispose() {
+    _autoTimer?.cancel();
+    _resumeTimer?.cancel();
     _viewTimer?.cancel();
     _ctrl.dispose();
     super.dispose();
+  }
+
+  void _startAuto() {
+    _autoTimer?.cancel();
+    if (widget.items.length < 2) return;
+    _autoTimer = Timer.periodic(const Duration(seconds: 6), (_) {
+      if (!mounted || !_ctrl.hasClients) return;
+      final next = (_idx + 1) % widget.items.length;
+      _ctrl.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 480),
+        curve: const Cubic(0.32, 0.72, 0, 1),
+      );
+    });
+  }
+
+  // Usuário tocou: pausa o auto-scroll e retoma após 10s de inatividade.
+  void _pauseAuto() {
+    _autoTimer?.cancel();
+    _resumeTimer?.cancel();
+    _resumeTimer = Timer(const Duration(seconds: 10), () {
+      if (mounted) _startAuto();
+    });
   }
 
   void _scheduleView(int idx) {
@@ -84,16 +112,19 @@ class _PromoCarouselState extends ConsumerState<PromoCarousel> {
       children: [
         SizedBox(
           height: 172,
-          child: PageView.builder(
-            controller: _ctrl,
-            onPageChanged: (i) {
-              setState(() => _idx = i);
-              _scheduleView(i);
-            },
-            itemCount: widget.items.length,
-            itemBuilder: (_, i) => Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: _PromoCard(item: widget.items[i], onTap: _onTap),
+          child: Listener(
+            onPointerDown: (_) => _pauseAuto(),
+            child: PageView.builder(
+              controller: _ctrl,
+              onPageChanged: (i) {
+                setState(() => _idx = i);
+                _scheduleView(i);
+              },
+              itemCount: widget.items.length,
+              itemBuilder: (_, i) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: _PromoCard(item: widget.items[i], onTap: _onTap),
+              ),
             ),
           ),
         ),
