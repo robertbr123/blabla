@@ -70,4 +70,4 @@ class GenieAcsDevice:
     online: bool = False
     redes: list[RedeWlan] = field(default_factory=list)
     aparelhos: list[Aparelho] = field(default_factory=list)
-    sinal: "SinalFibra | None" = None
+    sinal: SinalFibra | None = None

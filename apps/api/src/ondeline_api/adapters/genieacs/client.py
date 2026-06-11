@@ -93,7 +93,8 @@ def _as_int(v: Any) -> int | None:
 
 
 def _parse_sinal(raw: dict[str, Any]) -> SinalFibra | None:
-    rx = tx = None
+    rx: float | None = None
+    tx: float | None = None
     status: str | None = None
     for p in GPON_CFG_PATHS:
         node = _dig(raw, p)
@@ -106,7 +107,9 @@ def _parse_sinal(raw: dict[str, Any]) -> SinalFibra | None:
             status = str(st) if st is not None else None
             break
 
-    conexao = ip_ext = ultimo = None
+    conexao: str | None = None
+    ip_ext: str | None = None
+    ultimo: str | None = None
     uptime: int | None = None
     for p in PPPOE_CONN_PATHS:
         node = _dig(raw, p)

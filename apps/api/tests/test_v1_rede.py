@@ -39,7 +39,7 @@ class _FakeService:
         troca: ResultadoTroca | None = None,
         raise_troca: Exception | None = None,
         raise_status: Exception | None = None,
-        diag: "DiagnosticoRede | None" = None,
+        diag: DiagnosticoRede | None = None,
     ) -> None:
         self._status = status
         self._troca = troca
@@ -313,6 +313,7 @@ async def test_diagnostico_encontrada(
 ) -> None:
     """POST /api/v1/rede/diagnostico retorna aparelhos + sinal quando achada."""
     from datetime import UTC, datetime
+
     from ondeline_api.adapters.genieacs.base import Aparelho, SinalFibra
 
     dev = GenieAcsDevice(
