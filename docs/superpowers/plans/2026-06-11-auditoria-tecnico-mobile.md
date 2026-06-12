@@ -73,6 +73,10 @@ Médio valor:
 
 ---
 
+## Ajustes de produto (pós-auditoria, pedidos pelo Robert)
+
+- [x] **Estoque esconde zerados por padrão** — antes mostrava todos os itens (filtro "Apenas com saldo" vinha desligado). Agora `saldo <= 0` fica oculto por padrão; toggle **"Mostrar zerados"** revela o catálogo completo. Estado vazio inteligente quando o técnico está sem saldo em tudo. (jun/2026)
+
 ## Ordem de execução acordada
 
 1. Bugs confirmados (#1 FCM, #4 pppoePass, design-preview) — leva rápida

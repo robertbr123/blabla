@@ -18,7 +18,8 @@ class EstoqueScreen extends ConsumerStatefulWidget {
 
 class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
   final _searchCtrl = TextEditingController();
-  bool _soComSaldo = false;
+  // Por padrão esconde itens zerados — técnico só vê o que realmente tem.
+  bool _mostrarZerados = false;
   Timer? _searchDebounce;
 
   @override
@@ -73,7 +74,7 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
         ),
         data: (todas) {
           final filtradas = todas.where((l) {
-            if (_soComSaldo && l.saldo <= 0) return false;
+            if (!_mostrarZerados && l.saldo <= 0) return false;
             if (query.isEmpty) return true;
             return l.nome.toLowerCase().contains(query) ||
                 l.sku.toLowerCase().contains(query) ||
@@ -84,7 +85,9 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
               todas.fold<int>(0, (a, l) => a + (l.saldo > 0 ? l.saldo : 0));
           final categorias =
               <String>{for (final l in todas) l.categoria}.length;
-          final hasActiveRefinement = query.isNotEmpty || _soComSaldo;
+          final hasZerosOcultos =
+              !_mostrarZerados && todas.any((l) => l.saldo <= 0);
+          final hasActiveRefinement = query.isNotEmpty || _mostrarZerados;
 
           return Column(
             children: [
@@ -149,9 +152,10 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
                     Row(
                       children: [
                         FilterChip(
-                          label: const Text('Apenas com saldo'),
-                          selected: _soComSaldo,
-                          onSelected: (v) => setState(() => _soComSaldo = v),
+                          label: const Text('Mostrar zerados'),
+                          selected: _mostrarZerados,
+                          onSelected: (v) =>
+                              setState(() => _mostrarZerados = v),
                           visualDensity: VisualDensity.compact,
                         ),
                         const Spacer(),
@@ -159,7 +163,7 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
                           TextButton.icon(
                             onPressed: () {
                               _searchCtrl.clear();
-                              setState(() => _soComSaldo = false);
+                              setState(() => _mostrarZerados = false);
                             },
                             icon: const Icon(Icons.clear_all, size: 16),
                             label: const Text('Limpar'),
@@ -176,7 +180,10 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
                 child: RefreshIndicator(
                   onRefresh: () async => ref.invalidate(estoqueSaldoProvider),
                   child: filtradas.isEmpty
-                      ? _Vazio(hasActiveRefinement: hasActiveRefinement)
+                      ? _Vazio(
+                          hasActiveRefinement: hasActiveRefinement,
+                          hasZerosOcultos: hasZerosOcultos,
+                        )
                       : ListView.builder(
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.only(bottom: 24),
@@ -352,19 +359,32 @@ class _ItemTile extends StatelessWidget {
 
 class _Vazio extends StatelessWidget {
   final bool hasActiveRefinement;
-  const _Vazio({required this.hasActiveRefinement});
+  final bool hasZerosOcultos;
+  const _Vazio({
+    required this.hasActiveRefinement,
+    required this.hasZerosOcultos,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final String message;
+    if (hasActiveRefinement) {
+      message =
+          'Ajuste a busca ou ative "Mostrar zerados" para ver todo o material.';
+    } else if (hasZerosOcultos) {
+      message =
+          'Você está sem saldo nos itens disponíveis. Ative "Mostrar zerados" para ver o catálogo completo.';
+    } else {
+      message =
+          'Nenhum item de estoque foi disponibilizado para este técnico até o momento.';
+    }
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 2, 16, 24),
       children: [
         AppStatePanel.empty(
           title: 'Nenhum item encontrado.',
-          message: hasActiveRefinement
-              ? 'Ajuste a busca ou desative o filtro para revisar todo o material disponível.'
-              : 'Nenhum item de estoque foi disponibilizado para este técnico até o momento.',
+          message: message,
           icon: Icons.inventory_2_outlined,
         ),
       ],
