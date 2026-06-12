@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
-
 import '../../../core/api/dto.dart';
 import '../../../core/api/promocoes_repository.dart';
 import '../../../core/branding/brand_tokens.dart';
@@ -95,25 +93,9 @@ class _PromoCarouselState extends ConsumerState<PromoCarousel> {
   }
 
   Future<void> _onTap(PromocaoDto p) async {
-    // Click sempre registra
     ref.read(promocoesRepositoryProvider).registrarEvento(p.id, 'click');
-
-    final action = p.ctaAction;
-    if (action == 'info') return;
-    if (action.startsWith('url:')) {
-      final url = action.substring(4);
-      final uri = Uri.tryParse(url);
-      if (uri != null) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-      return;
-    }
-    if (action.startsWith('tela:')) {
-      final rota = action.substring(5);
-      if (!mounted) return;
-      // ignore: use_build_context_synchronously
-      context.push(rota);
-    }
+    if (!mounted) return;
+    context.push('/promocoes/${p.id}');
   }
 
   @override
