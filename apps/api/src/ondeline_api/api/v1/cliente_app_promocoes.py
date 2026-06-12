@@ -65,6 +65,8 @@ def _promo_out(p: Promocao) -> PromocaoOut:
         gradient_from=p.gradient_from,
         gradient_to=p.gradient_to,
         icon=p.icon,
+        descricao_longa=p.descricao_longa,
+        regulamento=p.regulamento,
         created_at=p.created_at,
         updated_at=p.updated_at,
     )
