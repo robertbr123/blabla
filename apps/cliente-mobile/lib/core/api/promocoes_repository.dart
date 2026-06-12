@@ -58,6 +58,6 @@ final promocoesProvider = FutureProvider<List<PromocaoDto>>(
 );
 
 final promocaoDetalheProvider =
-    FutureProvider.family<PromocaoDetalheDto, String>(
+    FutureProvider.autoDispose.family<PromocaoDetalheDto, String>(
   (ref, id) => ref.watch(promocoesRepositoryProvider).detalhe(id),
 );

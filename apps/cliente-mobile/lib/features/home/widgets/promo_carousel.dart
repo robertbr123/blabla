@@ -8,10 +8,9 @@ import '../../../core/api/promocoes_repository.dart';
 import '../../../core/branding/brand_tokens.dart';
 import '../../promocoes/widgets/promo_card.dart';
 
-/// Carrossel horizontal de promocoes na home, consumindo a API real.
-/// - Registra evento "view" 1.5s depois da pagina ficar visivel.
-/// - Registra evento "click" no tap do CTA.
-/// - CTA: "info" no-op, "url:<https>" abre browser, "tela:<rota>" navega in-app.
+/// Carrossel horizontal de promoções na home, consumindo a API real.
+/// - Registra evento "view" 1,5s depois da página ficar visível (por card).
+/// - No tap, registra evento "click" e navega para a landing /promocoes/:id.
 class PromoCarousel extends ConsumerStatefulWidget {
   const PromoCarousel({super.key, required this.items});
   final List<PromocaoDto> items;

@@ -80,7 +80,16 @@ class _PromocaoDetalheScreenState
     if (action.startsWith('url:')) {
       final uri = Uri.tryParse(action.substring(4));
       if (uri != null) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        try {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } catch (_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Não conseguimos abrir o link agora.'),
+            ),
+          );
+        }
       }
       return;
     }
@@ -96,6 +105,10 @@ class _PromocaoDetalheScreenState
           .registrarInteresse(p.id, contratoId: contratoId);
       if (!mounted) return;
       setState(() => _cta = _CtaState.done);
+      // Invalida o cache do detalhe para que o próximo GET retorne
+      // interesseRegistrado=true. O _cta local segura o visual "done"
+      // durante o refetch, então não há flash de botão idle.
+      ref.invalidate(promocaoDetalheProvider(p.id));
     } catch (_) {
       if (!mounted) return;
       setState(() => _cta = _CtaState.idle);
