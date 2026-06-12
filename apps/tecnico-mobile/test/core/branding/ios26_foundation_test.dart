@@ -27,6 +27,8 @@ void main() {
     final style = iosLargeTitle(scheme);
     expect(style.fontSize, 30);
     expect(style.fontWeight, FontWeight.w800);
+    expect(style.letterSpacing, -0.5);
+    expect(style.height, 1.1);
     expect(style.color, scheme.onSurface);
   });
 
