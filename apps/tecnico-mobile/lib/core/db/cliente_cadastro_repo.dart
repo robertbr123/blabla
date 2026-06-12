@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import 'package:drift/drift.dart';
 
@@ -24,11 +25,21 @@ class ClienteCadastroLocalRepo {
       await _db.batch((batch) {
         for (final row in rows) {
           final normalized = normalizeClienteCachedPayload(row, now: now);
+          final id = (normalized['id'] ?? '') as String;
+          if (id.isEmpty) {
+            // API devolveu cliente sem id — não cacheia registro órfão; loga
+            // pra não mascarar erro de backend.
+            developer.log(
+              'cliente sem id no payload da API — pulando cache',
+              name: 'ClienteCadastroLocalRepo',
+            );
+            continue;
+          }
           batch.insert(
             _db.clienteCadastroLocal,
             ClienteCadastroLocalCompanion.insert(
               userId: userId,
-              id: (normalized['id'] ?? '') as String,
+              id: id,
               nome: (normalized['nome'] ?? '') as String,
               city: (normalized['city'] ?? '') as String,
               planNome: (normalized['plan_nome'] ?? '') as String,
@@ -48,10 +59,18 @@ class ClienteCadastroLocalRepo {
     required Map<String, dynamic> row,
   }) async {
     final normalized = normalizeClienteCachedPayload(row);
+    final id = (normalized['id'] ?? '') as String;
+    if (id.isEmpty) {
+      developer.log(
+        'cliente sem id no payload da API — ignorando upsert',
+        name: 'ClienteCadastroLocalRepo',
+      );
+      return;
+    }
     await _db.into(_db.clienteCadastroLocal).insert(
           ClienteCadastroLocalCompanion.insert(
             userId: userId,
-            id: (normalized['id'] ?? '') as String,
+            id: id,
             nome: (normalized['nome'] ?? '') as String,
             city: (normalized['city'] ?? '') as String,
             planNome: (normalized['plan_nome'] ?? '') as String,

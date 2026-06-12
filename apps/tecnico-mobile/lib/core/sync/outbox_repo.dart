@@ -58,11 +58,21 @@ class OutboxRepo {
   }
 
   Future<int> pendingCount() async {
+    final countExp = _db.outboxItem.id.count();
     final row = await (_db.selectOnly(_db.outboxItem)
-          ..addColumns([_db.outboxItem.id.count()])
+          ..addColumns([countExp])
           ..where(_db.outboxItem.sentAt.isNull()))
         .getSingle();
-    return row.read(_db.outboxItem.id.count()) ?? 0;
+    return row.read(countExp) ?? 0;
+  }
+
+  /// Stream reativo do count de pendentes — emite a cada write na tabela.
+  Stream<int> watchPendingCount() {
+    final countExp = _db.outboxItem.id.count();
+    final query = _db.selectOnly(_db.outboxItem)
+      ..addColumns([countExp])
+      ..where(_db.outboxItem.sentAt.isNull());
+    return query.map((row) => row.read(countExp) ?? 0).watchSingle();
   }
 
   Future<void> clear() async {

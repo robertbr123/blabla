@@ -35,8 +35,12 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(perfilLocal);
           }
           if (from < 4) {
-            await m.deleteTable('estoque_local');
-            await m.createTable(estoqueLocal);
+            // Drop + recreate atômico: se algo falhar no meio, a transação
+            // reverte e o device não fica sem a tabela estoque_local.
+            await transaction(() async {
+              await m.deleteTable('estoque_local');
+              await m.createTable(estoqueLocal);
+            });
           }
           if (from < 5) {
             await m.createTable(clienteCadastroLocal);

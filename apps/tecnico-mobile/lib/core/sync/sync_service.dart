@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -104,6 +105,9 @@ class SyncService {
 
   Future<int> pendingCount() => _outbox.pendingCount();
 
+  /// Stream reativo do count de pendentes (atualiza em todo write na fila).
+  Stream<int> watchPendingCount() => _outbox.watchPendingCount();
+
   /// Processa todos os items pendentes. Não-reentrante.
   Future<void> flush() async {
     if (_flushing) return;
@@ -115,6 +119,16 @@ class SyncService {
         final ok = await _processItem(item);
         if (!ok) break; // network down → para pro proximo ciclo
       }
+    } catch (e, st) {
+      // DB travado/corrompido ou erro inesperado ao ler a fila. Como flush()
+      // roda via unawaited(), sem este catch o erro sumiria silenciosamente e
+      // o sync pareceria estar funcionando.
+      developer.log(
+        'flush falhou',
+        name: 'SyncService',
+        error: e,
+        stackTrace: st,
+      );
     } finally {
       _flushing = false;
     }
@@ -193,11 +207,9 @@ final syncServiceProvider = Provider<SyncService>((ref) {
   return svc;
 });
 
-/// Stream do count de pendentes — atualiza a cada 5s. Usado pelo badge.
-final pendingCountProvider = StreamProvider<int>((ref) async* {
+/// Stream do count de pendentes — reativo via Drift (atualiza no instante em
+/// que um item é enfileirado ou marcado como enviado). Usado pelo badge.
+final pendingCountProvider = StreamProvider<int>((ref) {
   final svc = ref.watch(syncServiceProvider);
-  while (true) {
-    yield await svc.pendingCount();
-    await Future<void>.delayed(const Duration(seconds: 5));
-  }
+  return svc.watchPendingCount();
 });

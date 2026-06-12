@@ -35,11 +35,11 @@ Backlog priorizado: bugs confirmados → robustez → segurança → UX → feat
 
 ## 🟠 Robustez / offline
 
-- [ ] **Sync silencioso em DB travado** — `sync_service.dart:108` `flush()` não loga quando `pending()` lança.
-- [ ] **Badge pending desatualizado 5s** — `pendingCountProvider` faz polling 5s. Invalidar após `flush()` ou usar stream do Drift (`watchPendingCount`).
-- [ ] **Migration v4 destrutiva** — `database.dart` `deleteTable('estoque_local')` sem transação. Aceitável (cache), mas envolver em transação.
-- [ ] **Defaults silenciosos** — `cliente_cadastro_repo.dart` `normalize…` injeta `id:''`, `dob:'1900-01-01'` quando API omite campos. Mascara erro de backend.
-- [ ] **Sem índices Drift** — consultas por `syncedAt`/`userId` fazem full scan em listas grandes.
+- [x] **Sync silencioso em DB travado** — `sync_service.dart:108` `flush()` não loga quando `pending()` lança. ✅ corrigido: `catch` com `developer.log` (jun/2026)
+- [x] **Badge pending desatualizado 5s** — `pendingCountProvider` faz polling 5s. ✅ corrigido: agora usa `watchPendingCount()` (stream reativo do Drift, atualiza no instante do enqueue/markSent) (jun/2026)
+- [x] **Migration v4 destrutiva** — `database.dart` `deleteTable('estoque_local')` sem transação. ✅ corrigido: drop+create dentro de `transaction()` (jun/2026)
+- [x] **Defaults silenciosos** — `cliente_cadastro_repo.dart` `normalize…` injeta `id:''`, `dob:'1900-01-01'` quando API omite campos. ✅ corrigido: `replaceAll`/`upsertOne` pulam e logam quando `id` está vazio (não cacheia órfão) (jun/2026)
+- [~] **Sem índices Drift** — **analisado e descartado**: queries por `userId` já são cobertas pelos composite PKs `{userId,id}`/`{userId,itemId}` (SQLite indexa o PK e `userId` é a coluna mais à esquerda). Índice em `syncedAt` teria ganho marginal (dataset por-técnico é pequeno) e exigiria bump de schema + `build_runner` (codegen do `database.g.dart`) que não roda no ambiente local. Reavaliar só se surgir lentidão real em campo.
 
 ## 🟡 Segurança / produção
 
