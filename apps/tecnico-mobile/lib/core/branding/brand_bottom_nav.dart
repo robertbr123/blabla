@@ -107,14 +107,7 @@ class BrandBottomNav extends StatelessWidget {
                           top: 5,
                           bottom: 5,
                           width: slotW - 12,
-                          child: AnimatedContainer(
-                            duration: _kSlideDuration,
-                            decoration: BoxDecoration(
-                              color: scheme.primary
-                                  .withValues(alpha: isDark ? 0.16 : 0.10),
-                              borderRadius: BorderRadius.circular(22),
-                            ),
-                          ),
+                          child: _GlassLens(scheme: scheme, isDark: isDark),
                         ),
                         Row(
                           children: [
@@ -208,6 +201,50 @@ class _NavSlot extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Lente de vidro especular do item ativo — desliza entre os slots.
+/// Claro: vidro branco brilhante com glow emerald. Escuro: vidro tintado emerald.
+class _GlassLens extends StatelessWidget {
+  final ColorScheme scheme;
+  final bool isDark;
+
+  const _GlassLens({required this.scheme, required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDark
+              ? [
+                  scheme.primary.withValues(alpha: 0.30),
+                  scheme.primary.withValues(alpha: 0.12),
+                ]
+              : [
+                  Colors.white.withValues(alpha: 0.90),
+                  Colors.white.withValues(alpha: 0.40),
+                ],
+        ),
+        border: Border.all(
+          color: isDark
+              ? scheme.primary.withValues(alpha: 0.50)
+              : Colors.white.withValues(alpha: 0.95),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.primary.withValues(alpha: isDark ? 0.35 : 0.30),
+            blurRadius: 12,
+            spreadRadius: -2,
+          ),
+        ],
       ),
     );
   }
