@@ -61,3 +61,6 @@ ondeline-archive/
 data/
 postgres-data/
 redis-data/
+
+# Superpowers brainstorm (mockups locais)
+.superpowers/
