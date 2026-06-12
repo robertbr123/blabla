@@ -2,15 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/auth/auth_repository.dart';
-import '../../core/auth/session_cleanup.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/app_section_header.dart';
 import '../../core/ui/app_segmented_control.dart';
 import '../../core/ui/app_state_panel.dart';
 import '../../core/ui/app_surfaces.dart';
 import '../../core/ui/ios_glass_header.dart';
-import '../../core/push/fcm_service.dart';
 import '../../core/sync/sync_service.dart';
 import 'os_data.dart';
 import 'widgets/home_filter_strip.dart';
@@ -101,18 +98,11 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
               slivers: [
                 IosGlassHeader(
                   title: 'Ordens de Serviço',
-                  subtitle: '${items.length} '
-                      '${items.length == 1 ? 'ordem' : 'ordens'} em foco',
                   actions: [
                     IconButton(
                       icon: const Icon(Icons.refresh),
                       tooltip: 'Atualizar',
                       onPressed: () => ref.invalidate(osListStreamProvider),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.logout),
-                      tooltip: 'Sair',
-                      onPressed: _logout,
                     ),
                   ],
                 ),
@@ -123,19 +113,9 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
                       child: _OfflineQueueBanner(count: value),
                     ),
                   ),
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: AppSectionHeader(
-                      title: 'Pulso operacional',
-                      subtitle:
-                          'Atalhos rápidos para a fila que precisa da sua atenção.',
-                    ),
-                  ),
-                ),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.only(top: 12),
                     child: SizedBox(
                       height: 124,
                       child: ListView(
@@ -286,14 +266,6 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
     return m;
   }
 
-  Future<void> _logout() async {
-    try {
-      await ref.read(fcmServiceProvider).revoke();
-    } catch (_) {}
-    await ref.read(authRepositoryProvider).logout();
-    await ref.read(sessionCleanupProvider).clearLocalSession();
-    if (mounted) context.go('/login');
-  }
 }
 
 class _OfflineQueueBanner extends StatelessWidget {

@@ -2,15 +2,12 @@ import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 
-import '../branding/brand_theme.dart';
-
-/// Header large-title de vidro estilo iOS 26.
-/// Use como PRIMEIRO sliver de um CustomScrollView. O título grande colapsa
-/// pro inline ao rolar e o fundo translúcido desfoca o conteúdo por baixo.
+/// Barra de topo de vidro estilo iOS 26 — compacta.
+/// Use como PRIMEIRO sliver de um CustomScrollView. Fica fixa (pinned), com
+/// título e ações na MESMA linha e fundo translúcido que desfoca o conteúdo
+/// que rola por baixo. Suporta um subtítulo opcional (segunda linha menor).
 ///
-/// Assume até 2 [actions] à direita (o `titlePadding.end` reserva ~72px pra elas);
-/// com 3+ ações, aumentar o `end`. O collapse do large title pode precisar de
-/// ajuste fino de `expandedHeight`/`titlePadding` no aparelho.
+/// Assume até 2 [actions] à direita. Com 3+, conferir o espaço do título.
 class IosGlassHeader extends StatelessWidget {
   const IosGlassHeader({
     super.key,
@@ -29,46 +26,45 @@ class IosGlassHeader extends StatelessWidget {
 
     return SliverAppBar(
       pinned: true,
-      // kToolbarHeight (~56) + altura do large title (+ subtítulo quando houver).
-      expandedHeight: subtitle == null ? 104 : 120,
+      titleSpacing: 16,
+      toolbarHeight: subtitle == null ? 56 : 66,
       backgroundColor: scheme.surface.withValues(alpha: 0.7),
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       scrolledUnderElevation: 0,
       automaticallyImplyLeading: false,
+      title: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+              color: scheme.onSurface,
+            ),
+          ),
+          if (subtitle != null)
+            Text(
+              subtitle!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+        ],
+      ),
       actions: actions,
       flexibleSpace: ClipRect(
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: FlexibleSpaceBar(
-            expandedTitleScale: 1.0,
-            titlePadding: const EdgeInsetsDirectional.only(
-              start: 16,
-              bottom: 12,
-              end: 72,
-            ),
-            title: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: iosLargeTitle(scheme)),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle!,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: scheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+          child: const SizedBox.expand(),
         ),
       ),
     );
