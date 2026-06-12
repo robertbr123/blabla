@@ -6,8 +6,10 @@ import '../../core/auth/auth_repository.dart';
 import '../../core/auth/session_cleanup.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/app_section_header.dart';
+import '../../core/ui/app_segmented_control.dart';
 import '../../core/ui/app_state_panel.dart';
 import '../../core/ui/app_surfaces.dart';
+import '../../core/ui/ios_glass_header.dart';
 import '../../core/push/fcm_service.dart';
 import '../../core/sync/sync_service.dart';
 import 'os_data.dart';
@@ -71,25 +73,6 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      appBar: AppBar(
-        toolbarHeight: 48,
-        backgroundColor: scheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Atualizar',
-            onPressed: () => ref.invalidate(osListStreamProvider),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Sair',
-            onPressed: _logout,
-          ),
-        ],
-      ),
       body: async.when(
         loading: () => const _StateBody(
           child: AppStatePanel.loading(
@@ -116,6 +99,23 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
               key: const ValueKey('os-home-scroll'),
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
+                IosGlassHeader(
+                  title: 'Ordens de Serviço',
+                  subtitle: '${items.length} '
+                      '${items.length == 1 ? 'ordem' : 'ordens'} em foco',
+                  actions: [
+                    IconButton(
+                      icon: const Icon(Icons.refresh),
+                      tooltip: 'Atualizar',
+                      onPressed: () => ref.invalidate(osListStreamProvider),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.logout),
+                      tooltip: 'Sair',
+                      onPressed: _logout,
+                    ),
+                  ],
+                ),
                 if (pendingSync case AsyncData(:final value) when value > 0)
                   SliverToBoxAdapter(
                     child: Padding(
@@ -193,10 +193,13 @@ class _OsListScreenState extends ConsumerState<OsListScreen> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: HomeFilterStrip(
-                      filters: _filters,
+                    child: AppSegmentedControl<OsHomeFilter>(
+                      segments: [
+                        for (final f in _filters)
+                          AppSegment(value: f, label: f.label),
+                      ],
                       selected: _selectedFilter,
-                      onSelected: _selectFilter,
+                      onChanged: _selectFilter,
                     ),
                   ),
                 ),
