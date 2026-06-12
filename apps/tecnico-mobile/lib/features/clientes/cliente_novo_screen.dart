@@ -228,7 +228,8 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
         planNome: _planoSelecionado!.descricao,
         pppoeUser:
             _pppoeUser.text.trim().isEmpty ? null : _pppoeUser.text.trim(),
-        pppoePass: _pppoePass.text.isEmpty ? null : _pppoePass.text,
+        pppoePass:
+            _pppoePass.text.trim().isEmpty ? null : _pppoePass.text.trim(),
         dueDate: _dueDate,
         // Serial do equipamento e derivado pela API do material serializado.
         serial: null,

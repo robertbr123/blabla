@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,8 +22,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final loc = state.matchedLocation;
       // Splash decide pra onde mandar — nao redireciona.
       if (loc == '/splash') return null;
-      // Preview de design — acesso livre, sem auth.
-      if (loc == '/design-preview') return null;
+      // Preview de design — só em debug, acesso livre sem auth.
+      if (kDebugMode && loc == '/design-preview') return null;
       // Defensivo: storage com timeout pra nao travar a navegacao.
       bool has = false;
       try {
@@ -50,10 +51,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-      GoRoute(
-        path: '/design-preview',
-        builder: (_, __) => const DesignPreviewScreen(),
-      ),
+      // Preview de design registrada apenas em builds debug.
+      if (kDebugMode)
+        GoRoute(
+          path: '/design-preview',
+          builder: (_, __) => const DesignPreviewScreen(),
+        ),
       GoRoute(path: '/reentry', builder: (_, __) => const ReentryScreen()),
       GoRoute(
         path: '/os',

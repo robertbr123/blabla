@@ -160,9 +160,11 @@ class SyncService {
             '/api/v1/tecnico/me/os/${item.osId}/foto',
             data: form,
           );
-          // Apaga arquivo local apos sucesso.
+          // Marca enviado ANTES de apagar o arquivo: se o delete falhar
+          // (permissao/arquivo em uso), o item nao reenvia o POST duplicado.
+          await _outbox.markSent(item.id);
           await _outbox.deleteFileIfExists(path);
-          break;
+          return true;
       }
       await _outbox.markSent(item.id);
       return true;

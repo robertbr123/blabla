@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -17,6 +18,8 @@ class FcmService {
   final FlutterLocalNotificationsPlugin _local =
       FlutterLocalNotificationsPlugin();
   String? _lastToken;
+  StreamSubscription<String>? _tokenRefreshSub;
+  StreamSubscription<RemoteMessage>? _onMessageSub;
 
   FcmService(this._dio);
 
@@ -39,14 +42,20 @@ class FcmService {
     );
 
     // 3. Registra token + listener de rotação.
+    // Cancela subscriptions antigas pra não duplicar quando init() roda de
+    // novo (ex: logout → login no mesmo processo).
+    await _tokenRefreshSub?.cancel();
+    await _onMessageSub?.cancel();
+
     final token = await FirebaseMessaging.instance.getToken();
     if (token != null) {
       await _registerToken(token);
     }
-    FirebaseMessaging.instance.onTokenRefresh.listen(_registerToken);
+    _tokenRefreshSub =
+        FirebaseMessaging.instance.onTokenRefresh.listen(_registerToken);
 
     // 4. Mensagem em foreground → exibe notif local.
-    FirebaseMessaging.onMessage.listen((msg) {
+    _onMessageSub = FirebaseMessaging.onMessage.listen((msg) {
       final n = msg.notification;
       if (n == null) return;
       _local.show(
@@ -69,7 +78,6 @@ class FcmService {
 
   Future<void> _registerToken(String token) async {
     if (token == _lastToken) return;
-    _lastToken = token;
     try {
       await _dio.post(
         '/api/v1/tecnico/me/fcm-token',
@@ -78,12 +86,19 @@ class FcmService {
           'platform': Platform.isIOS ? 'ios' : 'android',
         },
       );
+      // Só marca como registrado após sucesso — se falhar (offline), o
+      // proximo getToken/onTokenRefresh reenvia em vez de pular silenciosamente.
+      _lastToken = token;
     } catch (_) {
       // Best-effort — proximo ciclo tenta de novo.
     }
   }
 
   Future<void> revoke() async {
+    await _tokenRefreshSub?.cancel();
+    _tokenRefreshSub = null;
+    await _onMessageSub?.cancel();
+    _onMessageSub = null;
     final token = _lastToken;
     if (token == null) return;
     try {
