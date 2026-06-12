@@ -67,7 +67,7 @@ class PromocaoEvento(Base):
     cliente_app_user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), nullable=False
     )
-    tipo: Mapped[str] = mapped_column(String(16), nullable=False)  # view | click
+    tipo: Mapped[str] = mapped_column(String(16), nullable=False)  # view | click | detail_view
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

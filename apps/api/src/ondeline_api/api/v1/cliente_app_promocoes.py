@@ -28,6 +28,8 @@ from ondeline_api.api.schemas.promocao import (
     PromocaoEventoOut,
     PromocaoInteresseIn,
     PromocaoInteresseOut,
+    PromocaoLeadAdminOut,
+    PromocaoLeadPatchIn,
     PromocaoOut,
     PromocaoReorderIn,
     PromocaoUpdateIn,
@@ -286,7 +288,9 @@ async def _stats(session: AsyncSession, promo_id: UUID) -> tuple[int, int]:
     return by.get("view", 0), by.get("click", 0)
 
 
-def _admin_out(p: Promocao, views: int, clicks: int) -> PromocaoAdminOut:
+def _admin_out(
+    p: Promocao, views: int, clicks: int, leads_count: int = 0
+) -> PromocaoAdminOut:
     base = _promo_out(p)
     ctr = (clicks / views * 100.0) if views > 0 else 0.0
     return PromocaoAdminOut(
@@ -294,6 +298,7 @@ def _admin_out(p: Promocao, views: int, clicks: int) -> PromocaoAdminOut:
         views=views,
         clicks=clicks,
         ctr=round(ctr, 2),
+        leads_count=leads_count,
     )
 
 
@@ -307,10 +312,19 @@ async def admin_listar(
 ) -> list[PromocaoAdminOut]:
     stmt = select(Promocao).order_by(asc(Promocao.ordem), asc(Promocao.created_at))
     rows = list((await session.execute(stmt)).scalars())
+    # Agrega leads por promo numa query só (evita N+1).
+    leads_rows = (
+        await session.execute(
+            select(PromocaoLead.promocao_id, func.count()).group_by(
+                PromocaoLead.promocao_id
+            )
+        )
+    ).all()
+    leads_by_promo: dict[uuid.UUID, int] = {pid: int(cnt) for pid, cnt in leads_rows}
     out: list[PromocaoAdminOut] = []
     for p in rows:
         v, c = await _stats(session, p.id)
-        out.append(_admin_out(p, v, c))
+        out.append(_admin_out(p, v, c, leads_by_promo.get(p.id, 0)))
     return out
 
 
@@ -345,6 +359,72 @@ async def admin_criar(
     await session.commit()
     await session.refresh(promo)
     return _admin_out(promo, 0, 0)
+
+
+@admin_router.get(
+    "/leads",
+    response_model=list[PromocaoLeadAdminOut],
+    dependencies=[Depends(require_role(Role.ATENDENTE, Role.ADMIN))],
+)
+async def admin_listar_leads(
+    promocao_id: UUID | None = None,
+    status_filtro: str | None = None,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> list[PromocaoLeadAdminOut]:
+    q = (
+        select(PromocaoLead, Promocao.titulo)
+        .join(Promocao, Promocao.id == PromocaoLead.promocao_id)
+        .order_by(PromocaoLead.created_at.desc())
+    )
+    if promocao_id is not None:
+        q = q.where(PromocaoLead.promocao_id == promocao_id)
+    if status_filtro:
+        q = q.where(PromocaoLead.status == status_filtro)
+    rows = (await session.execute(q)).all()
+    return [
+        PromocaoLeadAdminOut(
+            id=lead.id,
+            promocao_id=lead.promocao_id,
+            promocao_titulo=titulo,
+            nome=lead.nome_snapshot,
+            telefone=lead.telefone_snapshot,
+            contrato_id=lead.contrato_id,
+            status=lead.status,
+            created_at=lead.created_at,
+            updated_at=lead.updated_at,
+        )
+        for lead, titulo in rows
+    ]
+
+
+@admin_router.patch(
+    "/leads/{lead_id}",
+    response_model=PromocaoLeadAdminOut,
+    dependencies=[Depends(require_role(Role.ATENDENTE, Role.ADMIN))],
+)
+async def admin_atualizar_lead(
+    lead_id: UUID,
+    body: PromocaoLeadPatchIn,
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> PromocaoLeadAdminOut:
+    lead = await session.get(PromocaoLead, lead_id)
+    if lead is None:
+        raise HTTPException(status_code=404, detail="lead nao encontrado")
+    lead.status = body.status
+    await session.commit()
+    await session.refresh(lead)
+    promo = await session.get(Promocao, lead.promocao_id)
+    return PromocaoLeadAdminOut(
+        id=lead.id,
+        promocao_id=lead.promocao_id,
+        promocao_titulo=promo.titulo if promo else "",
+        nome=lead.nome_snapshot,
+        telefone=lead.telefone_snapshot,
+        contrato_id=lead.contrato_id,
+        status=lead.status,
+        created_at=lead.created_at,
+        updated_at=lead.updated_at,
+    )
 
 
 @admin_router.get(

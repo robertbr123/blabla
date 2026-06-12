@@ -12,6 +12,7 @@ from ondeline_api.auth import jwt as jwt_mod
 from ondeline_api.auth.passwords import hash_password
 from ondeline_api.db.crypto import encrypt_pii, hash_pii
 from ondeline_api.db.models.cliente_app import ClienteAppUser
+from ondeline_api.db.models.identity import Role, User
 from ondeline_api.db.models.promocoes import Promocao, PromocaoLead
 from ondeline_api.deps import get_db
 from ondeline_api.main import create_app
@@ -235,3 +236,133 @@ async def test_detalhe_promo_inexistente_404(
         json={},
     )
     assert r2.status_code == 404
+
+
+# ── helpers admin ──────────────────────────────────────────────────────────────
+
+
+async def _make_admin(db_session: AsyncSession) -> User:
+    u = User(
+        email=f"admin-{uuid.uuid4().hex[:8]}@test.com",
+        password_hash=hash_password("Admin123!"),
+        role=Role.ADMIN,
+        name="Admin Teste",
+        is_active=True,
+    )
+    db_session.add(u)
+    await db_session.flush()
+    return u
+
+
+def _auth_admin(user: User) -> dict[str, str]:
+    token = jwt_mod.encode_access_token(user.id, Role.ADMIN)
+    return {"Authorization": f"Bearer {token}"}
+
+
+# ── testes admin ───────────────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_admin_lista_leads_com_filtro(
+    ac: AsyncClient,
+    promo_ativa: Promocao,
+    db_session: AsyncSession,
+) -> None:
+    admin = await _make_admin(db_session)
+    headers = _auth_admin(admin)
+
+    # Cria 2 leads direto na DB com status diferentes.
+    lead1 = PromocaoLead(
+        promocao_id=promo_ativa.id,
+        cliente_app_user_id=uuid.uuid4(),
+        nome_snapshot="Lead Novo",
+        telefone_snapshot="92911111111",
+        status="novo",
+    )
+    lead2 = PromocaoLead(
+        promocao_id=promo_ativa.id,
+        cliente_app_user_id=uuid.uuid4(),
+        nome_snapshot="Lead Contatado",
+        telefone_snapshot="92922222222",
+        status="contatado",
+    )
+    db_session.add_all([lead1, lead2])
+    await db_session.commit()
+
+    # Sem filtro → 2 leads com promocao_titulo
+    r = await ac.get("/api/v1/admin/promocoes/leads", headers=headers)
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert len(data) == 2
+    assert all(item["promocao_titulo"] == "Promo Teste" for item in data)
+
+    # Filtro por status → 1 lead
+    r2 = await ac.get(
+        "/api/v1/admin/promocoes/leads?status_filtro=novo", headers=headers
+    )
+    assert r2.status_code == 200, r2.text
+    assert len(r2.json()) == 1
+    assert r2.json()[0]["nome"] == "Lead Novo"
+
+
+@pytest.mark.asyncio
+async def test_admin_patch_lead_status(
+    ac: AsyncClient,
+    promo_ativa: Promocao,
+    db_session: AsyncSession,
+) -> None:
+    admin = await _make_admin(db_session)
+    headers = _auth_admin(admin)
+
+    lead = PromocaoLead(
+        promocao_id=promo_ativa.id,
+        cliente_app_user_id=uuid.uuid4(),
+        nome_snapshot="Lead Patch",
+        telefone_snapshot="92933333333",
+        status="novo",
+    )
+    db_session.add(lead)
+    await db_session.commit()
+
+    # PATCH status valido
+    r = await ac.patch(
+        f"/api/v1/admin/promocoes/leads/{lead.id}",
+        headers=headers,
+        json={"status": "contatado"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "contatado"
+
+    # PATCH status invalido → 422
+    r2 = await ac.patch(
+        f"/api/v1/admin/promocoes/leads/{lead.id}",
+        headers=headers,
+        json={"status": "banana"},
+    )
+    assert r2.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_admin_listar_inclui_leads_count(
+    ac: AsyncClient,
+    promo_ativa: Promocao,
+    db_session: AsyncSession,
+) -> None:
+    admin = await _make_admin(db_session)
+    headers = _auth_admin(admin)
+
+    lead = PromocaoLead(
+        promocao_id=promo_ativa.id,
+        cliente_app_user_id=uuid.uuid4(),
+        nome_snapshot="Lead Count",
+        telefone_snapshot="92944444444",
+        status="novo",
+    )
+    db_session.add(lead)
+    await db_session.commit()
+
+    r = await ac.get("/api/v1/admin/promocoes", headers=headers)
+    assert r.status_code == 200, r.text
+    promos = r.json()
+    promo_data = next(p for p in promos if str(p["id"]) == str(promo_ativa.id))
+    assert promo_data["leads_count"] == 1
