@@ -119,7 +119,8 @@ void main() {
     );
   });
 
-  testWidgets('surface card reuses the shared card theme', (tester) async {
+  testWidgets('surface card renders content with rounded grouped surface',
+      (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildLightTheme(),
@@ -129,21 +130,27 @@ void main() {
       ),
     );
 
-    final card = tester.widget<Card>(find.byType(Card));
+    expect(find.text('Conteudo'), findsOneWidget);
+
     final paddingFinder = find.descendant(
-      of: find.byType(Card),
+      of: find.byType(AppSurfaceCard),
       matching: find.byWidgetPredicate(
         (widget) =>
             widget is Padding && widget.padding == const EdgeInsets.all(16),
       ),
     );
-
-    expect(find.text('Conteudo'), findsOneWidget);
-    expect(find.byType(Card), findsOneWidget);
-    expect(card.color, isNull);
-    expect(card.shape, isNull);
-    expect(card.shadowColor, isNull);
     expect(paddingFinder, findsOneWidget);
+
+    final decorated = tester.widget<DecoratedBox>(
+      find
+          .descendant(
+            of: find.byType(AppSurfaceCard),
+            matching: find.byType(DecoratedBox),
+          )
+          .first,
+    );
+    expect((decorated.decoration as BoxDecoration).borderRadius,
+        BorderRadius.circular(20));
   });
 
   testWidgets('section header shows title and action label', (tester) async {
