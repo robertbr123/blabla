@@ -1,3 +1,4 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -14,10 +15,10 @@ class BrandNavItem {
   });
 }
 
-/// Bottom nav flutuante BlaBla com **pill deslizante**.
+/// Bottom nav flutuante BlaBla com **liquid glass**.
 ///
 /// - Todos os itens sempre mostram ícone + label
-/// - Uma bolha emerald desliza entre slots com curve "easeOutBack" (bounce sutil)
+/// - Uma lente de vidro especular desliza entre slots com curve "easeOutBack" (bounce sutil)
 /// - Selected item: ícone preenchido + texto emerald 600
 /// - Unselected: ícone outlined + texto cinza 500
 /// - Haptic feedback `selectionClick` na troca
@@ -34,7 +35,8 @@ class BrandBottomNav extends StatelessWidget {
   });
 
   static const _kHeight = 60.0;
-  static const _kRadius = 22.0;
+  static const _kRadius = 26.0;
+  static const _kBlurSigma = 20.0;
   static const _kSlideDuration = Duration(milliseconds: 420);
 
   void _handleTap(int i) {
@@ -48,81 +50,90 @@ class BrandBottomNav extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Camadas translúcidas do vidro conforme o tema.
+    final glassTop = isDark
+        ? const Color(0xFF282E32).withValues(alpha: 0.55)
+        : Colors.white.withValues(alpha: 0.55);
+    final glassBottom = isDark
+        ? const Color(0xFF1C2024).withValues(alpha: 0.42)
+        : Colors.white.withValues(alpha: 0.32);
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.14)
+        : Colors.white.withValues(alpha: 0.70);
+
     return SafeArea(
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 4, 14, 10),
-        child: Container(
-          height: _kHeight,
+        child: DecoratedBox(
+          // Sombra externa fica AQUI (fora do ClipRRect — o clip cortaria).
           decoration: BoxDecoration(
-            color: scheme.surfaceContainer,
             borderRadius: BorderRadius.circular(_kRadius),
-            border: Border.all(color: scheme.outlineVariant, width: 0.8),
             boxShadow: [
               BoxShadow(
-                color: scheme.shadow.withValues(alpha: isDark ? 0.45 : 0.08),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
+                color: scheme.shadow.withValues(alpha: isDark ? 0.5 : 0.22),
+                blurRadius: isDark ? 36 : 34,
+                offset: const Offset(0, 12),
                 spreadRadius: -2,
-              ),
-              BoxShadow(
-                color: scheme.primary.withValues(alpha: isDark ? 0.12 : 0.06),
-                blurRadius: 30,
-                offset: const Offset(0, 4),
-                spreadRadius: -4,
               ),
             ],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(_kRadius),
-            child: LayoutBuilder(builder: (context, c) {
-              final slotW = c.maxWidth / items.length;
-              return Stack(
-                children: [
-                  // 1) A bolha emerald que desliza
-                  AnimatedPositioned(
-                    duration: _kSlideDuration,
-                    curve: Curves.easeOutBack,
-                    left: selectedIndex * slotW + 4,
-                    top: 4,
-                    bottom: 4,
-                    width: slotW - 8,
-                    child: AnimatedContainer(
-                      duration: _kSlideDuration,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            scheme.primary.withValues(alpha: isDark ? 0.22 : 0.14),
-                            scheme.primary.withValues(alpha: isDark ? 0.14 : 0.08),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(_kRadius - 4),
-                        border: Border.all(
-                          color:
-                              scheme.primary.withValues(alpha: isDark ? 0.45 : 0.30),
-                          width: 1,
-                        ),
-                      ),
-                    ),
+            child: BackdropFilter(
+              filter:
+                  ImageFilter.blur(sigmaX: _kBlurSigma, sigmaY: _kBlurSigma),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [glassTop, glassBottom],
                   ),
-                  // 2) Itens (ícone + label) sobre a bolha
-                  Row(
-                    children: [
-                      for (var i = 0; i < items.length; i++)
-                        Expanded(
-                          child: _NavSlot(
-                            item: items[i],
-                            selected: i == selectedIndex,
-                            onTap: () => _handleTap(i),
+                  borderRadius: BorderRadius.circular(_kRadius),
+                  border: Border.all(color: borderColor, width: 1),
+                ),
+                child: SizedBox(
+                  height: _kHeight,
+                  child: LayoutBuilder(builder: (context, c) {
+                    final slotW = c.maxWidth / items.length;
+                    return Stack(
+                      children: [
+                        // Bolha antiga (substituída pela lente na Task 3).
+                        AnimatedPositioned(
+                          duration: _kSlideDuration,
+                          curve: Curves.easeOutBack,
+                          left: selectedIndex * slotW + 6,
+                          top: 5,
+                          bottom: 5,
+                          width: slotW - 12,
+                          child: AnimatedContainer(
+                            duration: _kSlideDuration,
+                            decoration: BoxDecoration(
+                              color: scheme.primary
+                                  .withValues(alpha: isDark ? 0.16 : 0.10),
+                              borderRadius: BorderRadius.circular(22),
+                            ),
                           ),
                         ),
-                    ],
-                  ),
-                ],
-              );
-            }),
+                        Row(
+                          children: [
+                            for (var i = 0; i < items.length; i++)
+                              Expanded(
+                                child: _NavSlot(
+                                  item: items[i],
+                                  selected: i == selectedIndex,
+                                  onTap: () => _handleTap(i),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    );
+                  }),
+                ),
+              ),
+            ),
           ),
         ),
       ),
