@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/os_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/haptics.dart';
+import 'widgets/triagem_rede.dart';
 
 /// Wizard 3 steps: tipo -> detalhes -> confirma.
 class NovoChamadoScreen extends ConsumerStatefulWidget {
@@ -20,6 +21,8 @@ class _NovoChamadoScreenState extends ConsumerState<NovoChamadoScreen> {
   final _descCtrl = TextEditingController();
   final _extraCtrl = TextEditingController(); // depende do tipo
   bool _loading = false;
+  bool _triagemPendente = false;
+  Map<String, dynamic>? _diagnostico;
 
   @override
   void dispose() {
@@ -48,59 +51,81 @@ class _NovoChamadoScreenState extends ConsumerState<NovoChamadoScreen> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(BrandTokens.spaceLg),
-          child: Column(
-            children: [
-              _StepIndicator(current: _step, total: 3),
-              const SizedBox(height: BrandTokens.spaceLg),
-              Expanded(
-                child: switch (_step) {
-                  0 => _StepTipo(
-                      selected: _tipo,
-                      onSelect: (t) => setState(() {
-                        _tipo = t;
-                        _step = 1;
-                      }),
-                    ),
-                  1 => _StepDetalhes(
-                      tipo: _tipo!,
-                      descCtrl: _descCtrl,
-                      extraCtrl: _extraCtrl,
-                    ),
-                  _ => _StepConfirma(
-                      tipo: _tipo!,
-                      descricao: _descCtrl.text,
-                      extra: _extraCtrl.text,
-                    ),
-                },
-              ),
-              if (_step > 0)
-                Row(
+          child: _triagemPendente
+              ? TriagemRede(
+                  onConcluir: (diag) => setState(() {
+                    _diagnostico = diag;
+                    _triagemPendente = false;
+                    _step = 1;
+                  }),
+                  onResolveu: () => context.pop(),
+                )
+              : Column(
                   children: [
+                    _StepIndicator(current: _step, total: 3),
+                    const SizedBox(height: BrandTokens.spaceLg),
                     Expanded(
-                      child: OutlinedButton(
-                        onPressed: _loading
-                            ? null
-                            : () => setState(() => _step--),
-                        child: const Text('Voltar'),
-                      ),
+                      child: switch (_step) {
+                        0 => _StepTipo(
+                            selected: _tipo,
+                            onSelect: (t) {
+                              if (t == 'sem_internet') {
+                                setState(() {
+                                  _tipo = t;
+                                  _triagemPendente = true;
+                                });
+                              } else {
+                                setState(() {
+                                  _tipo = t;
+                                  _step = 1;
+                                });
+                              }
+                            },
+                          ),
+                        1 => _StepDetalhes(
+                            tipo: _tipo!,
+                            descCtrl: _descCtrl,
+                            extraCtrl: _extraCtrl,
+                          ),
+                        _ => _StepConfirma(
+                            tipo: _tipo!,
+                            descricao: _descCtrl.text,
+                            extra: _extraCtrl.text,
+                          ),
+                      },
                     ),
-                    const SizedBox(width: BrandTokens.spaceMd),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: _loading ? null : _next,
-                        child: _loading
-                            ? const SizedBox(
-                                height: 22,
-                                width: 22,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : Text(_step == 2 ? 'Confirmar' : 'Continuar'),
+                    if (_step > 0)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _loading
+                                  ? null
+                                  : () => setState(() {
+                                        _step--;
+                                        if (_step == 0) _diagnostico = null;
+                                      }),
+                              child: const Text('Voltar'),
+                            ),
+                          ),
+                          const SizedBox(width: BrandTokens.spaceMd),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: _loading ? null : _next,
+                              child: _loading
+                                  ? const SizedBox(
+                                      height: 22,
+                                      width: 22,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    )
+                                  : Text(_step == 2 ? 'Confirmar' : 'Continuar'),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
                   ],
                 ),
-            ],
-          ),
         ),
       ),
     );
@@ -122,6 +147,9 @@ class _NovoChamadoScreenState extends ConsumerState<NovoChamadoScreen> {
       payload['novo_endereco'] = _extraCtrl.text;
     } else if (_tipo == 'troca_plano') {
       payload['plano_desejado'] = _extraCtrl.text;
+    }
+    if (_diagnostico != null) {
+      payload['diagnostico'] = _diagnostico;
     }
     try {
       await ref.read(osRepositoryProvider).criar(
