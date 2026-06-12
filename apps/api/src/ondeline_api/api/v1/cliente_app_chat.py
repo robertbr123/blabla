@@ -6,6 +6,7 @@ Bot responde com texto puro via Hermes. Persistencia em
 """
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import datetime
 from typing import Any
@@ -36,7 +37,7 @@ from ondeline_api.config import get_settings
 from ondeline_api.db.crypto import decrypt_pii, encrypt_pii
 from ondeline_api.db.models.cliente_app import ClienteAppMessage, ClienteAppUser
 from ondeline_api.deps import get_db
-from ondeline_api.services.rede_service import RedeService, qualidade_sinal
+from ondeline_api.services.rede_service import CpfInvalidoError, RedeService, qualidade_sinal
 from ondeline_api.services.sgp_cache import SgpCacheService
 from ondeline_api.services.sgp_config import load_sgp_config
 from ondeline_api.workers.runtime import get_redis
@@ -126,6 +127,8 @@ async def _exec_consultar_rede(
             "aparelhos_conectados": len(d.aparelhos),
             "sinal": {"qualidade": label, "emoji": emoji},
         }
+    except CpfInvalidoError:
+        return {"encontrada": False, "motivo": "cpf_invalido"}
     except GenieAcsUnavailableError:
         return {"erro": "indisponivel"}
     finally:
@@ -207,9 +210,8 @@ async def send(
             )
         )
 
-    user_llm_msg = ChatMessage(role=Role.USER, content=body.text)
-
     # 3. Chama LLM (loop de ate 3 iteracoes para tool calls)
+    # Nota: history_msgs ja inclui a msg do user recem gravada (commit antes do select).
     s = get_settings()
     llm_url, llm_key, llm_model = s.effective_llm()
     from ondeline_api.adapters.llm.hermes import HermesProvider
@@ -220,46 +222,47 @@ async def send(
         api_key=llm_key,
         timeout=s.llm_timeout_seconds,
     )
-    messages: list[ChatMessage] = [system_msg, *history_msgs, user_llm_msg]
+    messages: list[ChatMessage] = [system_msg, *history_msgs]
     total_tokens = 0
     bot_text: str | None = None
     try:
-        for _ in range(3):  # max 3 iteracoes (1 tool + resposta na pratica)
-            resp = await provider.chat(
-                ChatRequest(
-                    model=llm_model,
-                    messages=messages,
-                    tools=[_CONSULTAR_REDE_SPEC],
-                    temperature=0.5,
+        async with asyncio.timeout(60):
+            for _ in range(3):  # max 3 iteracoes (1 tool + resposta na pratica)
+                resp = await provider.chat(
+                    ChatRequest(
+                        model=llm_model,
+                        messages=messages,
+                        tools=[_CONSULTAR_REDE_SPEC],
+                        temperature=0.5,
+                    )
                 )
-            )
-            total_tokens += resp.tokens_used
-            if resp.tool_calls:
-                messages = [
-                    *messages,
-                    ChatMessage(
-                        role=Role.ASSISTANT,
-                        content=None,
-                        tool_calls=list(resp.tool_calls),
-                    ),
-                ]
-                for tc in resp.tool_calls:
-                    if tc.name == "consultar_rede_app":
-                        result = await _exec_consultar_rede(session, user)
-                    else:
-                        result = {"erro": "tool_desconhecida"}
+                total_tokens += resp.tokens_used
+                if resp.tool_calls:
                     messages = [
                         *messages,
                         ChatMessage(
-                            role=Role.TOOL,
-                            content=json.dumps(result, ensure_ascii=False),
-                            tool_call_id=tc.id,
-                            name=tc.name,
+                            role=Role.ASSISTANT,
+                            content=None,
+                            tool_calls=list(resp.tool_calls),
                         ),
                     ]
-                continue
-            bot_text = resp.content
-            break
+                    for tc in resp.tool_calls:
+                        if tc.name == "consultar_rede_app":
+                            result = await _exec_consultar_rede(session, user)
+                        else:
+                            result = {"erro": "tool_desconhecida"}
+                        messages = [
+                            *messages,
+                            ChatMessage(
+                                role=Role.TOOL,
+                                content=json.dumps(result, ensure_ascii=False),
+                                tool_call_id=tc.id,
+                                name=tc.name,
+                            ),
+                        ]
+                    continue
+                bot_text = (resp.content or "").strip() or None
+                break
         if not bot_text:
             bot_text = (
                 "Nao consegui completar a consulta agora. Tenta de novo em instantes?"
@@ -267,7 +270,7 @@ async def send(
         tokens: int | None = total_tokens if total_tokens > 0 else None
     except Exception:
         bot_text = "Desculpe, nao consegui me conectar agora. Tente de novo em alguns instantes."
-        tokens = None
+        tokens = total_tokens or None
     finally:
         await provider.aclose()
 
