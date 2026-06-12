@@ -795,6 +795,8 @@ export interface Promocao {
   gradient_from: string | null
   gradient_to: string | null
   icon: string | null
+  descricao_longa: string | null
+  regulamento: string | null
   created_at: string
   updated_at: string
 }
@@ -803,6 +805,7 @@ export interface PromocaoAdmin extends Promocao {
   views: number
   clicks: number
   ctr: number
+  leads_count: number
 }
 
 export interface PromocaoCreate {
@@ -820,6 +823,22 @@ export interface PromocaoCreate {
   gradient_from?: string | null
   gradient_to?: string | null
   icon?: string | null
+  descricao_longa?: string | null
+  regulamento?: string | null
+}
+
+export type PromocaoLeadStatus = 'novo' | 'contatado' | 'convertido' | 'descartado'
+
+export interface PromocaoLeadAdmin {
+  id: string
+  promocao_id: string
+  promocao_titulo: string
+  nome: string
+  telefone: string
+  contrato_id: string | null
+  status: PromocaoLeadStatus
+  created_at: string
+  updated_at: string
 }
 
 export type PromocaoPatch = Partial<PromocaoCreate>

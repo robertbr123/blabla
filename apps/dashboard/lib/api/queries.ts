@@ -1503,6 +1503,39 @@ export function useUploadPromocaoImagem(id: string) {
   })
 }
 
+export function usePromocaoLeads(filtros?: {
+  promocaoId?: string
+  status?: import('./types').PromocaoLeadStatus
+}) {
+  const params = new URLSearchParams()
+  if (filtros?.promocaoId) params.set('promocao_id', filtros.promocaoId)
+  if (filtros?.status) params.set('status_filtro', filtros.status)
+  const qs = params.toString()
+  return useQuery<import('./types').PromocaoLeadAdmin[]>({
+    queryKey: ['promocoes-leads', filtros?.promocaoId ?? '', filtros?.status ?? ''],
+    queryFn: () => apiFetch(`/api/v1/admin/promocoes/leads${qs ? `?${qs}` : ''}`),
+  })
+}
+
+export function usePatchPromocaoLead(id: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: { status: import('./types').PromocaoLeadStatus }) =>
+      apiFetch<import('./types').PromocaoLeadAdmin>(
+        `/api/v1/admin/promocoes/leads/${id}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['promocoes-leads'] })
+      qc.invalidateQueries({ queryKey: ['promocoes-admin'] })
+    },
+  })
+}
+
 // ════════ Cliente App Contatos da Operadora (admin) ════════
 
 export function useContatosOperadora() {

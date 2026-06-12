@@ -54,6 +54,8 @@ function emptyDraft(): PromocaoCreate {
     imagem_url: null,
     valido_de: null,
     valido_ate: null,
+    descricao_longa: null,
+    regulamento: null,
   }
 }
 
@@ -73,6 +75,8 @@ function fromExisting(p: PromocaoAdmin): PromocaoCreate {
     imagem_url: p.imagem_url,
     valido_de: p.valido_de,
     valido_ate: p.valido_ate,
+    descricao_longa: p.descricao_longa,
+    regulamento: p.regulamento,
   }
 }
 
@@ -215,6 +219,26 @@ export function PromocaoFormDialog(props: Props) {
                 maxLength={240}
                 rows={2}
                 placeholder="Velocidade dobrada com o mesmo valor no primeiro mês."
+              />
+            </div>
+            <div>
+              <Label htmlFor="descricao_longa">Descrição completa (landing do app)</Label>
+              <Textarea
+                id="descricao_longa"
+                value={draft.descricao_longa ?? ''}
+                onChange={(e) => setField('descricao_longa', e.target.value || null)}
+                rows={4}
+                placeholder="Texto completo da promoção, em parágrafos. Aparece na página de detalhe do app."
+              />
+            </div>
+            <div>
+              <Label htmlFor="regulamento">Regulamento / condições</Label>
+              <Textarea
+                id="regulamento"
+                value={draft.regulamento ?? ''}
+                onChange={(e) => setField('regulamento', e.target.value || null)}
+                rows={3}
+                placeholder="Regras da promoção. Vira seção expansível 'Regras da promoção' no app."
               />
             </div>
 
