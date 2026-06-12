@@ -36,6 +36,7 @@ class BrandBottomNav extends StatelessWidget {
 
   static const _kHeight = 60.0;
   static const _kRadius = 26.0;
+  static const _kLensRadius = _kRadius - 4; // 22 — inset de 5px de cada lado
   static const _kBlurSigma = 20.0;
   static const _kSlideDuration = Duration(milliseconds: 420);
 
@@ -99,7 +100,7 @@ class BrandBottomNav extends StatelessWidget {
                     final slotW = c.maxWidth / items.length;
                     return Stack(
                       children: [
-                        // Bolha antiga (substituída pela lente na Task 3).
+                        // Lente deslizante — move _GlassLens ao slot ativo com bounce.
                         AnimatedPositioned(
                           duration: _kSlideDuration,
                           curve: Curves.easeOutBack,
@@ -107,7 +108,11 @@ class BrandBottomNav extends StatelessWidget {
                           top: 5,
                           bottom: 5,
                           width: slotW - 12,
-                          child: _GlassLens(scheme: scheme, isDark: isDark),
+                          child: _GlassLens(
+                            scheme: scheme,
+                            isDark: isDark,
+                            radius: _kLensRadius,
+                          ),
                         ),
                         Row(
                           children: [
@@ -211,14 +216,19 @@ class _NavSlot extends StatelessWidget {
 class _GlassLens extends StatelessWidget {
   final ColorScheme scheme;
   final bool isDark;
+  final double radius;
 
-  const _GlassLens({required this.scheme, required this.isDark});
+  const _GlassLens({
+    required this.scheme,
+    required this.isDark,
+    required this.radius,
+  });
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(radius),
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,

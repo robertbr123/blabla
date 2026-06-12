@@ -83,8 +83,26 @@ void main() {
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
 
-  testWidgets('tem a lente deslizante (AnimatedPositioned)', (tester) async {
-    await _pump(tester, selected: 1, onSelect: (_) {});
+  testWidgets('a lente desliza ao trocar de aba (muda o left)',
+      (tester) async {
+    await _pump(tester, selected: 0, onSelect: (_) {});
+    final left0 = tester
+        .widget<AnimatedPositioned>(find.byType(AnimatedPositioned))
+        .left;
+    await _pump(tester, selected: 2, onSelect: (_) {});
+    await tester.pumpAndSettle();
+    final left2 = tester
+        .widget<AnimatedPositioned>(find.byType(AnimatedPositioned))
+        .left;
     expect(find.byType(AnimatedPositioned), findsOneWidget);
+    expect(left0, isNotNull);
+    expect(left2, greaterThan(left0!));
+  });
+
+  testWidgets('vidro presente também no tema escuro', (tester) async {
+    await _pump(tester,
+        selected: 0, onSelect: (_) {}, brightness: Brightness.dark);
+    expect(find.byType(BackdropFilter), findsOneWidget);
+    expect(find.text('OS'), findsOneWidget);
   });
 }
