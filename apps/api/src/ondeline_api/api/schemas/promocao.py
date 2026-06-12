@@ -154,8 +154,8 @@ class PromocaoEventoIn(BaseModel):
     @field_validator("tipo")
     @classmethod
     def _check_tipo(cls, v: str) -> str:
-        if v not in {"view", "click"}:
-            raise ValueError("tipo deve ser 'view' ou 'click'")
+        if v not in {"view", "click", "detail_view"}:
+            raise ValueError("tipo deve ser 'view', 'click' ou 'detail_view'")
         return v
 
 

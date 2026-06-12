@@ -17,22 +17,27 @@ if TYPE_CHECKING:
 import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import asc, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.api.schemas.promocao import (
     PromocaoAdminOut,
     PromocaoCreateIn,
+    PromocaoDetalheOut,
     PromocaoEventoIn,
     PromocaoEventoOut,
+    PromocaoInteresseIn,
+    PromocaoInteresseOut,
     PromocaoOut,
     PromocaoReorderIn,
     PromocaoUpdateIn,
 )
 from ondeline_api.auth.cliente_deps import get_current_cliente_user
 from ondeline_api.auth.rbac import require_role
+from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.cliente_app import ClienteAppUser
 from ondeline_api.db.models.identity import Role, User
-from ondeline_api.db.models.promocoes import Promocao, PromocaoEvento
+from ondeline_api.db.models.promocoes import Promocao, PromocaoEvento, PromocaoLead
 from ondeline_api.deps import get_db
 
 log = structlog.get_logger(__name__)
@@ -177,6 +182,68 @@ async def listar_para_cliente(
             continue
         out.append(_promo_out(p))
     return out
+
+
+@router.get("/{promo_id}", response_model=PromocaoDetalheOut)
+async def detalhe_para_cliente(
+    promo_id: UUID,
+    user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> PromocaoDetalheOut:
+    """Landing de detalhe. Só promo ativa/válida (mesma regra da lista)."""
+    promo = await session.get(Promocao, promo_id)
+    if promo is None or not promo.ativa:
+        raise HTTPException(status_code=404, detail="promocao nao encontrada")
+    ja = await session.scalar(
+        select(PromocaoLead.id).where(
+            PromocaoLead.promocao_id == promo_id,
+            PromocaoLead.cliente_app_user_id == user.id,
+        )
+    )
+    out = PromocaoDetalheOut.model_validate(promo, from_attributes=True)
+    out.interesse_registrado = ja is not None
+    return out
+
+
+@router.post("/{promo_id}/interesse", response_model=PromocaoInteresseOut)
+async def registrar_interesse(
+    promo_id: UUID,
+    body: PromocaoInteresseIn,
+    user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
+    session: AsyncSession = Depends(get_db),  # noqa: B008
+) -> PromocaoInteresseOut:
+    """Cria lead de interesse. Idempotente: segundo toque → ja_registrado."""
+    promo = await session.get(Promocao, promo_id)
+    if promo is None or not promo.ativa:
+        raise HTTPException(status_code=404, detail="promocao nao encontrada")
+
+    existente = await session.scalar(
+        select(PromocaoLead.id).where(
+            PromocaoLead.promocao_id == promo_id,
+            PromocaoLead.cliente_app_user_id == user.id,
+        )
+    )
+    if existente is not None:
+        return PromocaoInteresseOut(ok=True, ja_registrado=True)
+
+    # Snapshot de contato na hora do clique — equipe liga sem cruzar com SGP.
+    nome = decrypt_pii(user.nome_encrypted) if user.nome_encrypted else ""
+    telefone = decrypt_pii(user.telefone_encrypted) if user.telefone_encrypted else ""
+    lead = PromocaoLead(
+        promocao_id=promo_id,
+        cliente_app_user_id=user.id,
+        contrato_id=body.contrato_id,
+        nome_snapshot=nome[:160],
+        telefone_snapshot=telefone[:32],
+    )
+    session.add(lead)
+    try:
+        await session.commit()
+    except IntegrityError:
+        # Corrida com outro request do mesmo user — unique constraint segura.
+        await session.rollback()
+        return PromocaoInteresseOut(ok=True, ja_registrado=True)
+    return PromocaoInteresseOut(ok=True, ja_registrado=False)
 
 
 @router.post("/{promo_id}/evento", response_model=PromocaoEventoOut)
