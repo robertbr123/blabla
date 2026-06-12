@@ -7,6 +7,10 @@ import '../branding/brand_theme.dart';
 /// Header large-title de vidro estilo iOS 26.
 /// Use como PRIMEIRO sliver de um CustomScrollView. O título grande colapsa
 /// pro inline ao rolar e o fundo translúcido desfoca o conteúdo por baixo.
+///
+/// Assume até 2 [actions] à direita (o `titlePadding.end` reserva ~72px pra elas);
+/// com 3+ ações, aumentar o `end`. O collapse do large title pode precisar de
+/// ajuste fino de `expandedHeight`/`titlePadding` no aparelho.
 class IosGlassHeader extends StatelessWidget {
   const IosGlassHeader({
     super.key,
@@ -25,6 +29,7 @@ class IosGlassHeader extends StatelessWidget {
 
     return SliverAppBar(
       pinned: true,
+      // kToolbarHeight (~56) + altura do large title (+ subtítulo quando houver).
       expandedHeight: subtitle == null ? 104 : 120,
       backgroundColor: scheme.surface.withValues(alpha: 0.7),
       surfaceTintColor: Colors.transparent,

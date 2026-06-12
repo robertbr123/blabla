@@ -68,8 +68,9 @@ class _Segment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
     final pillColor = isDark ? scheme.surfaceContainerHighest : Colors.white;
 
     return Semantics(

@@ -26,6 +26,7 @@ void main() {
       ),
     );
     expect(find.text('Ordens de Serviço'), findsOneWidget);
+    expect(find.text('3 ordens em foco'), findsOneWidget);
     expect(find.byIcon(Icons.refresh), findsOneWidget);
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
