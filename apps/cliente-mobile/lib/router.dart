@@ -23,6 +23,7 @@ import 'features/onboarding/onboarding_password_screen.dart';
 import 'features/perfil/editar_perfil_screen.dart';
 import 'features/perfil/mudar_senha_screen.dart';
 import 'features/suporte/novo_chamado_screen.dart';
+import 'features/promocoes/promocoes_screen.dart';
 import 'features/shell/main_shell.dart' show MainShell, mainShellTabProvider;
 import 'features/splash/splash_screen.dart';
 
@@ -184,6 +185,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/rede',
         pageBuilder: (_, state) => _glassPage(state, const RedeScreen()),
+      ),
+      GoRoute(
+        path: '/promocoes',
+        pageBuilder: (_, state) => _glassPage(state, const PromocoesScreen()),
       ),
       GoRoute(
         path: '/notificacoes',

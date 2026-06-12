@@ -99,7 +99,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 data: (promos) {
                   if (promos.isEmpty) return const <Widget>[];
                   return [
-                    const _SectionLabel(label: 'Pra você'),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const _SectionLabel(label: 'Pra você'),
+                        if (promos.length > 1)
+                          TextButton(
+                            onPressed: () => context.push('/promocoes'),
+                            child: const Text('Ver todas →'),
+                          ),
+                      ],
+                    ),
                     const SizedBox(height: BrandTokens.spaceSm),
                     PromoCarousel(items: promos),
                     const SizedBox(height: BrandTokens.spaceLg),
