@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/rede_repository.dart';
 import '../../../core/branding/brand_tokens.dart';
+import '../../../core/contrato/contrato_atual_provider.dart';
 
 /// Varredura diagnóstica antes do chamado "Sem internet": consulta status
 /// (ONU online) + aparelhos (total + selo de saúde) via GenieACS e mostra
@@ -59,9 +60,10 @@ class _TriagemRedeState extends ConsumerState<TriagemRede>
   Future<void> _varrer() async {
     try {
       final repo = ref.read(redeRepositoryProvider);
+      final contratoId = ref.read(contratoAtualProvider);
       final results = await Future.wait([
-        repo.status(),
-        repo.aparelhos(),
+        repo.status(contratoId: contratoId),
+        repo.aparelhos(contratoId: contratoId),
       ]).timeout(const Duration(seconds: 12));
 
       final statusDto = results[0] as RedeStatusDto;
@@ -78,10 +80,12 @@ class _TriagemRedeState extends ConsumerState<TriagemRede>
         'online': statusDto.online,
         'total_aparelhos': aparelhosDto.total,
         'saude': aparelhosDto.saude,
+        'contrato_id': contratoId,
         'timestamp': DateTime.now().toUtc().toIso8601String(),
       };
 
       if (!mounted) return;
+      _pulse.stop();
       setState(() {
         _online = statusDto.online;
         _totalAparelhos = aparelhosDto.total;
@@ -533,6 +537,7 @@ class _Orientacao extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final IconData icon;
     final Color cor;
     final String titulo;
@@ -585,8 +590,10 @@ class _Orientacao extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   texto,
-                  style: const TextStyle(
-                    color: BrandTokens.textPrimary,
+                  style: TextStyle(
+                    color: isDark
+                        ? BrandTokens.textPrimaryDark
+                        : BrandTokens.textPrimary,
                     fontSize: 13,
                     height: 1.4,
                   ),
