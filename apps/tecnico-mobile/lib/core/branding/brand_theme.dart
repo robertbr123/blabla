@@ -45,15 +45,14 @@ ThemeData buildBrandTheme(Brightness brightness) {
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: scheme.outlineVariant),
+        borderRadius: BorderRadius.circular(20),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: scheme.primary,
         foregroundColor: scheme.onPrimary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         textStyle: const TextStyle(fontWeight: FontWeight.w600),
       ),
@@ -62,29 +61,29 @@ ThemeData buildBrandTheme(Brightness brightness) {
       style: OutlinedButton.styleFrom(
         foregroundColor: scheme.primary,
         side: BorderSide(color: scheme.outlineVariant),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: scheme.primary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: scheme.surfaceContainerLow,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: scheme.outlineVariant),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: scheme.outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: scheme.primary, width: 2),
       ),
     ),
@@ -117,6 +116,15 @@ TextStyle tabularStyle(TextStyle? base) {
   );
 }
 
+/// Large title estilo iOS 26 — usado nos headers das telas (fases por-tela).
+TextStyle iosLargeTitle(ColorScheme scheme) => GoogleFonts.inter(
+      fontSize: 30,
+      fontWeight: FontWeight.w800,
+      letterSpacing: -0.5,
+      height: 1.1,
+      color: scheme.onSurface,
+    );
+
 // ── ColorSchemes ──
 
 const _lightScheme = ColorScheme(
@@ -135,7 +143,7 @@ const _lightScheme = ColorScheme(
   onError: Colors.white,
   errorContainer: Color(0xFFFEE2E2),
   onErrorContainer: Color(0xFF7F1D1D),
-  surface: Color(0xFFFFFFFF),
+  surface: Color(0xFFF2F2F7), // iOS systemGroupedBackground (light)
   onSurface: Color(0xFF0F172A), // slate-900
   surfaceContainerLowest: Color(0xFFFFFFFF),
   surfaceContainerLow: Color(0xFFF8FAFC), // slate-50
@@ -167,7 +175,7 @@ const _darkScheme = ColorScheme(
   onError: Color(0xFF7F1D1D),
   errorContainer: Color(0xFF7F1D1D),
   onErrorContainer: Color(0xFFFECACA),
-  surface: Color(0xFF0F172A), // slate-900
+  surface: Color(0xFF0B1120), // grouped background mais fundo (dark)
   onSurface: Color(0xFFF8FAFC),
   surfaceContainerLowest: Color(0xFF0F172A),
   surfaceContainerLow: Color(0xFF111827),
