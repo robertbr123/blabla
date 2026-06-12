@@ -38,6 +38,8 @@ class PromocaoBaseIn(BaseModel):
     gradient_from: str | None = None
     gradient_to: str | None = None
     icon: str | None = None
+    descricao_longa: str | None = None
+    regulamento: str | None = None
 
     @field_validator("tipo")
     @classmethod
@@ -82,6 +84,8 @@ class PromocaoUpdateIn(BaseModel):
     gradient_from: str | None = None
     gradient_to: str | None = None
     icon: str | None = None
+    descricao_longa: str | None = None
+    regulamento: str | None = None
 
     @field_validator("tipo")
     @classmethod
@@ -131,6 +135,8 @@ class PromocaoOut(BaseModel):
     gradient_from: str | None
     gradient_to: str | None
     icon: str | None
+    descricao_longa: str | None
+    regulamento: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -139,6 +145,7 @@ class PromocaoAdminOut(PromocaoOut):
     views: int = 0
     clicks: int = 0
     ctr: float = 0.0
+    leads_count: int = 0
 
 
 class PromocaoEventoIn(BaseModel):
@@ -158,3 +165,44 @@ class PromocaoEventoOut(BaseModel):
 
 class PromocaoReorderIn(BaseModel):
     ids: list[UUID]
+
+
+LEAD_STATUSES = {"novo", "contatado", "convertido", "descartado"}
+
+
+class PromocaoDetalheOut(PromocaoOut):
+    """Detalhe pro app: inclui se o user atual já registrou interesse."""
+
+    interesse_registrado: bool = False
+
+
+class PromocaoInteresseIn(BaseModel):
+    contrato_id: str | None = None
+
+
+class PromocaoInteresseOut(BaseModel):
+    ok: bool = True
+    ja_registrado: bool = False
+
+
+class PromocaoLeadAdminOut(BaseModel):
+    id: UUID
+    promocao_id: UUID
+    promocao_titulo: str
+    nome: str
+    telefone: str
+    contrato_id: str | None
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class PromocaoLeadPatchIn(BaseModel):
+    status: str
+
+    @field_validator("status")
+    @classmethod
+    def _check_status(cls, v: str) -> str:
+        if v not in LEAD_STATUSES:
+            raise ValueError(f"status invalido (use: {sorted(LEAD_STATUSES)})")
+        return v

@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -37,6 +37,10 @@ class Promocao(Base):
     gradient_to: Mapped[str | None] = mapped_column(String(9), nullable=True)
     # Nome do icone Material (ex: "rocket_launch_rounded"). App mapeia.
     icon: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Landing de detalhe no app (Fase 2). Opcionais — promo sem descrição
+    # continua funcionando só com subtítulo.
+    descricao_longa: Mapped[str | None] = mapped_column(Text, nullable=True)
+    regulamento: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -66,4 +70,47 @@ class PromocaoEvento(Base):
     tipo: Mapped[str] = mapped_column(String(16), nullable=False)  # view | click
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class PromocaoLead(Base):
+    """Lead de "Tenho interesse" — cliente demonstrou interesse numa promo.
+
+    Snapshot de nome/telefone na hora do clique pra equipe de vendas não
+    precisar cruzar com SGP. Unique por (promocao, user): sem lead duplicado.
+    """
+
+    __tablename__ = "promocoes_leads"
+    __table_args__ = (
+        UniqueConstraint(
+            "promocao_id", "cliente_app_user_id", name="uq_promo_lead_user"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    promocao_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("promocoes.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    cliente_app_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False
+    )
+    contrato_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    nome_snapshot: Mapped[str] = mapped_column(String(160), nullable=False, default="")
+    telefone_snapshot: Mapped[str] = mapped_column(
+        String(32), nullable=False, default=""
+    )
+    # novo → contatado → convertido | descartado
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="novo")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
     )
