@@ -17,6 +17,13 @@ import '../estoque/estoque_data.dart';
 import 'cliente_data.dart';
 import 'cliente_form_data.dart';
 
+/// 27 UFs brasileiras (26 estados + DF) pro dropdown de endereço.
+const List<String> _ufs = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',
+  'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE',
+  'TO',
+];
+
 class ClienteNovoScreen extends ConsumerStatefulWidget {
   const ClienteNovoScreen({super.key});
 
@@ -63,6 +70,7 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
   // CEP busca
   Timer? _cepDebounce;
   bool _cepBuscando = false;
+  bool _cepOk = false;
 
   // Submit
   bool _enviando = false;
@@ -108,25 +116,40 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
 
   void _onCepChanged(String v) {
     _cepDebounce?.cancel();
+    if (_cepOk) setState(() => _cepOk = false);
     if (onlyDigits(v).length < 8) return;
     _cepDebounce = Timer(const Duration(milliseconds: 400), _buscarCep);
   }
 
   Future<void> _buscarCep() async {
-    setState(() => _cepBuscando = true);
-    final endereco = await buscarCep(_cep.text);
+    setState(() {
+      _cepBuscando = true;
+      _cepOk = false;
+    });
+    final result = await buscarCep(_cep.text);
     if (!mounted) return;
     setState(() => _cepBuscando = false);
-    if (endereco == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('CEP não encontrado.')),
-      );
-      return;
+    switch (result.status) {
+      case CepStatus.ok:
+        final endereco = result.address!;
+        _address.text = endereco.logradouro;
+        _neighborhood.text = endereco.bairro;
+        _city.text = endereco.localidade;
+        _state.text = endereco.uf;
+        setState(() => _cepOk = true);
+      case CepStatus.notFound:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('CEP não encontrado. Confira o número.')),
+        );
+      case CepStatus.networkError:
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Sem conexão pra buscar o CEP. Preencha o endereço manualmente.',
+            ),
+          ),
+        );
     }
-    _address.text = endereco.logradouro;
-    _neighborhood.text = endereco.bairro;
-    _city.text = endereco.localidade;
-    _state.text = endereco.uf;
   }
 
   // ── Validações por step ─────────────────────────────────────
@@ -548,8 +571,12 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       )
-                    : null,
-                helperText: 'Autocompleta endereço',
+                    : (_cepOk
+                        ? const Icon(Icons.check_circle, color: Color(0xFF16a34a))
+                        : null),
+                helperText: _cepOk
+                    ? 'Endereço encontrado'
+                    : 'Autocompleta endereço',
               ),
             ),
             const SizedBox(height: 12),
@@ -605,11 +632,21 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   flex: 1,
-                  child: TextField(
-                    controller: _state,
-                    textCapitalization: TextCapitalization.characters,
-                    inputFormatters: [LengthLimitingTextInputFormatter(2)],
+                  child: DropdownButtonFormField<String>(
+                    // Fonte de verdade continua o _state controller (ViaCEP
+                    // preenche .text); o dropdown só reflete/edita esse valor.
+                    value: _ufs.contains(_state.text.toUpperCase())
+                        ? _state.text.toUpperCase()
+                        : null,
+                    isExpanded: true,
                     decoration: const InputDecoration(labelText: 'UF'),
+                    items: [
+                      for (final uf in _ufs)
+                        DropdownMenuItem(value: uf, child: Text(uf)),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) setState(() => _state.text = v);
+                    },
                   ),
                 ),
               ],

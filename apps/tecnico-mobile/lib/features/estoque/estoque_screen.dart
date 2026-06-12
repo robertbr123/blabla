@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,11 +19,23 @@ class EstoqueScreen extends ConsumerStatefulWidget {
 class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
   final _searchCtrl = TextEditingController();
   bool _soComSaldo = false;
+  Timer? _searchDebounce;
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  /// Debounce do filtro: o texto digitado aparece na hora (controller), mas o
+  /// recálculo da lista só dispara 250ms após parar de digitar.
+  void _onSearchChanged() {
+    _searchDebounce?.cancel();
+    _searchDebounce =
+        Timer(const Duration(milliseconds: 250), () {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -115,7 +129,7 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
                   children: [
                     TextField(
                       controller: _searchCtrl,
-                      onChanged: (_) => setState(() {}),
+                      onChanged: (_) => _onSearchChanged(),
                       decoration: InputDecoration(
                         prefixIcon: const Icon(Icons.search, size: 20),
                         hintText: 'Buscar por nome, SKU ou categoria',

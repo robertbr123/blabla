@@ -142,7 +142,7 @@ class _Body extends ConsumerWidget {
   }
 
   Future<void> _iniciar(BuildContext context, WidgetRef ref) async {
-    _showSnack(context, 'Capturando GPS…');
+    // O botão já mostra "Capturando GPS…" enquanto este future resolve.
     final loc = await ref.read(locationServiceProvider).capture();
     final body = {
       if (loc != null) 'lat': loc.lat,
@@ -766,10 +766,10 @@ class _MapFallback extends StatelessWidget {
   }
 }
 
-class _ActionsSection extends StatelessWidget {
+class _ActionsSection extends StatefulWidget {
   final bool canStart;
   final bool canConclude;
-  final VoidCallback onStart;
+  final Future<void> Function() onStart;
   final VoidCallback onConclude;
 
   const _ActionsSection({
@@ -780,8 +780,27 @@ class _ActionsSection extends StatelessWidget {
   });
 
   @override
+  State<_ActionsSection> createState() => _ActionsSectionState();
+}
+
+class _ActionsSectionState extends State<_ActionsSection> {
+  bool _starting = false;
+
+  Future<void> _handleStart() async {
+    if (_starting) return;
+    setState(() => _starting = true);
+    try {
+      await widget.onStart();
+    } finally {
+      if (mounted) setState(() => _starting = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final canStart = widget.canStart;
+    final canConclude = widget.canConclude;
 
     return AppSurfaceCard(
       child: Column(
@@ -796,15 +815,26 @@ class _ActionsSection extends StatelessWidget {
           const SizedBox(height: 16),
           if (canStart)
             FilledButton.icon(
-              icon: const Icon(Icons.play_arrow_rounded),
-              label: const Text('Iniciar visita (com GPS)'),
-              onPressed: onStart,
+              icon: _starting
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.play_arrow_rounded),
+              label: Text(_starting
+                  ? 'Capturando GPS…'
+                  : 'Iniciar visita (com GPS)'),
+              onPressed: _starting ? null : _handleStart,
             ),
           if (canConclude)
             FilledButton.icon(
               icon: const Icon(Icons.check_rounded),
               label: const Text('Concluir OS'),
-              onPressed: onConclude,
+              onPressed: widget.onConclude,
             ),
           if (!canStart && !canConclude)
             Text(

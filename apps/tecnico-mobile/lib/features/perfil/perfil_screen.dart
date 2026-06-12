@@ -235,7 +235,13 @@ class _HeaderState extends ConsumerState<_Header> {
       ref.invalidate(perfilProvider);
       _toast('Foto atualizada.');
     } on DioException catch (e) {
-      _toast('Falhou: ${e.message ?? e.type.name}');
+      final data = e.response?.data;
+      final detail = data is Map ? data['detail']?.toString() : null;
+      _toast(detail != null && detail.trim().isNotEmpty
+          ? detail
+          : (e.type == DioExceptionType.connectionError
+              ? 'Sem conexão pra enviar a foto. Tente de novo.'
+              : 'Não foi possível atualizar a foto. Tente de novo.'));
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
@@ -254,7 +260,11 @@ class _HeaderState extends ConsumerState<_Header> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Stack(
+        Semantics(
+          button: true,
+          enabled: !_uploading,
+          label: 'Alterar foto de perfil',
+          child: Stack(
           children: [
             GestureDetector(
               onTap: _uploading ? null : _changePhoto,
@@ -300,6 +310,7 @@ class _HeaderState extends ConsumerState<_Header> {
               ),
             ),
           ],
+        ),
         ),
         const SizedBox(width: 16),
         Expanded(

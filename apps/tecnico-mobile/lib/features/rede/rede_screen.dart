@@ -1,8 +1,26 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_client.dart';
 import 'rede_data.dart';
+
+/// Traduz a falha da troca de senha numa mensagem acionável pro técnico em vez
+/// do genérico "tente novamente" (que esconde se foi rede, serial ou aparelho).
+String _erroTrocaSenha(DioException e) {
+  final data = e.response?.data;
+  final detail = data is Map ? data['detail']?.toString() : null;
+  if (detail != null && detail.trim().isNotEmpty) return detail;
+  final code = e.response?.statusCode;
+  if (code == null) {
+    return 'Sem conexão. Verifique a internet e tente de novo.';
+  }
+  if (code == 404) return 'ONU não localizada. Confira o serial da etiqueta.';
+  if (code == 409 || code == 503 || code == 504) {
+    return 'Aparelho fora do ar agora. Tente quando ele voltar online.';
+  }
+  return 'Falha ao trocar a senha (erro $code). Tente novamente.';
+}
 
 /// Cor do RX power (GPON, dBm). Verde -8..-25 (bom), amarelo -25..-27 (atencao),
 /// vermelho < -27 ou > -8 (sinal quente demais / fraco demais).
@@ -81,7 +99,9 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
         serial: precisaSerial ? _serial.text.trim() : null,
       );
       if (mounted) _msg(aviso);
-    } catch (e) {
+    } on DioException catch (e) {
+      if (mounted) _msg(_erroTrocaSenha(e));
+    } catch (_) {
       if (mounted) _msg('Falha ao trocar a senha. Tente novamente.');
     } finally {
       if (mounted) setState(() => _enviando = false);

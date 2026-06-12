@@ -26,11 +26,20 @@ class ViaCepAddress {
       );
 }
 
+/// Resultado do lookup de CEP — distingue "não encontrado" de "erro de rede"
+/// pra UI poder dar a mensagem certa (e não culpar o CEP quando é a conexão).
+enum CepStatus { ok, notFound, networkError }
+
+class CepResult {
+  final CepStatus status;
+  final ViaCepAddress? address;
+  const CepResult(this.status, [this.address]);
+}
+
 /// Lookup do CEP via API publica do ViaCEP (gratuita, brasileira).
-/// Retorna null se CEP invalido ou nao encontrado.
-Future<ViaCepAddress?> buscarCep(String cep) async {
+Future<CepResult> buscarCep(String cep) async {
   final digits = onlyDigits(cep);
-  if (digits.length != 8) return null;
+  if (digits.length != 8) return const CepResult(CepStatus.notFound);
   final dio = Dio(BaseOptions(
     connectTimeout: const Duration(seconds: 5),
     receiveTimeout: const Duration(seconds: 5),
@@ -38,11 +47,15 @@ Future<ViaCepAddress?> buscarCep(String cep) async {
   try {
     final r = await dio.get('https://viacep.com.br/ws/$digits/json/');
     if (r.data is Map && (r.data as Map).containsKey('erro')) {
-      return null;
+      return const CepResult(CepStatus.notFound);
     }
-    return ViaCepAddress.fromJson((r.data as Map).cast<String, dynamic>());
+    return CepResult(
+      CepStatus.ok,
+      ViaCepAddress.fromJson((r.data as Map).cast<String, dynamic>()),
+    );
   } catch (_) {
-    return null;
+    // Timeout/connection/parse — trata tudo como falha de rede (acionável).
+    return const CepResult(CepStatus.networkError);
   } finally {
     dio.close();
   }

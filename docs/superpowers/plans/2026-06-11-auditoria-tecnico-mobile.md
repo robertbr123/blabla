@@ -49,17 +49,17 @@ Backlog priorizado: bugs confirmados → robustez → segurança → UX → feat
 
 ## 🟡 UX
 
-- [ ] **Botão "Iniciar visita" sem loading** — `os_detail` não desabilita durante captura GPS (até 8s). Técnico clica de novo.
-- [ ] **Erros genéricos** — `rede_screen` ("Falha ao trocar a senha"), `os_detail` (`_actionFailureMessage`), `perfil` avatar. Engolem motivo real (offline, serial inválido, 403).
-- [ ] **Avatar perfil** — tap target ~26px (<44px) e sem `Semantics`.
-- [ ] **CEP cadastro** — falha de rede e "CEP não encontrado" mesma mensagem; sem ✓ de sucesso. UF é TextField livre → dropdown dos 27 estados.
-- [ ] **Busca estoque sem debounce** — `setState` por tecla (ok hoje, escala mal).
+- [x] **Botão "Iniciar visita" sem loading** — `os_detail`. ✅ `_ActionsSection` virou stateful: botão desabilita e mostra "Capturando GPS…" durante a captura (jun/2026)
+- [x] **Erros genéricos** — ✅ `rede_screen` agora traduz DioException (404 serial / 409/503 offline / sem rede / detail do backend); `perfil` avatar idem. `os_detail._actionFailureMessage` já extraía `detail` — mantido (jun/2026)
+- [x] **Avatar perfil** — ✅ `Semantics(button, label: 'Alterar foto de perfil')` adicionado; tap target principal já é o avatar de 72px (>44px), badge é só affordance visual (jun/2026)
+- [x] **CEP cadastro** — ✅ `buscarCep` agora retorna `CepResult` (ok/notFound/networkError) com mensagens distintas + ✓ "Endereço encontrado"; UF virou dropdown dos 27 estados (jun/2026)
+- [x] **Busca estoque sem debounce** — ✅ debounce de 250ms no filtro (texto aparece na hora, lista recalcula ao parar de digitar) (jun/2026)
 
 ## 🟢 Features novas
 
 Alto valor:
-- [ ] **#F1 Validar GPS de conclusão** — comparar `gps_fim` com endereço da OS (alertar se >500m). Anti-fraude.
-- [ ] **#F2 Material da OS decrementa estoque** — hoje texto livre, não baixa saldo. Reusar picker do cadastro.
+- [!] **#F1 Validar GPS de conclusão** — **bloqueado por backend**. O payload da OS só traz `endereco` como texto + os pontos GPS do técnico (`gps_inicio/gps_fim`); não há lat/lng do endereço do cliente pra calcular distância. Precisa o backend geocodificar o endereço (ou validar server-side). _Alternativa client-side pronta pra fazer: exigir/avisar quando o GPS não foi capturado na conclusão (hoje conclui sem location silenciosamente)._
+- [!] **#F2 Material da OS decrementa estoque** — **bloqueado por backend**. Decremento de inventário é operação autoritativa do servidor (concorrência + offline); fazer no app corromperia o saldo. Precisa endpoint tipo `POST /os/:id/materiais` que baixa o estoque atomicamente. App então troca o campo texto livre por picker (reusa o do cadastro).
 - [ ] **#F3 Scanner código de barras/QR no estoque** — `mobile_scanner`.
 - [ ] **#F4 Rascunho local do cadastro** — salvar steps em Drift, oferecer "continuar cadastro".
 - [ ] **#F5 Resumo antes de enviar** (step 3) — read-only confirmando dados antes do POST.
