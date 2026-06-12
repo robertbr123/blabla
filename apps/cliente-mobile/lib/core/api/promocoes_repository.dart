@@ -31,6 +31,22 @@ class PromocoesRepository {
       // Best-effort. Analytics não pode quebrar a home.
     }
   }
+
+  Future<PromocaoDetalheDto> detalhe(String id) async {
+    final r = await _dio.get('$_base/$id');
+    return PromocaoDetalheDto.fromJson(r.data as Map<String, dynamic>);
+  }
+
+  /// Registra interesse (lead). NÃO é fire-and-forget — lead é dado de
+  /// negócio; erro sobe pro caller mostrar retry.
+  Future<bool> registrarInteresse(String id, {String? contratoId}) async {
+    final r = await _dio.post(
+      '$_base/$id/interesse',
+      data: {'contrato_id': contratoId},
+    );
+    final data = r.data as Map<String, dynamic>;
+    return (data['ja_registrado'] as bool?) ?? false;
+  }
 }
 
 final promocoesRepositoryProvider = Provider<PromocoesRepository>(
@@ -39,4 +55,9 @@ final promocoesRepositoryProvider = Provider<PromocoesRepository>(
 
 final promocoesProvider = FutureProvider<List<PromocaoDto>>(
   (ref) => ref.watch(promocoesRepositoryProvider).list(),
+);
+
+final promocaoDetalheProvider =
+    FutureProvider.family<PromocaoDetalheDto, String>(
+  (ref, id) => ref.watch(promocoesRepositoryProvider).detalhe(id),
 );

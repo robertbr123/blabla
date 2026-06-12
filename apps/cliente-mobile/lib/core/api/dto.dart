@@ -413,6 +413,9 @@ class PromocaoDto {
     required this.gradientFrom,
     required this.gradientTo,
     required this.icon,
+    this.descricaoLonga,
+    this.regulamento,
+    this.validoAte,
   });
 
   factory PromocaoDto.fromJson(Map<String, dynamic> j) => PromocaoDto(
@@ -426,6 +429,11 @@ class PromocaoDto {
         gradientFrom: j['gradient_from'] as String?,
         gradientTo: j['gradient_to'] as String?,
         icon: j['icon'] as String?,
+        descricaoLonga: j['descricao_longa'] as String?,
+        regulamento: j['regulamento'] as String?,
+        validoAte: j['valido_ate'] == null
+            ? null
+            : DateTime.tryParse(j['valido_ate'] as String),
       );
 
   final String id;
@@ -441,6 +449,50 @@ class PromocaoDto {
   final String? gradientTo;
   /// Nome do icone Material (mapeado em promo_icon.dart).
   final String? icon;
+  final String? descricaoLonga;
+  final String? regulamento;
+  final DateTime? validoAte;
+}
+
+class PromocaoDetalheDto extends PromocaoDto {
+  PromocaoDetalheDto({
+    required super.id,
+    required super.titulo,
+    required super.subtitulo,
+    required super.imagemUrl,
+    required super.ctaLabel,
+    required super.ctaAction,
+    required super.tipo,
+    required super.gradientFrom,
+    required super.gradientTo,
+    required super.icon,
+    super.descricaoLonga,
+    super.regulamento,
+    super.validoAte,
+    required this.interesseRegistrado,
+  });
+
+  factory PromocaoDetalheDto.fromJson(Map<String, dynamic> j) {
+    final base = PromocaoDto.fromJson(j);
+    return PromocaoDetalheDto(
+      id: base.id,
+      titulo: base.titulo,
+      subtitulo: base.subtitulo,
+      imagemUrl: base.imagemUrl,
+      ctaLabel: base.ctaLabel,
+      ctaAction: base.ctaAction,
+      tipo: base.tipo,
+      gradientFrom: base.gradientFrom,
+      gradientTo: base.gradientTo,
+      icon: base.icon,
+      descricaoLonga: base.descricaoLonga,
+      regulamento: base.regulamento,
+      validoAte: base.validoAte,
+      interesseRegistrado: (j['interesse_registrado'] as bool?) ?? false,
+    );
+  }
+
+  final bool interesseRegistrado;
 }
 
 class CardDiaDto {
