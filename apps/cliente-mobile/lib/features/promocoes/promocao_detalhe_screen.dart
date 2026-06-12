@@ -156,37 +156,56 @@ class _Conteudo extends StatelessWidget {
               flexibleSpace: FlexibleSpaceBar(
                 background: Hero(
                   tag: 'promo-${promo.id}',
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [from, to],
-                      ),
-                      image: imagemAbs == null
-                          ? null
-                          : DecorationImage(
+                  child: imagemAbs != null
+                      // Promo com imagem: destaque nítido + scrim na base
+                      // (legibilidade do título ao colapsar).
+                      ? Container(
+                          decoration: BoxDecoration(
+                            image: DecorationImage(
                               image: NetworkImage(imagemAbs),
                               fit: BoxFit.cover,
-                              opacity: 0.35,
                             ),
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: 88,
-                        height: 88,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          shape: BoxShape.circle,
+                          ),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black.withValues(alpha: 0.45),
+                                ],
+                                stops: const [0.55, 1.0],
+                              ),
+                            ),
+                            child: const SizedBox.expand(),
+                          ),
+                        )
+                      // Sem imagem: visual atual (gradiente + ícone).
+                      : Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [from, to],
+                            ),
+                          ),
+                          child: Center(
+                            child: Container(
+                              width: 88,
+                              height: 88,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.18),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                promoIconOf(promo.icon),
+                                color: Colors.white,
+                                size: 42,
+                              ),
+                            ),
+                          ),
                         ),
-                        child: Icon(
-                          promoIconOf(promo.icon),
-                          color: Colors.white,
-                          size: 42,
-                        ),
-                      ),
-                    ),
-                  ),
                 ),
               ),
             ),
