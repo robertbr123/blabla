@@ -79,6 +79,23 @@ def _promo_out(p: Promocao) -> PromocaoOut:
     )
 
 
+def _promo_visivel(promo: Promocao, now: datetime) -> bool:
+    """Retorna True se a promo esta ativa e dentro da janela de validade.
+
+    Mesma regra aplicada em ``listar_para_cliente`` (filtro Python pos-query):
+    - ``valido_de`` no futuro → nao visivel.
+    - ``valido_ate`` no passado → nao visivel.
+    - ``ativa=False`` → nao visivel.
+    """
+    if not promo.ativa:
+        return False
+    if promo.valido_de is not None and promo.valido_de > now:
+        return False
+    if promo.valido_ate is not None and promo.valido_ate < now:
+        return False
+    return True
+
+
 def _segmento_aplicavel(segmento: str, cliente_sgp: ClienteSgp | None) -> bool:
     """Filtro de segmentacao baseado no estado SGP do cliente.
 
@@ -192,9 +209,14 @@ async def detalhe_para_cliente(
     user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> PromocaoDetalheOut:
-    """Landing de detalhe. Só promo ativa/válida (mesma regra da lista)."""
+    """Landing de detalhe. Só promo ativa e dentro da janela de validade (mesma regra da lista).
+
+    Segmento NÃO e checado aqui: exigiria lookup SGP extra; o UUID nao e
+    enumeravel; e um lead fora do segmento e descartavel pelo time comercial.
+    """
+    now = datetime.now(tz=UTC)
     promo = await session.get(Promocao, promo_id)
-    if promo is None or not promo.ativa:
+    if promo is None or not _promo_visivel(promo, now):
         raise HTTPException(status_code=404, detail="promocao nao encontrada")
     ja = await session.scalar(
         select(PromocaoLead.id).where(
@@ -214,9 +236,16 @@ async def registrar_interesse(
     user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> PromocaoInteresseOut:
-    """Cria lead de interesse. Idempotente: segundo toque → ja_registrado."""
+    """Cria lead de interesse. Idempotente: segundo toque → ja_registrado.
+
+    Promo inexistente, inativa ou fora da janela de validade → 404.
+
+    Segmento NÃO e checado aqui: exigiria lookup SGP extra; o UUID nao e
+    enumeravel; e um lead fora do segmento e descartavel pelo time comercial.
+    """
+    now = datetime.now(tz=UTC)
     promo = await session.get(Promocao, promo_id)
-    if promo is None or not promo.ativa:
+    if promo is None or not _promo_visivel(promo, now):
         raise HTTPException(status_code=404, detail="promocao nao encontrada")
 
     existente = await session.scalar(

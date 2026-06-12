@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import collections.abc
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytest_asyncio
@@ -51,6 +52,24 @@ async def promo_ativa(db_session: AsyncSession) -> Promocao:
         segmento="todos",
         descricao_longa="Descrição longa da promoção para testar.",
         regulamento="Válida apenas para testes.",
+    )
+    db_session.add(p)
+    await db_session.commit()
+    return p
+
+
+@pytest_asyncio.fixture
+async def promo_expirada(db_session: AsyncSession) -> Promocao:
+    """Promo ativa mas com valido_ate no passado — fora da janela de validade."""
+    p = Promocao(
+        titulo="Promo Expirada",
+        subtitulo="",
+        cta_action="info",
+        tipo="generica",
+        ativa=True,
+        ordem=2,
+        segmento="todos",
+        valido_ate=datetime.now(tz=UTC) - timedelta(days=1),
     )
     db_session.add(p)
     await db_session.commit()
@@ -236,6 +255,29 @@ async def test_detalhe_promo_inexistente_404(
         json={},
     )
     assert r2.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_promo_expirada_retorna_404(
+    ac: AsyncClient,
+    cliente: ClienteAppUser,
+    promo_expirada: Promocao,
+) -> None:
+    """GET detalhe e POST interesse em promo com valido_ate no passado → 404."""
+    headers = _auth(cliente)
+
+    r = await ac.get(
+        f"/api/v1/cliente-app/promocoes/{promo_expirada.id}",
+        headers=headers,
+    )
+    assert r.status_code == 404, r.text
+
+    r2 = await ac.post(
+        f"/api/v1/cliente-app/promocoes/{promo_expirada.id}/interesse",
+        headers=headers,
+        json={},
+    )
+    assert r2.status_code == 404, r2.text
 
 
 # ── helpers admin ──────────────────────────────────────────────────────────────
