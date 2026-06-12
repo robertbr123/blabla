@@ -420,13 +420,55 @@ function DetailDrawer(props: {
             </div>
           </Section>
 
-          {Object.keys(o.payload).length > 0 && (
-            <Section title="Dados adicionais">
-              <pre className="overflow-x-auto rounded-md bg-zinc-50 p-3 text-xs text-zinc-700">
-                {JSON.stringify(o.payload, null, 2)}
-              </pre>
-            </Section>
-          )}
+          {(() => {
+            const diag = o.payload.diagnostico as
+              | { online?: boolean; total_aparelhos?: number; saude?: string; timestamp?: string; contrato_id?: string | null }
+              | undefined
+            return diag != null ? (
+              <Section title="Diagnóstico na abertura">
+                <div className="grid gap-2 sm:grid-cols-3 text-sm">
+                  <div className="rounded-md border bg-white p-3">
+                    <div className="text-xs text-muted-foreground text-zinc-500">ONU</div>
+                    <div className="font-semibold">
+                      {diag.online ? 'Online' : 'Offline'}
+                    </div>
+                  </div>
+                  <div className="rounded-md border bg-white p-3">
+                    <div className="text-xs text-muted-foreground text-zinc-500">Aparelhos conectados</div>
+                    <div className="font-semibold">
+                      {diag.total_aparelhos != null ? String(diag.total_aparelhos) : '—'}
+                    </div>
+                  </div>
+                  <div className="rounded-md border bg-white p-3">
+                    <div className="text-xs text-muted-foreground text-zinc-500">Sinal</div>
+                    <div className="font-semibold capitalize">
+                      {diag.saude ?? '—'}
+                    </div>
+                  </div>
+                </div>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Capturado no momento da abertura
+                  {diag.timestamp
+                    ? ` — ${new Date(diag.timestamp).toLocaleString('pt-BR')}`
+                    : ''}
+                  {diag.contrato_id != null ? ` · Contrato ${diag.contrato_id}` : ''}
+                </p>
+              </Section>
+            ) : null
+          })()}
+
+          {(() => {
+            const rest = Object.fromEntries(
+              Object.entries(o.payload).filter(([k]) => k !== 'diagnostico'),
+            )
+            return Object.keys(rest).length > 0 ? (
+              <Section title="Dados adicionais">
+                <pre className="overflow-x-auto rounded-md bg-zinc-50 p-3 text-xs text-zinc-700">
+                  {JSON.stringify(rest, null, 2)}
+                </pre>
+              </Section>
+            ) : null
+          })()}
 
           <Section title="Atendimento">
             <Field
