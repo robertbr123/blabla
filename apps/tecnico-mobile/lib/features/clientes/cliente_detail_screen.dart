@@ -10,6 +10,7 @@ import '../../core/branding/brand_status_pill.dart';
 import '../../core/ui/app_section_header.dart';
 import '../../core/ui/app_state_panel.dart';
 import '../../core/ui/app_surfaces.dart';
+import '../../core/ui/ios_glass_header.dart';
 import '../os/widgets/cliente_avatar.dart';
 import 'cliente_data.dart';
 import 'cliente_form_data.dart';
@@ -25,40 +26,50 @@ class ClienteDetailScreen extends ConsumerWidget {
     final async = ref.watch(clienteDetailProvider(id));
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
-      appBar: AppBar(
-        // Saida garantida: volta na pilha se der, senao cai na lista de clientes.
-        // Evita ficar preso quando se chega aqui sem rota anterior.
-        leading: BackButton(
-          onPressed: () =>
-              context.canPop() ? context.pop() : context.go('/clientes'),
-        ),
-        title: const Text('Cliente'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              ref.invalidate(clienteDetailProvider(id));
-              ref.invalidate(clienteOsHistoricoProvider(id));
-            },
+      backgroundColor: scheme.surface,
+      body: CustomScrollView(
+        slivers: [
+          IosGlassHeader(
+            title: 'Cliente',
+            leading: BackButton(
+              onPressed: () =>
+                  context.canPop() ? context.pop() : context.go('/clientes'),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Atualizar',
+                onPressed: () {
+                  ref.invalidate(clienteDetailProvider(id));
+                  ref.invalidate(clienteOsHistoricoProvider(id));
+                },
+              ),
+            ],
+          ),
+          async.when(
+            loading: () => const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
+                child: AppStatePanel.error(
+                  title: 'Não foi possível carregar este cliente',
+                  message:
+                      'Os dados de detalhe não responderam como esperado. Atualize novamente em instantes.',
+                  detail: e is DioException
+                      ? extractDioMessage(e, fallback: '')
+                      : null,
+                  actionLabel: 'Tentar novamente',
+                  onAction: () => ref.invalidate(clienteDetailProvider(id)),
+                ),
+              ),
+            ),
+            data: (c) => SliverToBoxAdapter(child: _Body(cliente: c)),
           ),
         ],
-      ),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Padding(
-          padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
-          child: AppStatePanel.error(
-            title: 'Não foi possível carregar este cliente',
-            message:
-                'Os dados de detalhe não responderam como esperado. Atualize novamente em instantes.',
-            detail:
-                e is DioException ? extractDioMessage(e, fallback: '') : null,
-            actionLabel: 'Tentar novamente',
-            onAction: () => ref.invalidate(clienteDetailProvider(id)),
-          ),
-        ),
-        data: (c) => _Body(cliente: c),
       ),
     );
   }
@@ -72,9 +83,11 @@ class _Body extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final osAsync = ref.watch(clienteOsHistoricoProvider(cliente.id));
 
-    return ListView(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
         AppSurfaceCard(child: _Header(cliente: cliente)),
         const SizedBox(height: 12),
         _SecaoEndereco(cliente: cliente),
@@ -145,7 +158,8 @@ class _Body extends ConsumerWidget {
             ],
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 }
