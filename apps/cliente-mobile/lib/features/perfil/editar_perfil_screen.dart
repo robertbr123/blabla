@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/me_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/formatters.dart';
+import '../../core/ui/glass_app_bar.dart';
 
 class EditarPerfilScreen extends ConsumerStatefulWidget {
   const EditarPerfilScreen({
@@ -71,12 +72,19 @@ class _EditarPerfilScreenState extends ConsumerState<EditarPerfilScreen> {
         ? TextInputType.phone
         : TextInputType.emailAddress;
     return Scaffold(
-      appBar: AppBar(title: Text(label)),
+      appBar: GlassAppBar(title: label),
+      extendBodyBehindAppBar: true,
       body: SafeArea(
+        top: false,
         child: Padding(
           padding: const EdgeInsets.all(BrandTokens.spaceLg),
           child: Column(
             children: [
+              SizedBox(
+                height: MediaQuery.paddingOf(context).top +
+                    kToolbarHeight +
+                    BrandTokens.spaceMd,
+              ),
               TextField(
                 controller: _ctrl,
                 keyboardType: keyboardType,

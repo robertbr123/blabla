@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/me_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/glass_app_bar.dart';
 
 class MudarSenhaScreen extends ConsumerStatefulWidget {
   const MudarSenhaScreen({super.key});
@@ -57,12 +58,19 @@ class _MudarSenhaScreenState extends ConsumerState<MudarSenhaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mudar senha')),
+      appBar: GlassAppBar(title: 'Mudar senha'),
+      extendBodyBehindAppBar: true,
       body: SafeArea(
+        top: false,
         child: Padding(
           padding: const EdgeInsets.all(BrandTokens.spaceLg),
           child: Column(
             children: [
+              SizedBox(
+                height: MediaQuery.paddingOf(context).top +
+                    kToolbarHeight +
+                    BrandTokens.spaceMd,
+              ),
               TextField(
                 controller: _atual,
                 obscureText: _hide,
