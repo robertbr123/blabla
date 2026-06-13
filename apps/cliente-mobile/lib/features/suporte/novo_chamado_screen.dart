@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/os_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/glass_app_bar.dart';
 import '../../core/ui/haptics.dart';
 import 'widgets/triagem_rede.dart';
 
@@ -33,9 +34,11 @@ class _NovoChamadoScreenState extends ConsumerState<NovoChamadoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final topPad = MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Novo chamado'),
+      extendBodyBehindAppBar: true,
+      appBar: GlassAppBar(
+        title: 'Novo chamado',
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => context.pop(),
@@ -49,19 +52,28 @@ class _NovoChamadoScreenState extends ConsumerState<NovoChamadoScreen> {
         ],
       ),
       body: SafeArea(
+        top: false,
         child: Padding(
           padding: const EdgeInsets.all(BrandTokens.spaceLg),
           child: _triagemPendente
-              ? TriagemRede(
-                  onConcluir: (diag) => setState(() {
-                    _diagnostico = diag;
-                    _triagemPendente = false;
-                    _step = 1;
-                  }),
-                  onResolveu: () => context.pop(),
+              ? Column(
+                  children: [
+                    SizedBox(height: topPad),
+                    Expanded(
+                      child: TriagemRede(
+                        onConcluir: (diag) => setState(() {
+                          _diagnostico = diag;
+                          _triagemPendente = false;
+                          _step = 1;
+                        }),
+                        onResolveu: () => context.pop(),
+                      ),
+                    ),
+                  ],
                 )
               : Column(
                   children: [
+                    SizedBox(height: topPad),
                     _StepIndicator(current: _step, total: 3),
                     const SizedBox(height: BrandTokens.spaceLg),
                     Expanded(
