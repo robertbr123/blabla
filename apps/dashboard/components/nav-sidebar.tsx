@@ -103,6 +103,7 @@ const SECTIONS: ReadonlyArray<NavSection> = [
   {
     label: 'Sistema',
     items: [
+      { href: '/comunicados', label: 'Comunicados', icon: Megaphone, roles: ['admin'] },
       { href: '/metricas', label: 'Métricas', icon: BarChart3, roles: ['admin'] },
       { href: '/canais', label: 'Canais WhatsApp', icon: Radio, roles: ['admin'] },
       { href: '/config', label: 'Configurações', icon: Settings, roles: ['admin'] },
