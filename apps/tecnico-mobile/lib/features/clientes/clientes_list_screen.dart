@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/branding/brand_kpi_card.dart';
+import '../../core/sync/cadastro_draft_repo.dart';
 import '../../core/sync/connectivity_status.dart';
 import '../../core/ui/ios_glass_header.dart';
 import '../../core/branding/brand_status_pill.dart' show BrandTone;
@@ -54,6 +55,8 @@ class _ClientesListScreenState extends ConsumerState<ClientesListScreen> {
   Widget build(BuildContext context) {
     final async = ref.watch(clientesListProvider);
     final scheme = Theme.of(context).colorScheme;
+    final drafts =
+        ref.watch(cadastroDraftsProvider).value ?? const <CadastroDraft>[];
 
     return Scaffold(
       backgroundColor: scheme.surface,
@@ -81,12 +84,12 @@ class _ClientesListScreenState extends ConsumerState<ClientesListScreen> {
                   ),
                 ),
               ),
-            if ((ref.watch(cadastroDraftsProvider).value ?? const []).isNotEmpty)
+            if (drafts.isNotEmpty)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: CadastroDraftsBanner(
-                    count: ref.watch(cadastroDraftsProvider).value!.length,
+                    count: drafts.length,
                     onTap: () => showCadastroDraftsSheet(context),
                   ),
                 ),

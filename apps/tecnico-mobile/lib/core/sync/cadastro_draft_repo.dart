@@ -48,12 +48,16 @@ class CadastroDraftRepo {
     return dir;
   }
 
+  // Nota: drafts são globais ao app (não por-user). Device de campo é tipicamente
+  // de um técnico só; se virar compartilhado, namespacear o dir por userId.
   Future<CadastroDraft> save({
     required Map<String, dynamic> payload,
     required String cpf,
     required String nome,
   }) async {
-    final id = DateTime.now().microsecondsSinceEpoch.toString();
+    // microssegundos + hash do CPF evita colisão em saves quase-simultâneos.
+    final id =
+        '${DateTime.now().microsecondsSinceEpoch}_${cpf.hashCode.toUnsigned(20)}';
     final draft = CadastroDraft(
       id: id,
       createdAt: DateTime.now(),
