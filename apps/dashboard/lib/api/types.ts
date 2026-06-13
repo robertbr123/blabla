@@ -931,3 +931,57 @@ export interface RebootResult {
   device_id: string
   aviso: string
 }
+
+// ════════ Comunicados (campanhas broadcast) ════════
+
+export interface BroadcastTemplateVar {
+  indice: number
+  label: string
+  tipo: string
+}
+export interface BroadcastTemplate {
+  id: string
+  name: string
+  language: string
+  category: string
+  variaveis: BroadcastTemplateVar[]
+  header_tipo: string
+}
+export interface SegmentoFiltros {
+  cidade?: string | null
+  status?: string | null
+  plano?: string | null
+}
+export interface PreviewResult {
+  total: number
+  amostra: Array<{ id: string; nome: string | null; whatsapp: string; cidade: string | null }>
+}
+export interface CampanhaListItem {
+  id: string
+  titulo: string
+  template_name: string
+  status: string
+  total_destinatarios: number
+  enviadas: number
+  falhas: number
+  created_at: string
+}
+export interface CampanhaDetail extends CampanhaListItem {
+  canal_id: string
+  template_language: string
+  body_params: string[]
+  header_media_url: string | null
+  segmentacao: SegmentoFiltros
+  started_at: string | null
+  finished_at: string | null
+  status_counts: Record<string, number>
+}
+export interface CampanhaCreate {
+  titulo: string
+  canal_id: string
+  template_name: string
+  template_language?: string
+  body_params: string[]
+  header_media_url?: string | null
+  segmentacao: SegmentoFiltros
+}

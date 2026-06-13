@@ -1735,3 +1735,85 @@ export function useReiniciarOnu(conversaId: string) {
       toast.error(err instanceof Error ? err.message : 'Falha ao reiniciar'),
   })
 }
+
+// ════════ Comunicados (campanhas broadcast) ════════
+
+export function useBroadcastTemplates() {
+  return useQuery<import('./types').BroadcastTemplate[]>({
+    queryKey: ['broadcast-templates'],
+    queryFn: () => apiFetch('/api/v1/admin/comunicados/templates'),
+    staleTime: 300_000,
+  })
+}
+
+export function useCampanhas() {
+  return useQuery<import('./types').CampanhaListItem[]>({
+    queryKey: ['campanhas'],
+    queryFn: () => apiFetch('/api/v1/admin/comunicados'),
+  })
+}
+
+export function useCampanha(id: string) {
+  return useQuery<import('./types').CampanhaDetail>({
+    queryKey: ['campanha', id],
+    queryFn: () => apiFetch(`/api/v1/admin/comunicados/${id}`),
+    enabled: Boolean(id),
+    refetchInterval: (query) =>
+      query.state.data?.status === 'enviando' ? 3000 : false,
+  })
+}
+
+export function useCreateCampanha() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: import('./types').CampanhaCreate) =>
+      apiFetch<import('./types').CampanhaListItem>('/api/v1/admin/comunicados', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['campanhas'] }),
+  })
+}
+
+export function usePreviewSegmento() {
+  return useMutation({
+    mutationFn: (filtros: import('./types').SegmentoFiltros) =>
+      apiFetch<import('./types').PreviewResult>('/api/v1/admin/comunicados/preview', {
+        method: 'POST',
+        body: JSON.stringify(filtros),
+      }),
+  })
+}
+
+export function useSendCampanha() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ status: string }>(`/api/v1/admin/comunicados/${id}/send`, {
+        method: 'POST',
+      }),
+    onSuccess: (_d, id) => {
+      qc.invalidateQueries({ queryKey: ['campanhas'] })
+      qc.invalidateQueries({ queryKey: ['campanha', id] })
+    },
+  })
+}
+
+export function useTestCampanha(id: string) {
+  return useMutation({
+    mutationFn: (whatsapp: string) =>
+      apiFetch<{ status: string }>(`/api/v1/admin/comunicados/${id}/test`, {
+        method: 'POST',
+        body: JSON.stringify({ whatsapp }),
+      }),
+  })
+}
+
+export function exportClientesUrl(f: import('./types').SegmentoFiltros, fmt: 'csv' | 'xlsx') {
+  const p = new URLSearchParams()
+  if (f.cidade) p.set('cidade', f.cidade)
+  if (f.status) p.set('status', f.status)
+  if (f.plano) p.set('plano', f.plano)
+  p.set('format', fmt)
+  return `/api/v1/admin/comunicados/export/clientes?${p.toString()}`
+}
