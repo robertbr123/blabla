@@ -8,6 +8,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/location/location_service.dart';
+import '../../core/sync/cadastro_draft_repo.dart';
+import '../../core/sync/connectivity_status.dart';
 import '../../core/ui/app_section_header.dart';
 import '../../core/ui/ios_glass_app_bar.dart';
 import '../../core/ui/app_status_chip.dart';
@@ -216,6 +218,7 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
       _enviando = true;
       _erroEnvio = null;
     });
+    late CreateClienteCampoIn body;
     try {
       final materiais = _materiaisQtd.entries
           .where((e) => e.value > 0)
@@ -228,7 +231,7 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
           )
           .toList();
 
-      final body = CreateClienteCampoIn(
+      body = CreateClienteCampoIn(
         cpf: onlyDigits(_cpf.text),
         nome: _nome.text.trim(),
         dob: DateFormat('yyyy-MM-dd').format(_dob!),
@@ -266,6 +269,25 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
         materiais: materiais,
       );
 
+      // Offline → salva rascunho local em vez de tentar o POST (que ia falhar).
+      final offline = ref.read(connectivityStatusProvider).value == false;
+      if (offline) {
+        await ref.read(cadastroDraftRepoProvider).save(
+              payload: body.toJson(),
+              cpf: onlyDigits(_cpf.text),
+              nome: _nome.text.trim(),
+            );
+        ref.invalidate(cadastroDraftsProvider);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Cadastro salvo offline. Envie quando tiver sinal.'),
+          ),
+        );
+        context.go('/clientes');
+        return;
+      }
+
       final actions = ref.read(clienteFormActionsProvider);
       final id = await actions.criar(body);
       if (!mounted) return;
@@ -275,8 +297,28 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
       // a pilha e deixaria o detail sem botao de voltar -> usuario preso).
       context.pushReplacement('/clientes/$id');
     } on DioException catch (e) {
-      final body = e.response?.data;
-      final detail = body is Map ? body['detail']?.toString() : null;
+      final isNetwork = e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout;
+      if (isNetwork) {
+        await ref.read(cadastroDraftRepoProvider).save(
+              payload: body.toJson(),
+              cpf: onlyDigits(_cpf.text),
+              nome: _nome.text.trim(),
+            );
+        ref.invalidate(cadastroDraftsProvider);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sem conexão — cadastro salvo offline pra enviar depois.'),
+          ),
+        );
+        context.go('/clientes');
+        return;
+      }
+      final respData = e.response?.data;
+      final detail = respData is Map ? respData['detail']?.toString() : null;
       setState(
         () => _erroEnvio = detail ?? e.message ?? 'Erro ao cadastrar.',
       );
