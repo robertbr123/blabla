@@ -1,9 +1,11 @@
 """Testes do tool loop do chat in-app (consultar_rede_app).
 
 Monkeypatch strategy:
-- HermesProvider: importado inline dentro de `send`, portanto patchado em
-  `ondeline_api.api.v1.cliente_app_chat.HermesProvider` (o nome no namespace
-  do modulo no momento da execucao).
+- HermesProvider: importado inline dentro de `send` via
+  `from ondeline_api.adapters.llm.hermes import HermesProvider`, que resolve
+  do modulo de origem na hora da chamada. Por isso o patch e na FONTE
+  (`ondeline_api.adapters.llm.hermes.HermesProvider`), nao no namespace de
+  `cliente_app_chat` (onde seria inocuo).
 - _exec_consultar_rede: funcao async module-level patchada diretamente em
   `ondeline_api.api.v1.cliente_app_chat._exec_consultar_rede`.
 """
@@ -116,7 +118,7 @@ async def test_chat_sem_tool(
         return fake_provider
 
     monkeypatch.setattr(
-        "ondeline_api.api.v1.cliente_app_chat.HermesProvider", _fake_hermes
+        "ondeline_api.adapters.llm.hermes.HermesProvider", _fake_hermes
     )
 
     app = _make_app(db_session)
@@ -180,7 +182,7 @@ async def test_chat_com_consultar_rede(
         return fake_provider
 
     monkeypatch.setattr(
-        "ondeline_api.api.v1.cliente_app_chat.HermesProvider", _fake_hermes
+        "ondeline_api.adapters.llm.hermes.HermesProvider", _fake_hermes
     )
 
     async def _fake_exec_rede(
@@ -250,7 +252,7 @@ async def test_chat_genieacs_indisponivel(
         return fake_provider
 
     monkeypatch.setattr(
-        "ondeline_api.api.v1.cliente_app_chat.HermesProvider", _fake_hermes
+        "ondeline_api.adapters.llm.hermes.HermesProvider", _fake_hermes
     )
 
     async def _fake_exec_indisponivel(
