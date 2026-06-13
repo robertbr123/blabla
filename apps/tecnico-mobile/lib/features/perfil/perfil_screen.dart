@@ -13,6 +13,7 @@ import '../../core/branding/brand_status_pill.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/push/fcm_service.dart';
 import '../../core/ui/app_state_panel.dart';
+import '../../core/ui/ios_glass_header.dart';
 import '../os/widgets/cliente_avatar.dart';
 import 'perfil_data.dart';
 
@@ -50,76 +51,95 @@ class PerfilScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      appBar: AppBar(
-        toolbarHeight: 48,
-        backgroundColor: scheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Atualizar',
-            onPressed: () => ref.invalidate(perfilProvider),
-          ),
-        ],
-      ),
-      body: async.when(
-        loading: () => const _StateBody(
-          child: AppStatePanel.loading(
-            title: 'Carregando seu perfil',
-            message: 'Preparando foto, status e estatísticas.',
-          ),
-        ),
-        error: (e, _) => _ErroView(
-          e: e,
-          onRetry: () => ref.invalidate(perfilProvider),
-        ),
-        data: (p) => RefreshIndicator(
-          onRefresh: () async => ref.invalidate(perfilProvider),
-          child: ListView(
-            // Bottom extra pra ultima opcao nao ficar atras do navbar flutuante
-            // (Scaffold usa extendBody: navbar 60 + margens 14 + safe area).
-            padding: EdgeInsets.fromLTRB(
-              16,
-              12,
-              16,
-              32 + 74 + MediaQuery.paddingOf(context).bottom,
+      body: RefreshIndicator(
+        onRefresh: () async => ref.invalidate(perfilProvider),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            IosGlassHeader(
+              title: 'Perfil',
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Atualizar',
+                  onPressed: () => ref.invalidate(perfilProvider),
+                ),
+              ],
             ),
-            children: [
-              _Header(perfil: p),
-              const SizedBox(height: 20),
-              const _SectionTitle('Atividade do mês'),
-              const SizedBox(height: 8),
-              _StatsGrid(stats: p.estatisticas),
-              const SizedBox(height: 20),
-              const _SectionTitle('Conta'),
-              const SizedBox(height: 8),
-              _ActionTile(
-                icon: Icons.lock_outline,
-                title: 'Mudar senha',
-                onTap: () => _openMudarSenha(context),
-              ),
-              const SizedBox(height: 8),
-              _ActionTile(
-                icon: Icons.logout,
-                title: 'Sair',
-                destructive: true,
-                onTap: () => _logout(context, ref),
-              ),
-              const SizedBox(height: 20),
-              const _SectionTitle('Sobre'),
-              const SizedBox(height: 8),
-              _InfoTile(
-                icon: Icons.smartphone,
-                label: 'Versão',
-                value: '0.1.0',
-                onTap: () => _maybeRevealEasterEgg(context),
-              ),
-              const SizedBox(height: 8),
-              const _InfoTile(icon: Icons.business, label: 'Empresa', value: 'Linket'),
-            ],
-          ),
+            ...async.when<List<Widget>>(
+              loading: () => const [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _StateBody(
+                    child: AppStatePanel.loading(
+                      title: 'Carregando seu perfil',
+                      message: 'Preparando foto, status e estatísticas.',
+                    ),
+                  ),
+                ),
+              ],
+              error: (e, _) => [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _ErroView(
+                    e: e,
+                    onRetry: () => ref.invalidate(perfilProvider),
+                  ),
+                ),
+              ],
+              data: (p) => [
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    16,
+                    12,
+                    16,
+                    32 + 74 + MediaQuery.paddingOf(context).bottom,
+                  ),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _Header(perfil: p),
+                        const SizedBox(height: 20),
+                        const _SectionTitle('Atividade do mês'),
+                        const SizedBox(height: 8),
+                        _StatsGrid(stats: p.estatisticas),
+                        const SizedBox(height: 20),
+                        const _SectionTitle('Conta'),
+                        const SizedBox(height: 8),
+                        _ActionTile(
+                          icon: Icons.lock_outline,
+                          title: 'Mudar senha',
+                          onTap: () => _openMudarSenha(context),
+                        ),
+                        const SizedBox(height: 8),
+                        _ActionTile(
+                          icon: Icons.logout,
+                          title: 'Sair',
+                          destructive: true,
+                          onTap: () => _logout(context, ref),
+                        ),
+                        const SizedBox(height: 20),
+                        const _SectionTitle('Sobre'),
+                        const SizedBox(height: 8),
+                        _InfoTile(
+                          icon: Icons.smartphone,
+                          label: 'Versão',
+                          value: '0.1.0',
+                          onTap: () => _maybeRevealEasterEgg(context),
+                        ),
+                        const SizedBox(height: 8),
+                        const _InfoTile(
+                            icon: Icons.business,
+                            label: 'Empresa',
+                            value: 'Linket'),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
