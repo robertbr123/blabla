@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/branding/brand_kpi_card.dart';
+import '../../core/sync/connectivity_status.dart';
 import '../../core/ui/ios_glass_header.dart';
 import '../../core/branding/brand_status_pill.dart' show BrandTone;
 import '../../core/ui/app_state_panel.dart';
+import '../../core/ui/offline_cache_chip.dart';
 import 'cliente_data.dart';
 import 'widgets/cliente_card.dart';
 
@@ -69,6 +71,15 @@ class _ClientesListScreenState extends ConsumerState<ClientesListScreen> {
                 ),
               ],
             ),
+            if (ref.watch(connectivityStatusProvider).value == false)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: OfflineCacheChip(
+                    syncedAt: ref.watch(clientesLastSyncedAtProvider).value,
+                  ),
+                ),
+              ),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),

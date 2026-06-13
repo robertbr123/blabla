@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/auth/auth_repository.dart';
 import 'core/branding/brand_theme.dart';
 import 'core/push/fcm_service.dart';
+import 'core/sync/prefetch_service.dart';
 import 'core/sync/sync_service.dart';
 import 'router.dart';
 
@@ -46,6 +49,7 @@ class _TecnicoAppState extends ConsumerState<TecnicoApp> {
       _bootstrapped = true;
       // Inicia sync (precisa de token salvo — se nao tiver, faz nada util).
       await ref.read(syncServiceProvider).start();
+      unawaited(ref.read(prefetchServiceProvider).start());
       // FCM: so se usuario logado e Firebase inicializado.
       final hasToken = await ref.read(hasTokenProvider.future);
       if (hasToken && Firebase.apps.isNotEmpty) {

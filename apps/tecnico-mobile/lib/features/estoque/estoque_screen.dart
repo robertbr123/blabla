@@ -5,9 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/branding/brand_kpi_card.dart';
 import '../../core/branding/brand_status_pill.dart' show BrandTone;
+import '../../core/sync/connectivity_status.dart';
 import '../../core/ui/app_state_panel.dart';
 import '../../core/ui/app_surfaces.dart';
 import '../../core/ui/ios_glass_header.dart';
+import '../../core/ui/offline_cache_chip.dart';
 import 'estoque_data.dart';
 
 class EstoqueScreen extends ConsumerStatefulWidget {
@@ -67,6 +69,15 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
                 ),
               ],
             ),
+            if (ref.watch(connectivityStatusProvider).value == false)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: OfflineCacheChip(
+                    syncedAt: ref.watch(estoqueLastSyncedAtProvider).value,
+                  ),
+                ),
+              ),
             ...async.when<List<Widget>>(
               loading: () => const [
                 SliverFillRemaining(

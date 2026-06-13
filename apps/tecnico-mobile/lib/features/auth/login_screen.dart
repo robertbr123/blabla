@@ -9,6 +9,7 @@ import '../../core/auth/auth_repository.dart';
 import '../../core/auth/auth_storage.dart';
 import '../../core/auth/biometric_service.dart';
 import '../../core/push/fcm_service.dart';
+import '../../core/sync/prefetch_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -56,6 +57,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       if (Firebase.apps.isNotEmpty) {
         unawaited(ref.read(fcmServiceProvider).init());
       }
+      unawaited(ref.read(prefetchServiceProvider).prefetchAll());
       if (!mounted) return;
       context.go('/os');
     } catch (e) {
