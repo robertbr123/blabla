@@ -1,7 +1,7 @@
 name: cliente_mobile
 description: App mobile do cliente final Ondeline — fatura, plano, OS e chat.
 publish_to: 'none'
-version: 1.0.0+2
+version: 1.1.0+3
 
 environment:
   sdk: '>=3.6.0 <4.0.0'
