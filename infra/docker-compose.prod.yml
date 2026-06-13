@@ -65,6 +65,10 @@ services:
     container_name: blabla-api
     env_file:
       - .env
+    environment:
+      # Fotos de cliente-campo gravam DENTRO do volume persistente. Sem isso o
+      # código cai em ~/.cache (efêmero) e as fotos somem a cada deploy.
+      CLIENTE_FOTOS_DIR: /tmp/ondeline_cliente_fotos
     depends_on:
       postgres:
         condition: service_healthy
@@ -85,6 +89,8 @@ services:
     command: ["celery", "-A", "ondeline_api.workers.celery_app:celery_app", "worker", "-Q", "default,llm,sgp,notifications,asr", "--concurrency=4", "--loglevel=info"]
     env_file:
       - .env
+    environment:
+      CLIENTE_FOTOS_DIR: /tmp/ondeline_cliente_fotos
     depends_on:
       postgres:
         condition: service_healthy
