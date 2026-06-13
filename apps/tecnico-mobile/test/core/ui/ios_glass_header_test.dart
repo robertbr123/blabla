@@ -30,4 +30,35 @@ void main() {
     expect(find.byIcon(Icons.refresh), findsOneWidget);
     expect(find.byType(BackdropFilter), findsOneWidget);
   });
+
+  testWidgets('showBackButton exibe voltar quando há rota pra popar',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildBrandTheme(Brightness.light),
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const Scaffold(
+                    body: CustomScrollView(
+                      slivers: [
+                        IosGlassHeader(title: 'Detalhe', showBackButton: true),
+                        SliverToBoxAdapter(child: SizedBox(height: 600)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              child: const Text('ir'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('ir'));
+    await tester.pumpAndSettle();
+    expect(find.byType(BackButton), findsOneWidget);
+  });
 }
