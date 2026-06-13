@@ -113,6 +113,70 @@ async def preview(
     return PreviewOut(total=total, amostra=amostra)
 
 
+@router.get("/export/clientes", dependencies=[_admin_dep])
+async def export_clientes(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    cidade: Annotated[str | None, Query()] = None,
+    status_f: Annotated[str | None, Query(alias="status")] = None,
+    plano: Annotated[str | None, Query()] = None,
+    fmt: Annotated[str, Query(alias="format")] = "csv",
+) -> StreamingResponse:
+    filtros = {"cidade": cidade, "status": status_f, "plano": plano}
+    stmt = resolver_segmento(filtros).order_by(Cliente.created_at.desc())
+    clientes = list((await session.execute(stmt)).scalars().all())
+
+    colunas = ["nome", "cpf_cnpj", "whatsapp", "cidade", "plano", "status", "sgp_id"]
+
+    def _row(c: Cliente) -> dict[str, str]:
+        try:
+            nome = decrypt_pii(c.nome_encrypted) if c.nome_encrypted else ""
+        except Exception:
+            nome = ""
+        try:
+            cpf = decrypt_pii(c.cpf_cnpj_encrypted) if c.cpf_cnpj_encrypted else ""
+        except Exception:
+            cpf = ""
+        return {
+            "nome": nome, "cpf_cnpj": cpf, "whatsapp": c.whatsapp,
+            "cidade": c.cidade or "", "plano": c.plano or "",
+            "status": c.status or "", "sgp_id": c.sgp_id or "",
+        }
+
+    stamp = datetime.now(tz=UTC).strftime("%Y%m%d")
+    if fmt == "xlsx":
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "clientes"
+        ws.append(colunas)
+        for c in clientes:
+            r = _row(c)
+            ws.append([r[k] for k in colunas])
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        return StreamingResponse(
+            buf,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="clientes-{stamp}.xlsx"'},
+        )
+
+    # CSV com BOM (Excel-friendly)
+    sbuf = io.StringIO()
+    sbuf.write("\ufeff")
+    writer = csv.DictWriter(sbuf, fieldnames=colunas)
+    writer.writeheader()
+    for c in clientes:
+        writer.writerow(_row(c))
+    data = sbuf.getvalue().encode("utf-8")
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="clientes-{stamp}.csv"'},
+    )
+
+
 @router.get("/{campanha_id}", dependencies=[_admin_dep])
 async def get_campanha(
     campanha_id: UUID,
@@ -190,67 +254,3 @@ async def test_send(
     finally:
         await adapter.aclose()
     return {"status": "enviado"}
-
-
-@router.get("/export/clientes", dependencies=[_admin_dep])
-async def export_clientes(
-    session: Annotated[AsyncSession, Depends(get_db)],
-    cidade: Annotated[str | None, Query()] = None,
-    status_f: Annotated[str | None, Query(alias="status")] = None,
-    plano: Annotated[str | None, Query()] = None,
-    fmt: Annotated[str, Query(alias="format")] = "csv",
-) -> StreamingResponse:
-    filtros = {"cidade": cidade, "status": status_f, "plano": plano}
-    stmt = resolver_segmento(filtros).order_by(Cliente.created_at.desc())
-    clientes = list((await session.execute(stmt)).scalars().all())
-
-    colunas = ["nome", "cpf_cnpj", "whatsapp", "cidade", "plano", "status", "sgp_id"]
-
-    def _row(c: Cliente) -> dict[str, str]:
-        try:
-            nome = decrypt_pii(c.nome_encrypted) if c.nome_encrypted else ""
-        except Exception:
-            nome = ""
-        try:
-            cpf = decrypt_pii(c.cpf_cnpj_encrypted) if c.cpf_cnpj_encrypted else ""
-        except Exception:
-            cpf = ""
-        return {
-            "nome": nome, "cpf_cnpj": cpf, "whatsapp": c.whatsapp,
-            "cidade": c.cidade or "", "plano": c.plano or "",
-            "status": c.status or "", "sgp_id": c.sgp_id or "",
-        }
-
-    stamp = datetime.now(tz=UTC).strftime("%Y%m%d")
-    if fmt == "xlsx":
-        from openpyxl import Workbook
-
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "clientes"
-        ws.append(colunas)
-        for c in clientes:
-            r = _row(c)
-            ws.append([r[k] for k in colunas])
-        buf = io.BytesIO()
-        wb.save(buf)
-        buf.seek(0)
-        return StreamingResponse(
-            buf,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f'attachment; filename="clientes-{stamp}.xlsx"'},
-        )
-
-    # CSV com BOM (Excel-friendly)
-    sbuf = io.StringIO()
-    sbuf.write("﻿")
-    writer = csv.DictWriter(sbuf, fieldnames=colunas)
-    writer.writeheader()
-    for c in clientes:
-        writer.writerow(_row(c))
-    data = sbuf.getvalue().encode("utf-8")
-    return StreamingResponse(
-        io.BytesIO(data),
-        media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="clientes-{stamp}.csv"'},
-    )
