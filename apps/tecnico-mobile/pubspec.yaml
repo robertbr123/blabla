@@ -56,6 +56,10 @@ flutter:
   uses-material-design: true
   assets:
     - assets/branding/
+    # Inter bundlado localmente (5 pesos). google_fonts detecta esses .ttf no
+    # asset manifest e usa offline — sem depender da CDN do Google em runtime
+    # (app é offline-first) e sem fetch de rede nos testes de CI.
+    - assets/fonts/
 
 flutter_launcher_icons:
   android: true
