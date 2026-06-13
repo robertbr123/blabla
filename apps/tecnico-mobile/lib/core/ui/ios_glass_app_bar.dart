@@ -25,27 +25,33 @@ class IosGlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: AppBar(
-          backgroundColor: scheme.surface.withValues(alpha: 0.7),
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          automaticallyImplyLeading: showBackButton,
-          leading: leading,
-          titleSpacing: 16,
-          title: Text(
-            title,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.3,
-              color: scheme.onSurface,
-            ),
-          ),
-          actions: actions,
+    // O blur vai no flexibleSpace do PRÓPRIO AppBar (não num ClipRect externo):
+    // assim o AppBar continua sendo quem cuida do inset da status bar e nada é
+    // cortado em aparelho com notch. Mesmo padrão do IosGlassHeader (SliverAppBar).
+    // Obs: sem `extendBodyBehindAppBar: true` na tela o blur é só translucidez
+    // (não há conteúdo rolando atrás) — esperado pra telas de form.
+    return AppBar(
+      backgroundColor: scheme.surface.withValues(alpha: 0.7),
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      automaticallyImplyLeading: showBackButton,
+      leading: leading,
+      titleSpacing: 16,
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.3,
+          color: scheme.onSurface,
+        ),
+      ),
+      actions: actions,
+      flexibleSpace: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: const SizedBox.expand(),
         ),
       ),
     );
