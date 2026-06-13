@@ -15,12 +15,14 @@ class IosGlassHeader extends StatelessWidget {
     this.subtitle,
     this.actions = const [],
     this.showBackButton = false,
+    this.leading,
   });
 
   final String title;
   final String? subtitle;
   final List<Widget> actions;
   final bool showBackButton;
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +37,7 @@ class IosGlassHeader extends StatelessWidget {
       elevation: 0,
       scrolledUnderElevation: 0,
       automaticallyImplyLeading: showBackButton,
+      leading: leading,
       title: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
