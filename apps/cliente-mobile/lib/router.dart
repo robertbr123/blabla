@@ -95,7 +95,13 @@ final routerProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
-      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
+      GoRoute(
+        path: '/login',
+        builder: (_, state) {
+          final extra = state.extra as Map<String, String>?;
+          return LoginScreen(initialCpf: extra?['cpf']);
+        },
+      ),
       GoRoute(
         path: '/forgot/reset',
         builder: (_, state) {

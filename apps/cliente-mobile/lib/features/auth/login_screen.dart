@@ -12,7 +12,11 @@ import '../../core/ui/glass_card.dart';
 import '../../core/ui/haptics.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.initialCpf});
+
+  /// CPF pra pré-preencher (ex: veio do onboarding quando o CPF já tinha
+  /// conta). Evita o cliente redigitar o que acabou de informar.
+  final String? initialCpf;
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -23,6 +27,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _pwdCtrl = TextEditingController();
   bool _loading = false;
   bool _hide = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final cpf = widget.initialCpf;
+    if (cpf != null && cpf.length == 11) {
+      _cpfCtrl.text = formatCpf(cpf);
+    }
+  }
 
   @override
   void dispose() {

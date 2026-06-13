@@ -49,7 +49,8 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
           _toast('Esse CPF já tem conta. Vou te levar pro login.');
           await Future.delayed(const Duration(milliseconds: 700));
           if (!mounted) return;
-          context.go('/login');
+          // Leva o CPF junto pro login já vir preenchido.
+          context.go('/login', extra: {'cpf': cpf});
         } else {
           _toast(message);
         }
@@ -93,7 +94,14 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
             icon: Icons.arrow_forward_rounded,
           ),
           TextButton(
-            onPressed: () => context.go('/login'),
+            onPressed: () {
+              // Se já digitou um CPF válido, leva pro login pré-preenchido.
+              final cpf = _ctrl.text.replaceAll(RegExp(r'\D'), '');
+              context.go(
+                '/login',
+                extra: cpf.length == 11 ? {'cpf': cpf} : null,
+              );
+            },
             style: TextButton.styleFrom(
               foregroundColor: Colors.white,
               minimumSize: const Size.fromHeight(48),
