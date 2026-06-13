@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/os_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/glass_app_bar.dart';
 import 'chat_tab.dart';
 import 'widgets/os_card.dart';
 
@@ -32,9 +33,13 @@ class _SuporteScreenState extends ConsumerState<SuporteScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Compensação dupla: appbar de vidro (kToolbarHeight) + TabBar (~48px).
+    final headerH = MediaQuery.paddingOf(context).top + kToolbarHeight + 48.0;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Suporte'),
+      extendBodyBehindAppBar: true,
+      appBar: GlassAppBar(
+        title: 'Suporte',
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline_rounded),
@@ -62,9 +67,9 @@ class _SuporteScreenState extends ConsumerState<SuporteScreen>
         children: [
           TabBarView(
             controller: _tabs,
-            children: const [
-              ChatTab(),
-              _ChamadosTab(),
+            children: [
+              ChatTab(topPadding: headerH),
+              _ChamadosTab(topPadding: headerH),
             ],
           ),
           Positioned(
@@ -90,12 +95,15 @@ class _SuporteScreenState extends ConsumerState<SuporteScreen>
 }
 
 class _ChamadosTab extends ConsumerWidget {
-  const _ChamadosTab();
+  const _ChamadosTab({required this.topPadding});
+
+  final double topPadding;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(osListProvider);
     return RefreshIndicator(
+      edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight + 48.0,
       onRefresh: () async {
         ref.invalidate(osListProvider);
         await ref.read(osListProvider.future);
@@ -107,37 +115,44 @@ class _ChamadosTab extends ConsumerWidget {
           if (list.isEmpty) {
             return ListView(
               physics: const AlwaysScrollableScrollPhysics(),
+              padding: EdgeInsets.only(
+                top: topPadding + BrandTokens.spaceSm,
+                left: BrandTokens.spaceXl,
+                right: BrandTokens.spaceXl,
+                bottom: BrandTokens.spaceXl,
+              ),
               children: [
-                const SizedBox(height: 96),
-                Padding(
-                  padding: const EdgeInsets.all(BrandTokens.spaceXl),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.inbox_outlined,
-                          size: 64, color: BrandTokens.textSecondary),
-                      const SizedBox(height: BrandTokens.spaceMd),
-                      Text(
-                        'Nenhum chamado ainda',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
-                      ),
-                      const SizedBox(height: BrandTokens.spaceSm),
-                      Text(
-                        'Toque em "Novo chamado" pra abrir um.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: BrandTokens.textSecondary,
-                            ),
-                      ),
-                    ],
-                  ),
+                Column(
+                  children: [
+                    const Icon(Icons.inbox_outlined,
+                        size: 64, color: BrandTokens.textSecondary),
+                    const SizedBox(height: BrandTokens.spaceMd),
+                    Text(
+                      'Nenhum chamado ainda',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    const SizedBox(height: BrandTokens.spaceSm),
+                    Text(
+                      'Toque em "Novo chamado" pra abrir um.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: BrandTokens.textSecondary,
+                          ),
+                    ),
+                  ],
                 ),
               ],
             );
           }
           return ListView.builder(
-            padding: const EdgeInsets.all(BrandTokens.spaceLg),
+            padding: EdgeInsets.only(
+              top: topPadding + BrandTokens.spaceSm,
+              left: BrandTokens.spaceLg,
+              right: BrandTokens.spaceLg,
+              bottom: BrandTokens.spaceLg,
+            ),
             itemCount: list.length,
             itemBuilder: (_, i) => OsCard(os: list[i]),
           );

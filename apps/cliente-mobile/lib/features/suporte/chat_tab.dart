@@ -9,7 +9,9 @@ import '../../core/branding/brand_tokens.dart';
 import 'widgets/chat_bubble.dart';
 
 class ChatTab extends ConsumerStatefulWidget {
-  const ChatTab({super.key});
+  const ChatTab({super.key, this.topPadding = 0});
+
+  final double topPadding;
 
   @override
   ConsumerState<ChatTab> createState() => _ChatTabState();
@@ -139,11 +141,15 @@ class _ChatTabState extends ConsumerState<ChatTab> {
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _msgs.isEmpty && !_sending
-                  ? _Welcome(onTapExample: _useExample)
+                  ? _Welcome(
+                      onTapExample: _useExample,
+                      topPadding: widget.topPadding,
+                    )
                   : ListView.builder(
                       controller: _scroll,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: BrandTokens.spaceMd,
+                      padding: EdgeInsets.only(
+                        top: widget.topPadding + BrandTokens.spaceMd,
+                        bottom: BrandTokens.spaceMd,
                       ),
                       itemCount: _msgs.length + (_sending ? 1 : 0),
                       itemBuilder: (_, i) {
@@ -221,13 +227,19 @@ class _ChatTabState extends ConsumerState<ChatTab> {
 }
 
 class _Welcome extends StatelessWidget {
-  const _Welcome({required this.onTapExample});
+  const _Welcome({required this.onTapExample, this.topPadding = 0});
   final void Function(String) onTapExample;
+  final double topPadding;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(BrandTokens.spaceXl),
+      padding: EdgeInsets.only(
+        top: topPadding + BrandTokens.spaceXl,
+        left: BrandTokens.spaceXl,
+        right: BrandTokens.spaceXl,
+        bottom: BrandTokens.spaceXl,
+      ),
       children: [
         const SizedBox(height: BrandTokens.spaceXl),
         Center(
