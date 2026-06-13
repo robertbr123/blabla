@@ -88,43 +88,44 @@ class _Body extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-        pendingAsync.when(
-          data: (n) => n > 0
-              ? Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _PendingSyncBanner(count: n),
-                )
-              : const SizedBox.shrink(),
-          loading: () => const SizedBox.shrink(),
-          error: (_, __) => const SizedBox.shrink(),
-        ),
-        _StatusSection(os: os),
-        const SizedBox(height: 12),
-        _ContextSection(
-          endereco: os.readString('endereco'),
-          problema: os.readString('problema'),
-          plano: os.readOptionalString('plano'),
-          login: os.readOptionalString('pppoe_login'),
-          senha: os.readOptionalString('pppoe_senha'),
-          sinalRx: (os['sinal'] as Map<String, dynamic>?)?['rx_power'] as num?,
-          sinalStatus: (os['sinal'] as Map<String, dynamic>?)?['status_gpon'] as String?,
-        ),
-        if (_visitLocation(os) case final location?) ...[
+          pendingAsync.when(
+            data: (n) => n > 0
+                ? Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _PendingSyncBanner(count: n),
+                  )
+                : const SizedBox.shrink(),
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+          ),
+          _StatusSection(os: os),
           const SizedBox(height: 12),
-          _LocationSection(location: location),
-        ],
-        const SizedBox(height: 12),
-        _ActionsSection(
-          canStart: podeIniciar,
-          canConclude: podeConcluir,
-          onStart: () => _iniciar(context, ref),
-          onConclude: () => _abrirConcluirSheet(context, ref),
-        ),
-        const SizedBox(height: 12),
-        _PhotosSection(
-          canTakePhoto: podeConcluir,
-          onTakePhoto: () => _tirarFoto(context, ref),
-        ),
+          _ContextSection(
+            endereco: os.readString('endereco'),
+            problema: os.readString('problema'),
+            plano: os.readOptionalString('plano'),
+            login: os.readOptionalString('pppoe_login'),
+            senha: os.readOptionalString('pppoe_senha'),
+            sinalRx: (os['sinal'] as Map<String, dynamic>?)?['rx_power'] as num?,
+            sinalStatus:
+                (os['sinal'] as Map<String, dynamic>?)?['status_gpon'] as String?,
+          ),
+          if (_visitLocation(os) case final location?) ...[
+            const SizedBox(height: 12),
+            _LocationSection(location: location),
+          ],
+          const SizedBox(height: 12),
+          _ActionsSection(
+            canStart: podeIniciar,
+            canConclude: podeConcluir,
+            onStart: () => _iniciar(context, ref),
+            onConclude: () => _abrirConcluirSheet(context, ref),
+          ),
+          const SizedBox(height: 12),
+          _PhotosSection(
+            canTakePhoto: podeConcluir,
+            onTakePhoto: () => _tirarFoto(context, ref),
+          ),
         ],
       ),
     );
