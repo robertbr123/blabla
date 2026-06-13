@@ -7,6 +7,7 @@ import '../../core/api/dto.dart';
 import '../../core/api/me_repository.dart';
 import '../../core/api/os_repository.dart';
 import '../../core/api/promocoes_repository.dart';
+import '../../core/api/rede_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/cache/last_known_cache.dart';
 import '../../core/contrato/contrato_atual_provider.dart';
@@ -26,6 +27,7 @@ import 'widgets/manutencao_breaking_bar.dart';
 import 'widgets/promo_carousel.dart';
 import 'widgets/quick_actions.dart';
 import 'widgets/quick_cards_row.dart';
+import 'widgets/rede_destaque_card.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -93,6 +95,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 error: (_, __) => _CachedHeroOrError(ref),
               ),
               const SizedBox(height: BrandTokens.spaceLg),
+              const RedeDestaqueCard(),
               const QuickCardsRow(),
               const CardDoDia(),
               ...promosAsync.when(
@@ -189,6 +192,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref.invalidate(contatosOperadoraProvider);
     ref.invalidate(cardDiaProvider);
     ref.invalidate(streakProvider);
+    ref.invalidate(redeAparelhosProvider);
     await ref.read(meProvider.future);
   }
 
