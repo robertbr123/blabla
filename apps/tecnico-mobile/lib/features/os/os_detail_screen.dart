@@ -15,6 +15,7 @@ import '../../core/sync/sync_service.dart';
 import '../../core/branding/brand_status_pill.dart';
 import '../../core/ui/app_section_header.dart';
 import '../../core/ui/app_surfaces.dart';
+import '../../core/ui/ios_glass_header.dart';
 import 'os_data.dart';
 import 'widgets/cliente_avatar.dart';
 
@@ -34,21 +35,35 @@ class OsDetailScreen extends ConsumerWidget {
     final async = ref.watch(osDetailProvider(id));
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
-      appBar: AppBar(
-        title: const Text('Detalhe da OS'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref.invalidate(osDetailProvider(id)),
+      backgroundColor: scheme.surface,
+      body: CustomScrollView(
+        slivers: [
+          IosGlassHeader(
+            title: 'Detalhe da OS',
+            showBackButton: true,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Atualizar',
+                onPressed: () => ref.invalidate(osDetailProvider(id)),
+              ),
+            ],
+          ),
+          async.when(
+            loading: () => const SliverFillRemaining(
+              hasScrollBody: false,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => SliverFillRemaining(
+              hasScrollBody: false,
+              child: _Erro(
+                e: e,
+                onRetry: () => ref.invalidate(osDetailProvider(id)),
+              ),
+            ),
+            data: (os) => SliverToBoxAdapter(child: _Body(osId: id, os: os)),
           ),
         ],
-      ),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) =>
-            _Erro(e: e, onRetry: () => ref.invalidate(osDetailProvider(id))),
-        data: (os) => _Body(osId: id, os: os),
       ),
     );
   }
@@ -68,9 +83,11 @@ class _Body extends ConsumerWidget {
     final podeConcluir = isEmAndamento;
     final podeIniciar = isPendente;
 
-    return ListView(
+    return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
         pendingAsync.when(
           data: (n) => n > 0
               ? Padding(
@@ -108,7 +125,8 @@ class _Body extends ConsumerWidget {
           canTakePhoto: podeConcluir,
           onTakePhoto: () => _tirarFoto(context, ref),
         ),
-      ],
+        ],
+      ),
     );
   }
 
