@@ -78,7 +78,11 @@ async def atualizar_status_por_wamid(
     try:
         stmt = (
             update(CampanhaDestinatario)
-            .where(CampanhaDestinatario.wamid == wamid)
+            .where(
+                CampanhaDestinatario.wamid == wamid,
+                # nunca rebaixa: 'lida' é terminal, ignora delivered/failed atrasados
+                CampanhaDestinatario.status != "lida",
+            )
             .values(status=novo)
         )
         await session.execute(stmt)
