@@ -10,6 +10,7 @@ import '../auth/auth_storage.dart';
 import '../db/cliente_cadastro_repo.dart';
 import '../db/database.dart';
 import '../db/estoque_repo.dart';
+import 'planos_cache.dart';
 
 /// Aquece o cache offline (estoque + lista de clientes) proativamente, pra o
 /// fallback cache-first ter dados mesmo se o técnico não abriu as telas online.
@@ -44,6 +45,7 @@ class PrefetchService {
       if (userId == null || userId.isEmpty) return;
       await _prefetchEstoque(userId);
       await _prefetchClientes(userId);
+      await _prefetchPlanos();
     } finally {
       _running = false;
     }
@@ -60,6 +62,16 @@ class PrefetchService {
       await EstoqueLocalRepo(_db).replaceAll(userId: userId, rows: rows);
     } catch (e) {
       developer.log('prefetch estoque falhou',
+          name: 'PrefetchService', error: e);
+    }
+  }
+
+  Future<void> _prefetchPlanos() async {
+    try {
+      final r = await _dio.get('/api/v1/sgp/planos');
+      await writePlanosCache(r.data);
+    } catch (e) {
+      developer.log('prefetch planos falhou',
           name: 'PrefetchService', error: e);
     }
   }

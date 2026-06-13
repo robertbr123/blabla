@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
 import '../../core/api/api_client.dart';
+import '../../core/sync/planos_cache.dart';
 
 class SgpPlano {
   final int id;
@@ -59,11 +62,22 @@ final planosProvider = FutureProvider.autoDispose<List<SgpPlano>>((ref) async {
   final dio = ref.watch(apiClientProvider);
   try {
     final r = await dio.get('/api/v1/sgp/planos');
+    unawaited(writePlanosCache(r.data)); // aquece p/ offline
     return _decodeSgpPlanos(r.data);
   } on DioException catch (e) {
-    if (!_shouldFallbackToConfiguredPlans(e)) rethrow;
-    final fallback = await dio.get('/api/v1/planos');
-    return _decodeConfiguredPlanos(fallback.data);
+    if (_shouldFallbackToConfiguredPlans(e)) {
+      try {
+        final fallback = await dio.get('/api/v1/planos');
+        return _decodeConfiguredPlanos(fallback.data);
+      } on DioException {
+        final cached = await readPlanosCache();
+        if (cached != null) return _decodeSgpPlanos(cached);
+        rethrow;
+      }
+    }
+    final cached = await readPlanosCache();
+    if (cached != null) return _decodeSgpPlanos(cached);
+    rethrow;
   }
 });
 
