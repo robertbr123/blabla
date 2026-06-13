@@ -11,6 +11,7 @@ import '../../core/branding/brand_status_pill.dart' show BrandTone;
 import '../../core/ui/app_state_panel.dart';
 import '../../core/ui/offline_cache_chip.dart';
 import 'cliente_data.dart';
+import 'widgets/cadastro_drafts_sheet.dart';
 import 'widgets/cliente_card.dart';
 
 class ClientesListScreen extends ConsumerStatefulWidget {
@@ -77,6 +78,16 @@ class _ClientesListScreenState extends ConsumerState<ClientesListScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
                   child: OfflineCacheChip(
                     syncedAt: ref.watch(clientesLastSyncedAtProvider).value,
+                  ),
+                ),
+              ),
+            if ((ref.watch(cadastroDraftsProvider).value ?? const []).isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: CadastroDraftsBanner(
+                    count: ref.watch(cadastroDraftsProvider).value!.length,
+                    onTap: () => showCadastroDraftsSheet(context),
                   ),
                 ),
               ),
