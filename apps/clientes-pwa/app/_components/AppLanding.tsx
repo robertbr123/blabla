@@ -18,7 +18,7 @@
 
 const PLAY_URL =
   'https://play.google.com/store/apps/details?id=dev.robertbr.cliente_mobile'
-const APP_STORE_URL = 'https://apps.apple.com/app/id000000000'
+const APP_STORE_URL = 'https://apps.apple.com/br/app/ondeline/id6776840056'
 
 const NAVY = '#0B1F3A'
 const BG = '#F4F6FA'
