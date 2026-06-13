@@ -19,6 +19,9 @@ class EstoqueScreen extends ConsumerStatefulWidget {
 
 class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
   final _searchCtrl = TextEditingController();
+  // FocusNode estável: a busca vive num SliverPersistentHeader pinned que
+  // rebuilda no setState do debounce; o node próprio mantém o teclado aberto.
+  final _searchFocus = FocusNode();
   // Por padrão esconde itens zerados — técnico só vê o que realmente tem.
   bool _mostrarZerados = false;
   Timer? _searchDebounce;
@@ -26,6 +29,7 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
   @override
   void dispose() {
     _searchDebounce?.cancel();
+    _searchFocus.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -142,6 +146,8 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
                     pinned: true,
                     delegate: _SearchHeaderDelegate(
                       controller: _searchCtrl,
+                      focusNode: _searchFocus,
+                      currentText: _searchCtrl.text,
                       mostrarZerados: _mostrarZerados,
                       hasActiveRefinement: hasActiveRefinement,
                       background: scheme.surface,
@@ -190,6 +196,8 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
 class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
   _SearchHeaderDelegate({
     required this.controller,
+    required this.focusNode,
+    required this.currentText,
     required this.mostrarZerados,
     required this.hasActiveRefinement,
     required this.background,
@@ -200,6 +208,8 @@ class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
   });
 
   final TextEditingController controller;
+  final FocusNode focusNode;
+  final String currentText;
   final bool mostrarZerados;
   final bool hasActiveRefinement;
   final Color background;
@@ -227,6 +237,7 @@ class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
         children: [
           TextField(
             controller: controller,
+            focusNode: focusNode,
             onChanged: (_) => onSearchChanged(),
             decoration: InputDecoration(
               prefixIcon: const Icon(Icons.search, size: 20),
@@ -271,6 +282,7 @@ class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
     return mostrarZerados != oldDelegate.mostrarZerados ||
         hasActiveRefinement != oldDelegate.hasActiveRefinement ||
         background != oldDelegate.background ||
+        currentText != oldDelegate.currentText ||
         controller != oldDelegate.controller;
   }
 }
