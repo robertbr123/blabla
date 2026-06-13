@@ -1,6 +1,8 @@
 # apps/api/tests/test_broadcast_task.py
 from __future__ import annotations
 
+from uuid import uuid4
+
 import pytest
 from ondeline_api.db.crypto import encrypt_pii, hash_pii
 from ondeline_api.db.models.business import (
@@ -28,7 +30,7 @@ class _FakeAdapter:
 
 @pytest.mark.asyncio
 async def test_send_campanha_materializa_e_envia(db_session, monkeypatch):
-    canal = Canal(slug="com", nome="Comercial", provider="cloud",
+    canal = Canal(slug=f"com-{uuid4().hex[:8]}", nome="Comercial", provider="cloud",
                   cloud_phone_id="123", cloud_waba_id="456")
     db_session.add(canal)
     for i in range(3):
@@ -63,7 +65,7 @@ async def test_send_campanha_materializa_e_envia(db_session, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_send_campanha_idempotente(db_session, monkeypatch):
-    canal = Canal(slug="c2", nome="C2", provider="cloud", cloud_phone_id="1", cloud_waba_id="2")
+    canal = Canal(slug=f"c2-{uuid4().hex[:8]}", nome="C2", provider="cloud", cloud_phone_id="1", cloud_waba_id="2")
     db_session.add(canal)
     db_session.add(Cliente(
         cpf_cnpj_encrypted=encrypt_pii("0"), cpf_hash=hash_pii("u1"),
