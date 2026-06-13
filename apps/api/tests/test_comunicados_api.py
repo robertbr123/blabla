@@ -12,7 +12,7 @@ from httpx import ASGITransport, AsyncClient
 from ondeline_api.auth.passwords import hash_password
 from ondeline_api.config import get_settings
 from ondeline_api.db.crypto import encrypt_pii, hash_pii
-from ondeline_api.db.models.business import BroadcastTemplate, Canal, Cliente
+from ondeline_api.db.models.business import Canal, Cliente
 from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db, get_redis
 from ondeline_api.main import create_app
@@ -92,7 +92,12 @@ async def app_and_admin(db_session: AsyncSession, redis_client: Redis) -> Any:  
 async def test_criar_preview_e_disparar(app_and_admin: Any, monkeypatch: Any) -> None:
     client, token, _admin, db_session = app_and_admin
 
-    # Seed: canal Cloud e cliente em Manaus
+    # Cidade única: o banco de teste do CI é compartilhado entre testes que
+    # commitam (ex: test_broadcast_task semeia clientes em "Manaus"), então uso
+    # uma cidade exclusiva pra o preview contar só o cliente deste teste.
+    cidade = f"Manaus-{uuid4().hex[:8]}"
+
+    # Seed: canal Cloud e cliente na cidade exclusiva
     canal = Canal(
         slug=f"com-{uuid4().hex[:8]}",
         nome="Comercial",
@@ -108,31 +113,13 @@ async def test_criar_preview_e_disparar(app_and_admin: Any, monkeypatch: Any) ->
             cpf_hash=hash_pii(uuid4().hex),
             nome_encrypted=encrypt_pii("João"),
             whatsapp="5592111",
-            cidade="Manaus",
+            cidade=cidade,
         )
     )
 
-    # Seed: BroadcastTemplates que os testes precisam
-    db_session.add(
-        BroadcastTemplate(
-            name="comunicado_geral",
-            language="pt_BR",
-            category="MARKETING",
-            variaveis=[],
-            header_tipo="none",
-            ativo=True,
-        )
-    )
-    db_session.add(
-        BroadcastTemplate(
-            name="lancamento_app",
-            language="pt_BR",
-            category="MARKETING",
-            variaveis=[{"indice": 1, "label": "Link do app", "tipo": "url"}],
-            header_tipo="none",
-            ativo=True,
-        )
-    )
+    # Os templates (comunicado_geral, lancamento_app) já vêm do seed da migration
+    # 0049 — o banco de teste do CI roda as migrations, então inseri-los aqui
+    # colidiria no unique de broadcast_templates.name.
     await db_session.commit()
 
     # GET /templates deve retornar ao menos o template semeado
@@ -148,7 +135,7 @@ async def test_criar_preview_e_disparar(app_and_admin: Any, monkeypatch: Any) ->
             "canal_id": str(canal.id),
             "template_name": "lancamento_app",
             "body_params": ["https://app"],
-            "segmentacao": {"cidade": "Manaus"},
+            "segmentacao": {"cidade": cidade},
         },
         headers=_auth(token),
     )
@@ -158,7 +145,7 @@ async def test_criar_preview_e_disparar(app_and_admin: Any, monkeypatch: Any) ->
     # POST /preview retorna contagem do segmento
     r = await client.post(
         "/api/v1/admin/comunicados/preview",
-        json={"cidade": "Manaus"},
+        json={"cidade": cidade},
         headers=_auth(token),
     )
     assert r.status_code == 200
