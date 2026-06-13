@@ -185,11 +185,11 @@ class ClienteFormActions {
   ClienteFormActions(this._dio);
 
   /// Cria cliente + baixa materiais atomicamente. Retorna o id do novo cliente.
-  Future<String> criar(CreateClienteCampoIn body) async {
-    final r = await _dio.post(
-      '/api/v1/clientes-campo',
-      data: body.toJson(),
-    );
+  Future<String> criar(CreateClienteCampoIn body) => criarFromJson(body.toJson());
+
+  /// Cria a partir do Map já serializado (usado pelo envio de rascunho offline).
+  Future<String> criarFromJson(Map<String, dynamic> payload) async {
+    final r = await _dio.post('/api/v1/clientes-campo', data: payload);
     return (r.data as Map)['id'] as String;
   }
 
