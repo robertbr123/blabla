@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/ui/ios_glass_header.dart';
 import 'rede_data.dart';
 
 /// Traduz a falha da troca de senha numa mensagem acionável pro técnico em vez
@@ -113,47 +114,66 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final status = ref.watch(redeStatusProvider(widget.cpf));
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Rede do cliente'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Atualizar',
-            onPressed: () {
-              ref.invalidate(redeStatusProvider(widget.cpf));
-              ref.invalidate(redeDiagnosticoProvider(widget.cpf));
-            },
-          ),
-        ],
-      ),
-      body: status.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Erro ao carregar a rede.'),
-              const SizedBox(height: 8),
-              FilledButton(
-                onPressed: () =>
-                    ref.invalidate(redeStatusProvider(widget.cpf)),
-                child: const Text('Tentar novamente'),
+      backgroundColor: scheme.surface,
+      body: CustomScrollView(
+        slivers: [
+          IosGlassHeader(
+            title: 'Rede do cliente',
+            showBackButton: true,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Atualizar',
+                onPressed: () {
+                  ref.invalidate(redeStatusProvider(widget.cpf));
+                  ref.invalidate(redeDiagnosticoProvider(widget.cpf));
+                },
               ),
             ],
           ),
-        ),
-        data: _body,
+          ...status.when<List<Widget>>(
+            loading: () => const [
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ],
+            error: (e, _) => [
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Erro ao carregar a rede.'),
+                      const SizedBox(height: 8),
+                      FilledButton(
+                        onPressed: () =>
+                            ref.invalidate(redeStatusProvider(widget.cpf)),
+                        child: const Text('Tentar novamente'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            data: (s) => [SliverToBoxAdapter(child: _body(s))],
+          ),
+        ],
       ),
     );
   }
 
   Widget _body(StatusRede s) {
     final precisaSerial = !s.encontrada;
-    return ListView(
+    return Padding(
       padding: const EdgeInsets.all(16),
-      children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
         if (s.encontrada) ...[
           Row(children: [
             Icon(s.online ? Icons.wifi : Icons.wifi_off,
@@ -208,7 +228,8 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
             child: Text('Aparelho offline. Tente quando voltar.',
                 style: TextStyle(color: Colors.grey)),
           ),
-      ],
+        ],
+      ),
     );
   }
 
