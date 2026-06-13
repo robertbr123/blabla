@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     whatsapp_cloud_app_secret: str = ""  # X-Hub-Signature-256
     whatsapp_cloud_graph_version: str = "v21.0"
 
+    # Disparo em massa (comunicados). Ritmo p/ respeitar o tier da Meta.
+    broadcast_batch_size: int = 50
+    broadcast_pause_seconds: float = 1.0
+
     # OTP do app cliente. Se ``otp_template_name`` estiver vazio, o OTP sai
     # pela Evolution (texto livre, comportamento legado). Se setado, o OTP sai
     # pelo numero oficial (Cloud) via template de autenticacao, com fallback
