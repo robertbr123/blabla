@@ -30,4 +30,4 @@ class CampanhaRepo:
             .group_by(CampanhaDestinatario.status)
         )
         rows = (await self._session.execute(stmt)).all()
-        return {status: int(n) for status, n in rows}
+        return {str(status): int(n) for status, n in rows}

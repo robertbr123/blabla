@@ -5,7 +5,7 @@ from __future__ import annotations
 import csv
 import io
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -117,7 +117,7 @@ async def export_clientes(
     plano: Annotated[str | None, Query()] = None,
     fmt: Annotated[str, Query(alias="format")] = "csv",
 ) -> StreamingResponse:
-    filtros = {"cidade": cidade, "status": status_f, "plano": plano}
+    filtros: dict[str, Any] = {"cidade": cidade, "status": status_f, "plano": plano}
     stmt = resolver_segmento(filtros).order_by(Cliente.created_at.desc())
     clientes = list((await session.execute(stmt)).scalars().all())
 
