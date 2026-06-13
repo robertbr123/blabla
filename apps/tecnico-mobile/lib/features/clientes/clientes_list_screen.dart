@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/branding/brand_kpi_card.dart';
+import '../../core/ui/ios_glass_header.dart';
 import '../../core/branding/brand_status_pill.dart' show BrandTone;
 import '../../core/ui/app_state_panel.dart';
 import 'cliente_data.dart';
@@ -19,11 +20,13 @@ class ClientesListScreen extends ConsumerStatefulWidget {
 
 class _ClientesListScreenState extends ConsumerState<ClientesListScreen> {
   final _busca = TextEditingController();
+  final _buscaFocus = FocusNode();
   Timer? _debounce;
   String? _sgpFilter; // null = todos, 'synced' | 'pending'
 
   @override
   void dispose() {
+    _buscaFocus.dispose();
     _busca.dispose();
     _debounce?.cancel();
     super.dispose();
@@ -51,142 +54,217 @@ class _ClientesListScreenState extends ConsumerState<ClientesListScreen> {
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      appBar: AppBar(
-        toolbarHeight: 48,
-        backgroundColor: scheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Atualizar',
-            onPressed: () => ref.invalidate(clientesListProvider),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // KPI única — Pendentes SGP (só o que importa pro técnico em campo)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Builder(builder: (_) {
-              final visiveis = async.maybeWhen(
-                  data: (page) => page.items.length, orElse: () => 0);
-              final pendentes = async.maybeWhen(
-                  data: (page) =>
-                      page.items.where((c) => c.sgpSyncedAt == null).length,
-                  orElse: () => 0);
-              return BrandKpiCard(
-                label: 'Pendentes de sincronização',
-                value: '$pendentes',
-                icon: Icons.cloud_off_outlined,
-                tone: pendentes > 0 ? BrandTone.warning : BrandTone.success,
-                onTap: visiveis > 0
-                    ? () {
-                        // Ao tocar na KPI, ativa filtro "Pendente SGP".
-                        _toggleSgp(_sgpFilter == 'pending' ? null : 'pending');
-                      }
-                    : null,
-              );
-            }),
-          ),
-          // Search + filtros (sem card wrapper)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _busca,
-                  onChanged: _onBuscaChanged,
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search, size: 20),
-                    hintText: 'Buscar por nome, CPF, cidade, serial…',
-                    isDense: true,
-                    suffixIcon: _busca.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 18),
-                            onPressed: () {
-                              _busca.clear();
-                              _onBuscaChanged('');
-                            },
-                          )
-                        : null,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 36,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      _FilterChip(
-                        label: 'Todos',
-                        selected: _sgpFilter == null,
-                        onTap: () => _toggleSgp(null),
-                      ),
-                      const SizedBox(width: 8),
-                      _FilterChip(
-                        label: 'Sincronizado',
-                        icon: Icons.cloud_done,
-                        color: scheme.primary,
-                        selected: _sgpFilter == 'synced',
-                        onTap: () => _toggleSgp('synced'),
-                      ),
-                      const SizedBox(width: 8),
-                      _FilterChip(
-                        label: 'Pendente SGP',
-                        icon: Icons.cloud_off,
-                        color: const Color(0xFFF59E0B),
-                        selected: _sgpFilter == 'pending',
-                        onTap: () => _toggleSgp('pending'),
-                      ),
-                    ],
-                  ),
+      body: RefreshIndicator(
+        onRefresh: () async => ref.invalidate(clientesListProvider),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            IosGlassHeader(
+              title: 'Clientes',
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Atualizar',
+                  onPressed: () => ref.invalidate(clientesListProvider),
                 ),
               ],
             ),
-          ),
-          Expanded(
-            child: async.when(
-              loading: () => const _StateBody(
-                child: AppStatePanel.loading(
-                  title: 'Carregando clientes',
-                  message:
-                      'Atualizando a base do dia para você buscar cidade, serial e status SGP sem ruído.',
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Builder(builder: (_) {
+                  final visiveis = async.maybeWhen(
+                      data: (page) => page.items.length, orElse: () => 0);
+                  final pendentes = async.maybeWhen(
+                      data: (page) =>
+                          page.items.where((c) => c.sgpSyncedAt == null).length,
+                      orElse: () => 0);
+                  return BrandKpiCard(
+                    label: 'Pendentes de sincronização',
+                    value: '$pendentes',
+                    icon: Icons.cloud_off_outlined,
+                    tone: pendentes > 0 ? BrandTone.warning : BrandTone.success,
+                    onTap: visiveis > 0
+                        ? () {
+                            _toggleSgp(
+                                _sgpFilter == 'pending' ? null : 'pending');
+                          }
+                        : null,
+                  );
+                }),
+              ),
+            ),
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _ClientesSearchHeader(
+                controller: _busca,
+                focusNode: _buscaFocus,
+                currentText: _busca.text,
+                sgpFilter: _sgpFilter,
+                background: scheme.surface,
+                onSearchChanged: _onBuscaChanged,
+                onClearSearch: () {
+                  _busca.clear();
+                  _onBuscaChanged('');
+                },
+                onToggleSgp: _toggleSgp,
+              ),
+            ),
+            ...async.when<List<Widget>>(
+              loading: () => const [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _StateBody(
+                    child: AppStatePanel.loading(
+                      title: 'Carregando clientes',
+                      message:
+                          'Atualizando a base do dia para você buscar cidade, serial e status SGP sem ruído.',
+                    ),
+                  ),
                 ),
-              ),
-              error: (e, _) => _ErroView(
-                e: e,
-                onRetry: () => ref.invalidate(clientesListProvider),
-              ),
+              ],
+              error: (e, _) => [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _ErroView(
+                    e: e,
+                    onRetry: () => ref.invalidate(clientesListProvider),
+                  ),
+                ),
+              ],
               data: (page) {
                 if (page.items.isEmpty) {
-                  return _VazioView(
-                    hasSearch: _busca.text.isNotEmpty || _sgpFilter != null,
-                  );
+                  return [
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _VazioView(
+                        hasSearch: _busca.text.isNotEmpty || _sgpFilter != null,
+                      ),
+                    ),
+                  ];
                 }
-                return RefreshIndicator(
-                  onRefresh: () async => ref.invalidate(clientesListProvider),
-                  child: ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
+                return [
+                  SliverPadding(
                     padding: const EdgeInsets.only(top: 2, bottom: 88),
-                    itemCount: page.items.length,
-                    itemBuilder: (_, i) {
-                      final c = page.items[i];
-                      return ClienteCard(
-                        item: c,
-                        onTap: () => context.push('/clientes/${c.id}'),
-                      );
-                    },
+                    sliver: SliverList.builder(
+                      itemCount: page.items.length,
+                      itemBuilder: (_, i) {
+                        final c = page.items[i];
+                        return ClienteCard(
+                          item: c,
+                          onTap: () => context.push('/clientes/${c.id}'),
+                        );
+                      },
+                    ),
                   ),
-                );
+                ];
               },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Header pinned com a busca + filtros SGP (fica fixo sob o IosGlassHeader).
+class _ClientesSearchHeader extends SliverPersistentHeaderDelegate {
+  _ClientesSearchHeader({
+    required this.controller,
+    required this.focusNode,
+    required this.currentText,
+    required this.sgpFilter,
+    required this.background,
+    required this.onSearchChanged,
+    required this.onClearSearch,
+    required this.onToggleSgp,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final String currentText;
+  final String? sgpFilter;
+  final Color background;
+  final ValueChanged<String> onSearchChanged;
+  final VoidCallback onClearSearch;
+  final ValueChanged<String?> onToggleSgp;
+
+  static const _height = 116.0;
+
+  @override
+  double get minExtent => _height;
+
+  @override
+  double get maxExtent => _height;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      color: background,
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          TextField(
+            controller: controller,
+            focusNode: focusNode,
+            onChanged: onSearchChanged,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search, size: 20),
+              hintText: 'Buscar por nome, CPF, cidade, serial…',
+              isDense: true,
+              suffixIcon: controller.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: onClearSearch,
+                    )
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                _FilterChip(
+                  label: 'Todos',
+                  selected: sgpFilter == null,
+                  onTap: () => onToggleSgp(null),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'Sincronizado',
+                  icon: Icons.cloud_done,
+                  color: scheme.primary,
+                  selected: sgpFilter == 'synced',
+                  onTap: () => onToggleSgp('synced'),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'Pendente SGP',
+                  icon: Icons.cloud_off,
+                  color: const Color(0xFFF59E0B),
+                  selected: sgpFilter == 'pending',
+                  onTap: () => onToggleSgp('pending'),
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  @override
+  bool shouldRebuild(covariant _ClientesSearchHeader oldDelegate) {
+    return currentText != oldDelegate.currentText ||
+        sgpFilter != oldDelegate.sgpFilter ||
+        background != oldDelegate.background ||
+        controller != oldDelegate.controller ||
+        focusNode != oldDelegate.focusNode;
   }
 }
 
