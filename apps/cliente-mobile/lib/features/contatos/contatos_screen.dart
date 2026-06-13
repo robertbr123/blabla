@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/api/contatos_repository.dart';
 import '../../core/api/dto.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/glass_app_bar.dart';
 import '../../core/ui/haptics.dart';
 
 class ContatosScreen extends ConsumerWidget {
@@ -13,9 +14,14 @@ class ContatosScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(contatosOperadoraProvider);
+    final topPad = MediaQuery.paddingOf(context).top +
+        kToolbarHeight +
+        BrandTokens.spaceMd;
     return Scaffold(
-      appBar: AppBar(title: const Text('Fale conosco')),
+      appBar: const GlassAppBar(title: 'Fale conosco'),
+      extendBodyBehindAppBar: true,
       body: RefreshIndicator(
+        edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
         onRefresh: () async {
           ref.invalidate(contatosOperadoraProvider);
           await ref.read(contatosOperadoraProvider.future);
@@ -26,6 +32,7 @@ class ContatosScreen extends ConsumerWidget {
             icon: Icons.error_outline_rounded,
             label: 'Não foi possível carregar.',
             sub: 'Puxa pra baixo pra tentar de novo.',
+            topPad: topPad,
           ),
           data: (list) {
             if (list.isEmpty) {
@@ -33,10 +40,16 @@ class ContatosScreen extends ConsumerWidget {
                 icon: Icons.contact_support_outlined,
                 label: 'Sem contatos configurados ainda.',
                 sub: 'Em breve nossa equipe vai disponibilizar aqui.',
+                topPad: topPad,
               );
             }
             return ListView.separated(
-              padding: const EdgeInsets.all(BrandTokens.spaceLg),
+              padding: EdgeInsets.fromLTRB(
+                BrandTokens.spaceLg,
+                topPad,
+                BrandTokens.spaceLg,
+                BrandTokens.spaceLg,
+              ),
               itemCount: list.length,
               separatorBuilder: (_, __) =>
                   const SizedBox(height: BrandTokens.spaceSm),
@@ -209,17 +222,23 @@ class _ContatoCard extends StatelessWidget {
 }
 
 class _Empty extends StatelessWidget {
-  const _Empty({required this.icon, required this.label, required this.sub});
+  const _Empty({
+    required this.icon,
+    required this.label,
+    required this.sub,
+    required this.topPad,
+  });
   final IconData icon;
   final String label;
   final String sub;
+  final double topPad;
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
-        const SizedBox(height: 120),
+        SizedBox(height: topPad + 56),
         Icon(icon, size: 64, color: BrandTokens.textSecondary),
         const SizedBox(height: BrandTokens.spaceMd),
         Text(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/glass_app_bar.dart';
 import 'faq_data.dart';
 
 const _catColors = <String, Color>{
@@ -31,19 +32,26 @@ class FaqArtigoScreen extends StatelessWidget {
     final cat = found.categoria;
     final a = found.artigo;
     if (cat == null || a == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Artigo')),
-        body: const Center(child: Text('Artigo não encontrado.')),
+      return const Scaffold(
+        appBar: GlassAppBar(title: 'Artigo'),
+        extendBodyBehindAppBar: true,
+        body: Center(child: Text('Artigo não encontrado.')),
       );
     }
     final color = _catColors[cat.id] ?? BrandTokens.primary;
+    final topPad = MediaQuery.paddingOf(context).top +
+        kToolbarHeight +
+        BrandTokens.spaceMd;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(''),
-        elevation: 0,
-      ),
+      appBar: const GlassAppBar(title: ''),
+      extendBodyBehindAppBar: true,
       body: ListView(
-        padding: const EdgeInsets.all(BrandTokens.spaceLg),
+        padding: EdgeInsets.fromLTRB(
+          BrandTokens.spaceLg,
+          topPad,
+          BrandTokens.spaceLg,
+          BrandTokens.spaceLg,
+        ),
         children: [
           // Categoria pill
           Container(

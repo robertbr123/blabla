@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/dto.dart';
 import '../../core/api/notificacoes_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/glass_app_bar.dart';
 
 const _categoriaLabels = <String, String>{
   'fatura': 'Faturas',
@@ -51,11 +52,12 @@ class _NotifPrefsScreenState extends ConsumerState<NotifPrefsScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(notifPrefsProvider);
+    final topPad = MediaQuery.paddingOf(context).top +
+        kToolbarHeight +
+        BrandTokens.spaceMd;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Preferências'),
-        elevation: 0,
-      ),
+      appBar: const GlassAppBar(title: 'Preferências'),
+      extendBodyBehindAppBar: true,
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, __) => const Center(
@@ -64,7 +66,12 @@ class _NotifPrefsScreenState extends ConsumerState<NotifPrefsScreen> {
         data: (prefs) {
           final current = _local ?? Map<String, bool>.from(prefs.categorias);
           return ListView(
-            padding: const EdgeInsets.all(BrandTokens.spaceLg),
+            padding: EdgeInsets.fromLTRB(
+              BrandTokens.spaceLg,
+              topPad,
+              BrandTokens.spaceLg,
+              BrandTokens.spaceLg,
+            ),
             children: [
               const Text(
                 'Escolha o que você quer receber. Você sempre pode mudar aqui.',
