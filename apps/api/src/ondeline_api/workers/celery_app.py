@@ -71,6 +71,7 @@ def create_celery_app() -> Celery:
             "ondeline_api.workers.notify_jobs.manutencao_job": {"queue": "notifications"},
             "ondeline_api.workers.notify_jobs.lgpd_purge_job": {"queue": "notifications"},
             "ondeline_api.workers.notify_sender.flush_pending": {"queue": "notifications"},
+            "ondeline_api.workers.broadcast.send_campanha_task": {"queue": "notifications"},
             "ondeline_api.workers.followup.followup_os_task": {"queue": "notifications"},
             "ondeline_api.workers.partition_jobs.ensure_future_mensagens_partitions": {
                 "queue": "default"
