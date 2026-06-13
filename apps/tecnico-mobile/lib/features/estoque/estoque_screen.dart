@@ -7,6 +7,7 @@ import '../../core/branding/brand_kpi_card.dart';
 import '../../core/branding/brand_status_pill.dart' show BrandTone;
 import '../../core/ui/app_state_panel.dart';
 import '../../core/ui/app_surfaces.dart';
+import '../../core/ui/ios_glass_header.dart';
 import 'estoque_data.dart';
 
 class EstoqueScreen extends ConsumerStatefulWidget {
@@ -47,164 +48,230 @@ class _EstoqueScreenState extends ConsumerState<EstoqueScreen> {
 
     return Scaffold(
       backgroundColor: scheme.surface,
-      appBar: AppBar(
-        toolbarHeight: 48,
-        backgroundColor: scheme.surface,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Atualizar',
-            onPressed: () => ref.invalidate(estoqueSaldoProvider),
+      body: RefreshIndicator(
+        onRefresh: () async => ref.invalidate(estoqueSaldoProvider),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            IosGlassHeader(
+              title: 'Estoque',
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Atualizar',
+                  onPressed: () => ref.invalidate(estoqueSaldoProvider),
+                ),
+              ],
+            ),
+            ...async.when<List<Widget>>(
+              loading: () => const [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _StateBody(
+                    child: AppStatePanel.loading(
+                      title: 'Carregando estoque',
+                      message:
+                          'Conferindo saldo e categorias para sua próxima visita.',
+                    ),
+                  ),
+                ),
+              ],
+              error: (e, _) => [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _Erro(
+                    e: e,
+                    onRetry: () => ref.invalidate(estoqueSaldoProvider),
+                  ),
+                ),
+              ],
+              data: (todas) {
+                final filtradas = todas.where((l) {
+                  if (!_mostrarZerados && l.saldo <= 0) return false;
+                  if (query.isEmpty) return true;
+                  return l.nome.toLowerCase().contains(query) ||
+                      l.sku.toLowerCase().contains(query) ||
+                      l.categoria.toLowerCase().contains(query);
+                }).toList();
+
+                final totalItens = todas.fold<int>(
+                    0, (a, l) => a + (l.saldo > 0 ? l.saldo : 0));
+                final categorias =
+                    <String>{for (final l in todas) l.categoria}.length;
+                final hasZerosOcultos =
+                    !_mostrarZerados && todas.any((l) => l.saldo <= 0);
+                final hasActiveRefinement = query.isNotEmpty || _mostrarZerados;
+
+                return [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: BrandKpiCard(
+                              label: 'Itens',
+                              value: '$totalItens',
+                              icon: Icons.inventory_2_outlined,
+                              tone: BrandTone.info,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: BrandKpiCard(
+                              label: 'Categorias',
+                              value: '$categorias',
+                              icon: Icons.category_outlined,
+                              tone: BrandTone.warning,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: BrandKpiCard(
+                              label: 'Visíveis',
+                              value: '${filtradas.length}',
+                              icon: Icons.visibility_outlined,
+                              tone: BrandTone.success,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _SearchHeaderDelegate(
+                      controller: _searchCtrl,
+                      mostrarZerados: _mostrarZerados,
+                      hasActiveRefinement: hasActiveRefinement,
+                      background: scheme.surface,
+                      onSearchChanged: _onSearchChanged,
+                      onClearSearch: () {
+                        _searchCtrl.clear();
+                        setState(() {});
+                      },
+                      onToggleZerados: (v) =>
+                          setState(() => _mostrarZerados = v),
+                      onClearAll: () {
+                        _searchCtrl.clear();
+                        setState(() => _mostrarZerados = false);
+                      },
+                    ),
+                  ),
+                  if (filtradas.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _Vazio(
+                        hasActiveRefinement: hasActiveRefinement,
+                        hasZerosOcultos: hasZerosOcultos,
+                      ),
+                    )
+                  else
+                    SliverList.builder(
+                      itemCount: filtradas.length,
+                      itemBuilder: (_, i) => Padding(
+                        padding:
+                            EdgeInsets.fromLTRB(16, i == 0 ? 2 : 0, 16, 12),
+                        child: _ItemTile(linha: filtradas[i]),
+                      ),
+                    ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                ];
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Header pinned com a busca + filtro do estoque (fica fixo sob o IosGlassHeader).
+class _SearchHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _SearchHeaderDelegate({
+    required this.controller,
+    required this.mostrarZerados,
+    required this.hasActiveRefinement,
+    required this.background,
+    required this.onSearchChanged,
+    required this.onClearSearch,
+    required this.onToggleZerados,
+    required this.onClearAll,
+  });
+
+  final TextEditingController controller;
+  final bool mostrarZerados;
+  final bool hasActiveRefinement;
+  final Color background;
+  final VoidCallback onSearchChanged;
+  final VoidCallback onClearSearch;
+  final ValueChanged<bool> onToggleZerados;
+  final VoidCallback onClearAll;
+
+  static const _height = 112.0;
+
+  @override
+  double get minExtent => _height;
+
+  @override
+  double get maxExtent => _height;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: background,
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          TextField(
+            controller: controller,
+            onChanged: (_) => onSearchChanged(),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search, size: 20),
+              hintText: 'Buscar por nome, SKU ou categoria',
+              isDense: true,
+              suffixIcon: controller.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: onClearSearch,
+                    )
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              FilterChip(
+                label: const Text('Mostrar zerados'),
+                selected: mostrarZerados,
+                onSelected: onToggleZerados,
+                visualDensity: VisualDensity.compact,
+              ),
+              const Spacer(),
+              if (hasActiveRefinement)
+                TextButton.icon(
+                  onPressed: onClearAll,
+                  icon: const Icon(Icons.clear_all, size: 16),
+                  label: const Text('Limpar'),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+            ],
           ),
         ],
       ),
-      body: async.when(
-        loading: () => const _StateBody(
-          child: AppStatePanel.loading(
-            title: 'Carregando estoque',
-            message: 'Conferindo saldo e categorias para sua próxima visita.',
-          ),
-        ),
-        error: (e, _) => _Erro(
-          e: e,
-          onRetry: () => ref.invalidate(estoqueSaldoProvider),
-        ),
-        data: (todas) {
-          final filtradas = todas.where((l) {
-            if (!_mostrarZerados && l.saldo <= 0) return false;
-            if (query.isEmpty) return true;
-            return l.nome.toLowerCase().contains(query) ||
-                l.sku.toLowerCase().contains(query) ||
-                l.categoria.toLowerCase().contains(query);
-          }).toList();
-
-          final totalItens =
-              todas.fold<int>(0, (a, l) => a + (l.saldo > 0 ? l.saldo : 0));
-          final categorias =
-              <String>{for (final l in todas) l.categoria}.length;
-          final hasZerosOcultos =
-              !_mostrarZerados && todas.any((l) => l.saldo <= 0);
-          final hasActiveRefinement = query.isNotEmpty || _mostrarZerados;
-
-          return Column(
-            children: [
-              // KPI strip — 3 cards compactos, sem padding extra de card-wrapper
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: BrandKpiCard(
-                        label: 'Itens',
-                        value: '$totalItens',
-                        icon: Icons.inventory_2_outlined,
-                        tone: BrandTone.info,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: BrandKpiCard(
-                        label: 'Categorias',
-                        value: '$categorias',
-                        icon: Icons.category_outlined,
-                        tone: BrandTone.warning,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: BrandKpiCard(
-                        label: 'Visíveis',
-                        value: '${filtradas.length}',
-                        icon: Icons.visibility_outlined,
-                        tone: BrandTone.success,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Search + filter — sem card, mais respiração
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _searchCtrl,
-                      onChanged: (_) => _onSearchChanged(),
-                      decoration: InputDecoration(
-                        prefixIcon: const Icon(Icons.search, size: 20),
-                        hintText: 'Buscar por nome, SKU ou categoria',
-                        isDense: true,
-                        suffixIcon: _searchCtrl.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear, size: 18),
-                                onPressed: () {
-                                  _searchCtrl.clear();
-                                  setState(() {});
-                                },
-                              )
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        FilterChip(
-                          label: const Text('Mostrar zerados'),
-                          selected: _mostrarZerados,
-                          onSelected: (v) =>
-                              setState(() => _mostrarZerados = v),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        const Spacer(),
-                        if (hasActiveRefinement)
-                          TextButton.icon(
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              setState(() => _mostrarZerados = false);
-                            },
-                            icon: const Icon(Icons.clear_all, size: 16),
-                            label: const Text('Limpar'),
-                            style: TextButton.styleFrom(
-                              visualDensity: VisualDensity.compact,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: () async => ref.invalidate(estoqueSaldoProvider),
-                  child: filtradas.isEmpty
-                      ? _Vazio(
-                          hasActiveRefinement: hasActiveRefinement,
-                          hasZerosOcultos: hasZerosOcultos,
-                        )
-                      : ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.only(bottom: 24),
-                          itemCount: filtradas.length,
-                          itemBuilder: (_, i) => Padding(
-                            padding: EdgeInsets.fromLTRB(
-                              16,
-                              i == 0 ? 2 : 0,
-                              16,
-                              12,
-                            ),
-                            child: _ItemTile(linha: filtradas[i]),
-                          ),
-                        ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
     );
+  }
+
+  @override
+  bool shouldRebuild(covariant _SearchHeaderDelegate oldDelegate) {
+    return mostrarZerados != oldDelegate.mostrarZerados ||
+        hasActiveRefinement != oldDelegate.hasActiveRefinement ||
+        background != oldDelegate.background ||
+        controller != oldDelegate.controller;
   }
 }
 
