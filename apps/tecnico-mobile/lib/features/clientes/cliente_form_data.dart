@@ -58,25 +58,17 @@ class SgpPlano {
   }
 }
 
+/// Planos do cadastro vêm dos planos configurados no blabla (`/api/v1/planos`),
+/// NÃO do SGP. Cacheados pra abrir o cadastro offline.
 final planosProvider = FutureProvider.autoDispose<List<SgpPlano>>((ref) async {
   final dio = ref.watch(apiClientProvider);
   try {
-    final r = await dio.get('/api/v1/sgp/planos');
+    final r = await dio.get('/api/v1/planos');
     unawaited(writePlanosCache(r.data)); // aquece p/ offline
-    return _decodeSgpPlanos(r.data);
-  } on DioException catch (e) {
-    if (_shouldFallbackToConfiguredPlans(e)) {
-      try {
-        final fallback = await dio.get('/api/v1/planos');
-        return _decodeConfiguredPlanos(fallback.data);
-      } on DioException {
-        final cached = await readPlanosCache();
-        if (cached != null) return _decodeSgpPlanos(cached);
-        rethrow;
-      }
-    }
+    return _decodeConfiguredPlanos(r.data);
+  } on DioException {
     final cached = await readPlanosCache();
-    if (cached != null) return _decodeSgpPlanos(cached);
+    if (cached != null) return _decodeConfiguredPlanos(cached);
     rethrow;
   }
 });
@@ -247,26 +239,9 @@ String imageUploadFilename(String filePath) {
   return basename.isEmpty ? 'foto.jpg' : basename;
 }
 
-List<SgpPlano> _decodeSgpPlanos(Object? data) {
-  final raw = (data as Map).cast<String, dynamic>();
-  return (raw['planos'] as List? ?? const [])
-      .cast<Map>()
-      .map((m) => SgpPlano.fromJson(m.cast<String, dynamic>()))
-      .toList();
-}
-
 List<SgpPlano> _decodeConfiguredPlanos(Object? data) {
   return (data as List? ?? const [])
       .whereType<Map>()
       .map((m) => SgpPlano.fromConfigJson(m.cast<String, dynamic>()))
       .toList();
-}
-
-bool _shouldFallbackToConfiguredPlans(DioException error) {
-  final code = error.response?.statusCode;
-  return code == 502 ||
-      code == 503 ||
-      error.type == DioExceptionType.connectionError ||
-      error.type == DioExceptionType.connectionTimeout ||
-      error.type == DioExceptionType.receiveTimeout;
 }

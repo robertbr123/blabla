@@ -68,7 +68,8 @@ class PrefetchService {
 
   Future<void> _prefetchPlanos() async {
     try {
-      final r = await _dio.get('/api/v1/sgp/planos');
+      // Planos do cadastro = planos do blabla (/planos), não SGP.
+      final r = await _dio.get('/api/v1/planos');
       await writePlanosCache(r.data);
     } catch (e) {
       developer.log('prefetch planos falhou',
