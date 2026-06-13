@@ -2,13 +2,9 @@
 from __future__ import annotations
 
 import pytest
-
 from ondeline_api.db.crypto import encrypt_pii, hash_pii
 from ondeline_api.db.models.business import Cliente
-from ondeline_api.services.segmento import (
-    amostra_segmento,
-    contar_segmento,
-)
+from ondeline_api.services.segmento import amostra_segmento, contar_segmento
 
 
 async def _mk(session, *, nome, whatsapp, cidade=None, status=None, plano=None,
