@@ -26,6 +26,7 @@ from ondeline_api.observability.metrics import (
     webhook_invalid_signature_total,
     webhook_received_total,
 )
+from ondeline_api.services.broadcast_sender import atualizar_status_por_wamid
 from ondeline_api.services.whatsapp_message_log import record_status_update
 from ondeline_api.webhook.hmac import verify_signature
 from ondeline_api.webhook.parser_cloud import (
@@ -141,6 +142,10 @@ async def whatsapp_cloud_webhook(
                 status=st["status"],
                 timestamp_unix=st.get("timestamp"),
                 error=st.get("errors") if st["status"] == "failed" else None,
+            )
+            # Espelha o status na campanha (se este wamid for de um disparo).
+            await atualizar_status_por_wamid(
+                session, wamid=st["id"], status_meta=st["status"]
             )
     if statuses:
         await session.commit()
