@@ -438,3 +438,10 @@ final clienteOsHistoricoProvider = FutureProvider.autoDispose
     return const <ClienteOsHistorico>[];
   }
 });
+
+final clientesLastSyncedAtProvider = FutureProvider<DateTime?>((ref) async {
+  final repo = ref.watch(clienteCadastroRepoProvider);
+  final userId = await ref.watch(clienteReadUserIdProvider)();
+  if (userId == null || userId.isEmpty) return null;
+  return repo.lastSyncedAt(userId: userId);
+});

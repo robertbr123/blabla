@@ -95,3 +95,10 @@ bool _shouldUseCachedSnapshot(DioException error) {
       error.type == DioExceptionType.sendTimeout ||
       error.type == DioExceptionType.receiveTimeout;
 }
+
+final estoqueLastSyncedAtProvider = FutureProvider<DateTime?>((ref) async {
+  final repo = ref.watch(estoqueLocalRepoProvider);
+  final userId = await ref.watch(estoqueReadUserIdProvider)();
+  if (userId == null || userId.isEmpty) return null;
+  return repo.lastSyncedAt(userId: userId);
+});

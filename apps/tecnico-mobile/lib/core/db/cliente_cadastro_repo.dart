@@ -112,6 +112,15 @@ class ClienteCadastroLocalRepo {
     );
   }
 
+  Future<DateTime?> lastSyncedAt({required String userId}) async {
+    final maxExp = _db.clienteCadastroLocal.syncedAt.max();
+    final row = await (_db.selectOnly(_db.clienteCadastroLocal)
+          ..addColumns([maxExp])
+          ..where(_db.clienteCadastroLocal.userId.equals(userId)))
+        .getSingle();
+    return row.read(maxExp);
+  }
+
   Future<void> clear({required String userId}) async {
     await (_db.delete(_db.clienteCadastroLocal)
           ..where((t) => t.userId.equals(userId)))
