@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/location/location_service.dart';
 import '../../core/ui/app_section_header.dart';
+import '../../core/ui/ios_glass_app_bar.dart';
 import '../../core/ui/app_status_chip.dart';
 import '../../core/ui/app_surfaces.dart';
 import '../../core/util/cpf_validator.dart';
@@ -291,9 +292,9 @@ class _ClienteNovoScreenState extends ConsumerState<ClienteNovoScreen> {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: scheme.surfaceContainerLowest,
-      appBar: AppBar(
-        title: const Text('Novo cliente'),
+      backgroundColor: scheme.surface,
+      appBar: IosGlassAppBar(
+        title: 'Novo cliente',
         actions: [
           // Status do GPS no header
           Padding(
