@@ -172,6 +172,12 @@ class Cliente(Base):
     cobranca_optout_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    marketing_optout: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    marketing_optout_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # F7 — quando o aviso LGPD de transcricao de audio foi enviado a esse cliente.
     asr_aviso_enviado_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -807,4 +813,95 @@ class WhatsAppMessageStatus(Base):
         nullable=False,
         server_default=func.now(),
         onupdate=func.now(),
+    )
+
+
+class BroadcastTemplate(Base):
+    """Registro local dos templates aprovados na Meta (espelho p/ o dashboard).
+
+    O cadastro do template na Meta é manual (WhatsApp Manager). Esta tabela só
+    descreve nome/idioma/variáveis pro form do dashboard renderizar os campos.
+    """
+
+    __tablename__ = "broadcast_templates"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    name: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    language: Mapped[str] = mapped_column(String(10), nullable=False, default="pt_BR")
+    category: Mapped[str] = mapped_column(String(20), nullable=False, default="MARKETING")
+    # [{"indice": 1, "label": "Link do app", "tipo": "url"}, ...]
+    variaveis: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, server_default="[]"
+    )
+    # 'none' | 'image'
+    header_tipo: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="none", server_default="none"
+    )
+    ativo: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class Campanha(Base):
+    """Disparo em massa de WhatsApp para um segmento de clientes."""
+
+    __tablename__ = "campanhas"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    titulo: Mapped[str] = mapped_column(String(120), nullable=False)
+    canal_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("canal.id", ondelete="RESTRICT"), nullable=False
+    )
+    template_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    template_language: Mapped[str] = mapped_column(String(10), nullable=False, default="pt_BR")
+    # Lista ordenada de valores das variáveis, ex: ["https://apps.apple.com/..."]
+    body_params: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default="[]")
+    header_media_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # {"cidade": "Manaus", "status": "Ativo", "plano": "100MB"} — chaves ausentes = sem filtro
+    segmentacao: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default="{}")
+    # rascunho | enviando | concluida | cancelada | erro
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="rascunho", server_default="rascunho"
+    )
+    total_destinatarios: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    enviadas: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    falhas: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    agendada_para: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[UUID | None] = mapped_column(PgUUID(as_uuid=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (Index("ix_campanhas_status", "status"),)
+
+
+class CampanhaDestinatario(Base):
+    """Uma linha por cliente de um disparo — fonte de verdade do progresso."""
+
+    __tablename__ = "campanha_destinatarios"
+
+    id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True, default=uuid4)
+    campanha_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("campanhas.id", ondelete="CASCADE"), nullable=False
+    )
+    cliente_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False
+    )
+    whatsapp: Mapped[str] = mapped_column(String(64), nullable=False)
+    # pendente | enviada | entregue | lida | falha
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pendente", server_default="pendente"
+    )
+    wamid: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    erro: Mapped[str | None] = mapped_column(Text, nullable=True)
+    enviada_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_campanha_dest_campanha_status", "campanha_id", "status"),
+        Index("ix_campanha_dest_wamid", "wamid"),
     )
