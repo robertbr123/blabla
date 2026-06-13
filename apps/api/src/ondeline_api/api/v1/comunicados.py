@@ -57,13 +57,9 @@ async def list_templates(
 ) -> list[BroadcastTemplateOut]:
     stmt = select(BroadcastTemplate).where(BroadcastTemplate.ativo.is_(True))
     rows = list((await session.execute(stmt)).scalars().all())
-    return [
-        BroadcastTemplateOut(
-            id=t.id, name=t.name, language=t.language, category=t.category,
-            variaveis=t.variaveis, header_tipo=t.header_tipo,
-        )
-        for t in rows
-    ]
+    # model_validate(from_attributes) coage variaveis (list[dict] do JSONB) em
+    # list[TemplateVar] — evita erro do plugin mypy do pydantic.
+    return [BroadcastTemplateOut.model_validate(t, from_attributes=True) for t in rows]
 
 
 @router.get("", dependencies=[_admin_dep])
@@ -148,6 +144,7 @@ async def export_clientes(
 
         wb = Workbook()
         ws = wb.active
+        assert ws is not None  # Workbook() sempre tem sheet ativa; satisfaz mypy
         ws.title = "clientes"
         ws.append(colunas)
         for c in clientes:
@@ -192,7 +189,7 @@ async def get_campanha(
         total_destinatarios=c.total_destinatarios, enviadas=c.enviadas, falhas=c.falhas,
         created_at=c.created_at, canal_id=c.canal_id, template_language=c.template_language,
         body_params=list(c.body_params or []), header_media_url=c.header_media_url,
-        segmentacao=SegmentoFiltros(**(c.segmentacao or {})),
+        segmentacao=SegmentoFiltros.model_validate(c.segmentacao or {}),
         started_at=c.started_at, finished_at=c.finished_at, status_counts=counts,
     )
 
