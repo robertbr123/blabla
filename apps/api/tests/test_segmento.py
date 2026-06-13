@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import select
 
 from ondeline_api.db.crypto import encrypt_pii, hash_pii
 from ondeline_api.db.models.business import Cliente
