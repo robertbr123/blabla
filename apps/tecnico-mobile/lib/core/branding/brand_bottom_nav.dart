@@ -155,55 +155,59 @@ class _NavSlot extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final fg = selected ? scheme.primary : scheme.onSurfaceVariant;
 
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: item.label,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(18),
-          splashFactory: InkSparkle.splashFactory,
-          highlightColor: scheme.primary.withValues(alpha: 0.06),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Ícone faz "pulinho" e troca de variante (outlined → filled) ao selecionar
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
-                transitionBuilder: (child, anim) => ScaleTransition(
-                  scale: Tween<double>(begin: 0.7, end: 1.0).animate(
-                    CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+    // MergeSemantics: ícone + label + ação de toque viram um único nó
+    // acessível (botão da aba). Sem isso, o nó do Text só expõe o label e
+    // perde button/selected. O label vem do Text, então não repetimos aqui.
+    return MergeSemantics(
+      child: Semantics(
+        button: true,
+        selected: selected,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(18),
+            splashFactory: InkSparkle.splashFactory,
+            highlightColor: scheme.primary.withValues(alpha: 0.06),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Ícone faz "pulinho" e troca de variante (outlined → filled) ao selecionar
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  transitionBuilder: (child, anim) => ScaleTransition(
+                    scale: Tween<double>(begin: 0.7, end: 1.0).animate(
+                      CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+                    ),
+                    child: FadeTransition(opacity: anim, child: child),
                   ),
-                  child: FadeTransition(opacity: anim, child: child),
+                  child: Icon(
+                    selected ? item.selectedIcon : item.icon,
+                    key: ValueKey<bool>(selected),
+                    color: fg,
+                    size: selected ? 22 : 21,
+                  ),
                 ),
-                child: Icon(
-                  selected ? item.selectedIcon : item.icon,
-                  key: ValueKey<bool>(selected),
-                  color: fg,
-                  size: selected ? 22 : 21,
+                const SizedBox(height: 2),
+                // Label com transição suave de peso + cor
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOut,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    color: fg,
+                    letterSpacing: selected ? 0.2 : 0.1,
+                  ),
+                  child: Text(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.fade,
+                    softWrap: false,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              // Label com transição suave de peso + cor
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOut,
-                style: TextStyle(
-                  fontSize: 10.5,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: fg,
-                  letterSpacing: selected ? 0.2 : 0.1,
-                ),
-                child: Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.fade,
-                  softWrap: false,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

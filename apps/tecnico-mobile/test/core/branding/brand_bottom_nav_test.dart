@@ -73,7 +73,7 @@ void main() {
     final handle = tester.ensureSemantics();
     expect(
       tester.getSemantics(find.text('Clientes')),
-      matchesSemantics(label: 'Clientes', isSelected: true, isButton: true),
+      containsSemantics(label: 'Clientes', isSelected: true, isButton: true),
     );
     handle.dispose();
   });
