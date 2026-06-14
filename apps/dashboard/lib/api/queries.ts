@@ -1862,7 +1862,7 @@ export function useImportDestinatarios(campanhaId: string) {
 export function useContagemImport(campanhaId: string) {
   return useMutation({
     mutationFn: (filtros: import('./types').SegmentoFiltros) =>
-      apiFetch<{ total: number }>(
+      apiFetch<{ total: number; amostra: import('./types').AmostraDestinatario[] }>(
         `/api/v1/admin/comunicados/${campanhaId}/destinatarios/contagem`,
         { method: 'POST', body: JSON.stringify(filtros) },
       ),

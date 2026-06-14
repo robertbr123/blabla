@@ -1000,11 +1000,18 @@ export interface SegmentoValores {
   status: string[]
   planos: string[]
 }
+export interface AmostraDestinatario {
+  whatsapp: string
+  cidade: string | null
+  status: string | null
+}
+
 export interface ImportResult {
   importados: number
   invalidos: number
   amostra_invalidos: string[]
   valores: SegmentoValores
+  amostra: AmostraDestinatario[]
 }
 
 export interface Destinatario {
