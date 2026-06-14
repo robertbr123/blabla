@@ -185,10 +185,8 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
             Text(s.modelo ?? ''),
           ]),
           const SizedBox(height: 8),
-          const Text('Redes WiFi'),
-          // Mostra todas as redes com SSID — NÃO filtra por Enable: alguns
-          // modelos (FiberHome HG6145D) reportam Enable=false mesmo no ar.
-          for (final r in s.redes)
+          const Text('Redes WiFi ativas:'),
+          for (final r in s.redes.where((r) => r.enabled))
             ListTile(leading: const Icon(Icons.router), title: Text(r.ssid), dense: true),
           const Divider(height: 32),
           _diagnostico(),

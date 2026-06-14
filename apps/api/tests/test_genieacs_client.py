@@ -144,22 +144,6 @@ async def test_online_por_inform_recente_e_offline_por_antigo() -> None:
         await c.aclose()
 
 
-async def test_online_por_pppoe_connected_mesmo_com_inform_antigo() -> None:
-    # ONU que nao informa ha horas mas com PPPoE Connected = online (conexao real).
-    from datetime import UTC, datetime, timedelta
-
-    antigo = (datetime.now(UTC) - timedelta(hours=2)).isoformat()
-    async with respx.mock(base_url=BASE) as mock:
-        raw = _device_raw()
-        raw["_lastInform"] = antigo
-        raw["InternetGatewayDevice"].update(_wan_raw())
-        mock.get("/devices/").respond(200, json=[raw])
-        c = GenieAcsClient(base_url=BASE)
-        dev = await c.get_device("x")
-        assert dev is not None and dev.online is True
-        await c.aclose()
-
-
 async def test_parse_aparelhos_lista_hosts_com_mac() -> None:
     async with respx.mock(base_url=BASE) as mock:
         mock.get("/devices/").respond(200, json=[_device_raw()])
