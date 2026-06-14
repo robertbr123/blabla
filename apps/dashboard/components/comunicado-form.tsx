@@ -9,12 +9,14 @@ import {
   exportClientesUrl,
   useBroadcastTemplates,
   useCanais,
+  useContagemImport,
   useCreateCampanha,
   usePreviewSegmento,
   useSegmentoValores,
+  useSelecionarImport,
   useSendCampanha,
 } from '@/lib/api/queries'
-import type { SegmentoFiltros } from '@/lib/api/types'
+import type { ImportResult, SegmentoFiltros, SegmentoValores } from '@/lib/api/types'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? ''
 
@@ -41,8 +43,23 @@ export function ComunicadoForm() {
   const [origem, setOrigem] = useState<'segmento' | 'importado'>('segmento')
   const [csvFile, setCsvFile] = useState<File | null>(null)
 
+  const [campanhaId, setCampanhaId] = useState<string | null>(null)
+  const [valoresImport, setValoresImport] = useState<SegmentoValores | null>(null)
+  const [importInfo, setImportInfo] = useState<ImportResult | null>(null)
+  const [importando, setImportando] = useState(false)
+  const [contagem, setContagem] = useState<number | null>(null)
+  const contar = useContagemImport(campanhaId ?? '')
+  const selecionar = useSelecionarImport(campanhaId ?? '')
+
   const template = templates?.find((t) => t.name === templateName)
   const botaoDinamico = template?.botoes?.find((b) => b.url_dinamica)
+
+  function buildBodyParams(): string[] {
+    return (template?.variaveis ?? [])
+      .slice()
+      .sort((a, b) => a.indice - b.indice)
+      .map((v) => vars[v.indice] ?? '')
+  }
 
   function runPreview() {
     preview.mutate(filtros)
@@ -66,14 +83,57 @@ export function ComunicadoForm() {
     URL.revokeObjectURL(a.href)
   }
 
-  function buildBodyParams(): string[] {
-    return (template?.variaveis ?? [])
-      .slice()
-      .sort((a, b) => a.indice - b.indice)
-      .map((v) => vars[v.indice] ?? '')
+  async function handleImportar() {
+    if (!template || !csvFile) {
+      toast.error('Escolha template e arquivo')
+      return
+    }
+    setImportando(true)
+    try {
+      const camp = await createCampanha.mutateAsync({
+        titulo,
+        canal_id: canalId,
+        template_name: templateName,
+        body_params: buildBodyParams(),
+        segmentacao: {},
+        origem: 'importado',
+        button_param: botaoDinamico ? botao || null : null,
+      })
+      const fd = new FormData()
+      fd.append('file', csvFile)
+      const res = await fetch(
+        `${API_URL}/api/v1/admin/comunicados/${camp.id}/destinatarios/importar`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${getAccessToken() ?? ''}` },
+          credentials: 'include',
+          body: fd,
+        },
+      )
+      if (!res.ok) {
+        toast.error('Falha ao importar CSV')
+        return
+      }
+      const imp = (await res.json()) as ImportResult
+      setCampanhaId(camp.id)
+      setValoresImport(imp.valores)
+      setImportInfo(imp)
+      setContagem(imp.importados)
+      setFiltros({})
+      toast.success(`${imp.importados} importados, ${imp.invalidos} inválidos`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao importar')
+    } finally {
+      setImportando(false)
+    }
   }
 
-  async function handleDisparar() {
+  function recontar(novos: SegmentoFiltros) {
+    setFiltros(novos)
+    contar.mutate(novos, { onSuccess: (r) => setContagem(r.total) })
+  }
+
+  async function handleDispararSegmento() {
     if (!template) return
     try {
       const camp = await createCampanha.mutateAsync({
@@ -81,38 +141,12 @@ export function ComunicadoForm() {
         canal_id: canalId,
         template_name: templateName,
         body_params: buildBodyParams(),
-        segmentacao: origem === 'segmento' ? filtros : {},
-        origem,
+        segmentacao: filtros,
+        origem: 'segmento',
         button_param: botaoDinamico ? botao || null : null,
       })
-
-      let total = preview.data?.total ?? 0
-      if (origem === 'importado') {
-        if (!csvFile) {
-          toast.error('Selecione um CSV')
-          return
-        }
-        const fd = new FormData()
-        fd.append('file', csvFile)
-        const res = await fetch(
-          `${API_URL}/api/v1/admin/comunicados/${camp.id}/destinatarios/importar`,
-          {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${getAccessToken() ?? ''}` },
-            credentials: 'include',
-            body: fd,
-          },
-        )
-        if (!res.ok) {
-          toast.error('Falha ao importar CSV')
-          return
-        }
-        const imp = (await res.json()) as { importados: number; invalidos: number }
-        total = imp.importados
-        toast.success(`${imp.importados} importados, ${imp.invalidos} inválidos`)
-      }
-
-      if (!window.confirm(`Disparar para ${total} contato(s)?`)) return
+      const total = preview.data?.total ?? 0
+      if (!window.confirm(`Disparar para ${total} cliente(s)?`)) return
       await sendCampanha.mutateAsync(camp.id)
       toast.success('Campanha enfileirada')
       router.push(`/comunicados/${camp.id}`)
@@ -121,7 +155,20 @@ export function ComunicadoForm() {
     }
   }
 
-  const podeDisparar = titulo && canalId && templateName
+  async function handleDispararImport() {
+    if (!campanhaId) return
+    try {
+      const sel = await selecionar.mutateAsync(filtros)
+      if (!window.confirm(`Disparar para ${sel.selecionados} contato(s)?`)) return
+      await sendCampanha.mutateAsync(campanhaId)
+      toast.success('Campanha enfileirada')
+      router.push(`/comunicados/${campanhaId}`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao disparar')
+    }
+  }
+
+  const cabecalhoOk = titulo && canalId && templateName
 
   return (
     <div className="space-y-5">
@@ -140,11 +187,6 @@ export function ComunicadoForm() {
             <option key={c.id} value={c.id}>{c.nome}</option>
           ))}
         </select>
-        {cloudCanais.length === 0 && (
-          <p className="text-xs text-destructive">
-            Nenhum canal Cloud cadastrado. Cadastre um em Canais WhatsApp.
-          </p>
-        )}
       </div>
 
       <div className="space-y-1.5">
@@ -162,11 +204,9 @@ export function ComunicadoForm() {
       {template?.variaveis.map((v) => (
         <div key={v.indice} className="space-y-1.5">
           <label className="text-sm font-medium">{v.label}</label>
-          <Input
-            value={vars[v.indice] ?? ''}
-            onChange={(e) => setVars((s) => ({ ...s, [v.indice]: e.target.value }))}
-            placeholder={v.tipo === 'url' ? 'https://…' : ''}
-          />
+          <Input value={vars[v.indice] ?? ''}
+                 onChange={(e) => setVars((s) => ({ ...s, [v.indice]: e.target.value }))}
+                 placeholder={v.tipo === 'url' ? 'https://…' : ''} />
         </div>
       ))}
 
@@ -181,7 +221,7 @@ export function ComunicadoForm() {
         <div className="flex gap-4 text-sm">
           <label className="flex items-center gap-2">
             <input type="radio" checked={origem === 'segmento'}
-                   onChange={() => setOrigem('segmento')} /> Segmento da base
+                   onChange={() => { setOrigem('segmento'); setCampanhaId(null) }} /> Segmento da base
           </label>
           <label className="flex items-center gap-2">
             <input type="radio" checked={origem === 'importado'}
@@ -189,7 +229,7 @@ export function ComunicadoForm() {
           </label>
         </div>
 
-        {origem === 'segmento' ? (
+        {origem === 'segmento' && (
           <>
             <div className="grid grid-cols-3 gap-3">
               <select className="rounded-md border bg-background px-3 py-2 text-sm"
@@ -213,13 +253,9 @@ export function ComunicadoForm() {
             </div>
             <div className="flex items-center gap-3 flex-wrap">
               <button onClick={runPreview} type="button"
-                      className="rounded-md border px-3 py-1.5 text-sm hover:bg-accent">
-                Calcular alcance
-              </button>
+                      className="rounded-md border px-3 py-1.5 text-sm hover:bg-accent">Calcular alcance</button>
               {preview.data && (
-                <span className="text-sm font-medium">
-                  {preview.data.total} cliente(s) vão receber
-                </span>
+                <span className="text-sm font-medium">{preview.data.total} cliente(s) vão receber</span>
               )}
               <button type="button" onClick={() => handleExport('csv')}
                       className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-accent">
@@ -230,24 +266,60 @@ export function ComunicadoForm() {
                 <Download className="h-4 w-4" /> Excel
               </button>
             </div>
+            <button type="button" onClick={handleDispararSegmento} disabled={!cabecalhoOk}
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+              <Send className="h-4 w-4" /> Disparar
+            </button>
           </>
-        ) : (
+        )}
+
+        {origem === 'importado' && !campanhaId && (
           <div className="space-y-2">
             <input type="file" accept=".csv,text/csv"
                    onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)} />
             <p className="text-xs text-muted-foreground">
-              CSV com coluna de telefone + colunas opcionais por variável (ex: nome, link).
-              O que faltar usa o valor preenchido acima.
+              CSV com coluna de telefone + (opcional) cidade, status, plano e colunas das variáveis.
             </p>
+            <button type="button" onClick={handleImportar} disabled={!cabecalhoOk || !csvFile || importando}
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+              <Upload className="h-4 w-4" /> {importando ? 'Importando…' : 'Importar'}
+            </button>
           </div>
         )}
-      </div>
 
-      <button type="button" onClick={handleDisparar} disabled={!podeDisparar}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
-        {origem === 'importado' ? <Upload className="h-4 w-4" /> : <Send className="h-4 w-4" />}
-        Disparar
-      </button>
+        {origem === 'importado' && campanhaId && (
+          <>
+            <p className="text-sm text-muted-foreground">
+              {importInfo?.importados} importados, {importInfo?.invalidos} inválidos. Filtre quem recebe:
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              <select className="rounded-md border bg-background px-3 py-2 text-sm"
+                      value={filtros.cidade ?? ''}
+                      onChange={(e) => recontar({ ...filtros, cidade: e.target.value || undefined })}>
+                <option value="">Cidade (todas)</option>
+                {(valoresImport?.cidades ?? []).map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <select className="rounded-md border bg-background px-3 py-2 text-sm"
+                      value={filtros.status ?? ''}
+                      onChange={(e) => recontar({ ...filtros, status: e.target.value || undefined })}>
+                <option value="">Status (todos)</option>
+                {(valoresImport?.status ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <select className="rounded-md border bg-background px-3 py-2 text-sm"
+                      value={filtros.plano ?? ''}
+                      onChange={(e) => recontar({ ...filtros, plano: e.target.value || undefined })}>
+                <option value="">Plano (todos)</option>
+                {(valoresImport?.planos ?? []).map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <p className="text-sm font-medium">{contagem ?? 0} contato(s) vão receber</p>
+            <button type="button" onClick={handleDispararImport}
+                    className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+              <Send className="h-4 w-4" /> Disparar
+            </button>
+          </>
+        )}
+      </div>
     </div>
   )
 }
