@@ -2,7 +2,7 @@
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Download, Send } from 'lucide-react'
+import { Download, Send, Upload } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { getAccessToken } from '@/lib/api/token'
 import {
@@ -11,6 +11,7 @@ import {
   useCanais,
   useCreateCampanha,
   usePreviewSegmento,
+  useSegmentoValores,
   useSendCampanha,
 } from '@/lib/api/queries'
 import type { SegmentoFiltros } from '@/lib/api/types'
@@ -21,6 +22,7 @@ export function ComunicadoForm() {
   const router = useRouter()
   const { data: templates } = useBroadcastTemplates()
   const { data: canais } = useCanais()
+  const { data: valores } = useSegmentoValores()
   const preview = usePreviewSegmento()
   const createCampanha = useCreateCampanha()
   const sendCampanha = useSendCampanha()
@@ -34,9 +36,13 @@ export function ComunicadoForm() {
   const [canalId, setCanalId] = useState('')
   const [templateName, setTemplateName] = useState('')
   const [vars, setVars] = useState<Record<number, string>>({})
+  const [botao, setBotao] = useState('')
   const [filtros, setFiltros] = useState<SegmentoFiltros>({})
+  const [origem, setOrigem] = useState<'segmento' | 'importado'>('segmento')
+  const [csvFile, setCsvFile] = useState<File | null>(null)
 
   const template = templates?.find((t) => t.name === templateName)
+  const botaoDinamico = template?.botoes?.find((b) => b.url_dinamica)
 
   function runPreview() {
     preview.mutate(filtros)
@@ -60,22 +66,53 @@ export function ComunicadoForm() {
     URL.revokeObjectURL(a.href)
   }
 
-  async function handleDisparar() {
-    if (!template) return
-    const body_params = (template.variaveis ?? [])
+  function buildBodyParams(): string[] {
+    return (template?.variaveis ?? [])
       .slice()
       .sort((a, b) => a.indice - b.indice)
       .map((v) => vars[v.indice] ?? '')
+  }
+
+  async function handleDisparar() {
+    if (!template) return
     try {
       const camp = await createCampanha.mutateAsync({
         titulo,
         canal_id: canalId,
         template_name: templateName,
-        body_params,
-        segmentacao: filtros,
+        body_params: buildBodyParams(),
+        segmentacao: origem === 'segmento' ? filtros : {},
+        origem,
+        button_param: botaoDinamico ? botao || null : null,
       })
-      const total = preview.data?.total ?? 0
-      if (!window.confirm(`Disparar para ${total} cliente(s)?`)) return
+
+      let total = preview.data?.total ?? 0
+      if (origem === 'importado') {
+        if (!csvFile) {
+          toast.error('Selecione um CSV')
+          return
+        }
+        const fd = new FormData()
+        fd.append('file', csvFile)
+        const res = await fetch(
+          `${API_URL}/api/v1/admin/comunicados/${camp.id}/destinatarios/importar`,
+          {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${getAccessToken() ?? ''}` },
+            credentials: 'include',
+            body: fd,
+          },
+        )
+        if (!res.ok) {
+          toast.error('Falha ao importar CSV')
+          return
+        }
+        const imp = (await res.json()) as { importados: number; invalidos: number }
+        total = imp.importados
+        toast.success(`${imp.importados} importados, ${imp.invalidos} inválidos`)
+      }
+
+      if (!window.confirm(`Disparar para ${total} contato(s)?`)) return
       await sendCampanha.mutateAsync(camp.id)
       toast.success('Campanha enfileirada')
       router.push(`/comunicados/${camp.id}`)
@@ -133,44 +170,84 @@ export function ComunicadoForm() {
         </div>
       ))}
 
+      {botaoDinamico && (
+        <div className="space-y-1.5">
+          <label className="text-sm font-medium">Valor do botão ({botaoDinamico.texto})</label>
+          <Input value={botao} onChange={(e) => setBotao(e.target.value)} placeholder="https://…" />
+        </div>
+      )}
+
       <div className="rounded-md border p-4 space-y-3">
-        <p className="text-sm font-medium">Segmentação</p>
-        <div className="grid grid-cols-3 gap-3">
-          <Input placeholder="Cidade" value={filtros.cidade ?? ''}
-                 onChange={(e) => setFiltros((f) => ({ ...f, cidade: e.target.value || undefined }))} />
-          <Input placeholder="Status" value={filtros.status ?? ''}
-                 onChange={(e) => setFiltros((f) => ({ ...f, status: e.target.value || undefined }))} />
-          <Input placeholder="Plano" value={filtros.plano ?? ''}
-                 onChange={(e) => setFiltros((f) => ({ ...f, plano: e.target.value || undefined }))} />
+        <div className="flex gap-4 text-sm">
+          <label className="flex items-center gap-2">
+            <input type="radio" checked={origem === 'segmento'}
+                   onChange={() => setOrigem('segmento')} /> Segmento da base
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="radio" checked={origem === 'importado'}
+                   onChange={() => setOrigem('importado')} /> Importar CSV
+          </label>
         </div>
-        <p className="text-xs text-muted-foreground">Sem filtros = base inteira.</p>
-        <div className="flex items-center gap-3">
-          <button onClick={runPreview} type="button"
-                  className="rounded-md border px-3 py-1.5 text-sm hover:bg-accent">
-            Calcular alcance
-          </button>
-          {preview.data && (
-            <span className="text-sm font-medium">
-              {preview.data.total} cliente(s) vão receber
-            </span>
-          )}
-        </div>
+
+        {origem === 'segmento' ? (
+          <>
+            <div className="grid grid-cols-3 gap-3">
+              <select className="rounded-md border bg-background px-3 py-2 text-sm"
+                      value={filtros.cidade ?? ''}
+                      onChange={(e) => setFiltros((f) => ({ ...f, cidade: e.target.value || undefined }))}>
+                <option value="">Cidade (todas)</option>
+                {(valores?.cidades ?? []).map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <select className="rounded-md border bg-background px-3 py-2 text-sm"
+                      value={filtros.status ?? ''}
+                      onChange={(e) => setFiltros((f) => ({ ...f, status: e.target.value || undefined }))}>
+                <option value="">Status (todos)</option>
+                {(valores?.status ?? []).map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <select className="rounded-md border bg-background px-3 py-2 text-sm"
+                      value={filtros.plano ?? ''}
+                      onChange={(e) => setFiltros((f) => ({ ...f, plano: e.target.value || undefined }))}>
+                <option value="">Plano (todos)</option>
+                {(valores?.planos ?? []).map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <button onClick={runPreview} type="button"
+                      className="rounded-md border px-3 py-1.5 text-sm hover:bg-accent">
+                Calcular alcance
+              </button>
+              {preview.data && (
+                <span className="text-sm font-medium">
+                  {preview.data.total} cliente(s) vão receber
+                </span>
+              )}
+              <button type="button" onClick={() => handleExport('csv')}
+                      className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-accent">
+                <Download className="h-4 w-4" /> CSV
+              </button>
+              <button type="button" onClick={() => handleExport('xlsx')}
+                      className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-accent">
+                <Download className="h-4 w-4" /> Excel
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-2">
+            <input type="file" accept=".csv,text/csv"
+                   onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)} />
+            <p className="text-xs text-muted-foreground">
+              CSV com coluna de telefone + colunas opcionais por variável (ex: nome, link).
+              O que faltar usa o valor preenchido acima.
+            </p>
+          </div>
+        )}
       </div>
 
-      <div className="flex flex-wrap gap-3">
-        <button type="button" onClick={() => handleExport('csv')}
-                className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-accent">
-          <Download className="h-4 w-4" /> Exportar CSV
-        </button>
-        <button type="button" onClick={() => handleExport('xlsx')}
-                className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-accent">
-          <Download className="h-4 w-4" /> Exportar Excel
-        </button>
-        <button type="button" onClick={handleDisparar} disabled={!podeDisparar}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
-          <Send className="h-4 w-4" /> Disparar
-        </button>
-      </div>
+      <button type="button" onClick={handleDisparar} disabled={!podeDisparar}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+        {origem === 'importado' ? <Upload className="h-4 w-4" /> : <Send className="h-4 w-4" />}
+        Disparar
+      </button>
     </div>
   )
 }
