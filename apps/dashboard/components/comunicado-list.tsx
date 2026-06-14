@@ -18,7 +18,13 @@ export function ComunicadoList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-3">
+        <Link
+          href="/comunicados/templates"
+          className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-accent"
+        >
+          Templates
+        </Link>
         <Link
           href="/comunicados/nova"
           className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
