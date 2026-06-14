@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.adapters.whatsapp import WhatsAppError, build_for_canal
 from ondeline_api.api.schemas.comunicado import (
+    AmostraDestinatario,
     BroadcastTemplateOut,
     CampanhaCreate,
     CampanhaDetail,
@@ -123,7 +124,7 @@ async def preview(
 ) -> PreviewOut:
     f = filtros.model_dump(exclude_none=True)
     total = await contar_segmento(session, f)
-    amostra = await amostra_segmento(session, f, limite=10)
+    amostra = await amostra_segmento(session, f, limite=30)
     return PreviewOut(total=total, amostra=amostra)
 
 
@@ -345,8 +346,16 @@ async def contagem_destinatarios(
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> ContagemOut:
     repo = CampanhaRepo(session)
-    total = await repo.contar_selecionados(campanha_id, filtros.model_dump(exclude_none=True))
-    return ContagemOut(total=total)
+    f = filtros.model_dump(exclude_none=True)
+    total = await repo.contar_selecionados(campanha_id, f)
+    amostra = await repo.amostra_selecionados(campanha_id, f, limite=30)
+    return ContagemOut(
+        total=total,
+        amostra=[
+            AmostraDestinatario(whatsapp=d.whatsapp, cidade=d.csv_cidade, status=d.csv_status)
+            for d in amostra
+        ],
+    )
 
 
 @router.post("/{campanha_id}/destinatarios/selecionar", dependencies=[_admin_dep])
@@ -408,6 +417,7 @@ async def importar_destinatarios(
     camp.total_destinatarios = len(rows)
     await session.commit()
     valores = await repo.valores_import(camp.id)
+    amostra = await repo.amostra_selecionados(camp.id, {}, limite=30)
     return ImportResult(
         importados=len(rows),
         invalidos=len(invalidos),
@@ -415,6 +425,10 @@ async def importar_destinatarios(
         valores=SegmentoValores(
             cidades=valores["cidades"], status=valores["status"], planos=valores["planos"]
         ),
+        amostra=[
+            AmostraDestinatario(whatsapp=d.whatsapp, cidade=d.csv_cidade, status=d.csv_status)
+            for d in amostra
+        ],
     )
 
 
