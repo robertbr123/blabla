@@ -5,7 +5,6 @@ import uuid
 
 import pytest
 from sqlalchemy import select
-
 from ondeline_api.db.models.business import BroadcastTemplate
 from ondeline_api.services.whatsapp_templates_sync import (
     parse_meta_template,
