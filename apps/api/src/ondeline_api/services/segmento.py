@@ -55,3 +55,21 @@ async def amostra_segmento(
             {"id": str(c.id), "nome": nome, "whatsapp": c.whatsapp, "cidade": c.cidade}
         )
     return out
+
+
+async def valores_distintos(session: AsyncSession) -> dict[str, list[str]]:
+    """Valores distintos de cidade/status/plano na base (clientes vivos)."""
+    out: dict[str, list[str]] = {}
+    for chave, coluna in (
+        ("cidades", Cliente.cidade),
+        ("status", Cliente.status),
+        ("planos", Cliente.plano),
+    ):
+        stmt = (
+            select(coluna)
+            .where(Cliente.deleted_at.is_(None), coluna.is_not(None), coluna != "")
+            .distinct()
+            .order_by(coluna)
+        )
+        out[chave] = [v for (v,) in (await session.execute(stmt)).all()]
+    return out
