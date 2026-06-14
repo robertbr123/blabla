@@ -4,12 +4,12 @@ from __future__ import annotations
 import uuid
 
 import pytest
-from sqlalchemy import select
 from ondeline_api.db.models.business import BroadcastTemplate
 from ondeline_api.services.whatsapp_templates_sync import (
     parse_meta_template,
     upsert_template,
 )
+from sqlalchemy import select
 
 
 def test_parse_body_vars_header_e_botoes() -> None:
