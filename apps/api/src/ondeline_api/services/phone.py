@@ -56,3 +56,20 @@ def format_br_phone(raw: str | None) -> str:
     if len(d) == 8:
         return f"{d[0:4]}-{d[4:8]}"
     return raw  # fallback: devolve original
+
+
+def to_cloud_jid(raw: str | None) -> str | None:
+    """Normaliza um telefone BR pro formato do WhatsApp Cloud: DDI 55 + DDD +
+    número, só dígitos (E.164 sem '+'). Retorna None se não der pra formar um
+    número BR plausível.
+    """
+    if not raw:
+        return None
+    d = _DIGITS_RE.sub("", raw)
+    if not d:
+        return None
+    if d.startswith("55") and len(d) in (12, 13):
+        return d
+    if len(d) in (10, 11):
+        return "55" + d
+    return None
