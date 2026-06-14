@@ -83,6 +83,19 @@ export function ComunicadoForm() {
     URL.revokeObjectURL(a.href)
   }
 
+  function baixarExemplo() {
+    const exemplo =
+      'telefone;cidade;status;plano;nome;link\n' +
+      '5592991112222;Manaus;Ativo;100MB;João;https://exemplo.com\n' +
+      '559784272884;Eirunepé;Ativo;50MB;Maria;https://exemplo.com\n'
+    const blob = new Blob(['﻿' + exemplo], { type: 'text/csv;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = 'exemplo-comunicado.csv'
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
   async function handleImportar() {
     if (!template || !csvFile) {
       toast.error('Escolha template e arquivo')
@@ -280,6 +293,12 @@ export function ComunicadoForm() {
             <p className="text-xs text-muted-foreground">
               CSV com coluna de telefone + (opcional) cidade, status, plano e colunas das variáveis.
             </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={baixarExemplo}
+                      className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-accent">
+                <Download className="h-4 w-4" /> Baixar exemplo
+              </button>
+            </div>
             <button type="button" onClick={handleImportar} disabled={!cabecalhoOk || !csvFile || importando}
                     className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
               <Upload className="h-4 w-4" /> {importando ? 'Importando…' : 'Importar'}
