@@ -96,52 +96,16 @@ void main() {
     );
   });
 
-  test('planosProvider returns sgp plans when endpoint succeeds', () async {
+  test('planosProvider retorna planos do blabla (/planos)', () async {
+    // Cadastro usa os planos configurados no blabla (/api/v1/planos), não SGP.
     final dio = Dio()
       ..httpClientAdapter = _QueuedAdapter([
-        (_) => _jsonBody({
-              'provider': 'ondeline',
-              'planos': [
-                {
-                  'id': 12,
-                  'grupo': 'Fibra',
-                  'descricao': '500 Mega',
-                  'preco': 129.9,
-                  'download': 512000,
-                  'upload': 256000,
-                },
-              ],
-            }, 200),
-      ]);
-
-    final container = ProviderContainer(
-      overrides: [
-        apiClientProvider.overrideWith((ref) => dio),
-      ],
-    );
-    addTearDown(container.dispose);
-
-    final planos = await container.read(planosProvider.future);
-
-    expect(planos, hasLength(1));
-    expect(planos.single.id, 12);
-    expect(planos.single.descricao, '500 Mega');
-    expect(planos.single.isFallback, isFalse);
-  });
-
-  test('planosProvider falls back to configured plans on sgp 502', () async {
-    final dio = Dio()
-      ..httpClientAdapter = _QueuedAdapter([
-        (options) => _jsonBody(
-              {'detail': 'SGP indisponivel'},
-              502,
-            ),
         (_) => _jsonBody([
               {
                 'index': 3,
-                'nome': 'Plano Backup',
-                'preco': 99.9,
-                'velocidade': '80MB',
+                'nome': 'Plano Fibra 500',
+                'preco': 129.9,
+                'velocidade': '500MB',
               },
             ], 200),
       ]);
@@ -156,8 +120,30 @@ void main() {
     final planos = await container.read(planosProvider.future);
 
     expect(planos, hasLength(1));
-    expect(planos.single.isFallback, isTrue);
     expect(planos.single.id, 3);
-    expect(planos.single.velocidadeStr(), '80MB');
+    expect(planos.single.descricao, 'Plano Fibra 500');
+    expect(planos.single.isFallback, isTrue);
+    expect(planos.single.velocidadeStr(), '500MB');
+  });
+
+  test('planosProvider propaga erro quando /planos falha sem cache', () async {
+    // Sem cache local (ambiente de teste não tem path_provider), erro de rede
+    // no /planos deve propagar.
+    final dio = Dio()
+      ..httpClientAdapter = _QueuedAdapter([
+        (_) => _jsonBody({'detail': 'erro'}, 502),
+      ]);
+
+    final container = ProviderContainer(
+      overrides: [
+        apiClientProvider.overrideWith((ref) => dio),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container.read(planosProvider.future),
+      throwsA(isA<DioException>()),
+    );
   });
 }
