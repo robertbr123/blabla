@@ -107,3 +107,23 @@ class ImportResult(BaseModel):
     importados: int
     invalidos: int
     amostra_invalidos: list[str]
+    valores: SegmentoValores
+
+
+class ContagemOut(BaseModel):
+    total: int
+
+
+class SelecionarOut(BaseModel):
+    selecionados: int
+
+
+class DestinatarioOut(BaseModel):
+    whatsapp: str
+    status: str
+    erro: str | None
+    enviada_em: datetime | None
+
+
+class ReenviarResult(BaseModel):
+    reenfileirados: int
