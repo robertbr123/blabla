@@ -1858,3 +1858,52 @@ export function useImportDestinatarios(campanhaId: string) {
     },
   })
 }
+
+export function useContagemImport(campanhaId: string) {
+  return useMutation({
+    mutationFn: (filtros: import('./types').SegmentoFiltros) =>
+      apiFetch<{ total: number }>(
+        `/api/v1/admin/comunicados/${campanhaId}/destinatarios/contagem`,
+        { method: 'POST', body: JSON.stringify(filtros) },
+      ),
+  })
+}
+
+export function useSelecionarImport(campanhaId: string) {
+  return useMutation({
+    mutationFn: (filtros: import('./types').SegmentoFiltros) =>
+      apiFetch<{ selecionados: number }>(
+        `/api/v1/admin/comunicados/${campanhaId}/destinatarios/selecionar`,
+        { method: 'POST', body: JSON.stringify(filtros) },
+      ),
+  })
+}
+
+export function useDestinatarios(campanhaId: string, status: string | null, ativo: boolean) {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : ''
+  return useQuery<import('./types').Destinatario[]>({
+    queryKey: ['destinatarios', campanhaId, status],
+    queryFn: () => apiFetch(`/api/v1/admin/comunicados/${campanhaId}/destinatarios${qs}`),
+    enabled: ativo && Boolean(campanhaId),
+    refetchInterval: 5000,
+  })
+}
+
+export function useReenviarFalhas(campanhaId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ reenfileirados: number }>(
+        `/api/v1/admin/comunicados/${campanhaId}/reenviar-falhas`,
+        { method: 'POST' },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['campanha', campanhaId] })
+      qc.invalidateQueries({ queryKey: ['destinatarios', campanhaId] })
+    },
+  })
+}
+
+export function resultadoExportUrl(campanhaId: string) {
+  return `/api/v1/admin/comunicados/${campanhaId}/resultado/export`
+}

@@ -1004,4 +1004,12 @@ export interface ImportResult {
   importados: number
   invalidos: number
   amostra_invalidos: string[]
+  valores: SegmentoValores
+}
+
+export interface Destinatario {
+  whatsapp: string
+  status: string
+  erro: string | null
+  enviada_em: string | null
 }
