@@ -837,6 +837,10 @@ class BroadcastTemplate(Base):
     header_tipo: Mapped[str] = mapped_column(
         String(10), nullable=False, default="none", server_default="none"
     )
+    # [{"index": 0, "tipo": "url"|"quick_reply"|"phone", "texto": "...", "url_dinamica": false}]
+    botoes: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, nullable=False, server_default="[]"
+    )
     ativo: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True, server_default="true"
     )
@@ -862,6 +866,12 @@ class Campanha(Base):
     header_media_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     # {"cidade": "Manaus", "status": "Ativo", "plano": "100MB"} — chaves ausentes = sem filtro
     segmentacao: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default="{}")
+    # segmento | importado
+    origem: Mapped[str] = mapped_column(
+        String(12), nullable=False, default="segmento", server_default="segmento"
+    )
+    # valor padrão do botão URL dinâmico (quando o template tiver)
+    button_param: Mapped[str | None] = mapped_column(Text, nullable=True)
     # rascunho | enviando | concluida | cancelada | erro
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="rascunho", server_default="rascunho"
@@ -889,10 +899,13 @@ class CampanhaDestinatario(Base):
     campanha_id: Mapped[UUID] = mapped_column(
         PgUUID(as_uuid=True), ForeignKey("campanhas.id", ondelete="CASCADE"), nullable=False
     )
-    cliente_id: Mapped[UUID] = mapped_column(
-        PgUUID(as_uuid=True), ForeignKey("clientes.id", ondelete="CASCADE"), nullable=False
+    cliente_id: Mapped[UUID | None] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("clientes.id", ondelete="CASCADE"), nullable=True
     )
     whatsapp: Mapped[str] = mapped_column(String(64), nullable=False)
+    # override por contato (import CSV); None = usa o padrão da campanha
+    body_params: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    button_param: Mapped[str | None] = mapped_column(Text, nullable=True)
     # pendente | enviada | entregue | lida | falha
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="pendente", server_default="pendente"
