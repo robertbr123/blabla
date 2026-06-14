@@ -28,7 +28,7 @@ async def _mk(session, *, cidade=None, status=None, plano=None, deleted=False):
 
 
 @pytest.mark.asyncio
-async def test_valores_distintos_ignora_nulos_e_deletados(db_session) -> None:
+async def test_valores_distintos_ignora_nulos_e_deletados(db_session):
     import uuid
 
     marca = "ZZ" + uuid.uuid4().hex[:6]
