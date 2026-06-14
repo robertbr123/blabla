@@ -71,5 +71,5 @@ async def valores_distintos(session: AsyncSession) -> dict[str, list[str]]:
             .distinct()
             .order_by(coluna)
         )
-        out[chave] = [v for (v,) in (await session.execute(stmt)).all()]
+        out[chave] = [v for (v,) in (await session.execute(stmt)).all() if v is not None]
     return out
