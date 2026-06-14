@@ -36,3 +36,19 @@ def test_coluna_botao() -> None:
     csv_bytes = b"telefone,botao\n5592111111111,https://btn\n"
     rows, _ = parse_csv_destinatarios(csv_bytes, [])
     assert rows[0]["button_param"] == "https://btn"
+
+
+def test_captura_cidade_status_plano() -> None:
+    csv_bytes = b"telefone,cidade,status,plano\n5592111111111,Manaus,Ativo,100MB\n"
+    rows, _invalidos = parse_csv_destinatarios(csv_bytes, [])
+    assert rows[0]["csv_cidade"] == "Manaus"
+    assert rows[0]["csv_status"] == "Ativo"
+    assert rows[0]["csv_plano"] == "100MB"
+
+
+def test_sem_colunas_seg_fica_none() -> None:
+    csv_bytes = b"telefone\n5592111111111\n"
+    rows, _invalidos = parse_csv_destinatarios(csv_bytes, [])
+    assert rows[0]["csv_cidade"] is None
+    assert rows[0]["csv_status"] is None
+    assert rows[0]["csv_plano"] is None
