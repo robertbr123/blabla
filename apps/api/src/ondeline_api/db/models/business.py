@@ -906,6 +906,10 @@ class CampanhaDestinatario(Base):
     # override por contato (import CSV); None = usa o padrão da campanha
     body_params: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     button_param: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # snapshot do CSV importado, p/ filtrar quem recebe (separado de `status`, que é o status de envio)
+    csv_cidade: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    csv_status: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    csv_plano: Mapped[str | None] = mapped_column(String(80), nullable=True)
     # pendente | enviada | entregue | lida | falha
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="pendente", server_default="pendente"
