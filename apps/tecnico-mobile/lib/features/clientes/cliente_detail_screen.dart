@@ -12,6 +12,7 @@ import '../../core/ui/app_state_panel.dart';
 import '../../core/ui/app_surfaces.dart';
 import '../../core/ui/ios_glass_header.dart';
 import '../os/widgets/cliente_avatar.dart';
+import '../rede/rede_data.dart';
 import 'cliente_data.dart';
 import 'cliente_form_data.dart';
 import 'widgets/cliente_fotos.dart';
@@ -409,6 +410,7 @@ class _SecaoConexao extends StatelessWidget {
               value: cliente.pppoePass!,
               mono: true,
             ),
+          _SinalResumo(cpf: cliente.cpf),
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: OutlinedButton.icon(
@@ -418,6 +420,95 @@ class _SecaoConexao extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Régua de cor do RX (GPON, dBm) — mesma da tela de Rede.
+/// (Duplicação leve; cleanup futuro pode extrair um helper compartilhado.)
+Color _corRx(double? rx) {
+  if (rx == null) return Colors.grey;
+  if (rx > -8 || rx < -27) return Colors.red;
+  if (rx < -25) return Colors.orange;
+  return Colors.green;
+}
+
+String _idadeLeitura(DateTime? t) {
+  if (t == null) return '—';
+  final d = DateTime.now().difference(t);
+  if (d.inMinutes < 1) return 'agora';
+  if (d.inMinutes < 60) return 'há ${d.inMinutes} min';
+  if (d.inHours < 24) return 'há ${d.inHours} h';
+  return 'há ${d.inDays} ${d.inDays == 1 ? 'dia' : 'dias'}';
+}
+
+/// Resumo compacto do sinal/IP no detalhe (auto-carrega via redeDiagnosticoProvider).
+class _SinalResumo extends ConsumerWidget {
+  final String cpf;
+  const _SinalResumo({required this.cpf});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final diag = ref.watch(redeDiagnosticoProvider(cpf));
+
+    Widget muted(String text) => Text(
+          text,
+          style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant),
+        );
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: diag.when(
+        loading: () => Row(
+          children: [
+            const SizedBox(
+              height: 14,
+              width: 14,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 8),
+            muted('Carregando sinal…'),
+          ],
+        ),
+        error: (_, __) => muted('Sinal indisponível.'),
+        data: (d) {
+          final s = d.sinal;
+          if (!d.encontrada || s == null) return muted('Sinal indisponível.');
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.circle, size: 12, color: _corRx(s.rxPower)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'RX: ${s.rxPower?.toStringAsFixed(1) ?? '—'} dBm',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(width: 16),
+                  Flexible(
+                    child: Text(
+                      'GPON: ${s.statusGpon ?? '—'}',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: scheme.onSurfaceVariant),
+                    ),
+                  ),
+                ],
+              ),
+              if (s.ipExterno != null) ...[
+                const SizedBox(height: 4),
+                muted('IP: ${s.ipExterno}'),
+              ],
+              const SizedBox(height: 4),
+              Text(
+                'última leitura ${_idadeLeitura(d.lastInform)}',
+                style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
