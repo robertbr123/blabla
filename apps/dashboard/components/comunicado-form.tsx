@@ -48,6 +48,7 @@ export function ComunicadoForm() {
   const [importInfo, setImportInfo] = useState<ImportResult | null>(null)
   const [importando, setImportando] = useState(false)
   const [contagem, setContagem] = useState<number | null>(null)
+  const [amostraImport, setAmostraImport] = useState<import('@/lib/api/types').AmostraDestinatario[]>([])
   const contar = useContagemImport(campanhaId ?? '')
   const selecionar = useSelecionarImport(campanhaId ?? '')
 
@@ -85,9 +86,9 @@ export function ComunicadoForm() {
 
   function baixarExemplo() {
     const exemplo =
-      'telefone;cidade;status;plano;nome;link\n' +
-      '5592991112222;Manaus;Ativo;100MB;João;https://exemplo.com\n' +
-      '559784272884;Eirunepé;Ativo;50MB;Maria;https://exemplo.com\n'
+      'telefone;cidade;status;plano\n' +
+      '5592991112222;Manaus;Ativo;100MB\n' +
+      '559784272884;Eirunepe;Ativo;50MB\n'
     const blob = new Blob(['﻿' + exemplo], { type: 'text/csv;charset=utf-8' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
@@ -132,6 +133,7 @@ export function ComunicadoForm() {
       setValoresImport(imp.valores)
       setImportInfo(imp)
       setContagem(imp.importados)
+      setAmostraImport(imp.amostra)
       setFiltros({})
       toast.success(`${imp.importados} importados, ${imp.invalidos} inválidos`)
     } catch (e) {
@@ -143,7 +145,12 @@ export function ComunicadoForm() {
 
   function recontar(novos: SegmentoFiltros) {
     setFiltros(novos)
-    contar.mutate(novos, { onSuccess: (r) => setContagem(r.total) })
+    contar.mutate(novos, {
+      onSuccess: (r) => {
+        setContagem(r.total)
+        setAmostraImport(r.amostra)
+      },
+    })
   }
 
   async function handleDispararSegmento() {
@@ -279,6 +286,31 @@ export function ComunicadoForm() {
                 <Download className="h-4 w-4" /> Excel
               </button>
             </div>
+            {preview.data && preview.data.amostra.length > 0 && (
+              <div className="rounded-md border bg-card overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold">Nome</th>
+                      <th className="px-3 py-2 font-semibold">Telefone</th>
+                      <th className="px-3 py-2 font-semibold">Cidade</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.data.amostra.map((a) => (
+                      <tr key={a.id} className="border-b last:border-b-0">
+                        <td className="px-3 py-2">{a.nome ?? '—'}</td>
+                        <td className="px-3 py-2 font-mono text-xs">{a.whatsapp}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{a.cidade ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="px-3 py-2 text-xs text-muted-foreground">
+                  mostrando {preview.data.amostra.length} de {preview.data.total}
+                </p>
+              </div>
+            )}
             <button type="button" onClick={handleDispararSegmento} disabled={!cabecalhoOk}
                     className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
               <Send className="h-4 w-4" /> Disparar
@@ -291,7 +323,8 @@ export function ComunicadoForm() {
             <input type="file" accept=".csv,text/csv"
                    onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)} />
             <p className="text-xs text-muted-foreground">
-              CSV com coluna de telefone + (opcional) cidade, status, plano e colunas das variáveis.
+              CSV com a coluna de telefone + (opcional) cidade, status, plano para filtrar.
+              O conteúdo da mensagem (links etc.) você preenche acima no formulário.
             </p>
             <div className="flex gap-3">
               <button type="button" onClick={baixarExemplo}
@@ -332,6 +365,31 @@ export function ComunicadoForm() {
               </select>
             </div>
             <p className="text-sm font-medium">{contagem ?? 0} contato(s) vão receber</p>
+            {amostraImport.length > 0 && (
+              <div className="rounded-md border bg-card overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold">Telefone</th>
+                      <th className="px-3 py-2 font-semibold">Cidade</th>
+                      <th className="px-3 py-2 font-semibold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {amostraImport.map((a, i) => (
+                      <tr key={`${a.whatsapp}-${i}`} className="border-b last:border-b-0">
+                        <td className="px-3 py-2 font-mono text-xs">{a.whatsapp}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{a.cidade ?? '—'}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{a.status ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="px-3 py-2 text-xs text-muted-foreground">
+                  mostrando {amostraImport.length} de {contagem ?? 0}
+                </p>
+              </div>
+            )}
             <button type="button" onClick={handleDispararImport}
                     className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
               <Send className="h-4 w-4" /> Disparar
