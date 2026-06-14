@@ -119,4 +119,5 @@ class CampanhaRepo:
             d.status = "pendente"
             d.erro = None
             d.wamid = None
+        await self._session.flush()
         return len(falhas)
