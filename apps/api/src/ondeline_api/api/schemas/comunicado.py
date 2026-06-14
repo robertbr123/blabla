@@ -103,15 +103,23 @@ class SyncResult(BaseModel):
     canais: int
 
 
+class AmostraDestinatario(BaseModel):
+    whatsapp: str
+    cidade: str | None
+    status: str | None
+
+
 class ImportResult(BaseModel):
     importados: int
     invalidos: int
     amostra_invalidos: list[str]
     valores: SegmentoValores
+    amostra: list[AmostraDestinatario] = []
 
 
 class ContagemOut(BaseModel):
     total: int
+    amostra: list[AmostraDestinatario] = []
 
 
 class SelecionarOut(BaseModel):
