@@ -939,6 +939,12 @@ export interface BroadcastTemplateVar {
   label: string
   tipo: string
 }
+export interface BroadcastTemplateButton {
+  index: number
+  tipo: string
+  texto: string
+  url_dinamica: boolean
+}
 export interface BroadcastTemplate {
   id: string
   name: string
@@ -946,6 +952,7 @@ export interface BroadcastTemplate {
   category: string
   variaveis: BroadcastTemplateVar[]
   header_tipo: string
+  botoes: BroadcastTemplateButton[]
 }
 export interface SegmentoFiltros {
   cidade?: string | null
@@ -984,4 +991,17 @@ export interface CampanhaCreate {
   body_params: string[]
   header_media_url?: string | null
   segmentacao: SegmentoFiltros
+  origem?: string
+  button_param?: string | null
+}
+
+export interface SegmentoValores {
+  cidades: string[]
+  status: string[]
+  planos: string[]
+}
+export interface ImportResult {
+  importados: number
+  invalidos: number
+  amostra_invalidos: string[]
 }

@@ -1817,3 +1817,44 @@ export function exportClientesUrl(f: import('./types').SegmentoFiltros, fmt: 'cs
   p.set('format', fmt)
   return `/api/v1/admin/comunicados/export/clientes?${p.toString()}`
 }
+
+export function useSegmentoValores() {
+  return useQuery<import('./types').SegmentoValores>({
+    queryKey: ['comunicados-valores'],
+    queryFn: () => apiFetch('/api/v1/admin/comunicados/segmento/valores'),
+    staleTime: 300_000,
+  })
+}
+
+export function useSyncTemplates() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<{ sincronizados: number; canais: number }>(
+        '/api/v1/admin/comunicados/templates/sincronizar',
+        { method: 'POST' },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['broadcast-templates'] }),
+  })
+}
+
+export function useImportDestinatarios(campanhaId: string) {
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const fd = new FormData()
+      fd.append('file', file)
+      const base = process.env.NEXT_PUBLIC_API_URL ?? ''
+      const res = await fetch(
+        `${base}/api/v1/admin/comunicados/${campanhaId}/destinatarios/importar`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${getAccessToken() ?? ''}` },
+          credentials: 'include',
+          body: fd,
+        },
+      )
+      if (!res.ok) throw new Error('Falha ao importar CSV')
+      return (await res.json()) as import('./types').ImportResult
+    },
+  })
+}
