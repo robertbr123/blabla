@@ -26,12 +26,20 @@ class TemplateVar(BaseModel):
     tipo: str
 
 
+class TemplateButton(BaseModel):
+    index: int
+    tipo: str
+    texto: str
+    url_dinamica: bool
+
+
 class BroadcastTemplateOut(BaseModel):
     id: UUID
     name: str
     language: str
     category: str
     variaveis: list[TemplateVar]
+    botoes: list[TemplateButton] = []
     header_tipo: str
 
 
@@ -43,6 +51,8 @@ class CampanhaCreate(BaseModel):
     body_params: list[str] = []
     header_media_url: str | None = None
     segmentacao: SegmentoFiltros = SegmentoFiltros()
+    origem: str = "segmento"
+    button_param: str | None = None
 
 
 class CampanhaListItem(BaseModel):
@@ -70,3 +80,30 @@ class CampanhaDetail(CampanhaListItem):
 
 class TestSendIn(BaseModel):
     whatsapp: str
+
+
+class SegmentoValores(BaseModel):
+    cidades: list[str]
+    status: list[str]
+    planos: list[str]
+
+
+class TemplateUpsert(BaseModel):
+    name: str
+    language: str = "pt_BR"
+    category: str = "MARKETING"
+    variaveis: list[TemplateVar] = []
+    botoes: list[TemplateButton] = []
+    header_tipo: str = "none"
+    ativo: bool = True
+
+
+class SyncResult(BaseModel):
+    sincronizados: int
+    canais: int
+
+
+class ImportResult(BaseModel):
+    importados: int
+    invalidos: int
+    amostra_invalidos: list[str]
