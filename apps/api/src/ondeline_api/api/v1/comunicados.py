@@ -19,10 +19,12 @@ from ondeline_api.api.schemas.comunicado import (
     CampanhaCreate,
     CampanhaDetail,
     CampanhaListItem,
+    ContagemOut,
     ImportResult,
     PreviewOut,
     SegmentoFiltros,
     SegmentoValores,
+    SelecionarOut,
     SyncResult,
     TemplateUpsert,
     TestSendIn,
@@ -334,6 +336,33 @@ async def test_send(
     return {"status": "enviado"}
 
 
+@router.post("/{campanha_id}/destinatarios/contagem", dependencies=[_admin_dep])
+async def contagem_destinatarios(
+    campanha_id: UUID,
+    filtros: SegmentoFiltros,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ContagemOut:
+    repo = CampanhaRepo(session)
+    total = await repo.contar_selecionados(campanha_id, filtros.model_dump(exclude_none=True))
+    return ContagemOut(total=total)
+
+
+@router.post("/{campanha_id}/destinatarios/selecionar", dependencies=[_admin_dep])
+async def selecionar_destinatarios(
+    campanha_id: UUID,
+    filtros: SegmentoFiltros,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> SelecionarOut:
+    repo = CampanhaRepo(session)
+    camp = await repo.get_by_id(campanha_id)
+    if camp is None:
+        raise HTTPException(status_code=404, detail="campanha não encontrada")
+    selecionados = await repo.marcar_excluidos(campanha_id, filtros.model_dump(exclude_none=True))
+    camp.total_destinatarios = selecionados
+    await session.commit()
+    return SelecionarOut(selecionados=selecionados)
+
+
 @router.post("/{campanha_id}/destinatarios/importar", dependencies=[_admin_dep])
 async def importar_destinatarios(
     campanha_id: UUID,
@@ -367,12 +396,21 @@ async def importar_destinatarios(
                 whatsapp=r["whatsapp"],
                 body_params=r["body_params"],
                 button_param=r["button_param"],
+                csv_cidade=r["csv_cidade"],
+                csv_status=r["csv_status"],
+                csv_plano=r["csv_plano"],
                 status="pendente",
             )
         )
     camp.origem = "importado"
     camp.total_destinatarios = len(rows)
     await session.commit()
+    valores = await repo.valores_import(camp.id)
     return ImportResult(
-        importados=len(rows), invalidos=len(invalidos), amostra_invalidos=invalidos[:10]
+        importados=len(rows),
+        invalidos=len(invalidos),
+        amostra_invalidos=invalidos[:10],
+        valores=SegmentoValores(
+            cidades=valores["cidades"], status=valores["status"], planos=valores["planos"]
+        ),
     )
