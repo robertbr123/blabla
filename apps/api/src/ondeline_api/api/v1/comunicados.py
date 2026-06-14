@@ -20,8 +20,10 @@ from ondeline_api.api.schemas.comunicado import (
     CampanhaDetail,
     CampanhaListItem,
     ContagemOut,
+    DestinatarioOut,
     ImportResult,
     PreviewOut,
+    ReenviarResult,
     SegmentoFiltros,
     SegmentoValores,
     SelecionarOut,
@@ -413,4 +415,65 @@ async def importar_destinatarios(
         valores=SegmentoValores(
             cidades=valores["cidades"], status=valores["status"], planos=valores["planos"]
         ),
+    )
+
+
+@router.get("/{campanha_id}/destinatarios", dependencies=[_admin_dep])
+async def list_destinatarios(
+    campanha_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    status_f: Annotated[str | None, Query(alias="status")] = None,
+    limit: Annotated[int, Query(le=500)] = 200,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[DestinatarioOut]:
+    repo = CampanhaRepo(session)
+    rows = await repo.list_destinatarios(
+        campanha_id, status=status_f, limit=limit, offset=offset
+    )
+    return [
+        DestinatarioOut(
+            whatsapp=d.whatsapp, status=d.status, erro=d.erro, enviada_em=d.enviada_em
+        )
+        for d in rows
+    ]
+
+
+@router.post("/{campanha_id}/reenviar-falhas", dependencies=[_admin_dep])
+async def reenviar_falhas(
+    campanha_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> ReenviarResult:
+    repo = CampanhaRepo(session)
+    camp = await repo.get_by_id(campanha_id)
+    if camp is None:
+        raise HTTPException(status_code=404, detail="campanha não encontrada")
+    n = await repo.reenviar_falhas(campanha_id)
+    if n > 0:
+        camp.falhas = max(0, camp.falhas - n)
+        camp.status = "enviando"
+        await session.commit()
+        send_campanha_task.delay(str(campanha_id))
+    else:
+        await session.commit()
+    return ReenviarResult(reenfileirados=n)
+
+
+@router.get("/{campanha_id}/resultado/export", dependencies=[_admin_dep])
+async def export_resultado(
+    campanha_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> StreamingResponse:
+    repo = CampanhaRepo(session)
+    rows = await repo.list_destinatarios(campanha_id, status=None, limit=100000, offset=0)
+    sbuf = io.StringIO()
+    sbuf.write("﻿")
+    writer = csv.DictWriter(sbuf, fieldnames=["telefone", "status", "erro"])
+    writer.writeheader()
+    for d in rows:
+        writer.writerow({"telefone": d.whatsapp, "status": d.status, "erro": d.erro or ""})
+    data = sbuf.getvalue().encode("utf-8")
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="resultado-{campanha_id}.csv"'},
     )
