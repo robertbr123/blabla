@@ -56,6 +56,21 @@ class CampanhaRepo:
         )
         return int((await self._session.execute(stmt)).scalar_one())
 
+    async def amostra_selecionados(
+        self, campanha_id: UUID, filtros: dict[str, Any], *, limite: int = 30
+    ) -> list[CampanhaDestinatario]:
+        stmt = (
+            select(CampanhaDestinatario)
+            .where(
+                CampanhaDestinatario.campanha_id == campanha_id,
+                CampanhaDestinatario.status == "pendente",
+                self._match_csv(filtros),
+            )
+            .order_by(CampanhaDestinatario.id)
+            .limit(limite)
+        )
+        return list((await self._session.execute(stmt)).scalars().all())
+
     async def marcar_excluidos(self, campanha_id: UUID, filtros: dict[str, Any]) -> int:
         stmt = (
             update(CampanhaDestinatario)
