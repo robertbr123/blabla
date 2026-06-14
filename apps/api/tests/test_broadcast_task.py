@@ -84,3 +84,37 @@ async def test_send_campanha_idempotente(db_session, monkeypatch):
     await _send_campanha(db_session, camp.id)  # re-rodar não redispara
 
     assert len(fake.sent) == 1
+
+
+@pytest.mark.asyncio
+async def test_destinatario_body_params_override(db_session, monkeypatch):
+    canal = Canal(slug=f"c3-{uuid4().hex[:8]}", nome="C3", provider="cloud",
+                  cloud_phone_id="1", cloud_waba_id="2")
+    db_session.add(canal)
+    await db_session.flush()
+    camp = Campanha(titulo="t", canal_id=canal.id, template_name="promo",
+                    body_params=["DEFAULT", "linkpadrao"], segmentacao={},
+                    origem="importado", status="rascunho", total_destinatarios=1)
+    db_session.add(camp)
+    await db_session.flush()
+    db_session.add(CampanhaDestinatario(
+        campanha_id=camp.id, cliente_id=None, whatsapp="5592000",
+        body_params=["Joao", None], status="pendente",
+    ))
+    await db_session.flush()
+
+    captured = {}
+
+    class _Fake:
+        async def send_template(self, jid, *, name, language="pt_BR",
+                                body_params=None, header_media_url=None,
+                                button_url_param=None, **_):
+            captured["body_params"] = body_params
+            return {"messages": [{"id": "wamid.x"}]}
+
+        async def aclose(self):
+            return None
+
+    monkeypatch.setattr("ondeline_api.workers.broadcast.build_for_canal", lambda c, s: _Fake())
+    await _send_campanha(db_session, camp.id)
+    assert captured["body_params"] == ["Joao", "linkpadrao"]
