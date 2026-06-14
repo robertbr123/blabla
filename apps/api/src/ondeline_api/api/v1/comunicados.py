@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,8 +19,12 @@ from ondeline_api.api.schemas.comunicado import (
     CampanhaCreate,
     CampanhaDetail,
     CampanhaListItem,
+    ImportResult,
     PreviewOut,
     SegmentoFiltros,
+    SegmentoValores,
+    SyncResult,
+    TemplateUpsert,
     TestSendIn,
 )
 from ondeline_api.auth.deps import get_current_user
@@ -30,13 +34,21 @@ from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.business import (
     BroadcastTemplate,
     Campanha,
+    CampanhaDestinatario,
     Canal,
     Cliente,
 )
 from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db
 from ondeline_api.repositories.campanha import CampanhaRepo
-from ondeline_api.services.segmento import amostra_segmento, contar_segmento, resolver_segmento
+from ondeline_api.services.broadcast_import import parse_csv_destinatarios
+from ondeline_api.services.segmento import (
+    amostra_segmento,
+    contar_segmento,
+    resolver_segmento,
+    valores_distintos,
+)
+from ondeline_api.services.whatsapp_templates_sync import sincronizar_templates
 from ondeline_api.workers.broadcast import send_campanha_task
 
 router = APIRouter(prefix="/api/v1/admin/comunicados", tags=["comunicados"])
@@ -91,6 +103,8 @@ async def create_campanha(
         header_media_url=body.header_media_url,
         segmentacao=body.segmentacao.model_dump(exclude_none=True),
         status="rascunho", created_by=user.id,
+        origem=body.origem,
+        button_param=body.button_param,
     )
     session.add(camp)
     await session.commit()
@@ -174,6 +188,73 @@ async def export_clientes(
     )
 
 
+@router.get("/segmento/valores", dependencies=[_admin_dep])
+async def segmento_valores(
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> SegmentoValores:
+    vals = await valores_distintos(session)
+    return SegmentoValores(
+        cidades=vals["cidades"], status=vals["status"], planos=vals["planos"]
+    )
+
+
+@router.post("/templates/sincronizar", dependencies=[_admin_dep])
+async def sincronizar(
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> SyncResult:
+    res = await sincronizar_templates(session, get_settings())
+    return SyncResult(sincronizados=res["sincronizados"], canais=res["canais"])
+
+
+@router.post("/templates", status_code=201, dependencies=[_admin_dep])
+async def criar_template(
+    body: TemplateUpsert,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> BroadcastTemplateOut:
+    existing = (
+        await session.execute(
+            select(BroadcastTemplate).where(BroadcastTemplate.name == body.name)
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="template com esse nome já existe")
+    t = BroadcastTemplate(
+        name=body.name, language=body.language, category=body.category,
+        variaveis=[v.model_dump() for v in body.variaveis],
+        botoes=[b.model_dump() for b in body.botoes],
+        header_tipo=body.header_tipo, ativo=body.ativo,
+    )
+    session.add(t)
+    await session.commit()
+    await session.refresh(t)
+    return BroadcastTemplateOut.model_validate(t, from_attributes=True)
+
+
+@router.put("/templates/{template_id}", dependencies=[_admin_dep])
+async def editar_template(
+    template_id: UUID,
+    body: TemplateUpsert,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> BroadcastTemplateOut:
+    t = (
+        await session.execute(
+            select(BroadcastTemplate).where(BroadcastTemplate.id == template_id)
+        )
+    ).scalar_one_or_none()
+    if t is None:
+        raise HTTPException(status_code=404, detail="template não encontrado")
+    t.name = body.name
+    t.language = body.language
+    t.category = body.category
+    t.variaveis = [v.model_dump() for v in body.variaveis]
+    t.botoes = [b.model_dump() for b in body.botoes]
+    t.header_tipo = body.header_tipo
+    t.ativo = body.ativo
+    await session.commit()
+    await session.refresh(t)
+    return BroadcastTemplateOut.model_validate(t, from_attributes=True)
+
+
 @router.get("/{campanha_id}", dependencies=[_admin_dep])
 async def get_campanha(
     campanha_id: UUID,
@@ -251,3 +332,47 @@ async def test_send(
     finally:
         await adapter.aclose()
     return {"status": "enviado"}
+
+
+@router.post("/{campanha_id}/destinatarios/importar", dependencies=[_admin_dep])
+async def importar_destinatarios(
+    campanha_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    file: Annotated[UploadFile, File()],
+) -> ImportResult:
+    repo = CampanhaRepo(session)
+    camp = await repo.get_by_id(campanha_id)
+    if camp is None:
+        raise HTTPException(status_code=404, detail="campanha não encontrada")
+    if camp.status not in {"rascunho", "erro"}:
+        raise HTTPException(status_code=409, detail=f"campanha já está '{camp.status}'")
+
+    tpl = (
+        await session.execute(
+            select(BroadcastTemplate).where(BroadcastTemplate.name == camp.template_name)
+        )
+    ).scalar_one_or_none()
+    variaveis: list[dict[str, Any]] = tpl.variaveis if tpl is not None else []
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="arquivo vazio")
+    rows, invalidos = parse_csv_destinatarios(content, variaveis)
+
+    for r in rows:
+        session.add(
+            CampanhaDestinatario(
+                campanha_id=camp.id,
+                cliente_id=None,
+                whatsapp=r["whatsapp"],
+                body_params=r["body_params"],
+                button_param=r["button_param"],
+                status="pendente",
+            )
+        )
+    camp.origem = "importado"
+    camp.total_destinatarios = len(rows)
+    await session.commit()
+    return ImportResult(
+        importados=len(rows), invalidos=len(invalidos), amostra_invalidos=invalidos[:10]
+    )
