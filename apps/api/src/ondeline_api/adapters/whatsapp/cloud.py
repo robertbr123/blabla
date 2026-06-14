@@ -57,6 +57,18 @@ class CloudAdapter:
         self._backoff = backoff_seconds
         self._client = httpx.AsyncClient(timeout=timeout)
 
+    async def list_message_templates(self, waba_id: str) -> dict[str, Any]:
+        """Lista os message templates de um WABA (Graph API).
+
+        Retorna o JSON cru: ``{"data": [ {name, status, language, category,
+        components}, ... ]}``.
+        """
+        path = (
+            f"/{waba_id}/message_templates"
+            "?fields=name,status,language,category,components&limit=200"
+        )
+        return await self._get_json(path)
+
     async def aclose(self) -> None:
         await self._client.aclose()
 
@@ -151,6 +163,7 @@ class CloudAdapter:
         header_media_url: str | None = None,
         header_media_type: str | None = None,
         otp_code: str | None = None,
+        button_url_param: str | None = None,
     ) -> dict[str, Any]:
         """Envia mensagem TEMPLATE (unica forma fora da janela 24h).
 
@@ -189,6 +202,16 @@ class CloudAdapter:
                     "sub_type": "url",
                     "index": 0,
                     "parameters": [{"type": "text", "text": otp_code}],
+                }
+            )
+        if button_url_param is not None:
+            # Botão URL dinâmico (índice 0). Botão estático não precisa de componente.
+            components.append(
+                {
+                    "type": "button",
+                    "sub_type": "url",
+                    "index": 0,
+                    "parameters": [{"type": "text", "text": button_url_param}],
                 }
             )
         payload: dict[str, Any] = {

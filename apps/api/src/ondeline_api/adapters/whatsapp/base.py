@@ -57,6 +57,7 @@ class WhatsAppAdapter(Protocol):
         header_media_url: str | None = None,
         header_media_type: str | None = None,
         otp_code: str | None = None,
+        button_url_param: str | None = None,
     ) -> SendResult: ...
 
     async def get_media_base64(
