@@ -189,9 +189,18 @@ def _parse_device(raw: dict[str, Any]) -> GenieAcsDevice:
     dev_id = str(raw.get("_id", ""))
     did = raw.get("_deviceId") or {}
     last = _parse_last_inform(raw.get("_lastInform"))
-    online = bool(
+    sinal = _parse_sinal(raw)
+    # `online` = informou ao GenieACS recentemente OU PPPoE conectado de verdade.
+    # So inform-recency engana: ONU com inform antigo mas PPPoE Connected esta
+    # online (o tecnico ve sinal/IP). ConnectionStatus vem do ultimo inform, entao
+    # pode estar levemente defasado — aceitavel (bem melhor que dizer offline).
+    informou_recente = bool(
         last and (datetime.now(UTC) - last).total_seconds() <= INFORM_ONLINE_SECONDS
     )
+    conectado = sinal is not None and (
+        (sinal.conexao_pppoe or "").strip().lower() == "connected"
+    )
+    online = informou_recente or conectado
     return GenieAcsDevice(
         device_id=dev_id,
         fabricante=str(did.get("_Manufacturer", "") or ""),
@@ -201,7 +210,7 @@ def _parse_device(raw: dict[str, Any]) -> GenieAcsDevice:
         online=online,
         redes=_parse_redes(raw),
         aparelhos=_parse_aparelhos(raw),
-        sinal=_parse_sinal(raw),
+        sinal=sinal,
     )
 
 
