@@ -101,11 +101,14 @@ export function ConversaList() {
   const [abrirOsConversaId, setAbrirOsConversaId] = useState<string | null>(null)
   const { data: canais } = useCanais()
   const canalById = new Map((canais ?? []).map((c) => [c.id, c]))
-  const { data, isLoading, error } = useConversas({
+  const {
+    data, isLoading, error, hasNextPage, fetchNextPage, isFetchingNextPage,
+  } = useConversas({
     status: status || undefined,
     q: q || undefined,
     canal_id: canalId || undefined,
   })
+  const conversas = data?.pages.flatMap((p) => p.items) ?? []
 
   return (
     <div className="space-y-4">
@@ -155,7 +158,7 @@ export function ConversaList() {
         </p>
       )}
 
-      {data && data.items.length === 0 && (
+      {!isLoading && conversas.length === 0 && (
         <div className="rounded-md border bg-card p-12 text-center">
           <MessageSquare className="mx-auto h-10 w-10 text-muted-foreground/50" />
           <h3 className="mt-3 text-sm font-medium">Nenhuma conversa encontrada</h3>
@@ -167,7 +170,7 @@ export function ConversaList() {
         </div>
       )}
 
-      {data && data.items.length > 0 && (
+      {conversas.length > 0 && (
         <div className="rounded-md border bg-card overflow-hidden">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
@@ -181,7 +184,7 @@ export function ConversaList() {
               </tr>
             </thead>
             <tbody>
-              {data.items.map((c) => {
+              {conversas.map((c) => {
                 const telefone = formatWhatsappBr(c.whatsapp)
                 const tituloFull = c.cliente_nome ?? telefone
                 const titulo = truncate(tituloFull)
@@ -235,6 +238,17 @@ export function ConversaList() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+      {hasNextPage && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+          >
+            {isFetchingNextPage ? 'Carregando…' : 'Carregar mais'}
+          </Button>
         </div>
       )}
     </div>
