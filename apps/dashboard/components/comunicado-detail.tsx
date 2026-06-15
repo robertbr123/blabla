@@ -1,13 +1,16 @@
 'use client'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Download, RotateCcw } from 'lucide-react'
+import { Download, Pencil, RotateCcw, Trash2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { getAccessToken } from '@/lib/api/token'
 import {
   resultadoExportUrl,
   useCampanha,
+  useDeleteCampanha,
   useDestinatarios,
   useReenviarFalhas,
   useTestCampanha,
@@ -35,6 +38,8 @@ export function ComunicadoDetail({ id }: { id: string }) {
   const { data: c, isLoading } = useCampanha(id)
   const testSend = useTestCampanha(id)
   const reenviar = useReenviarFalhas(id)
+  const router = useRouter()
+  const excluir = useDeleteCampanha()
   const [testNum, setTestNum] = useState('')
   const [statusFiltro, setStatusFiltro] = useState<string | null>(null)
   const { data: destinatarios } = useDestinatarios(id, statusFiltro, !isLoading)
@@ -60,14 +65,45 @@ export function ComunicadoDetail({ id }: { id: string }) {
     URL.revokeObjectURL(a.href)
   }
 
+  function handleExcluir() {
+    if (!window.confirm('Excluir este comunicado? Essa ação não pode ser desfeita.')) return
+    excluir.mutate(id, {
+      onSuccess: () => {
+        toast.success('Comunicado excluído')
+        router.push('/comunicados')
+      },
+      onError: (e) => toast.error(e instanceof Error ? e.message : 'Erro ao excluir'),
+    })
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">{c.titulo}</h1>
           <p className="mt-1 text-sm text-muted-foreground font-mono">{c.template_name}</p>
         </div>
-        <Badge variant="outline">{c.status}</Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline">{c.status}</Badge>
+          {(c.status === 'rascunho' || c.status === 'erro') && (
+            <Link
+              href={`/comunicados/${id}/editar`}
+              className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-accent"
+            >
+              <Pencil className="h-4 w-4" /> Editar
+            </Link>
+          )}
+          {c.status !== 'enviando' && (
+            <button
+              type="button"
+              onClick={handleExcluir}
+              disabled={excluir.isPending}
+              className="inline-flex items-center gap-2 rounded-md border border-destructive/40 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" /> Excluir
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
