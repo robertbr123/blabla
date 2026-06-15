@@ -551,6 +551,7 @@ async def test_list_paginated_q_busca_codigo_cliente_tecnico(
     cliente = await _make_cliente_repo(db_session)
     tec = await _make_tecnico_repo(db_session)
     tec.nome = "Hercules Magalhaes"
+    await db_session.flush()
     os1 = await _make_os_repo(db_session, cliente, tec)
     os1.nome_sgp = "James Montefusco"
     await db_session.flush()
@@ -572,3 +573,37 @@ async def test_list_paginated_q_busca_codigo_cliente_tecnico(
     # sem match
     rows, _ = await repo.list_paginated(q="zzzz-nao-existe")
     assert rows == []
+
+
+@pytest.mark.asyncio
+async def test_list_paginated_q_com_cursor(db_session: AsyncSession) -> None:
+    """q + cursor: a paginação continua funcionando com o filtro aplicado."""
+    from datetime import UTC, datetime, timedelta
+
+    from ondeline_api.repositories.ordem_servico import OrdemServicoRepo as _Repo
+
+    cliente = await _make_cliente_repo(db_session)
+    tec = await _make_tecnico_repo(db_session)
+    tec.nome = "Paginacao Tecnico"
+    await db_session.flush()
+    os_a = await _make_os_repo(db_session, cliente, tec)
+    os_b = await _make_os_repo(db_session, cliente, tec)
+    # criada_em distintos e determinísticos (a lista ordena por criada_em desc).
+    # Sem isso, ambos pegariam o mesmo now() da transação e o cursor estrito
+    # (< criada_em) ficaria ambíguo.
+    now = datetime.now(tz=UTC)
+    os_a.criada_em = now
+    os_b.criada_em = now - timedelta(minutes=1)
+    await db_session.flush()
+
+    repo = _Repo(db_session)
+
+    # página 1 (q ativo, limit 1) → a mais recente + cursor
+    page1, cur = await repo.list_paginated(q="paginacao tecnico", limit=1)
+    assert [r.id for r in page1] == [os_a.id]
+    assert cur is not None
+
+    # página 2 com o MESMO q + cursor → a próxima, sem repetir, e acaba
+    page2, cur2 = await repo.list_paginated(q="paginacao tecnico", limit=1, cursor=cur)
+    assert [r.id for r in page2] == [os_b.id]
+    assert cur2 is None
