@@ -46,14 +46,19 @@ export interface ConversaListFilters {
 }
 
 export function useConversas(filters: ConversaListFilters = {}) {
-  const params = new URLSearchParams()
-  if (filters.status) params.set('status', filters.status)
-  if (filters.q) params.set('q', filters.q)
-  if (filters.canal_id) params.set('canal_id', filters.canal_id)
-  const qs = params.toString()
-  return useQuery<CursorPage<ConversaListItem>>({
+  return useInfiniteQuery<CursorPage<ConversaListItem>>({
     queryKey: ['conversas', filters],
-    queryFn: () => apiFetch(`/api/v1/conversas${qs ? `?${qs}` : ''}`),
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams()
+      if (filters.status) params.set('status', filters.status)
+      if (filters.q) params.set('q', filters.q)
+      if (filters.canal_id) params.set('canal_id', filters.canal_id)
+      if (pageParam) params.set('cursor', pageParam as string)
+      const qs = params.toString()
+      return apiFetch(`/api/v1/conversas${qs ? `?${qs}` : ''}`)
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
     refetchInterval: 15_000,
   })
 }
@@ -565,6 +570,7 @@ export interface OsListFilters {
   tecnico?: string
   cliente_id?: string
   enabled?: boolean
+  q?: string
 }
 
 export function useOsList(filters: OsListFilters = {}) {
@@ -588,6 +594,22 @@ export function useOsList(filters: OsListFilters = {}) {
     queryFn: () => apiFetch(`/api/v1/os${qs ? `?${qs}` : ''}`),
     refetchInterval: 30_000,
     enabled,
+  })
+}
+
+export function useOsListInfinite(filters: { status?: string; q?: string } = {}) {
+  return useInfiniteQuery<CursorPage<import('./types').OsListItem>>({
+    queryKey: ['os-list-infinite', filters],
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams()
+      if (filters.status) params.set('status', filters.status)
+      if (filters.q) params.set('q', filters.q)
+      if (pageParam) params.set('cursor', pageParam as string)
+      const qs = params.toString()
+      return apiFetch(`/api/v1/os${qs ? `?${qs}` : ''}`)
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.next_cursor ?? undefined,
   })
 }
 
