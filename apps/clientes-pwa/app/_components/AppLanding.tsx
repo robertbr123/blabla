@@ -19,6 +19,7 @@
  * Ler `headers()` torna a rota dinamica — irrelevante p/ esta landing.
  */
 import { headers } from 'next/headers'
+import AutoRedirect from './AutoRedirect'
 
 const PLAY_URL =
   'https://play.google.com/store/apps/details?id=dev.robertbr.cliente_mobile'
@@ -118,6 +119,9 @@ export default async function AppLanding() {
             </>
           )}
         </div>
+        {/* Mobile: se nao tocar em ~3s, abre a loja certa sozinho. */}
+        {platform === 'android' && <AutoRedirect url={PLAY_URL} />}
+        {platform === 'ios' && <AutoRedirect url={APP_STORE_URL} />}
         <p style={{ marginTop: 28, fontSize: 12, color: MUTED }}>
           Já é cliente?{' '}
           <a
