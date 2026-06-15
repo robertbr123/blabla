@@ -52,7 +52,7 @@ export function ComunicadoEditForm({ id }: { id: string }) {
   if (!EDITAVEL.has(c.status)) {
     return (
       <p className="text-sm text-muted-foreground">
-        Só dá pra editar campanhas em rascunho ou com erro. Esta está "{c.status}".
+        Só dá pra editar campanhas em rascunho ou com erro. Esta está em {c.status}.
       </p>
     )
   }

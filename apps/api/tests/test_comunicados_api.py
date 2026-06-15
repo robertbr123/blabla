@@ -12,11 +12,17 @@ from httpx import ASGITransport, AsyncClient
 from ondeline_api.auth.passwords import hash_password
 from ondeline_api.config import get_settings
 from ondeline_api.db.crypto import encrypt_pii, hash_pii
-from ondeline_api.db.models.business import Canal, Cliente
+from ondeline_api.db.models.business import (
+    Campanha,
+    CampanhaDestinatario,
+    Canal,
+    Cliente,
+)
 from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db, get_redis
 from ondeline_api.main import create_app
 from redis.asyncio import Redis
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # ─── Helpers ────────────────────────────────────────────────────────────────
@@ -227,8 +233,6 @@ async def test_editar_campanha_rascunho(app_and_admin: Any) -> None:
 @pytest.mark.asyncio
 async def test_editar_campanha_concluida_409(app_and_admin: Any) -> None:
     client, token, _admin, db_session = app_and_admin
-    from ondeline_api.db.models.business import Campanha
-
     canal = Canal(
         slug=f"com-{uuid4().hex[:8]}", nome="Comercial", provider="cloud",
         cloud_phone_id="1", cloud_waba_id="2",
@@ -253,8 +257,6 @@ async def test_editar_campanha_concluida_409(app_and_admin: Any) -> None:
 @pytest.mark.asyncio
 async def test_editar_campanha_enviando_409(app_and_admin: Any) -> None:
     client, token, _admin, db_session = app_and_admin
-    from ondeline_api.db.models.business import Campanha
-
     canal = Canal(
         slug=f"com-{uuid4().hex[:8]}", nome="Comercial", provider="cloud",
         cloud_phone_id="1", cloud_waba_id="2",
@@ -290,10 +292,6 @@ async def test_editar_campanha_inexistente_404(app_and_admin: Any) -> None:
 @pytest.mark.asyncio
 async def test_excluir_campanha_rascunho(app_and_admin: Any) -> None:
     client, token, _admin, db_session = app_and_admin
-    from sqlalchemy import select as _select
-
-    from ondeline_api.db.models.business import Campanha, CampanhaDestinatario
-
     canal = Canal(
         slug=f"com-{uuid4().hex[:8]}", nome="Comercial", provider="cloud",
         cloud_phone_id="1", cloud_waba_id="2",
@@ -318,12 +316,12 @@ async def test_excluir_campanha_rascunho(app_and_admin: Any) -> None:
     assert r.status_code == 204, r.text
 
     found = (
-        await db_session.execute(_select(Campanha).where(Campanha.id == camp_id))
+        await db_session.execute(select(Campanha).where(Campanha.id == camp_id))
     ).scalar_one_or_none()
     assert found is None
     dests = (
         await db_session.execute(
-            _select(CampanhaDestinatario).where(
+            select(CampanhaDestinatario).where(
                 CampanhaDestinatario.campanha_id == camp_id
             )
         )
@@ -334,8 +332,6 @@ async def test_excluir_campanha_rascunho(app_and_admin: Any) -> None:
 @pytest.mark.asyncio
 async def test_excluir_campanha_concluida_ok(app_and_admin: Any) -> None:
     client, token, _admin, db_session = app_and_admin
-    from ondeline_api.db.models.business import Campanha
-
     canal = Canal(
         slug=f"com-{uuid4().hex[:8]}", nome="Comercial", provider="cloud",
         cloud_phone_id="1", cloud_waba_id="2",
@@ -358,8 +354,6 @@ async def test_excluir_campanha_concluida_ok(app_and_admin: Any) -> None:
 @pytest.mark.asyncio
 async def test_excluir_campanha_enviando_409(app_and_admin: Any) -> None:
     client, token, _admin, db_session = app_and_admin
-    from ondeline_api.db.models.business import Campanha
-
     canal = Canal(
         slug=f"com-{uuid4().hex[:8]}", nome="Comercial", provider="cloud",
         cloud_phone_id="1", cloud_waba_id="2",
