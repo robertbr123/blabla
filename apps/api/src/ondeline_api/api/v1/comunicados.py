@@ -20,6 +20,7 @@ from ondeline_api.api.schemas.comunicado import (
     CampanhaCreate,
     CampanhaDetail,
     CampanhaListItem,
+    CampanhaUpdate,
     ContagemOut,
     DestinatarioOut,
     ImportResult,
@@ -269,6 +270,35 @@ async def get_campanha(
     c = await repo.get_by_id(campanha_id)
     if c is None:
         raise HTTPException(status_code=404, detail="campanha não encontrada")
+    counts = await repo.status_counts(campanha_id)
+    return CampanhaDetail(
+        id=c.id, titulo=c.titulo, template_name=c.template_name, status=c.status,
+        total_destinatarios=c.total_destinatarios, enviadas=c.enviadas, falhas=c.falhas,
+        created_at=c.created_at, canal_id=c.canal_id, template_language=c.template_language,
+        body_params=list(c.body_params or []), header_media_url=c.header_media_url,
+        segmentacao=SegmentoFiltros.model_validate(c.segmentacao or {}),
+        started_at=c.started_at, finished_at=c.finished_at, status_counts=counts,
+    )
+
+
+@router.patch("/{campanha_id}", dependencies=[_admin_dep])
+async def editar_campanha(
+    campanha_id: UUID,
+    body: CampanhaUpdate,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> CampanhaDetail:
+    repo = CampanhaRepo(session)
+    c = await repo.get_by_id(campanha_id)
+    if c is None:
+        raise HTTPException(status_code=404, detail="campanha não encontrada")
+    if c.status not in {"rascunho", "erro"}:
+        raise HTTPException(status_code=409, detail=f"campanha já está '{c.status}'")
+    data = body.model_dump(exclude_unset=True)
+    if "segmentacao" in data and data["segmentacao"] is not None:
+        data["segmentacao"] = body.segmentacao.model_dump(exclude_none=True)  # type: ignore[union-attr]
+    for field, value in data.items():
+        setattr(c, field, value)
+    await session.commit()
     counts = await repo.status_counts(campanha_id)
     return CampanhaDetail(
         id=c.id, titulo=c.titulo, template_name=c.template_name, status=c.status,

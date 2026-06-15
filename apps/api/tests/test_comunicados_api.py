@@ -190,3 +190,72 @@ async def test_rejeita_canal_nao_cloud(app_and_admin: Any) -> None:
         headers=_auth(token),
     )
     assert r.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_editar_campanha_rascunho(app_and_admin: Any) -> None:
+    client, token, _admin, db_session = app_and_admin
+    canal = Canal(
+        slug=f"com-{uuid4().hex[:8]}", nome="Comercial", provider="cloud",
+        cloud_phone_id="1", cloud_waba_id="2",
+    )
+    db_session.add(canal)
+    await db_session.commit()
+
+    r = await client.post(
+        "/api/v1/admin/comunicados",
+        json={
+            "titulo": "Errado", "canal_id": str(canal.id),
+            "template_name": "comunicado_geral", "body_params": [],
+            "segmentacao": {},
+        },
+        headers=_auth(token),
+    )
+    assert r.status_code == 201, r.text
+    camp_id = r.json()["id"]
+
+    r = await client.patch(
+        f"/api/v1/admin/comunicados/{camp_id}",
+        json={"titulo": "Corrigido", "body_params": ["https://novo"]},
+        headers=_auth(token),
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["titulo"] == "Corrigido"
+    assert r.json()["body_params"] == ["https://novo"]
+
+
+@pytest.mark.asyncio
+async def test_editar_campanha_concluida_409(app_and_admin: Any) -> None:
+    client, token, _admin, db_session = app_and_admin
+    from ondeline_api.db.models.business import Campanha
+
+    canal = Canal(
+        slug=f"com-{uuid4().hex[:8]}", nome="Comercial", provider="cloud",
+        cloud_phone_id="1", cloud_waba_id="2",
+    )
+    db_session.add(canal)
+    await db_session.flush()
+    camp = Campanha(
+        titulo="Feita", canal_id=canal.id, template_name="comunicado_geral",
+        status="concluida",
+    )
+    db_session.add(camp)
+    await db_session.commit()
+
+    r = await client.patch(
+        f"/api/v1/admin/comunicados/{camp.id}",
+        json={"titulo": "Nope"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 409, r.text
+
+
+@pytest.mark.asyncio
+async def test_editar_campanha_inexistente_404(app_and_admin: Any) -> None:
+    client, token, _admin, _db = app_and_admin
+    r = await client.patch(
+        f"/api/v1/admin/comunicados/{uuid4()}",
+        json={"titulo": "X"},
+        headers=_auth(token),
+    )
+    assert r.status_code == 404, r.text
