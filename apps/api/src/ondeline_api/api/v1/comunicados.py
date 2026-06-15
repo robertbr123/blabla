@@ -310,6 +310,23 @@ async def editar_campanha(
     )
 
 
+@router.delete("/{campanha_id}", status_code=204, dependencies=[_admin_dep])
+async def excluir_campanha(
+    campanha_id: UUID,
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    repo = CampanhaRepo(session)
+    c = await repo.get_by_id(campanha_id)
+    if c is None:
+        raise HTTPException(status_code=404, detail="campanha não encontrada")
+    if c.status == "enviando":
+        raise HTTPException(
+            status_code=409, detail="cancele a campanha antes de excluir"
+        )
+    await session.delete(c)
+    await session.commit()
+
+
 @router.post("/{campanha_id}/send", dependencies=[_admin_dep])
 async def send_campanha(
     campanha_id: UUID,

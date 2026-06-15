@@ -259,3 +259,104 @@ async def test_editar_campanha_inexistente_404(app_and_admin: Any) -> None:
         headers=_auth(token),
     )
     assert r.status_code == 404, r.text
+
+
+@pytest.mark.asyncio
+async def test_excluir_campanha_rascunho(app_and_admin: Any) -> None:
+    client, token, _admin, db_session = app_and_admin
+    from sqlalchemy import select as _select
+
+    from ondeline_api.db.models.business import Campanha, CampanhaDestinatario
+
+    canal = Canal(
+        slug=f"com-{uuid4().hex[:8]}", nome="Comercial", provider="cloud",
+        cloud_phone_id="1", cloud_waba_id="2",
+    )
+    db_session.add(canal)
+    await db_session.flush()
+    camp = Campanha(
+        titulo="Lixo", canal_id=canal.id, template_name="comunicado_geral",
+        status="rascunho",
+    )
+    db_session.add(camp)
+    await db_session.flush()
+    db_session.add(
+        CampanhaDestinatario(campanha_id=camp.id, whatsapp="5592111", status="pendente")
+    )
+    await db_session.commit()
+    camp_id = camp.id
+
+    r = await client.delete(
+        f"/api/v1/admin/comunicados/{camp_id}", headers=_auth(token)
+    )
+    assert r.status_code == 204, r.text
+
+    found = (
+        await db_session.execute(_select(Campanha).where(Campanha.id == camp_id))
+    ).scalar_one_or_none()
+    assert found is None
+    dests = (
+        await db_session.execute(
+            _select(CampanhaDestinatario).where(
+                CampanhaDestinatario.campanha_id == camp_id
+            )
+        )
+    ).scalars().all()
+    assert list(dests) == []
+
+
+@pytest.mark.asyncio
+async def test_excluir_campanha_concluida_ok(app_and_admin: Any) -> None:
+    client, token, _admin, db_session = app_and_admin
+    from ondeline_api.db.models.business import Campanha
+
+    canal = Canal(
+        slug=f"com-{uuid4().hex[:8]}", nome="Comercial", provider="cloud",
+        cloud_phone_id="1", cloud_waba_id="2",
+    )
+    db_session.add(canal)
+    await db_session.flush()
+    camp = Campanha(
+        titulo="Feita", canal_id=canal.id, template_name="comunicado_geral",
+        status="concluida",
+    )
+    db_session.add(camp)
+    await db_session.commit()
+
+    r = await client.delete(
+        f"/api/v1/admin/comunicados/{camp.id}", headers=_auth(token)
+    )
+    assert r.status_code == 204, r.text
+
+
+@pytest.mark.asyncio
+async def test_excluir_campanha_enviando_409(app_and_admin: Any) -> None:
+    client, token, _admin, db_session = app_and_admin
+    from ondeline_api.db.models.business import Campanha
+
+    canal = Canal(
+        slug=f"com-{uuid4().hex[:8]}", nome="Comercial", provider="cloud",
+        cloud_phone_id="1", cloud_waba_id="2",
+    )
+    db_session.add(canal)
+    await db_session.flush()
+    camp = Campanha(
+        titulo="Rodando", canal_id=canal.id, template_name="comunicado_geral",
+        status="enviando",
+    )
+    db_session.add(camp)
+    await db_session.commit()
+
+    r = await client.delete(
+        f"/api/v1/admin/comunicados/{camp.id}", headers=_auth(token)
+    )
+    assert r.status_code == 409, r.text
+
+
+@pytest.mark.asyncio
+async def test_excluir_campanha_inexistente_404(app_and_admin: Any) -> None:
+    client, token, _admin, _db = app_and_admin
+    r = await client.delete(
+        f"/api/v1/admin/comunicados/{uuid4()}", headers=_auth(token)
+    )
+    assert r.status_code == 404, r.text
