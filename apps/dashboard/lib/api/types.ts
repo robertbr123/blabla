@@ -995,6 +995,16 @@ export interface CampanhaCreate {
   button_param?: string | null
 }
 
+export interface CampanhaUpdate {
+  titulo?: string
+  template_name?: string
+  template_language?: string
+  body_params?: string[]
+  header_media_url?: string | null
+  segmentacao?: SegmentoFiltros
+  button_param?: string | null
+}
+
 export interface SegmentoValores {
   cidades: string[]
   status: string[]

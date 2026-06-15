@@ -1904,6 +1904,30 @@ export function useReenviarFalhas(campanhaId: string) {
   })
 }
 
+export function usePatchCampanha() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: import('./types').CampanhaUpdate }) =>
+      apiFetch<import('./types').CampanhaDetail>(`/api/v1/admin/comunicados/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: ['campanhas'] })
+      qc.invalidateQueries({ queryKey: ['campanha', id] })
+    },
+  })
+}
+
+export function useDeleteCampanha() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<void>(`/api/v1/admin/comunicados/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['campanhas'] }),
+  })
+}
+
 export function resultadoExportUrl(campanhaId: string) {
   return `/api/v1/admin/comunicados/${campanhaId}/resultado/export`
 }
