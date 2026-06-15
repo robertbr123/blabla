@@ -37,6 +37,7 @@ export function ComunicadoEditForm({ id }: { id: string }) {
   useEffect(() => {
     if (!c || carregado) return
     setTitulo(c.titulo)
+    setBotao(c.button_param ?? '')
     setFiltros(c.segmentacao ?? {})
     const m: Record<number, string> = {}
     ;(c.body_params ?? []).forEach((v, i) => {
@@ -71,7 +72,7 @@ export function ComunicadoEditForm({ id }: { id: string }) {
           titulo,
           body_params: buildBodyParams(),
           segmentacao: filtros,
-          button_param: botaoDinamico ? botao || null : null,
+          ...(botaoDinamico ? { button_param: botao || null } : {}),
         },
       })
       toast.success('Comunicado atualizado')

@@ -71,6 +71,7 @@ class CampanhaDetail(CampanhaListItem):
     template_language: str
     body_params: list[str]
     header_media_url: str | None
+    button_param: str | None
     segmentacao: SegmentoFiltros
     started_at: datetime | None
     finished_at: datetime | None

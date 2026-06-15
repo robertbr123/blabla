@@ -978,6 +978,7 @@ export interface CampanhaDetail extends CampanhaListItem {
   template_language: string
   body_params: string[]
   header_media_url: string | null
+  button_param: string | null
   segmentacao: SegmentoFiltros
   started_at: string | null
   finished_at: string | null
