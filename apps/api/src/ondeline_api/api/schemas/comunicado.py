@@ -135,3 +135,15 @@ class DestinatarioOut(BaseModel):
 
 class ReenviarResult(BaseModel):
     reenfileirados: int
+
+
+class CampanhaUpdate(BaseModel):
+    """Campos editáveis de uma campanha em rascunho/erro. Todos opcionais —
+    o endpoint aplica só os enviados (exclude_unset)."""
+    titulo: str | None = None
+    template_name: str | None = None
+    template_language: str | None = None
+    body_params: list[str] | None = None
+    header_media_url: str | None = None
+    segmentacao: SegmentoFiltros | None = None
+    button_param: str | None = None
