@@ -60,6 +60,26 @@ class NotificacaoRepo:
         )
         return (await self._session.execute(stmt)).scalar_one_or_none() is not None
 
+    async def pagamento_titulo_ids(self, cliente_id: UUID) -> set[str]:
+        """IDs de titulos que JA tiveram um PAGAMENTO agendado/enviado pra este
+        cliente. Usado pra nao reenviar o "obrigado" todo dia: o agendamento de
+        pagamento e idempotente por titulo, igual o follow-up de OS e por os_id.
+        """
+        stmt = select(Notificacao.payload).where(
+            and_(
+                Notificacao.cliente_id == cliente_id,
+                Notificacao.tipo == NotificacaoTipo.PAGAMENTO,
+            )
+        )
+        rows = (await self._session.execute(stmt)).scalars().all()
+        ids: set[str] = set()
+        for payload in rows:
+            for t in (payload or {}).get("titulos", []):
+                tid = str(t.get("id", ""))
+                if tid:
+                    ids.add(tid)
+        return ids
+
     async def schedule(
         self,
         *,

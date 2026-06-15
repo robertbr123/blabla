@@ -146,6 +146,61 @@ async def test_schedule_pagamentos_detecta_titulo_pago(db_session: AsyncSession)
     assert count == 1
 
 
+async def test_schedule_pagamentos_idempotente_por_titulo(db_session: AsyncSession) -> None:
+    """Regressao: cliente pagou 1x e recebia o "obrigado" todo dia.
+
+    Como agendada_para muda a cada dia, o dedup (cliente, tipo, agendada_para)
+    nao barrava reenvio. Com a idempotencia por titulo, um titulo que ja teve
+    PAGAMENTO agendado nao agenda de novo, mesmo que a cobranca original siga
+    dentro da janela de look_back_days.
+    """
+    cpf = "99988877766"
+    titulos = [Fatura(id="T1", valor=100, vencimento=_today_str(1), status="aberto")]
+    cliente, cache = await _make_cliente_with_titulos(db_session, cpf, titulos)
+    repo = NotificacaoRepo(db_session)
+
+    # Cobranca original enviada (segue dentro da janela de 7 dias).
+    venc = await repo.schedule(
+        cliente_id=cliente.id,
+        tipo=NotificacaoTipo.VENCIMENTO,
+        agendada_para=datetime.now(tz=UTC) - timedelta(days=2),
+        payload={"titulos": [{"id": "T1", "valor": 100, "vencimento": _today_str(1)}]},
+    )
+    assert venc is not None
+    venc.status = NotificacaoStatus.ENVIADA
+    venc.enviada_em = datetime.now(tz=UTC) - timedelta(days=2)
+    await db_session.flush()
+
+    # PAGAMENTO ja agendado ontem (agendada_para diferente do de hoje).
+    pago_ontem = await repo.schedule(
+        cliente_id=cliente.id,
+        tipo=NotificacaoTipo.PAGAMENTO,
+        agendada_para=datetime.now(tz=UTC) - timedelta(days=1),
+        payload={"titulos": [{"id": "T1", "valor": 100}]},
+    )
+    assert pago_ontem is not None
+
+    # SGP segue dizendo T1 pago.
+    titulos_pagos = [Fatura(id="T1", valor=100, vencimento=_today_str(1), status="pago")]
+    cli_sgp_paid = ClienteSgp(
+        provider=SgpProviderEnum.ONDELINE,
+        sgp_id="42",
+        nome="Test",
+        cpf_cnpj=cpf,
+        contratos=[Contrato(id="100", plano="P", status="ativo", cidade="SP")],
+        endereco=EnderecoSgp(cidade="SP"),
+        titulos=titulos_pagos,
+    )
+    cache._router = SgpRouter(
+        primary=FakeSgpProvider(clientes={cpf: cli_sgp_paid}),
+        secondary=FakeSgpProvider(),
+    )
+
+    # Nao deve agendar de novo — ja agradeceu ontem.
+    count = await schedule_pagamentos(db_session, cache)
+    assert count == 0
+
+
 async def test_schedule_pagamentos_no_change_no_count(db_session: AsyncSession) -> None:
     cpf = "55566677788"
     titulos = [Fatura(id="T1", valor=100, vencimento=_today_str(1), status="aberto")]

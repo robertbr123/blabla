@@ -194,9 +194,17 @@ async def schedule_pagamentos(
                 continue
             for t in (n.payload or {}).get("titulos", []):
                 pending_ids.add(str(t.get("id", "")))
+        # Titulos que ja tiveram "obrigado" enviado — idempotencia por titulo.
+        # Sem isso, como agendada_para muda a cada dia, o dedup
+        # (cliente, tipo, agendada_para) nao barra reenvio e o cliente recebe a
+        # confirmacao de pagamento todo dia enquanto a cobranca original estiver
+        # dentro da janela de look_back_days.
+        ja_notificados = await repo.pagamento_titulo_ids(cliente_id)
         pagos_now = [
             t for t in cli_sgp.titulos
-            if t.status == "pago" and t.id in pending_ids
+            if t.status == "pago"
+            and str(t.id) in pending_ids
+            and str(t.id) not in ja_notificados
         ]
         if not pagos_now:
             continue
