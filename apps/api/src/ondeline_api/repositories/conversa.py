@@ -105,9 +105,13 @@ class ConversaRepo:
         stmt = stmt.order_by(desc(order_col)).limit(limit + 1)
         conversas = list((await self._session.execute(stmt)).scalars().all())
         if len(conversas) > limit:
-            next_item = conversas[limit]
-            next_cursor = next_item.last_message_at or next_item.created_at
+            # cursor = último item RETORNADO (não o espiado). Com o filtro
+            # estrito `order_col < cursor`, esse item é excluído na próxima
+            # página (já foi mostrado) e o resto entra. Usar conversas[limit]
+            # faria o `<` pular o 1º item da próxima página.
             conversas = conversas[:limit]
+            next_item = conversas[-1]
+            next_cursor = next_item.last_message_at or next_item.created_at
         else:
             next_cursor = None
 
@@ -146,8 +150,11 @@ class ConversaRepo:
         stmt = stmt.order_by(desc(Mensagem.created_at)).limit(limit + 1)
         rows = list((await self._session.execute(stmt)).scalars().all())
         if len(rows) > limit:
-            next_cursor = rows[limit].created_at
+            # cursor = último item RETORNADO (o mais antigo da página, pois rows
+            # vem desc). Com o filtro estrito `created_at < cursor`, a próxima
+            # página pega as mensagens mais antigas sem pular a da fronteira.
             rows = rows[:limit]
+            next_cursor = rows[-1].created_at
         else:
             next_cursor = None
         # return in chronological order (oldest first) for display

@@ -36,8 +36,12 @@ class TecnicoRepo:
         stmt = stmt.order_by(Tecnico.id).limit(limit + 1)
         rows = list((await self._session.execute(stmt)).scalars().all())
         if len(rows) > limit:
-            next_cursor: UUID | None = rows[limit].id
+            # cursor = último item RETORNADO (maior id da página, ordem asc).
+            # Com o filtro estrito `id > cursor`, a próxima página continua do
+            # item seguinte sem pular. Usar rows[limit] faria o `>` pular o 1º
+            # item da próxima página.
             rows = rows[:limit]
+            next_cursor: UUID | None = rows[-1].id
         else:
             next_cursor = None
         return rows, next_cursor

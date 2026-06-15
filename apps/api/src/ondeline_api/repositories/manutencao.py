@@ -50,8 +50,10 @@ class ManutencaoRepo:
         stmt = stmt.order_by(desc(Manutencao.inicio_at)).limit(limit + 1)
         rows = list((await self._session.execute(stmt)).scalars().all())
         if len(rows) > limit:
-            next_cursor = rows[limit].inicio_at
+            # cursor = último item RETORNADO (não o espiado); com `< cursor`
+            # estrito, a próxima página não pula o item da fronteira.
             rows = rows[:limit]
+            next_cursor = rows[-1].inicio_at
         else:
             next_cursor = None
         return rows, next_cursor

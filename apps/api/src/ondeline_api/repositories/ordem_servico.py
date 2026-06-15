@@ -85,8 +85,12 @@ class OrdemServicoRepo:
         stmt = stmt.order_by(desc(OrdemServico.criada_em)).limit(limit + 1)
         rows = list((await self._session.execute(stmt)).scalars().all())
         if len(rows) > limit:
-            next_cursor = rows[limit].criada_em
+            # cursor = último item RETORNADO (não o espiado). Com o filtro
+            # estrito `criada_em < cursor`, esse item é excluído na próxima
+            # página (já foi mostrado) e o resto entra. Usar rows[limit] aqui
+            # faria o `<` pular justamente o 1º item da próxima página.
             rows = rows[:limit]
+            next_cursor = rows[-1].criada_em
         else:
             next_cursor = None
         return rows, next_cursor

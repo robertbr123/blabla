@@ -116,3 +116,31 @@ async def test_list_paginated_returns_none_nome_when_no_cliente(db_session) -> N
     assert len(matching) == 1
     _conv, nome_enc = matching[0]
     assert nome_enc is None
+
+
+async def test_list_paginated_cursor_nao_pula_item_na_fronteira(db_session) -> None:
+    """Regressão: a paginação não pode perder o item da fronteira entre páginas.
+
+    O cursor deve ser o último item RETORNADO (não o espiado); com o filtro
+    estrito `< cursor`, a próxima página inclui o item seguinte sem pular.
+    """
+    from datetime import UTC, datetime, timedelta
+
+    slug = _uuid.uuid4().hex[:10]
+    repo = ConversaRepo(db_session)
+    c1 = await repo.get_or_create_by_whatsapp(f"{slug}1@s.whatsapp.net")
+    c2 = await repo.get_or_create_by_whatsapp(f"{slug}2@s.whatsapp.net")
+    # timestamps distintos e determinísticos (ordena por last_message_at desc)
+    now = datetime.now(tz=UTC)
+    c1.last_message_at = now
+    c2.last_message_at = now - timedelta(minutes=1)
+    await db_session.flush()
+
+    # página 1 (limit 1) → a mais recente + cursor
+    page1, cur = await repo.list_paginated(q=slug, limit=1)
+    assert [conv.id for conv, _ in page1] == [c1.id]
+    assert cur is not None
+
+    # página 2 com o cursor → a próxima (c2), SEM pular
+    page2, _cur2 = await repo.list_paginated(q=slug, limit=1, cursor=cur)
+    assert [conv.id for conv, _ in page2] == [c2.id]

@@ -117,8 +117,10 @@ class ClienteCadastroRepo:
         rows = list((await self._s.execute(stmt)).scalars().all())
         next_cursor = None
         if len(rows) > limit:
-            next_cursor = rows[limit].created_at
+            # cursor = último item RETORNADO (não o espiado); com `< cursor`
+            # estrito, a próxima página não pula o item da fronteira.
             rows = rows[:limit]
+            next_cursor = rows[-1].created_at
         return rows, next_cursor
 
     async def count_stats(self, *, cities: list[str] | None = None) -> dict[str, int]:
