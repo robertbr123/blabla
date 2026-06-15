@@ -539,3 +539,36 @@ async def test_create_os_grava_sinal(
         await db_session.execute(select(OrdemServico).where(OrdemServico.id == os_id))
     ).scalar_one()
     assert os_row.sinal is not None
+
+
+@pytest.mark.asyncio
+async def test_list_paginated_q_busca_codigo_cliente_tecnico(
+    db_session: AsyncSession,
+) -> None:
+    """q casa por codigo, nome_sgp (cliente) e nome do tecnico (via join)."""
+    from ondeline_api.repositories.ordem_servico import OrdemServicoRepo as _Repo
+
+    cliente = await _make_cliente_repo(db_session)
+    tec = await _make_tecnico_repo(db_session)
+    tec.nome = "Hercules Magalhaes"
+    os1 = await _make_os_repo(db_session, cliente, tec)
+    os1.nome_sgp = "James Montefusco"
+    await db_session.flush()
+
+    repo = _Repo(db_session)
+
+    # por código (pega um pedaço do código real)
+    rows, _ = await repo.list_paginated(q=os1.codigo[-4:])
+    assert any(r.id == os1.id for r in rows)
+
+    # por nome do cliente (nome_sgp)
+    rows, _ = await repo.list_paginated(q="montefusco")
+    assert [r.id for r in rows] == [os1.id]
+
+    # por nome do técnico (join)
+    rows, _ = await repo.list_paginated(q="hercules")
+    assert [r.id for r in rows] == [os1.id]
+
+    # sem match
+    rows, _ = await repo.list_paginated(q="zzzz-nao-existe")
+    assert rows == []

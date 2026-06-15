@@ -130,12 +130,14 @@ async def list_os(
     status_filter: Annotated[str | None, Query(alias="status")] = None,
     tecnico: Annotated[UUID | None, Query()] = None,
     cliente_id: Annotated[UUID | None, Query()] = None,
+    q: Annotated[str | None, Query()] = None,
 ) -> CursorPage[OsListItem]:
     repo = OrdemServicoRepo(session)
     rows, next_cur = await repo.list_paginated(
         status=status_filter,
         tecnico_id=tecnico,
         cliente_id=cliente_id,
+        q=q,
         cursor=parse_cursor(cursor),
         limit=parse_limit(limit),
     )

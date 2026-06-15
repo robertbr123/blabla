@@ -7,7 +7,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ondeline_api.db.models.business import OrdemServico, OsStatus
+from ondeline_api.db.models.business import OrdemServico, OsStatus, Tecnico
 
 
 class OrdemServicoRepo:
@@ -56,10 +56,11 @@ class OrdemServicoRepo:
         tecnico_id: UUID | None = None,
         cliente_id: UUID | None = None,
         cidade: str | None = None,  # filter via Cliente.cidade join
+        q: str | None = None,
         cursor: datetime | None = None,
         limit: int = 50,
     ) -> tuple[list[OrdemServico], datetime | None]:
-        from sqlalchemy import desc, select
+        from sqlalchemy import desc, or_, select
 
         stmt = select(OrdemServico)
         if status:
@@ -68,6 +69,17 @@ class OrdemServicoRepo:
             stmt = stmt.where(OrdemServico.tecnico_id == tecnico_id)
         if cliente_id:
             stmt = stmt.where(OrdemServico.cliente_id == cliente_id)
+        if q and q.strip():
+            pat = f"%{q.strip()}%"
+            stmt = stmt.outerjoin(
+                Tecnico, OrdemServico.tecnico_id == Tecnico.id
+            ).where(
+                or_(
+                    OrdemServico.codigo.ilike(pat),
+                    OrdemServico.nome_sgp.ilike(pat),
+                    Tecnico.nome.ilike(pat),
+                )
+            )
         if cursor is not None:
             stmt = stmt.where(OrdemServico.criada_em < cursor)
         stmt = stmt.order_by(desc(OrdemServico.criada_em)).limit(limit + 1)
