@@ -599,7 +599,9 @@ export function useOsList(filters: OsListFilters = {}) {
 
 export function useOsListInfinite(filters: { status?: string; q?: string } = {}) {
   return useInfiniteQuery<CursorPage<import('./types').OsListItem>>({
-    queryKey: ['os-list-infinite', filters],
+    // prefixo ['os', ...] pra ser pego pelas invalidações `['os']` das mutações
+    // (patch/reatribuir/delete) — senão a lista não atualiza após a ação.
+    queryKey: ['os', 'infinite', filters],
     queryFn: ({ pageParam }) => {
       const params = new URLSearchParams()
       if (filters.status) params.set('status', filters.status)

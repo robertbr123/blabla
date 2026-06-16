@@ -1,15 +1,34 @@
 'use client'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { ClipboardList, Plus, Search, Trash2, UserCog } from 'lucide-react'
+import { Ban, ClipboardList, Plus, Search, Trash2, UserCog } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { useDeleteOs, useOsListInfinite, useTecnicos } from '@/lib/api/queries'
+import { useDeleteOs, useOsListInfinite, usePatchOs, useTecnicos } from '@/lib/api/queries'
 import { DialogReatribuirTecnico } from './dialog-reatribuir-tecnico'
 import { OsStatusPill } from './os-status-pill'
 import type { OsListItem } from '@/lib/api/types'
+
+function CancelButton({ osId }: { osId: string }) {
+  const patchOs = usePatchOs(osId)
+  function handleCancel() {
+    if (!confirm('Cancelar esta OS?')) return
+    patchOs.mutate({ status: 'cancelada' })
+  }
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-7 gap-1.5 px-2 text-amber-600 hover:text-amber-700"
+      onClick={handleCancel}
+      disabled={patchOs.isPending}
+    >
+      <Ban className="h-3.5 w-3.5" /> Cancelar
+    </Button>
+  )
+}
 
 function DeleteButton({ osId }: { osId: string }) {
   const deleteOs = useDeleteOs(osId)
@@ -20,14 +39,12 @@ function DeleteButton({ osId }: { osId: string }) {
   return (
     <Button
       variant="ghost"
-      size="icon"
-      className="h-7 w-7 text-destructive hover:text-destructive"
+      size="sm"
+      className="h-7 gap-1.5 px-2 text-destructive hover:text-destructive"
       onClick={handleDelete}
       disabled={deleteOs.isPending}
-      title="Excluir OS"
-      aria-label="Excluir OS"
     >
-      <Trash2 className="h-3.5 w-3.5" />
+      <Trash2 className="h-3.5 w-3.5" /> Excluir
     </Button>
   )
 }
@@ -153,16 +170,17 @@ export function OsList({ onNovaOs }: { onNovaOs?: () => void } = {}) {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       {o.status !== 'concluida' && o.status !== 'cancelada' && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => setReatribuirOsId(o.id)}
-                          title="Reatribuir técnico"
-                          aria-label="Reatribuir técnico"
-                        >
-                          <UserCog className="h-3.5 w-3.5" />
-                        </Button>
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 gap-1.5 px-2"
+                            onClick={() => setReatribuirOsId(o.id)}
+                          >
+                            <UserCog className="h-3.5 w-3.5" /> Técnico
+                          </Button>
+                          <CancelButton osId={o.id} />
+                        </>
                       )}
                       <DeleteButton osId={o.id} />
                     </div>
