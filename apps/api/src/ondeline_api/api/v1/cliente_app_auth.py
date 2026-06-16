@@ -109,6 +109,10 @@ async def _sgp_lookup_by_cpf(session: AsyncSession, cpf: str) -> ClienteSgp | No
         ttl_cliente=s.sgp_cache_ttl_cliente,
         ttl_negativo=s.sgp_cache_ttl_negativo,
     )
+    # OTP/cadastro precisa do número ATUAL do SGP: invalida o cache (TTL 1h)
+    # antes de buscar, senão após corrigir o telefone no SGP o código continua
+    # indo pro número antigo até o cache expirar.
+    await cache.invalidate(cpf)
     return await cache.get_cliente(cpf)
 
 
@@ -180,7 +184,18 @@ async def register_start(
             sgp_id=sgp_id,
         )
     else:
-        telefone = decrypt_pii(user.telefone_encrypted)
+        # Usuário ainda pendente (o 'active' já caiu no 409 acima). Re-busca o
+        # número atual no SGP e atualiza a linha — senão o telefone fica
+        # congelado e retentativas após corrigir o SGP iriam pro número antigo.
+        atual = decrypt_pii(user.telefone_encrypted)
+        sgp_cliente = await _sgp_lookup_by_cpf(session, body.cpf)
+        telefone = (
+            sgp_cliente.whatsapp
+            if (sgp_cliente and sgp_cliente.whatsapp)
+            else atual
+        )
+        if telefone != atual:
+            await repo.update_telefone(session, user, telefone)
 
     primary, template, fallback = await _otp_adapters(session)
     try:

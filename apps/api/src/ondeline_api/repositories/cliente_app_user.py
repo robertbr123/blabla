@@ -60,3 +60,10 @@ async def set_password(session: AsyncSession, user: ClienteAppUser, password_has
 async def mark_login(session: AsyncSession, user: ClienteAppUser) -> None:
     user.last_login_at = datetime.now(UTC)
     await session.flush()
+
+
+async def update_telefone(session: AsyncSession, user: ClienteAppUser, telefone: str) -> None:
+    """Atualiza o telefone gravado (ex.: número corrigido no SGP entre tentativas
+    de cadastro). Sem isso, um usuário pendente fica com o número congelado."""
+    user.telefone_encrypted = encrypt_pii(telefone)
+    await session.flush()
