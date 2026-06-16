@@ -1,6 +1,7 @@
 """Tool buscar_cliente_sgp — usa SgpCacheService + ClienteRepo + vincula conversa."""
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
@@ -80,6 +81,12 @@ async def test_encontra_e_vincula_conversa(db_session: AsyncSession) -> None:
 
 
 async def test_retorna_proximo_vencimento_e_valor(db_session: AsyncSession) -> None:
+    # Datas RELATIVAS: T1 ainda vai vencer (não atrasada), T2 já venceu. Cravar
+    # datas fixas vira time-bomb — o tool usa `vencimento < hoje`, então uma data
+    # cravada "hoje" passa a contar como atrasada quando o tempo passa.
+    hoje = datetime.now(tz=UTC).date()
+    venc_futuro = (hoje + timedelta(days=15)).isoformat()
+    venc_passado = (hoje - timedelta(days=30)).isoformat()
     cli = ClienteSgp(
         provider=SgpProviderEnum.ONDELINE,
         sgp_id="42",
@@ -88,8 +95,8 @@ async def test_retorna_proximo_vencimento_e_valor(db_session: AsyncSession) -> N
         contratos=[Contrato(id="100", plano="P", status="ativo", cidade="SP")],
         endereco=EnderecoSgp(cidade="SP"),
         titulos=[
-            Fatura(id="T1", valor=99.90, vencimento="2026-06-15", status="aberto"),
-            Fatura(id="T2", valor=110, vencimento="2026-05-15", status="aberto", dias_atraso=2),
+            Fatura(id="T1", valor=99.90, vencimento=venc_futuro, status="aberto"),
+            Fatura(id="T2", valor=110, vencimento=venc_passado, status="aberto", dias_atraso=2),
         ],
     )
     cache = SgpCacheService(
@@ -112,8 +119,8 @@ async def test_retorna_proximo_vencimento_e_valor(db_session: AsyncSession) -> N
         evolution=None, sgp_router=None, sgp_cache=cache,  # type: ignore[arg-type]
     )
     out = await buscar_cliente_sgp(ctx, cpf_cnpj="11122233344")
-    # mais antiga em atraso (T2, vencimento 2026-05-15)
-    assert out["faturas"]["proximo_vencimento"] == "2026-05-15"
+    # mais antiga em atraso (T2)
+    assert out["faturas"]["proximo_vencimento"] == venc_passado
     assert out["faturas"]["proximo_valor"] == 110
     assert out["faturas"]["atrasados"] == 1
     assert out["suspenso"] is False
