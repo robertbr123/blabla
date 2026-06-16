@@ -1,12 +1,18 @@
 'use client'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { Ban, ClipboardList, Plus, Search, Trash2, UserCog } from 'lucide-react'
+import { Ban, ClipboardList, Plus, RotateCcw, Search, Trash2, UserCog } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { useDeleteOs, useOsListInfinite, usePatchOs, useTecnicos } from '@/lib/api/queries'
+import {
+  useDeleteOs,
+  useOsListInfinite,
+  usePatchOs,
+  useReabrirOs,
+  useTecnicos,
+} from '@/lib/api/queries'
 import { DialogReatribuirTecnico } from './dialog-reatribuir-tecnico'
 import { OsStatusPill } from './os-status-pill'
 import type { OsListItem } from '@/lib/api/types'
@@ -26,6 +32,25 @@ function CancelButton({ osId }: { osId: string }) {
       disabled={patchOs.isPending}
     >
       <Ban className="h-3.5 w-3.5" /> Cancelar
+    </Button>
+  )
+}
+
+function ReopenButton({ osId }: { osId: string }) {
+  const reabrir = useReabrirOs(osId)
+  function handleReopen() {
+    if (!confirm('Reabrir esta OS? Ela volta a ficar editável (reatribuir/cancelar).')) return
+    reabrir.mutate('reaberta pelo painel')
+  }
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="h-7 gap-1.5 px-2 text-blue-600 hover:text-blue-700"
+      onClick={handleReopen}
+      disabled={reabrir.isPending}
+    >
+      <RotateCcw className="h-3.5 w-3.5" /> Reabrir
     </Button>
   )
 }
@@ -169,18 +194,22 @@ export function OsList({ onNovaOs }: { onNovaOs?: () => void } = {}) {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
+                      {/* Reatribuir só em OS não-finalizada (a API bloqueia em concluída). */}
                       {o.status !== 'concluida' && o.status !== 'cancelada' && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 gap-1.5 px-2"
-                            onClick={() => setReatribuirOsId(o.id)}
-                          >
-                            <UserCog className="h-3.5 w-3.5" /> Técnico
-                          </Button>
-                          <CancelButton osId={o.id} />
-                        </>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1.5 px-2"
+                          onClick={() => setReatribuirOsId(o.id)}
+                        >
+                          <UserCog className="h-3.5 w-3.5" /> Técnico
+                        </Button>
+                      )}
+                      {/* Cancelar funciona em aberta E concluída (patch de status). */}
+                      {o.status !== 'cancelada' && <CancelButton osId={o.id} />}
+                      {/* Reabrir destrava OS finalizada → volta a aceitar reatribuir. */}
+                      {(o.status === 'concluida' || o.status === 'cancelada') && (
+                        <ReopenButton osId={o.id} />
                       )}
                       <DeleteButton osId={o.id} />
                     </div>
