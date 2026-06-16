@@ -58,6 +58,7 @@ class SinalFibra:
     ip_externo: str | None = None
     uptime_s: int | None = None
     ultimo_erro: str | None = None
+    vlan: int | None = None  # VLAN ID da conexao PPPoE (WAN)
 
 
 @dataclass(frozen=True, slots=True)

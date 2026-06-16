@@ -106,6 +106,7 @@ class SinalFibra {
     this.ipExterno,
     this.uptimeS,
     this.ultimoErro,
+    this.vlan,
   });
   final double? rxPower;
   final double? txPower;
@@ -114,6 +115,7 @@ class SinalFibra {
   final String? ipExterno;
   final int? uptimeS;
   final String? ultimoErro;
+  final int? vlan;
 
   factory SinalFibra.fromJson(Map<String, dynamic> j) => SinalFibra(
         rxPower: (j['rx_power'] as num?)?.toDouble(),
@@ -123,6 +125,7 @@ class SinalFibra {
         ipExterno: j['ip_externo'] as String?,
         uptimeS: (j['uptime_s'] as num?)?.toInt(),
         ultimoErro: j['ultimo_erro'] as String?,
+        vlan: (j['vlan'] as num?)?.toInt(),
       );
 }
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/ui/app_state_panel.dart';
 import '../../core/ui/ios_glass_header.dart';
 import 'rede_data.dart';
 
@@ -112,6 +113,40 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
   void _msg(String m) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
+  /// SSID default de fabrica (rede nunca configurada pelo cliente). Mesma
+  /// regra do backend (_e_ssid_default): prefixos fh_/fh-.
+  bool _ssidDefaultFabrica(String ssid) {
+    final s = ssid.toLowerCase();
+    return s.startsWith('fh_') || s.startsWith('fh-');
+  }
+
+  /// Lista as redes WiFi pra exibir. Preferimos as Enable=true; mas alguns
+  /// modelos de ONU (ex.: FiberHome) reportam Enable=false ate em redes que
+  /// estao no ar — nesse caso caimos pras redes com SSID customizado, pulando
+  /// os defaults de fabrica (fh_*), que nao sao a rede do cliente.
+  List<Widget> _redesWifi(List<RedeWlan> redes) {
+    final comSsid = redes.where((r) => r.ssid.trim().isNotEmpty).toList();
+    final ativas = comSsid.where((r) => r.enabled).toList();
+    final exibir = ativas.isNotEmpty
+        ? ativas
+        : comSsid.where((r) => !_ssidDefaultFabrica(r.ssid)).toList();
+    if (exibir.isEmpty) {
+      return const [
+        Text('Nenhuma rede WiFi encontrada.',
+            style: TextStyle(color: Colors.grey)),
+      ];
+    }
+    return [
+      Text(ativas.isNotEmpty ? 'Redes WiFi ativas:' : 'Redes WiFi:'),
+      for (final r in exibir)
+        ListTile(
+          leading: const Icon(Icons.router),
+          title: Text(r.ssid),
+          dense: true,
+        ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -138,24 +173,31 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
             loading: () => const [
               SliverFillRemaining(
                 hasScrollBody: false,
-                child: Center(child: CircularProgressIndicator()),
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(
+                    child: AppStatePanel.loading(
+                      title: 'Carregando rede',
+                      message: 'Buscando a ONU e as redes WiFi do cliente…',
+                    ),
+                  ),
+                ),
               ),
             ],
             error: (e, _) => [
               SliverFillRemaining(
                 hasScrollBody: false,
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Erro ao carregar a rede.'),
-                      const SizedBox(height: 8),
-                      FilledButton(
-                        onPressed: () =>
-                            ref.invalidate(redeStatusProvider(widget.cpf)),
-                        child: const Text('Tentar novamente'),
-                      ),
-                    ],
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Center(
+                    child: AppStatePanel.error(
+                      title: 'Erro ao carregar a rede',
+                      message:
+                          'Não foi possível consultar a rede do cliente agora.',
+                      actionLabel: 'Tentar novamente',
+                      onAction: () =>
+                          ref.invalidate(redeStatusProvider(widget.cpf)),
+                    ),
                   ),
                 ),
               ),
@@ -185,9 +227,7 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
             Text(s.modelo ?? ''),
           ]),
           const SizedBox(height: 8),
-          const Text('Redes WiFi ativas:'),
-          for (final r in s.redes.where((r) => r.enabled))
-            ListTile(leading: const Icon(Icons.router), title: Text(r.ssid), dense: true),
+          ..._redesWifi(s.redes),
           const Divider(height: 32),
           _diagnostico(),
         ] else ...[
@@ -238,7 +278,10 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
     return diag.when(
       loading: () => const Padding(
         padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(child: CircularProgressIndicator()),
+        child: AppStatePanel.loading(
+          title: 'Carregando diagnóstico',
+          message: 'Lendo o sinal da fibra e os aparelhos conectados…',
+        ),
       ),
       error: (e, _) => const Text('Não foi possível carregar o diagnóstico.',
           style: TextStyle(color: Colors.grey)),
@@ -273,6 +316,7 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
               Text('GPON: ${d.sinal!.statusGpon ?? '—'}   •   '
                   'PPPoE: ${d.sinal!.conexaoPppoe ?? '—'}'),
               if (d.sinal!.ipExterno != null) Text('IP: ${d.sinal!.ipExterno}'),
+              if (d.sinal!.vlan != null) Text('VLAN: ${d.sinal!.vlan}'),
               Text('Uptime: ${_fmtUptime(d.sinal!.uptimeS)}'
                   '${d.sinal!.ultimoErro != null && d.sinal!.ultimoErro != 'ERROR_NONE' ? '   •   Último erro: ${d.sinal!.ultimoErro}' : ''}'),
             ],

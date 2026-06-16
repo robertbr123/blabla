@@ -60,6 +60,7 @@ class SinalFibraOut(BaseModel):
     ip_externo: str | None = None
     uptime_s: int | None = None
     ultimo_erro: str | None = None
+    vlan: int | None = None
 
 
 class DiagnosticoIn(BaseModel):

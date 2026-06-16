@@ -47,14 +47,34 @@ PPPOE_CONN_PATHS = [
     "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.2.WANPPPConnection.1",
     "InternetGatewayDevice.WANDevice.1.WANConnectionDevice.3.WANPPPConnection.1",
 ]
+# Nome da folha da VLAN na conexao PPPoE varia por modelo (FiberHome usa
+# "VLANID" puro; outros usam VLANIDMark ou vendor-specific). Tenta os candidatos.
+VLAN_LEAFS = ("VLANID", "VLANIDMark", "X_FH_VLANIDMark", "X_VLANID")
 
 _WLAN_PATH = ("InternetGatewayDevice", "LANDevice", "1", "WLANConfiguration")
+# TR-181 (modelos novos): Device.WiFi.SSID.{i}.SSID. Fallback ADITIVO — so
+# usado quando o caminho TR-098 acima nao achou nenhuma rede. Como temos varios
+# modelos, novos padroes entram aqui sem mexer no que ja funciona.
+_WLAN_PATHS = (
+    _WLAN_PATH,
+    ("Device", "WiFi", "SSID"),
+)
 _HOSTS_PATH = ("InternetGatewayDevice", "LANDevice", "1", "Hosts", "Host")
 
 
 def _leaf(node: Any, key: str) -> Any:
     v = node.get(key) if isinstance(node, dict) else None
     return v.get("_value") if isinstance(v, dict) else None
+
+
+def _leaf_any(node: Any, keys: tuple[str, ...]) -> Any:
+    """Primeira folha nao-nula entre varios nomes candidatos (mesmo dado,
+    nome diferente por modelo)."""
+    for k in keys:
+        v = _leaf(node, k)
+        if v is not None:
+            return v
+    return None
 
 
 def _parse_last_inform(raw: str | None) -> datetime | None:
@@ -111,6 +131,7 @@ def _parse_sinal(raw: dict[str, Any]) -> SinalFibra | None:
     ip_ext: str | None = None
     ultimo: str | None = None
     uptime: int | None = None
+    vlan: int | None = None
     for p in PPPOE_CONN_PATHS:
         node = _dig(raw, p)
         if not isinstance(node, dict):
@@ -123,9 +144,12 @@ def _parse_sinal(raw: dict[str, Any]) -> SinalFibra | None:
             uptime = _as_int(_leaf(node, "Uptime"))
             err = _leaf(node, "LastConnectionError")
             ultimo = str(err) if err is not None else None
+            vlan = _as_int(_leaf_any(node, VLAN_LEAFS))
             break
 
-    if all(v is None for v in (rx, tx, status, conexao, ip_ext, uptime, ultimo)):
+    if all(
+        v is None for v in (rx, tx, status, conexao, ip_ext, uptime, ultimo, vlan)
+    ):
         return None
     return SinalFibra(
         rx_power=rx,
@@ -135,6 +159,7 @@ def _parse_sinal(raw: dict[str, Any]) -> SinalFibra | None:
         ip_externo=ip_ext,
         uptime_s=uptime,
         ultimo_erro=ultimo,
+        vlan=vlan,
     )
 
 
@@ -165,9 +190,9 @@ def _parse_aparelhos(raw: dict[str, Any]) -> list[Aparelho]:
     return out
 
 
-def _parse_redes(raw: dict[str, Any]) -> list[RedeWlan]:
+def _parse_redes_em(raw: dict[str, Any], path: tuple[str, ...]) -> list[RedeWlan]:
     node: Any = raw
-    for k in _WLAN_PATH:
+    for k in path:
         node = node.get(k) if isinstance(node, dict) else None
         if node is None:
             return []
@@ -183,6 +208,16 @@ def _parse_redes(raw: dict[str, Any]) -> list[RedeWlan]:
             RedeWlan(instancia=int(inst), ssid=str(ssid), enabled=bool(enabled))
         )
     return redes
+
+
+def _parse_redes(raw: dict[str, Any]) -> list[RedeWlan]:
+    # Tenta TR-098 primeiro (maioria da base); se nao achar nada, cai pro
+    # TR-181 e demais candidatos. Cada modelo expoe num padrao so.
+    for path in _WLAN_PATHS:
+        redes = _parse_redes_em(raw, path)
+        if redes:
+            return redes
+    return []
 
 
 def _parse_device(raw: dict[str, Any]) -> GenieAcsDevice:

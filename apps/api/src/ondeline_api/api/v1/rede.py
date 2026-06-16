@@ -64,6 +64,7 @@ def _sinal_out(s: SinalFibra | None) -> SinalFibraOut | None:
         ip_externo=s.ip_externo,
         uptime_s=s.uptime_s,
         ultimo_erro=s.ultimo_erro,
+        vlan=s.vlan,
     )
 
 
