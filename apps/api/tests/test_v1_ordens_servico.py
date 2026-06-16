@@ -395,9 +395,10 @@ async def test_reatribuir_troca_tecnico(
 
 
 @pytest.mark.asyncio
-async def test_reatribuir_concluida_retorna_422(
+async def test_reatribuir_concluida_ok(
     db_session: AsyncSession, redis_client: Redis  # type: ignore[type-arg]
 ) -> None:
+    """OS concluída PODE ser reatribuída (correção de técnico pela lista)."""
     from unittest.mock import AsyncMock, patch
 
     cliente = await _make_cliente(db_session)
@@ -420,7 +421,8 @@ async def test_reatribuir_concluida_retorna_422(
                 json={"tecnico_id": str(tec2.id)},
                 headers={"Authorization": f"Bearer {token}"},
             )
-    assert r.status_code == 422
+    assert r.status_code == 200, r.text
+    assert r.json()["tecnico_id"] == str(tec2.id)
 
 
 @pytest.mark.asyncio

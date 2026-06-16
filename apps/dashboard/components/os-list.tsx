@@ -1,59 +1,15 @@
 'use client'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { Ban, ClipboardList, Plus, RotateCcw, Search, Trash2, UserCog } from 'lucide-react'
+import { ClipboardList, Plus, Search, Trash2, UserCog } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import {
-  useDeleteOs,
-  useOsListInfinite,
-  usePatchOs,
-  useReabrirOs,
-  useTecnicos,
-} from '@/lib/api/queries'
+import { useDeleteOs, useOsListInfinite, useTecnicos } from '@/lib/api/queries'
 import { DialogReatribuirTecnico } from './dialog-reatribuir-tecnico'
 import { OsStatusPill } from './os-status-pill'
 import type { OsListItem } from '@/lib/api/types'
-
-function CancelButton({ osId }: { osId: string }) {
-  const patchOs = usePatchOs(osId)
-  function handleCancel() {
-    if (!confirm('Cancelar esta OS?')) return
-    patchOs.mutate({ status: 'cancelada' })
-  }
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-7 gap-1.5 px-2 text-amber-600 hover:text-amber-700"
-      onClick={handleCancel}
-      disabled={patchOs.isPending}
-    >
-      <Ban className="h-3.5 w-3.5" /> Cancelar
-    </Button>
-  )
-}
-
-function ReopenButton({ osId }: { osId: string }) {
-  const reabrir = useReabrirOs(osId)
-  function handleReopen() {
-    if (!confirm('Reabrir esta OS? Ela volta a ficar editável (reatribuir/cancelar).')) return
-    reabrir.mutate('reaberta pelo painel')
-  }
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      className="h-7 gap-1.5 px-2 text-blue-600 hover:text-blue-700"
-      onClick={handleReopen}
-      disabled={reabrir.isPending}
-    >
-      <RotateCcw className="h-3.5 w-3.5" /> Reabrir
-    </Button>
-  )
-}
 
 function DeleteButton({ osId }: { osId: string }) {
   const deleteOs = useDeleteOs(osId)
@@ -163,7 +119,6 @@ export function OsList({ onNovaOs }: { onNovaOs?: () => void } = {}) {
                 <th className="px-4 py-2.5 font-semibold">Status</th>
                 <th className="px-4 py-2.5 font-semibold">Técnico</th>
                 <th className="px-4 py-2.5 font-semibold">Problema</th>
-                <th className="px-4 py-2.5 font-semibold">Endereço</th>
                 <th className="px-4 py-2.5 font-semibold">Criada</th>
                 <th className="px-4 py-2.5 font-semibold">Ações</th>
               </tr>
@@ -186,16 +141,14 @@ export function OsList({ onNovaOs }: { onNovaOs?: () => void } = {}) {
                       : <span className="italic">sem técnico</span>}
                   </td>
                   <td className="px-4 py-3 max-w-xs truncate">{o.problema}</td>
-                  <td className="px-4 py-3 max-w-xs truncate text-muted-foreground">
-                    {o.endereco}
-                  </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {new Date(o.criada_em).toLocaleString('pt-BR')}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      {/* Reatribuir só em OS não-finalizada (a API bloqueia em concluída). */}
-                      {o.status !== 'concluida' && o.status !== 'cancelada' && (
+                      {/* Reatribuir técnico — em qualquer status menos cancelada
+                          (a API já permite reatribuir concluída). */}
+                      {o.status !== 'cancelada' && (
                         <Button
                           variant="ghost"
                           size="sm"
@@ -205,12 +158,7 @@ export function OsList({ onNovaOs }: { onNovaOs?: () => void } = {}) {
                           <UserCog className="h-3.5 w-3.5" /> Técnico
                         </Button>
                       )}
-                      {/* Cancelar funciona em aberta E concluída (patch de status). */}
-                      {o.status !== 'cancelada' && <CancelButton osId={o.id} />}
-                      {/* Reabrir destrava OS finalizada → volta a aceitar reatribuir. */}
-                      {(o.status === 'concluida' || o.status === 'cancelada') && (
-                        <ReopenButton osId={o.id} />
-                      )}
+                      {/* Excluir = avisa o técnico (cancelado) e apaga de vez. */}
                       <DeleteButton osId={o.id} />
                     </div>
                   </td>

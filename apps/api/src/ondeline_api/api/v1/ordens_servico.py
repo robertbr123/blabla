@@ -433,10 +433,8 @@ async def reatribuir_os(
     os_ = await repo.get_by_id(os_id)
     if os_ is None:
         raise HTTPException(status_code=404, detail="OS não encontrada")
-    if os_.status == OsStatus.CONCLUIDA:
-        raise HTTPException(
-            status_code=422, detail="OS concluída não pode ser reatribuída"
-        )
+    # Reatribuir é permitido em qualquer status (inclusive concluída) — o admin
+    # precisa corrigir o técnico de uma OS já fechada direto pela lista.
     if os_.tecnico_id == body.tecnico_id:
         out = OsOut.model_validate(os_)
         out.nome_cliente = (await _fetch_nome_cliente(session, os_.cliente_id)) or os_.nome_sgp
