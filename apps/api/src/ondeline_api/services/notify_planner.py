@@ -5,7 +5,7 @@ Notificacao records that the notify_sender worker will process.
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 import structlog
 from sqlalchemy import and_, select
@@ -15,8 +15,6 @@ from ondeline_api.adapters.sgp.base import Fatura
 from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.business import (
     Cliente,
-    Notificacao,
-    NotificacaoStatus,
     NotificacaoTipo,
 )
 from ondeline_api.repositories.notificacao import NotificacaoRepo
@@ -29,6 +27,16 @@ def _today_at(hour: int = 9) -> datetime:
     """Today's UTC date at the specified hour (default 09:00 UTC)."""
     now = datetime.now(tz=UTC)
     return datetime.combine(now.date(), time(hour=hour, tzinfo=UTC))
+
+
+def _parse_iso_date(s: str | None) -> date | None:
+    """Parseia 'YYYY-MM-DD' (ou ISO com hora) pra date. None se vazio/invalido."""
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(s[:10]).date()
+    except (ValueError, TypeError):
+        return None
 
 
 def _vence_em_dias(t: Fatura, days: int) -> bool:
@@ -146,61 +154,40 @@ async def schedule_pagamentos(
     *,
     look_back_days: int = 7,
 ) -> int:
-    """Detect titulos that were 'aberto' (in recent notifications) but are
-    now 'pago' in SGP. Schedule a PAGAMENTO thank-you notification.
+    """Detecta faturas pagas RECENTEMENTE e agenda o 'obrigado'.
+
+    Usa o `data_pagamento` do titulo (SGP marca status='pago' + dataPagamento).
+    Varre TODOS os clientes ativos — NAO depende de lembrete previo. Assim
+    early-payers (que pagam antes de vencer, sem receber lembrete de cobranca)
+    tambem recebem a confirmacao. Janela `look_back_days` evita backlog no
+    primeiro run. Idempotente por titulo (pagamento_titulo_ids).
     """
     repo = NotificacaoRepo(session)
     when = _today_at(11)
-    cutoff = datetime.now(tz=UTC) - timedelta(days=look_back_days)
-    stmt = (
-        select(Notificacao)
-        .where(
-            and_(
-                Notificacao.status == NotificacaoStatus.ENVIADA,
-                Notificacao.tipo.in_([NotificacaoTipo.VENCIMENTO, NotificacaoTipo.ATRASO]),
-                Notificacao.enviada_em >= cutoff,
-            )
-        )
-    )
-    recent = list((await session.execute(stmt)).scalars().all())
-    seen_clientes = {n.cliente_id for n in recent}
+    hoje = datetime.now(tz=UTC).date()
     count = 0
-    for cliente_id in seen_clientes:
-        cliente = await session.get(Cliente, cliente_id)
-        if cliente is None:
-            continue
+    for cliente in await _list_active_clientes(session):
         try:
             cpf = decrypt_pii(cliente.cpf_cnpj_encrypted)
         except Exception:
             continue
-        # invalidate cache to force fresh fetch
-        await sgp_cache.invalidate(cpf)
         cli_sgp = await sgp_cache.get_cliente(cpf)
         if cli_sgp is None:
             continue
-        # Look for previously-pending titulo IDs that are now pago
-        pending_ids: set[str] = set()
-        for n in recent:
-            if n.cliente_id != cliente_id:
+        ja_notificados = await repo.pagamento_titulo_ids(cliente.id)
+        pagos_now: list[Fatura] = []
+        for t in cli_sgp.titulos:
+            if t.status != "pago" or str(t.id) in ja_notificados:
                 continue
-            for t in (n.payload or {}).get("titulos", []):
-                pending_ids.add(str(t.get("id", "")))
-        # Titulos que ja tiveram "obrigado" enviado — idempotencia por titulo.
-        # Sem isso, como agendada_para muda a cada dia, o dedup
-        # (cliente, tipo, agendada_para) nao barra reenvio e o cliente recebe a
-        # confirmacao de pagamento todo dia enquanto a cobranca original estiver
-        # dentro da janela de look_back_days.
-        ja_notificados = await repo.pagamento_titulo_ids(cliente_id)
-        pagos_now = [
-            t for t in cli_sgp.titulos
-            if t.status == "pago"
-            and str(t.id) in pending_ids
-            and str(t.id) not in ja_notificados
-        ]
+            dp = _parse_iso_date(t.data_pagamento)
+            # So confirma pagamento datado dentro da janela (nem futuro, nem antigo).
+            if dp is None or dp > hoje or (hoje - dp).days > look_back_days:
+                continue
+            pagos_now.append(t)
         if not pagos_now:
             continue
         new_n = await repo.schedule(
-            cliente_id=cliente_id,
+            cliente_id=cliente.id,
             tipo=NotificacaoTipo.PAGAMENTO,
             agendada_para=when,
             payload={

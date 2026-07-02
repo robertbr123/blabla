@@ -127,6 +127,7 @@ def _build_fatura(raw: dict[str, Any]) -> Fatura:
         codigo_pix=raw.get("codigoPix") or None,
         dias_atraso=int(raw.get("diasAtraso") or 0),
         contrato_id=_extract_contrato_id(raw),
+        data_pagamento=(str(raw.get("dataPagamento") or "") or None),
     )
 
 

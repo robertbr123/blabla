@@ -15,15 +15,10 @@ from ondeline_api.adapters.sgp.base import (
 from ondeline_api.adapters.sgp.fakes import FakeSgpProvider
 from ondeline_api.adapters.sgp.router import SgpRouter
 from ondeline_api.db.crypto import encrypt_pii, hash_pii
-from ondeline_api.db.models.business import (
-    Cliente,
-    NotificacaoStatus,
-    NotificacaoTipo,
-)
+from ondeline_api.db.models.business import Cliente
 from ondeline_api.db.models.business import (
     SgpProvider as SgpProviderEnum,
 )
-from ondeline_api.repositories.notificacao import NotificacaoRepo
 from ondeline_api.services.notify_planner import (
     schedule_atrasos,
     schedule_pagamentos,
@@ -115,111 +110,55 @@ async def test_schedule_atrasos_agenda_para_1_5_15_dias(db_session: AsyncSession
 
 
 async def test_schedule_pagamentos_detecta_titulo_pago(db_session: AsyncSession) -> None:
+    """Detecta fatura paga pelo `dataPagamento` recente — SEM depender de
+    lembrete previo (early-payers tambem recebem o 'obrigado')."""
     cpf = "44455566677"
-    # First, schedule + send a VENCIMENTO notification with titulo T1
-    titulos = [Fatura(id="T1", valor=100, vencimento=_today_str(1), status="aberto")]
-    cliente, cache = await _make_cliente_with_titulos(db_session, cpf, titulos)
-    n = await NotificacaoRepo(db_session).schedule(
-        cliente_id=cliente.id,
-        tipo=NotificacaoTipo.VENCIMENTO,
-        agendada_para=datetime.now(tz=UTC) - timedelta(hours=1),
-        payload={"titulos": [{"id": "T1", "valor": 100, "vencimento": _today_str(1)}]},
-    )
-    assert n is not None
-    # mark as ENVIADA
-    n.status = NotificacaoStatus.ENVIADA
-    n.enviada_em = datetime.now(tz=UTC) - timedelta(hours=1)
-    await db_session.flush()
-
-    # Now SGP says T1 is paid — replace cache router with paid version
-    titulos_pagos = [Fatura(id="T1", valor=100, vencimento=_today_str(1), status="pago")]
-    cli_sgp_paid = ClienteSgp(
-        provider=SgpProviderEnum.ONDELINE,
-        sgp_id="42",
-        nome="Test",
-        cpf_cnpj=cpf,
-        contratos=[Contrato(id="100", plano="P", status="ativo", cidade="SP")],
-        endereco=EnderecoSgp(cidade="SP"),
-        titulos=titulos_pagos,
-    )
-    cache._router = SgpRouter(
-        primary=FakeSgpProvider(clientes={cpf: cli_sgp_paid}),
-        secondary=FakeSgpProvider(),
-    )
-
+    titulos = [
+        Fatura(
+            id="T1", valor=100, vencimento=_today_str(-1),
+            status="pago", data_pagamento=_today_str(0),
+        )
+    ]
+    _, cache = await _make_cliente_with_titulos(db_session, cpf, titulos)
     count = await schedule_pagamentos(db_session, cache)
     assert count == 1
 
 
 async def test_schedule_pagamentos_idempotente_por_titulo(db_session: AsyncSession) -> None:
-    """Regressao: cliente pagou 1x e recebia o "obrigado" todo dia.
-
-    Como agendada_para muda a cada dia, o dedup (cliente, tipo, agendada_para)
-    nao barrava reenvio. Com a idempotencia por titulo, um titulo que ja teve
-    PAGAMENTO agendado nao agenda de novo, mesmo que a cobranca original siga
-    dentro da janela de look_back_days.
-    """
+    """Um titulo que ja teve PAGAMENTO agendado nao agenda de novo — senao o
+    cliente receberia o 'obrigado' toda vez que o job roda."""
     cpf = "99988877766"
-    titulos = [Fatura(id="T1", valor=100, vencimento=_today_str(1), status="aberto")]
-    cliente, cache = await _make_cliente_with_titulos(db_session, cpf, titulos)
-    repo = NotificacaoRepo(db_session)
+    titulos = [
+        Fatura(
+            id="T1", valor=100, vencimento=_today_str(-1),
+            status="pago", data_pagamento=_today_str(0),
+        )
+    ]
+    _, cache = await _make_cliente_with_titulos(db_session, cpf, titulos)
+    a = await schedule_pagamentos(db_session, cache)
+    b = await schedule_pagamentos(db_session, cache)
+    assert a == 1
+    assert b == 0
 
-    # Cobranca original enviada (segue dentro da janela de 7 dias).
-    venc = await repo.schedule(
-        cliente_id=cliente.id,
-        tipo=NotificacaoTipo.VENCIMENTO,
-        agendada_para=datetime.now(tz=UTC) - timedelta(days=2),
-        payload={"titulos": [{"id": "T1", "valor": 100, "vencimento": _today_str(1)}]},
-    )
-    assert venc is not None
-    venc.status = NotificacaoStatus.ENVIADA
-    venc.enviada_em = datetime.now(tz=UTC) - timedelta(days=2)
-    await db_session.flush()
 
-    # PAGAMENTO ja agendado ontem (agendada_para diferente do de hoje).
-    pago_ontem = await repo.schedule(
-        cliente_id=cliente.id,
-        tipo=NotificacaoTipo.PAGAMENTO,
-        agendada_para=datetime.now(tz=UTC) - timedelta(days=1),
-        payload={"titulos": [{"id": "T1", "valor": 100}]},
-    )
-    assert pago_ontem is not None
-
-    # SGP segue dizendo T1 pago.
-    titulos_pagos = [Fatura(id="T1", valor=100, vencimento=_today_str(1), status="pago")]
-    cli_sgp_paid = ClienteSgp(
-        provider=SgpProviderEnum.ONDELINE,
-        sgp_id="42",
-        nome="Test",
-        cpf_cnpj=cpf,
-        contratos=[Contrato(id="100", plano="P", status="ativo", cidade="SP")],
-        endereco=EnderecoSgp(cidade="SP"),
-        titulos=titulos_pagos,
-    )
-    cache._router = SgpRouter(
-        primary=FakeSgpProvider(clientes={cpf: cli_sgp_paid}),
-        secondary=FakeSgpProvider(),
-    )
-
-    # Nao deve agendar de novo — ja agradeceu ontem.
+async def test_schedule_pagamentos_ignora_pagamento_antigo(db_session: AsyncSession) -> None:
+    """Pagamento fora da janela (ha 30 dias) nao dispara — evita backlog."""
+    cpf = "12312312312"
+    titulos = [
+        Fatura(
+            id="T1", valor=100, vencimento=_today_str(-40),
+            status="pago", data_pagamento=_today_str(-30),
+        )
+    ]
+    _, cache = await _make_cliente_with_titulos(db_session, cpf, titulos)
     count = await schedule_pagamentos(db_session, cache)
     assert count == 0
 
 
-async def test_schedule_pagamentos_no_change_no_count(db_session: AsyncSession) -> None:
+async def test_schedule_pagamentos_ignora_aberto(db_session: AsyncSession) -> None:
     cpf = "55566677788"
     titulos = [Fatura(id="T1", valor=100, vencimento=_today_str(1), status="aberto")]
-    cliente, cache = await _make_cliente_with_titulos(db_session, cpf, titulos)
-    n = await NotificacaoRepo(db_session).schedule(
-        cliente_id=cliente.id,
-        tipo=NotificacaoTipo.VENCIMENTO,
-        agendada_para=datetime.now(tz=UTC) - timedelta(hours=1),
-        payload={"titulos": [{"id": "T1", "valor": 100, "vencimento": _today_str(1)}]},
-    )
-    assert n is not None
-    n.status = NotificacaoStatus.ENVIADA
-    n.enviada_em = datetime.now(tz=UTC) - timedelta(hours=1)
-    await db_session.flush()
+    _, cache = await _make_cliente_with_titulos(db_session, cpf, titulos)
     count = await schedule_pagamentos(db_session, cache)
     assert count == 0
 
