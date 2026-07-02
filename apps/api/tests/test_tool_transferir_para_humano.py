@@ -39,6 +39,79 @@ async def test_marca_conversa_aguardando(db_session) -> None:
     assert conv.estado is ConversaEstado.AGUARDA_ATENDENTE
 
 
+async def test_transferir_nao_cliente_cria_lead(db_session) -> None:
+    """Prospect (sem cliente_id) que chega no atendente vira lead automaticamente."""
+    from sqlalchemy import select
+
+    from ondeline_api.db.models.business import Lead
+
+    jid = f"5592{uuid4().hex[:9]}@s.whatsapp.net"
+    conv = Conversa(
+        id=uuid4(),
+        whatsapp=jid,
+        estado=ConversaEstado.INICIO,
+        status=ConversaStatus.BOT,
+    )
+    db_session.add(conv)
+    await db_session.flush()
+    ctx = ToolContext(
+        session=db_session,
+        conversa=conv,
+        cliente=None,
+        evolution=None,  # type: ignore[arg-type]
+        sgp_router=None,  # type: ignore[arg-type]
+        sgp_cache=None,  # type: ignore[arg-type]
+    )
+    await transferir_para_humano(ctx, motivo="quer ser cliente")
+    await db_session.flush()
+    leads = list(
+        (await db_session.execute(select(Lead).where(Lead.whatsapp == jid))).scalars().all()
+    )
+    assert len(leads) == 1
+    assert leads[0].interesse == "quer ser cliente"
+
+
+async def test_transferir_cliente_identificado_nao_cria_lead(db_session) -> None:
+    """Cliente ja identificado (cliente_id setado) NAO vira lead."""
+    from sqlalchemy import select
+
+    from ondeline_api.db.crypto import encrypt_pii, hash_pii
+    from ondeline_api.db.models.business import Cliente, Lead
+
+    jid = f"5592{uuid4().hex[:9]}@s.whatsapp.net"
+    cliente = Cliente(
+        cpf_cnpj_encrypted=encrypt_pii("11122233344"),
+        cpf_hash=hash_pii(uuid4().hex),
+        nome_encrypted=encrypt_pii("Cliente Real"),
+        whatsapp=jid,
+    )
+    db_session.add(cliente)
+    await db_session.flush()
+    conv = Conversa(
+        id=uuid4(),
+        whatsapp=jid,
+        cliente_id=cliente.id,
+        estado=ConversaEstado.CLIENTE,
+        status=ConversaStatus.BOT,
+    )
+    db_session.add(conv)
+    await db_session.flush()
+    ctx = ToolContext(
+        session=db_session,
+        conversa=conv,
+        cliente=cliente,
+        evolution=None,  # type: ignore[arg-type]
+        sgp_router=None,  # type: ignore[arg-type]
+        sgp_cache=None,  # type: ignore[arg-type]
+    )
+    await transferir_para_humano(ctx, motivo="suporte")
+    await db_session.flush()
+    leads = list(
+        (await db_session.execute(select(Lead).where(Lead.whatsapp == jid))).scalars().all()
+    )
+    assert len(leads) == 0
+
+
 def test_schema_estavel() -> None:
     assert SCHEMA["type"] == "object"
     assert "motivo" in SCHEMA["properties"]

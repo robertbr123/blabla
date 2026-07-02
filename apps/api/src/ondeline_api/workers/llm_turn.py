@@ -13,6 +13,7 @@ import ondeline_api.tools.consultar_manutencoes
 import ondeline_api.tools.consultar_planos
 import ondeline_api.tools.consultar_rede
 import ondeline_api.tools.enviar_boleto
+import ondeline_api.tools.registrar_lead
 
 # Importacoes que registram as tools no registry global
 import ondeline_api.tools.transferir_para_humano  # noqa: F401

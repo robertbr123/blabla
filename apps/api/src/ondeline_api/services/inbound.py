@@ -993,18 +993,17 @@ async def process_inbound_message(
                     await deps.conversas.add_tag(conversa, f"indicado:{codigo_ind}")
                 except Exception:
                     pass
-                # Cria Lead vinculado e registra uso.
-                from ondeline_api.db.models.business import Lead, LeadStatus
+                # Cria/atualiza Lead vinculado (idempotente por whatsapp) e
+                # registra uso. Mesmo núcleo usado pela tool registrar_lead e
+                # pela transferência pra humano — nunca duplica o contato.
+                from ondeline_api.repositories.lead import LeadRepo
 
-                lead = Lead(
-                    nome=evt.push_name or "Lead via indicação",
+                lead, _ = await LeadRepo(deps.session).upsert_by_whatsapp(
                     whatsapp=evt.jid,
+                    nome=evt.push_name or "Lead via indicação",
                     interesse=f"Indicado por {codigo_ind}",
-                    status=LeadStatus.NOVO,
                     indicacao_id=ind_lead.id,
                 )
-                deps.session.add(lead)
-                await deps.session.flush()
                 await IndicacaoRepo(deps.session).registrar_uso(
                     ind_lead.id, lead_id=lead.id
                 )
