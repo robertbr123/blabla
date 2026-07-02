@@ -195,11 +195,14 @@ def _to_fsm_event(kind: InboundKind, text: str | None) -> Event:
 _GATE_ESTADOS = frozenset({
     ConversaEstado.AGUARDA_OPCAO,
     ConversaEstado.CLIENTE_CPF,
-    ConversaEstado.LEAD_NOME,
-    ConversaEstado.LEAD_INTERESSE,
 })
+# LEAD_NOME/LEAD_INTERESSE ficam FORA do gate de proposito: uma vez que o
+# prospect declara intencao de contratar, a conversa entra nesse fluxo e o
+# LLM conduz livre (coleta nome, registra o lead, escala). Sem isso, o gate
+# barrava a resposta com o nome do interessado e nunca fechava o lead.
 
 _RE_OPCAO_12 = re.compile(r"(?:^|\s)[12](?:$|\s|[.,!])")
+_RE_OPCAO_2 = re.compile(r"(?:^|\s)2(?:$|\s|[.,!])")
 _RE_QUER_CONTRATAR = re.compile(
     r"\b(contrat|quero (?:ser cliente|internet|plano|fibra)|novo cliente|"
     r"interesse|plano|fibra|mbps|velocidade|valor do plano|quanto custa)\b",
@@ -219,6 +222,25 @@ _GATE_MSG = (
     "Digite seu *CPF* (somente números, 11 dígitos) se já é cliente, "
     "ou *2* se quer contratar um plano."
 )
+
+
+def _is_prospect_intent(text: str | None) -> bool:
+    """True se a mensagem indica que a pessoa quer CONTRATAR (virar cliente).
+
+    Opcao 2 do menu ou palavra-chave de contratacao — e NAO 'ja sou cliente'.
+    Usado pra mover a conversa pro fluxo de lead (LEAD_INTERESSE), que sai do
+    gate de identificacao por CPF.
+    """
+    t = (text or "").strip()
+    if not t:
+        return False
+    if _RE_JA_CLIENTE.search(t):
+        return False
+    if _RE_OPCAO_2.search(f" {t} "):
+        return True
+    if _RE_QUER_CONTRATAR.search(t):
+        return True
+    return False
 
 
 def _mensagem_identifica_ou_libera(text: str | None) -> bool:
@@ -1535,6 +1557,18 @@ async def process_inbound_message(
             duplicate=False,
             escalated=False,
         )
+
+    # Prospect declarou intencao de contratar (opcao 2 / palavra-chave) e nao e
+    # cliente: entra no fluxo de lead. LEAD_INTERESSE esta FORA do gate, entao a
+    # partir daqui o LLM conduz livre — inclusive a resposta com o nome, que o
+    # gate barrava antes. O FSM mantem LEAD_INTERESSE nas mensagens seguintes.
+    if (
+        evt.kind is InboundKind.TEXT
+        and conversa.cliente_id is None
+        and conversa.estado in _GATE_ESTADOS
+        and _is_prospect_intent(evt.text)
+    ):
+        conversa.estado = ConversaEstado.LEAD_INTERESSE
 
     decision: FsmDecision = Fsm.transition(
         estado=conversa.estado,
