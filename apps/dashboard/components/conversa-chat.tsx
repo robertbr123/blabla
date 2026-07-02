@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ChevronDown,
   ChevronUp,
@@ -45,6 +45,32 @@ const ROLE_LABEL: Record<string, string> = {
 }
 
 const OS_STATUS_ABERTA = ['pendente', 'em_andamento']
+
+/** True se as duas datas caem no mesmo dia (horário local). */
+function mesmoDia(a: string, b: string): boolean {
+  const da = new Date(a)
+  const db = new Date(b)
+  return (
+    da.getFullYear() === db.getFullYear() &&
+    da.getMonth() === db.getMonth() &&
+    da.getDate() === db.getDate()
+  )
+}
+
+/** Rótulo do separador de data: "Hoje", "Ontem" ou "30 de junho de 2026". */
+function rotuloDataSeparador(iso: string): string {
+  const d = new Date(iso)
+  const hoje = new Date()
+  const ontem = new Date(hoje)
+  ontem.setDate(hoje.getDate() - 1)
+  if (mesmoDia(iso, hoje.toISOString())) return 'Hoje'
+  if (mesmoDia(iso, ontem.toISOString())) return 'Ontem'
+  return d.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
+}
 
 interface SseEvent {
   type: string
@@ -409,12 +435,21 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
               {allMsgs.length === 0 && (
                 <p className="text-center text-sm text-muted-foreground">Sem mensagens</p>
               )}
-              {allMsgs.map((m) => {
+              {allMsgs.map((m, i) => {
                 const isMatch = matchedIds.includes(m.id)
                 const isCurrent = isMatch && matchedIds[currentMatch] === m.id
+                const prev = i > 0 ? allMsgs[i - 1] : null
+                const mostraData = !prev || !mesmoDia(prev.created_at, m.created_at)
                 return (
+                  <Fragment key={m.id}>
+                  {mostraData && (
+                    <div className="flex justify-center py-1">
+                      <span className="rounded-full bg-muted px-3 py-0.5 text-xs font-medium text-muted-foreground">
+                        {rotuloDataSeparador(m.created_at)}
+                      </span>
+                    </div>
+                  )}
                   <div
-                    key={m.id}
                     ref={(el) => {
                       if (el) msgRefs.current.set(m.id, el)
                       else msgRefs.current.delete(m.id)
@@ -437,6 +472,7 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
                     </div>
                     <MensagemBody m={m} searchQuery={searchQuery} />
                   </div>
+                  </Fragment>
                 )
               })}
             </div>
