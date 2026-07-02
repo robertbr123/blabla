@@ -41,17 +41,6 @@ def _vence_em_dias(t: Fatura, days: int) -> bool:
     return (v - datetime.now(tz=UTC).date()).days == days
 
 
-def _vencimento_proximos_dias(t: Fatura, max_days: int) -> bool:
-    if not t.vencimento:
-        return False
-    try:
-        v = datetime.fromisoformat(t.vencimento).date()
-    except ValueError:
-        return False
-    delta = (v - datetime.now(tz=UTC).date()).days
-    return 0 <= delta <= max_days
-
-
 async def _list_active_clientes(session: AsyncSession) -> list[Cliente]:
     stmt = select(Cliente).where(Cliente.deleted_at.is_(None))
     return list((await session.execute(stmt)).scalars().all())
@@ -60,11 +49,13 @@ async def _list_active_clientes(session: AsyncSession) -> list[Cliente]:
 async def schedule_vencimentos(
     session: AsyncSession,
     sgp_cache: SgpCacheService,
-    *,
-    look_ahead_days: int = 3,
 ) -> int:
     """For each active cliente, schedule VENCIMENTO notification for titulos
-    with vencimento in [today, today+look_ahead_days].
+    que vencem HOJE (D-0).
+
+    Dispara uma unica vez, no dia do vencimento — a chave de dedup
+    (cliente, tipo, agendada_para=hoje 09h) garante 1 por dia, e como so
+    casa o dia exato, nao ha repeticao nos dias anteriores.
     """
     repo = NotificacaoRepo(session)
     when = _today_at(9)
@@ -79,7 +70,7 @@ async def schedule_vencimentos(
             continue
         proximos = [
             t for t in cli_sgp.titulos
-            if t.status == "aberto" and _vencimento_proximos_dias(t, look_ahead_days)
+            if t.status == "aberto" and _vence_em_dias(t, 0)
         ]
         if not proximos:
             continue
@@ -104,10 +95,10 @@ async def schedule_atrasos(
     session: AsyncSession,
     sgp_cache: SgpCacheService,
     *,
-    targets: tuple[int, ...] = (1, 7, 15),
+    targets: tuple[int, ...] = (1, 5, 15),
 ) -> int:
     """For each active cliente, schedule ATRASO notification for titulos
-    overdue by exactly 1, 7, or 15 days.
+    overdue by exactly 1, 5, or 15 days.
 
     Each delay bucket gets a distinct agendada_para minute offset so the
     dedup key (cliente_id, tipo, agendada_para) remains unique across buckets.

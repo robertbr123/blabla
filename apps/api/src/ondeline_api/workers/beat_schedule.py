@@ -45,12 +45,17 @@ BEAT_SCHEDULE: dict[str, dict[str, Any]] = {
         "task": "ondeline_api.workers.partition_jobs.ensure_future_mensagens_partitions",
         "schedule": crontab(hour=2, minute=30),
     },
-    # F2 — Régua de cobrança automática.
-    # Beat usa o timezone configurado no Celery (America/Sao_Paulo).
-    "cobranca-regua": {
-        "task": "ondeline_api.workers.cobranca_jobs.run_regua_cobranca",
-        "schedule": crontab(hour=9, minute=0),
-    },
+    # F2 — Régua de cobrança automática (DESLIGADA).
+    # Migrou pra cobrança via planner + templates da Meta (notify_jobs /
+    # notify_sender), que é provider-aware (Cloud oficial usa template
+    # aprovado; Evolution cai em texto livre). A Régua enviava SÓ via
+    # Evolution (texto livre), duplicando a cobrança e ignorando o canal
+    # oficial. Código mantido em cobranca_jobs/cobranca_regua caso precise
+    # reativar — basta descomentar o agendamento abaixo.
+    # "cobranca-regua": {
+    #     "task": "ondeline_api.workers.cobranca_jobs.run_regua_cobranca",
+    #     "schedule": crontab(hour=9, minute=0),
+    # },
     # B5.2 — Notificacoes de fatura vencendo (in-app cliente).
     # 9h15 (depois da cobranca-regua, evita pico).
     "cliente-app-faturas-vencendo": {

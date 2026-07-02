@@ -7,10 +7,10 @@ entram preenchidos via ClienteRepo.upsert_from_sgp.
 
 Roda dentro do container API (tem acesso ao Fernet key + DB).
 
-Uso:
-    docker exec -it blabla-api python /app/scripts/backfill_clientes_nome_normalized.py
+IMPORTANTE: a imagem do GHCR NAO inclui a pasta scripts/, entao copie o
+arquivo pro container antes de rodar (a partir do clone git na VPS):
 
-Ou copia o script pro container e roda:
+    cd blabla   # raiz do repo, onde existe scripts/
     docker cp scripts/backfill_clientes_nome_normalized.py blabla-api:/tmp/
     docker exec -it blabla-api python /tmp/backfill_clientes_nome_normalized.py
 

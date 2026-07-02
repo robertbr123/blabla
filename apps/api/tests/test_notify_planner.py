@@ -74,12 +74,17 @@ async def _make_cliente_with_titulos(
     return cliente, cache
 
 
-async def test_schedule_vencimentos_agenda_para_proximo_3_dias(db_session: AsyncSession) -> None:
+async def test_schedule_vencimentos_apenas_no_dia_do_vencimento(db_session: AsyncSession) -> None:
+    """Vencimento agenda SO no dia exato (D-0) — nao mais janela de 3 dias.
+
+    Antes disparava todo dia em [hoje, hoje+3], repetindo a mensagem. Agora
+    so no dia que vence, batendo com o gatilho da Meta `fatura_vencendo`.
+    """
     cpf = "11122233344"
     titulos = [
-        Fatura(id="T1", valor=100, vencimento=_today_str(2), status="aberto"),
-        Fatura(id="T2", valor=200, vencimento=_today_str(10), status="aberto"),  # too far
-        Fatura(id="T3", valor=300, vencimento=_today_str(-1), status="aberto"),  # already past
+        Fatura(id="T1", valor=100, vencimento=_today_str(0), status="aberto"),   # vence hoje → agenda
+        Fatura(id="T2", valor=200, vencimento=_today_str(3), status="aberto"),   # 3 dias antes → nao
+        Fatura(id="T3", valor=300, vencimento=_today_str(-1), status="aberto"),  # ja vencida → nao
     ]
     _, cache = await _make_cliente_with_titulos(db_session, cpf, titulos)
     count = await schedule_vencimentos(db_session, cache)
@@ -88,7 +93,7 @@ async def test_schedule_vencimentos_agenda_para_proximo_3_dias(db_session: Async
 
 async def test_schedule_vencimentos_dedup(db_session: AsyncSession) -> None:
     cpf = "22233344455"
-    titulos = [Fatura(id="T1", valor=100, vencimento=_today_str(1), status="aberto")]
+    titulos = [Fatura(id="T1", valor=100, vencimento=_today_str(0), status="aberto")]
     _, cache = await _make_cliente_with_titulos(db_session, cpf, titulos)
     a = await schedule_vencimentos(db_session, cache)
     b = await schedule_vencimentos(db_session, cache)
@@ -96,13 +101,13 @@ async def test_schedule_vencimentos_dedup(db_session: AsyncSession) -> None:
     assert b == 0
 
 
-async def test_schedule_atrasos_agenda_para_1_7_15_dias(db_session: AsyncSession) -> None:
+async def test_schedule_atrasos_agenda_para_1_5_15_dias(db_session: AsyncSession) -> None:
     cpf = "33344455566"
     titulos = [
-        Fatura(id="T1", valor=100, vencimento=_today_str(-1), status="aberto"),
-        Fatura(id="T2", valor=200, vencimento=_today_str(-7), status="aberto"),
-        Fatura(id="T3", valor=300, vencimento=_today_str(-15), status="aberto"),
-        Fatura(id="T4", valor=400, vencimento=_today_str(-3), status="aberto"),  # not target
+        Fatura(id="T1", valor=100, vencimento=_today_str(-1), status="aberto"),   # D+1
+        Fatura(id="T2", valor=200, vencimento=_today_str(-5), status="aberto"),   # D+5
+        Fatura(id="T3", valor=300, vencimento=_today_str(-15), status="aberto"),  # D+15
+        Fatura(id="T4", valor=400, vencimento=_today_str(-7), status="aberto"),   # nao é mais target
     ]
     _, cache = await _make_cliente_with_titulos(db_session, cpf, titulos)
     count = await schedule_atrasos(db_session, cache)
