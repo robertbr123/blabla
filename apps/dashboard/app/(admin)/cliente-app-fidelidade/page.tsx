@@ -131,6 +131,14 @@ function ResgateRow({ resgate }: { resgate: AdminFidelidadeResgate }) {
               {STATUS_LABEL[resgate.status]}
             </Badge>
           </div>
+          <div className="mt-1 text-sm font-medium text-foreground">
+            {resgate.cliente_nome || 'Cliente sem nome'}
+            {resgate.cliente_cpf_last4 && (
+              <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                CPF •••{resgate.cliente_cpf_last4}
+              </span>
+            )}
+          </div>
           <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">
             <span>
               <strong className="text-foreground">{resgate.pontos_gastos}</strong> pts
@@ -139,9 +147,11 @@ function ResgateRow({ resgate }: { resgate: AdminFidelidadeResgate }) {
             <span>
               {new Date(resgate.criado_em).toLocaleString('pt-BR')}
             </span>
-            <span className="font-mono text-[10px]">
-              user: {resgate.cliente_app_user_id.slice(0, 8)}…
-            </span>
+            {resgate.cliente_telefone && (
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                📱 {resgate.cliente_telefone}
+              </span>
+            )}
           </div>
           {resgate.obs_admin && !open && (
             <div className="mt-2 rounded border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-700">

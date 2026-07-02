@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.auth.cliente_deps import get_current_cliente_user
 from ondeline_api.auth.rbac import require_role
+from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.cliente_app import (
     ClienteAppFidelidadeResgate,
     ClienteAppUser,
@@ -240,6 +241,10 @@ admin_router = APIRouter(
 
 class AdminResgateOut(ResgateOut):
     cliente_app_user_id: str
+    # Identificacao do cliente que pediu o resgate (antes so vinha o UUID).
+    cliente_nome: str
+    cliente_cpf_last4: str
+    cliente_telefone: str | None = None
 
 
 class AdminResgatePatch(BaseModel):
@@ -247,7 +252,24 @@ class AdminResgatePatch(BaseModel):
     obs_admin: str | None = None
 
 
-def _admin_resgate_out(r: ClienteAppFidelidadeResgate) -> AdminResgateOut:
+def _admin_resgate_out(
+    r: ClienteAppFidelidadeResgate, user: ClienteAppUser | None
+) -> AdminResgateOut:
+    nome = ""
+    cpf_last4 = ""
+    telefone: str | None = None
+    if user is not None:
+        cpf_last4 = user.cpf_last4
+        try:
+            nome = decrypt_pii(user.nome_encrypted) if user.nome_encrypted else ""
+        except Exception:
+            nome = ""
+        try:
+            telefone = (
+                decrypt_pii(user.telefone_encrypted) if user.telefone_encrypted else None
+            )
+        except Exception:
+            telefone = None
     return AdminResgateOut(
         id=str(r.id),
         recompensa_slug=r.recompensa_slug,
@@ -257,6 +279,9 @@ def _admin_resgate_out(r: ClienteAppFidelidadeResgate) -> AdminResgateOut:
         obs_admin=r.obs_admin,
         criado_em=r.criado_em.isoformat(),
         cliente_app_user_id=str(r.cliente_app_user_id),
+        cliente_nome=nome,
+        cliente_cpf_last4=cpf_last4,
+        cliente_telefone=telefone,
     )
 
 
@@ -275,7 +300,19 @@ async def admin_listar(
     if status_filter:
         stmt = stmt.where(ClienteAppFidelidadeResgate.status == status_filter)
     rows = list((await session.execute(stmt)).scalars())
-    return [_admin_resgate_out(r) for r in rows]
+
+    # Busca os usuarios em 1 query e monta o mapa pra decifrar nome/telefone.
+    user_ids = {r.cliente_app_user_id for r in rows}
+    users: dict[UUID, ClienteAppUser] = {}
+    if user_ids:
+        u_rows = (
+            await session.execute(
+                select(ClienteAppUser).where(ClienteAppUser.id.in_(user_ids))
+            )
+        ).scalars()
+        users = {u.id: u for u in u_rows}
+
+    return [_admin_resgate_out(r, users.get(r.cliente_app_user_id)) for r in rows]
 
 
 @admin_router.patch(
@@ -298,4 +335,5 @@ async def admin_patch(
         row.obs_admin = body.obs_admin
     await session.commit()
     await session.refresh(row)
-    return _admin_resgate_out(row)
+    user = await session.get(ClienteAppUser, row.cliente_app_user_id)
+    return _admin_resgate_out(row, user)

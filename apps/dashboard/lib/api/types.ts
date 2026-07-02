@@ -737,6 +737,9 @@ export type FidelidadeResgateStatus =
 export interface AdminFidelidadeResgate {
   id: string
   cliente_app_user_id: string
+  cliente_nome: string
+  cliente_cpf_last4: string
+  cliente_telefone: string | null
   recompensa_slug: string
   recompensa_label: string
   pontos_gastos: number
