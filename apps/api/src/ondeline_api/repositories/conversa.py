@@ -86,13 +86,34 @@ class ConversaRepo:
         JOIN para evitar ambiguidade de FROM no SQLAlchemy. O segundo SELECT
         traz no maximo ``limit`` ids unicos, custo desprezivel.
         """
-        from sqlalchemy import case, desc
+        from sqlalchemy import case, desc, or_
+        from sqlalchemy.sql import ColumnElement
+
+        from ondeline_api.repositories.cliente_cadastro import normalize_nome
 
         stmt = select(Conversa).where(Conversa.deleted_at.is_(None))
         if status:
             stmt = stmt.where(Conversa.status == status)
         if q:
-            stmt = stmt.where(Conversa.whatsapp.ilike(f"%{q}%"))
+            # A busca casa por telefone OU nome do cliente:
+            #  - whatsapp cru (`5511...@s.whatsapp.net`) via substring literal e
+            #    tambem via so-digitos, pra funcionar quando o atendente digita
+            #    com mascara `(11) 9XXXX-XXXX` ou sem o codigo do pais.
+            #  - nome via `Cliente.nome_normalized` (plain, lowercase, sem acento)
+            #    — o nome real fica encriptado e nao e searchable por texto.
+            q_clean = q.strip()
+            conds: list[ColumnElement[bool]] = [Conversa.whatsapp.ilike(f"%{q_clean}%")]
+            digits = "".join(ch for ch in q_clean if ch.isdigit())
+            if digits and digits != q_clean:
+                conds.append(Conversa.whatsapp.ilike(f"%{digits}%"))
+            q_norm = normalize_nome(q_clean)
+            if q_norm:
+                nome_match = select(Cliente.id).where(
+                    Cliente.nome_normalized.ilike(f"%{q_norm}%"),
+                    Cliente.deleted_at.is_(None),
+                )
+                conds.append(Conversa.cliente_id.in_(nome_match))
+            stmt = stmt.where(or_(*conds))
         if canal_id is not None:
             stmt = stmt.where(Conversa.canal_id == canal_id)
         # cidade filter requires join with Cliente — skip for M6 v1 baseline

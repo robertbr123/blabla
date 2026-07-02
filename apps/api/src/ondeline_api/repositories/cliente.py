@@ -11,6 +11,7 @@ from ondeline_api.adapters.sgp.base import ClienteSgp
 from ondeline_api.db.crypto import encrypt_pii, hash_pii
 from ondeline_api.db.models.business import Cliente
 from ondeline_api.db.models.business import SgpProvider as SgpProviderEnum
+from ondeline_api.repositories.cliente_cadastro import normalize_nome
 
 
 def _primary_cidade(c: ClienteSgp) -> str:
@@ -94,6 +95,7 @@ class ClienteRepo:
         )
         if existing is not None:
             existing.nome_encrypted = encrypt_pii(c.nome)
+            existing.nome_normalized = normalize_nome(c.nome)
             existing.whatsapp = whatsapp or existing.whatsapp
             existing.plano = plano
             existing.status = status
@@ -108,6 +110,7 @@ class ClienteRepo:
             cpf_cnpj_encrypted=encrypt_pii(c.cpf_cnpj),
             cpf_hash=cpf_hash,
             nome_encrypted=encrypt_pii(c.nome),
+            nome_normalized=normalize_nome(c.nome),
             whatsapp=whatsapp,
             plano=plano,
             status=status,

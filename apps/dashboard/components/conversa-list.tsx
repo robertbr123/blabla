@@ -121,7 +121,7 @@ export function ConversaList() {
 
       <div className="flex flex-wrap items-center gap-3">
         <Input
-          placeholder="Buscar por whatsapp…"
+          placeholder="Buscar por nome ou whatsapp…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           className="max-w-xs"

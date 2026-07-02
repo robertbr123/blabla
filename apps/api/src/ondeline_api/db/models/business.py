@@ -145,6 +145,9 @@ class Cliente(Base):
     cpf_cnpj_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
     cpf_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     nome_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    # Nome em plain (lowercase, sem acento) so pra busca textual — o nome real
+    # fica em nome_encrypted. Preenchido no upsert_from_sgp e por backfill.
+    nome_normalized: Mapped[str | None] = mapped_column(String(255), nullable=True)
     whatsapp: Mapped[str] = mapped_column(String(64), nullable=False)
     plano: Mapped[str | None] = mapped_column(String(80), nullable=True)
     status: Mapped[str | None] = mapped_column(String(40), nullable=True)
@@ -195,6 +198,7 @@ class Cliente(Base):
             postgresql_where="deleted_at IS NULL",
         ),
         Index("ix_clientes_whatsapp", "whatsapp"),
+        Index("ix_clientes_nome_norm", "nome_normalized"),
     )
 
 

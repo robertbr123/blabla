@@ -10,6 +10,7 @@ from ondeline_api.db.models.business import (
     ConversaEstado,
     ConversaStatus,
 )
+from ondeline_api.repositories.cliente_cadastro import normalize_nome
 from ondeline_api.repositories.conversa import ConversaRepo
 
 pytestmark = pytest.mark.asyncio
@@ -116,6 +117,55 @@ async def test_list_paginated_returns_none_nome_when_no_cliente(db_session) -> N
     assert len(matching) == 1
     _conv, nome_enc = matching[0]
     assert nome_enc is None
+
+
+async def test_list_paginated_busca_por_nome_do_cliente(db_session) -> None:
+    """`q` deve casar pelo NOME do cliente (via nome_normalized), nao so telefone.
+
+    Regressao: a busca de Conversas so filtrava `Conversa.whatsapp`, entao digitar
+    o nome do cliente nunca encontrava nada.
+    """
+    marca = _uuid.uuid4().hex[:10]
+    nome = f"Zulmira {marca} de Souza"
+    jid = f"55119{str(_uuid.uuid4().int)[:8]}@s.whatsapp.net"
+
+    cliente = Cliente(
+        cpf_cnpj_encrypted=encrypt_pii("33344455566"),
+        cpf_hash=hash_pii(_uuid.uuid4().hex),
+        nome_encrypted=encrypt_pii(nome),
+        nome_normalized=normalize_nome(nome),
+        whatsapp=jid,
+    )
+    db_session.add(cliente)
+    await db_session.flush()
+
+    repo = ConversaRepo(db_session)
+    c = await repo.get_or_create_by_whatsapp(jid)
+    await repo.set_cliente(c, cliente.id)
+
+    # busca pelo pedaco unico do nome, em caixa diferente (case-insensitive).
+    rows, _ = await repo.list_paginated(q=marca.upper())
+    matching = [conv for conv, _ in rows if conv.id == c.id]
+    assert len(matching) == 1
+
+
+async def test_list_paginated_busca_telefone_com_mascara(db_session) -> None:
+    """Busca por telefone funciona com mascara/DDD — normaliza `q` para digitos.
+
+    Regressao: o JID e gravado cru (`55DDD9XXXXXXXX@s.whatsapp.net`), mas o
+    atendente digita `(DDD) 9XXXX-XXXX`; o ilike com mascara nunca casava.
+    """
+    suffix = str(_uuid.uuid4().int)[:8]
+    ddd = "11"
+    jid = f"55{ddd}9{suffix}@s.whatsapp.net"
+
+    repo = ConversaRepo(db_session)
+    c = await repo.get_or_create_by_whatsapp(jid)
+
+    digitado = f"({ddd}) 9{suffix[:4]}-{suffix[4:]}"
+    rows, _ = await repo.list_paginated(q=digitado)
+    matching = [conv for conv, _ in rows if conv.id == c.id]
+    assert len(matching) == 1
 
 
 async def test_list_paginated_cursor_nao_pula_item_na_fronteira(db_session) -> None:
