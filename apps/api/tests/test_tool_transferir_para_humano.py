@@ -4,12 +4,20 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
-from ondeline_api.db.models.business import Conversa, ConversaEstado, ConversaStatus
+from ondeline_api.db.crypto import encrypt_pii, hash_pii
+from ondeline_api.db.models.business import (
+    Cliente,
+    Conversa,
+    ConversaEstado,
+    ConversaStatus,
+    Lead,
+)
 from ondeline_api.tools.context import ToolContext
 from ondeline_api.tools.transferir_para_humano import (
     SCHEMA,
     transferir_para_humano,
 )
+from sqlalchemy import select
 
 pytestmark = pytest.mark.asyncio
 
@@ -41,10 +49,6 @@ async def test_marca_conversa_aguardando(db_session) -> None:
 
 async def test_transferir_nao_cliente_cria_lead(db_session) -> None:
     """Prospect (sem cliente_id) que chega no atendente vira lead automaticamente."""
-    from sqlalchemy import select
-
-    from ondeline_api.db.models.business import Lead
-
     jid = f"5592{uuid4().hex[:9]}@s.whatsapp.net"
     conv = Conversa(
         id=uuid4(),
@@ -73,11 +77,6 @@ async def test_transferir_nao_cliente_cria_lead(db_session) -> None:
 
 async def test_transferir_cliente_identificado_nao_cria_lead(db_session) -> None:
     """Cliente ja identificado (cliente_id setado) NAO vira lead."""
-    from sqlalchemy import select
-
-    from ondeline_api.db.crypto import encrypt_pii, hash_pii
-    from ondeline_api.db.models.business import Cliente, Lead
-
     jid = f"5592{uuid4().hex[:9]}@s.whatsapp.net"
     cliente = Cliente(
         cpf_cnpj_encrypted=encrypt_pii("11122233344"),

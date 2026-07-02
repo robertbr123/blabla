@@ -4,8 +4,6 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
-
 from ondeline_api.db.models.business import (
     Conversa,
     ConversaEstado,
@@ -14,6 +12,7 @@ from ondeline_api.db.models.business import (
 )
 from ondeline_api.tools.context import ToolContext
 from ondeline_api.tools.registrar_lead import SCHEMA, registrar_lead
+from sqlalchemy import select
 
 pytestmark = pytest.mark.asyncio
 
