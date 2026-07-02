@@ -204,7 +204,7 @@ _GATE_ESTADOS = frozenset({
 _RE_OPCAO_12 = re.compile(r"(?:^|\s)[12](?:$|\s|[.,!])")
 _RE_OPCAO_2 = re.compile(r"(?:^|\s)2(?:$|\s|[.,!])")
 _RE_QUER_CONTRATAR = re.compile(
-    r"\b(contrat|quero (?:ser cliente|internet|plano|fibra)|novo cliente|"
+    r"\b(contrat\w*|quero (?:ser cliente|internet|plano|fibra)|novo cliente|"
     r"interesse|plano|fibra|mbps|velocidade|valor do plano|quanto custa)\b",
     re.IGNORECASE,
 )
