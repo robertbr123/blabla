@@ -4,7 +4,8 @@ from __future__ import annotations
 import uuid as _uuid
 
 import pytest
-from ondeline_api.db.models.business import Lead, LeadStatus
+from ondeline_api.db.crypto import encrypt_pii, hash_pii
+from ondeline_api.db.models.business import Cliente, Indicacao, LeadStatus
 from ondeline_api.repositories.lead import LeadRepo
 
 pytestmark = pytest.mark.asyncio
@@ -62,14 +63,28 @@ async def test_upsert_cria_novo_se_anterior_fechado(db_session) -> None:
 async def test_upsert_preserva_indicacao_id(db_session) -> None:
     repo = LeadRepo(db_session)
     jid = _jid()
-    ind = _uuid.uuid4()
+    # Indicacao real (FK): precisa de um cliente indicador + codigo unico.
+    indicador = Cliente(
+        cpf_cnpj_encrypted=encrypt_pii("55566677788"),
+        cpf_hash=hash_pii(_uuid.uuid4().hex),
+        nome_encrypted=encrypt_pii("Indicador"),
+        whatsapp=_jid(),
+    )
+    db_session.add(indicador)
+    await db_session.flush()
+    indic = Indicacao(
+        codigo=_uuid.uuid4().hex[:12].upper(),
+        cliente_indicador_id=indicador.id,
+    )
+    db_session.add(indic)
+    await db_session.flush()
+
     # cria via indicacao
     a, _ = await repo.upsert_by_whatsapp(
-        whatsapp=jid, nome="Indicado", interesse="Indicado por ABC", indicacao_id=ind
+        whatsapp=jid, nome="Indicado", interesse="Indicado por ABC", indicacao_id=indic.id
     )
-    assert a.indicacao_id == ind
+    assert a.indicacao_id == indic.id
     # upsert posterior (sem indicacao) nao apaga
     b, _ = await repo.upsert_by_whatsapp(whatsapp=jid, nome="Maria", interesse=None)
     assert b.id == a.id
-    assert b.indicacao_id == ind
-    _ = Lead  # import usado
+    assert b.indicacao_id == indic.id
