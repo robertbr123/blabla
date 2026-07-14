@@ -1,8 +1,13 @@
 """Programa de fidelidade V1.
 
 Pontos sao calculados sob demanda (sem tabela de saldo) baseando em:
-- Tempo de casa: 10 pts * meses desde cliente_app_user.created_at
-- Faturas pagas: 50 pts * titulos do SGP com status != 'aberto'
+- Tempo de casa: 10 pts * meses desde cliente_app_user.created_at,
+  limitado aos ultimos MESES_JANELA (15) meses.
+- Faturas pagas nos ultimos MESES_JANELA (15) meses: 50 pts se paga em dia
+  (dias_atraso == 0), 10 pts se paga com atraso (dias_atraso > 0).
+
+A janela de 15 meses evita que cliente antigo acumule pontos desde sempre
+(50 pts/fatura por anos) e resgate "mes gratis" facil.
 
 Recompensas sao hardcoded V1. Resgate cria pedido pendente em
 cliente_app_fidelidade_resgates, admin aprova/aplica via dashboard
@@ -10,7 +15,7 @@ cliente_app_fidelidade_resgates, admin aprova/aplica via dashboard
 """
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -40,7 +45,10 @@ RECOMPENSAS: dict[str, tuple[str, int]] = {
 }
 
 PONTOS_POR_MES_CASA = 10
-PONTOS_POR_FATURA_PAGA = 50
+PONTOS_FATURA_EM_DIA = 50
+PONTOS_FATURA_ATRASADA = 10
+# Janela de apuracao: so contam os ultimos 15 meses (tempo de casa + faturas).
+MESES_JANELA = 15
 
 
 # ════════ Schemas ════════
@@ -88,24 +96,56 @@ class ResgatarIn(BaseModel):
 # ════════ Helpers ════════
 
 
+def _cutoff_janela(now: datetime, meses: int) -> date:
+    """Primeiro dia do mes 'meses' atras — corte inclusivo da janela de apuracao."""
+    total = now.year * 12 + (now.month - 1) - meses
+    ano, mes = divmod(total, 12)
+    return date(ano, mes + 1, 1)
+
+
+def _parse_venc(v: str) -> date | None:
+    """Parse do vencimento SGP (YYYY-MM-DD). None se vazio/invalido."""
+    if not v:
+        return None
+    try:
+        return date.fromisoformat(v[:10])
+    except ValueError:
+        return None
+
+
 async def _calcular_pontos(
     user: ClienteAppUser, session: AsyncSession
 ) -> tuple[int, BreakdownOut]:
     """Calcula pontos com base no estado atual do user + SGP."""
     from ondeline_api.api.v1.cliente_app_me import _sgp_cliente
 
-    # Tempo no app — meses inteiros desde created_at.
+    # Tempo no app — meses inteiros desde created_at, teto de MESES_JANELA.
     now = datetime.now(tz=UTC)
     delta_dias = (now - user.created_at).days
-    meses_casa = max(0, delta_dias // 30)
+    meses_casa = min(max(0, delta_dias // 30), MESES_JANELA)
     pts_casa = meses_casa * PONTOS_POR_MES_CASA
 
-    # Faturas pagas (qualquer status diferente de 'aberto' no SGP).
+    # Faturas pagas nos ultimos MESES_JANELA meses (por vencimento):
+    # em dia (dias_atraso == 0) = 50 pts; com atraso (> 0) = 10 pts.
     sgp = await _sgp_cliente(session, user.cpf_encrypted)
-    pagas = 0
+    cutoff = _cutoff_janela(now, MESES_JANELA)
+    em_dia = 0
+    atrasada = 0
     if sgp is not None:
-        pagas = sum(1 for t in sgp.titulos if t.status and t.status != "aberto")
-    pts_pagas = pagas * PONTOS_POR_FATURA_PAGA
+        for t in sgp.titulos:
+            if t.status != "pago":
+                continue
+            venc = _parse_venc(t.vencimento)
+            if venc is None or venc < cutoff:
+                continue
+            if (t.dias_atraso or 0) > 0:
+                atrasada += 1
+            else:
+                em_dia += 1
+    pagas = em_dia + atrasada
+    pts_pagas = (
+        em_dia * PONTOS_FATURA_EM_DIA + atrasada * PONTOS_FATURA_ATRASADA
+    )
 
     # Pontos das missoes (Fase 3d).
     from ondeline_api.services.missoes import calcular_pontos_missoes

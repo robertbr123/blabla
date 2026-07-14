@@ -116,12 +116,25 @@ def send_push(
                 notification=messaging.AndroidNotification(
                     icon="ic_notification",
                     color="#14B8B0",
-                    channel_id="default",
+                    channel_id="ondeline_default",
                 ),
             ),
+            # iOS: `aps.alert` explicito + `apns-push-type: alert` + prioridade 10
+            # garantem que o banner apareca com o app FECHADO/background. Sem o
+            # alert explicito, sobrescrever o `aps` so com sound/badge fazia o
+            # iOS entregar em silencio (so aparecia com o app aberto, via
+            # notificacao local recriada no foreground).
             apns=messaging.APNSConfig(
+                headers={
+                    "apns-priority": "10",
+                    "apns-push-type": "alert",
+                },
                 payload=messaging.APNSPayload(
-                    aps=messaging.Aps(sound="default", badge=1),
+                    aps=messaging.Aps(
+                        alert=messaging.ApsAlert(title=titulo, body=corpo),
+                        sound="default",
+                        badge=1,
+                    ),
                 ),
             ),
         )
