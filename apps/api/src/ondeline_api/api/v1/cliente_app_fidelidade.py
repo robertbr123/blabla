@@ -4,7 +4,7 @@ Pontos sao calculados sob demanda (sem tabela de saldo) baseando em:
 - Tempo de casa: 10 pts * meses desde cliente_app_user.created_at,
   limitado aos ultimos MESES_JANELA (15) meses.
 - Faturas pagas nos ultimos MESES_JANELA (15) meses: 50 pts se paga em dia
-  (dias_atraso == 0), 10 pts se paga com atraso (dias_atraso > 0).
+  (data_pagamento <= vencimento), 10 pts se paga com atraso.
 
 A janela de 15 meses evita que cliente antigo acumule pontos desde sempre
 (50 pts/fatura por anos) e resgate "mes gratis" facil.
@@ -24,6 +24,7 @@ from pydantic import BaseModel
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from ondeline_api.adapters.sgp.base import Fatura
 from ondeline_api.auth.cliente_deps import get_current_cliente_user
 from ondeline_api.auth.rbac import require_role
 from ondeline_api.db.crypto import decrypt_pii
@@ -103,14 +104,28 @@ def _cutoff_janela(now: datetime, meses: int) -> date:
     return date(ano, mes + 1, 1)
 
 
-def _parse_venc(v: str) -> date | None:
-    """Parse do vencimento SGP (YYYY-MM-DD). None se vazio/invalido."""
+def _parse_data(v: str | None) -> date | None:
+    """Parse de data SGP (YYYY-MM-DD). None se vazio/invalido."""
     if not v:
         return None
     try:
         return date.fromisoformat(v[:10])
     except ValueError:
         return None
+
+
+def _pago_com_atraso(t: Fatura, venc: date) -> bool:
+    """True se a fatura foi paga depois do vencimento.
+
+    Compara data_pagamento com o vencimento — NAO confia em t.dias_atraso,
+    que alguns SGPs zeram apos o pagamento (mesma pegadinha ja tratada em
+    tools/enviar_boleto.py e tools/buscar_cliente_sgp.py). Sem data_pagamento,
+    cai no dias_atraso como ultimo recurso.
+    """
+    pago = _parse_data(t.data_pagamento)
+    if pago is not None:
+        return pago > venc
+    return (t.dias_atraso or 0) > 0
 
 
 async def _calcular_pontos(
@@ -126,7 +141,7 @@ async def _calcular_pontos(
     pts_casa = meses_casa * PONTOS_POR_MES_CASA
 
     # Faturas pagas nos ultimos MESES_JANELA meses (por vencimento):
-    # em dia (dias_atraso == 0) = 50 pts; com atraso (> 0) = 10 pts.
+    # em dia (paga ate o vencimento) = 50 pts; com atraso = 10 pts.
     sgp = await _sgp_cliente(session, user.cpf_encrypted)
     cutoff = _cutoff_janela(now, MESES_JANELA)
     em_dia = 0
@@ -135,10 +150,10 @@ async def _calcular_pontos(
         for t in sgp.titulos:
             if t.status != "pago":
                 continue
-            venc = _parse_venc(t.vencimento)
+            venc = _parse_data(t.vencimento)
             if venc is None or venc < cutoff:
                 continue
-            if (t.dias_atraso or 0) > 0:
+            if _pago_com_atraso(t, venc):
                 atrasada += 1
             else:
                 em_dia += 1

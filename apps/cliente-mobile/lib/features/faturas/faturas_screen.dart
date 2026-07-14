@@ -253,18 +253,18 @@ class _AbertaHeroCard extends StatelessWidget {
                     color: BrandTokens.warning.withValues(alpha: 0.95),
                     borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.workspace_premium_rounded,
                         color: Colors.white,
                         size: 13,
                       ),
-                      SizedBox(width: 3),
+                      const SizedBox(width: 3),
                       Text(
-                        'Ganhe +50 pts',
-                        style: TextStyle(
+                        fatura.isVencido ? 'Ganhe +10 pts' : 'Ganhe +50 pts',
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w800,
                           fontSize: 11,

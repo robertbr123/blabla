@@ -682,7 +682,7 @@ class _RegrasInfo extends StatelessWidget {
           SizedBox(height: 6),
           Text(
             '• 10 pontos por mês de Ondeline\n'
-            '• 50 pontos por fatura paga\n'
+            '• 50 pontos por fatura paga em dia (10 se atrasada)\n'
             '• Resgates passam por aprovação manual da nossa equipe (até 24h)',
             style: TextStyle(
               fontSize: 12.5,
