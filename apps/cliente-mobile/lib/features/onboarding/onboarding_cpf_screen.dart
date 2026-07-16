@@ -69,6 +69,7 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
       child: SheetTextField(
         controller: _ctrl,
         label: 'CPF',
+        autofocus: true,
         keyboardType: TextInputType.number,
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,

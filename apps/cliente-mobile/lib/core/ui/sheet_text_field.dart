@@ -15,6 +15,7 @@ class SheetTextField extends StatelessWidget {
     this.obscureText = false,
     this.prefixIcon,
     this.suffix,
+    this.autofocus = false,
   });
 
   final TextEditingController controller;
@@ -24,6 +25,7 @@ class SheetTextField extends StatelessWidget {
   final bool obscureText;
   final IconData? prefixIcon;
   final Widget? suffix;
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +35,7 @@ class SheetTextField extends StatelessWidget {
       keyboardType: keyboardType,
       inputFormatters: inputFormatters,
       obscureText: obscureText,
+      autofocus: autofocus,
       style: TextStyle(
         fontWeight: FontWeight.w600,
         color: isDark ? BrandTokens.textPrimaryDark : BrandTokens.textPrimary,

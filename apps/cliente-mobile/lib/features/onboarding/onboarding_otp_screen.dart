@@ -76,6 +76,7 @@ class _OnboardingOtpScreenState extends ConsumerState<OnboardingOtpScreen> {
       child: SheetTextField(
         controller: _ctrl,
         label: 'Código',
+        autofocus: true,
         keyboardType: TextInputType.number,
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
