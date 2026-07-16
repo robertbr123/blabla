@@ -11,7 +11,6 @@ import '../../core/api/rede_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/cache/last_known_cache.dart';
 import '../../core/contrato/contrato_atual_provider.dart';
-import '../../core/ui/capa_folha.dart';
 import '../../core/api/card_dia_repository.dart';
 import '../../core/api/contatos_repository.dart';
 import '../../core/api/fidelidade_repository.dart';
@@ -22,6 +21,7 @@ import '../shell/main_shell.dart';
 import 'widgets/aniversariante_banner.dart';
 import 'widgets/avisos_list.dart';
 import 'widgets/card_do_dia.dart';
+import 'widgets/contrato_switcher.dart';
 import 'widgets/fatura_card.dart';
 import 'widgets/home_capa.dart';
 import 'widgets/manutencao_breaking_bar.dart';
@@ -47,6 +47,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final meAsync = ref.watch(meProvider);
     final avisosAsync = ref.watch(avisosProvider);
     final promosAsync = ref.watch(promocoesProvider);
+    final redeAsync = ref.watch(redeAparelhosProvider);
+    final topInset = MediaQuery.paddingOf(context).top;
 
     // Auto-popup de NPS pendente: quando a lista de OS chega, se houver
     // alguma com npsPendente que ainda nao foi mostrada nesta sessao,
@@ -55,119 +57,152 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       next.whenData(_maybePromptNps);
     });
 
+    final rede = redeAsync.maybeWhen(
+      data: (d) => d.encontrada ? d : null,
+      orElse: () => null,
+    );
+
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _onRefresh,
-        edgeOffset: MediaQuery.paddingOf(context).top,
-        child: ListView(
+        edgeOffset: topInset + HomeCapaDelegate.expandedExtra,
+        child: CustomScrollView(
           physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
           ),
-          padding: const EdgeInsets.only(bottom: 120),
-          children: [
-            // ── Capa (edge-to-edge, cuida do status bar padding) ──
+          slivers: [
+            // ── Capa colapsável (fixa ao rolar) ──
             meAsync.when(
               data: (me) {
                 _persistMe(me);
-                return HomeCapa(me: me);
+                final contratoAtual = _contratoAtual(me);
+                return SliverPersistentHeader(
+                  pinned: true,
+                  delegate: HomeCapaDelegate(
+                    topInset: topInset,
+                    me: me,
+                    rede: rede,
+                    contratoAtual: contratoAtual,
+                    podeTrocarContrato: me.temMultiContrato,
+                    onTrocarContrato: (ctx) =>
+                        showContratoSelector(ctx, ref, me),
+                  ),
+                );
               },
-              loading: () => const _CapaSkeleton(),
-              error: (_, __) => _CachedCapaOrError(ref),
-            ),
-            // ── Folha ──
-            FolhaContainer(
-              overlap: BrandTokens.radiusFolha,
-              padding: const EdgeInsets.fromLTRB(
-                BrandTokens.spaceLg,
-                BrandTokens.spaceLg,
-                BrandTokens.spaceLg,
-                0,
+              loading: () => SliverPersistentHeader(
+                pinned: true,
+                delegate: HomeCapaDelegate(topInset: topInset, loading: true),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const ManutencaoBreakingBar(),
-                  const FaturaCard(),
-                  const StreakBadge(),
-                  const _SectionLabel(label: 'Ações rapidas'),
-                  const SizedBox(height: BrandTokens.spaceSm),
-                  QuickActions(
-                    actions: [
-                      QuickAction(
-                        icon: Icons.wifi_rounded,
-                        label: 'Minha rede',
-                        color: BrandTokens.primary,
-                        onTap: () => context.push('/rede'),
-                      ),
-                      QuickAction(
-                        icon: Icons.receipt_long_outlined,
-                        label: '2a via',
-                        color: BrandTokens.catBilling,
-                        onTap: () =>
-                            ref.read(mainShellTabProvider.notifier).state = 1,
-                      ),
-                      QuickAction(
-                        icon: Icons.support_agent_outlined,
-                        label: 'Falar conosco',
-                        color: BrandTokens.catSupport,
-                        onTap: () =>
-                            ref.read(mainShellTabProvider.notifier).state = 2,
-                      ),
-                      QuickAction(
-                        icon: Icons.wifi_off_outlined,
-                        label: 'Sem internet',
-                        color: BrandTokens.catConnection,
-                        onTap: () => context.push('/suporte/novo'),
-                      ),
-                      QuickAction(
-                        icon: Icons.swap_horiz_rounded,
-                        label: 'Mudar plano',
-                        color: BrandTokens.catPlan,
-                        onTap: () => context.push('/suporte/novo'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: BrandTokens.spaceLg),
-                  const QuickCardsRow(),
-                  const CardDoDia(),
-                  ...promosAsync.when(
-                    data: (promos) {
-                      if (promos.isEmpty) return const <Widget>[];
-                      return [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const _SectionLabel(label: 'Pra você'),
-                            if (promos.length > 1)
-                              TextButton(
-                                onPressed: () => context.push('/promocoes'),
-                                child: const Text('Ver todas →'),
-                              ),
-                          ],
+              error: (_, __) => _CachedCapaHeader(topInset: topInset),
+            ),
+            // ── Folha (cor chapada — o canto arredondado já foi pintado
+            // dentro do header, no lábio da folha) ──
+            _folhaFiller(
+              context,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  BrandTokens.spaceLg,
+                  BrandTokens.spaceLg,
+                  BrandTokens.spaceLg,
+                  120,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const ManutencaoBreakingBar(),
+                    const FaturaCard(),
+                    const StreakBadge(),
+                    const _SectionLabel(label: 'Ações rapidas'),
+                    const SizedBox(height: BrandTokens.spaceSm),
+                    QuickActions(
+                      actions: [
+                        QuickAction(
+                          icon: Icons.wifi_rounded,
+                          label: 'Minha rede',
+                          color: BrandTokens.primary,
+                          onTap: () => context.push('/rede'),
                         ),
-                        const SizedBox(height: BrandTokens.spaceSm),
-                        PromoCarousel(items: promos),
-                        const SizedBox(height: BrandTokens.spaceLg),
-                      ];
-                    },
-                    loading: () => const <Widget>[],
-                    error: (_, __) => const <Widget>[],
-                  ),
-                  meAsync.maybeWhen(
-                    data: (me) => AniversarianteBanner(me: me),
-                    orElse: () => const SizedBox.shrink(),
-                  ),
-                  avisosAsync.when(
-                    data: (a) => AvisosList(avisos: a),
-                    loading: () => const SizedBox.shrink(),
-                    error: (_, __) => const SizedBox.shrink(),
-                  ),
-                ],
+                        QuickAction(
+                          icon: Icons.receipt_long_outlined,
+                          label: '2a via',
+                          color: BrandTokens.catBilling,
+                          onTap: () => ref
+                              .read(mainShellTabProvider.notifier)
+                              .state = 1,
+                        ),
+                        QuickAction(
+                          icon: Icons.support_agent_outlined,
+                          label: 'Falar conosco',
+                          color: BrandTokens.catSupport,
+                          onTap: () => ref
+                              .read(mainShellTabProvider.notifier)
+                              .state = 2,
+                        ),
+                        QuickAction(
+                          icon: Icons.wifi_off_outlined,
+                          label: 'Sem internet',
+                          color: BrandTokens.catConnection,
+                          onTap: () => context.push('/suporte/novo'),
+                        ),
+                        QuickAction(
+                          icon: Icons.swap_horiz_rounded,
+                          label: 'Mudar plano',
+                          color: BrandTokens.catPlan,
+                          onTap: () => context.push('/suporte/novo'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: BrandTokens.spaceLg),
+                    const QuickCardsRow(),
+                    const CardDoDia(),
+                    ...promosAsync.when(
+                      data: (promos) {
+                        if (promos.isEmpty) return const <Widget>[];
+                        return [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const _SectionLabel(label: 'Pra você'),
+                              if (promos.length > 1)
+                                TextButton(
+                                  onPressed: () => context.push('/promocoes'),
+                                  child: const Text('Ver todas →'),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: BrandTokens.spaceSm),
+                          PromoCarousel(items: promos),
+                          const SizedBox(height: BrandTokens.spaceLg),
+                        ];
+                      },
+                      loading: () => const <Widget>[],
+                      error: (_, __) => const <Widget>[],
+                    ),
+                    meAsync.maybeWhen(
+                      data: (me) => AniversarianteBanner(me: me),
+                      orElse: () => const SizedBox.shrink(),
+                    ),
+                    avisosAsync.when(
+                      data: (a) => AvisosList(avisos: a),
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  ContratoResumoDto? _contratoAtual(MeDto me) {
+    if (me.contratos.isEmpty) return null;
+    final id = ref.watch(contratoAtualProvider);
+    return me.contratos.firstWhere(
+      (c) => c.id == id,
+      orElse: () => me.contratos.first,
     );
   }
 
@@ -240,6 +275,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
+// ════════ Sliver da folha (cor chapada, sem canto) ════════
+//
+// Os cantos arredondados da folha são pintados DENTRO do header (lábio no
+// fundo do HomeCapaDelegate), sobre o próprio gradiente — assim capa e
+// canto se encontram perfeitamente em qualquer shrinkOffset e nunca existe
+// fresta/corte azul. Aqui embaixo a folha é só um container chapado que
+// continua a mesma cor do lábio (mesmo padrão do PerfilScreen).
+Widget _folhaFiller(
+  BuildContext context, {
+  required Widget child,
+  double minHeight = 0,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return SliverToBoxAdapter(
+    child: Container(
+      constraints: BoxConstraints(minHeight: minHeight),
+      color: isDark ? BrandTokens.backgroundDark : BrandTokens.background,
+      child: child,
+    ),
+  );
+}
+
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel({required this.label});
   final String label;
@@ -256,58 +313,56 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-class _CapaSkeleton extends StatelessWidget {
-  const _CapaSkeleton();
+/// Capa colapsável pra quando `meProvider` falha: tenta o último `me`
+/// conhecido em cache (mostra o header normal) e, sem cache nenhum, mostra
+/// o header em modo de erro com botão de retry.
+class _CachedCapaHeader extends ConsumerWidget {
+  const _CachedCapaHeader({required this.topInset});
+  final double topInset;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 220,
-      decoration:
-          const BoxDecoration(gradient: BrandTokens.gradientCapa),
-      child: const Center(
-        child: CircularProgressIndicator(color: Colors.white),
-      ),
-    );
-  }
-}
-
-class _CachedCapaOrError extends StatelessWidget {
-  const _CachedCapaOrError(this.ref);
-  final WidgetRef ref;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return FutureBuilder<MeDto?>(
       future: LastKnownCache().readMe(),
       builder: (_, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const _CapaSkeleton();
+          return SliverPersistentHeader(
+            pinned: true,
+            delegate: HomeCapaDelegate(topInset: topInset, loading: true),
+          );
         }
         final me = snap.data;
-        if (me != null) return HomeCapa(me: me);
-        return Container(
-          height: 220,
-          decoration:
-              const BoxDecoration(gradient: BrandTokens.gradientCapa),
-          padding: const EdgeInsets.all(BrandTokens.spaceLg),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, color: Colors.white),
-              const SizedBox(height: BrandTokens.spaceSm),
-              const Text(
-                'Não conseguimos carregar seus dados.',
-                style: TextStyle(color: Colors.white),
-              ),
-              TextButton(
-                onPressed: () => ref.invalidate(meProvider),
-                child: const Text(
-                  'Tentar de novo',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
+        if (me == null) {
+          return SliverPersistentHeader(
+            pinned: true,
+            delegate: HomeCapaDelegate(
+              topInset: topInset,
+              errorMode: true,
+              onRetry: () => ref.invalidate(meProvider),
+            ),
+          );
+        }
+        final redeAsync = ref.watch(redeAparelhosProvider);
+        final rede = redeAsync.maybeWhen(
+          data: (d) => d.encontrada ? d : null,
+          orElse: () => null,
+        );
+        final contratoId = ref.watch(contratoAtualProvider);
+        final contratoAtual = me.contratos.isEmpty
+            ? null
+            : me.contratos.firstWhere(
+                (c) => c.id == contratoId,
+                orElse: () => me.contratos.first,
+              );
+        return SliverPersistentHeader(
+          pinned: true,
+          delegate: HomeCapaDelegate(
+            topInset: topInset,
+            me: me,
+            rede: rede,
+            contratoAtual: contratoAtual,
+            podeTrocarContrato: me.temMultiContrato,
+            onTrocarContrato: (ctx) => showContratoSelector(ctx, ref, me),
           ),
         );
       },
