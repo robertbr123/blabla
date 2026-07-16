@@ -7,6 +7,7 @@ import '../../core/api/dto.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/async_states.dart';
 import '../../core/ui/capa_page_scaffold.dart';
+import 'widgets/speedtest_card.dart';
 
 class ConexaoScreen extends ConsumerWidget {
   const ConexaoScreen({super.key});
@@ -61,6 +62,8 @@ class ConexaoScreen extends ConsumerWidget {
               BrandTokens.spaceLg,
             ),
             children: [
+              const SpeedtestCard(),
+              const SizedBox(height: BrandTokens.spaceLg),
               _StatusHero(conexao: c),
               const SizedBox(height: BrandTokens.spaceLg),
               _InfoCards(conexao: c),
