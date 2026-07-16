@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/rede_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/contrato/contrato_atual_provider.dart';
-import '../../core/ui/glass_app_bar.dart';
+import '../../core/ui/capa_page_scaffold.dart';
 
 enum _Fase { editando, enviando, reconectando, pronto }
 
@@ -87,11 +87,9 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(redeStatusProvider);
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: GlassAppBar(title: 'Minha Rede WiFi'),
-      body: RefreshIndicator(
-        edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
+    return CapaPageScaffold(
+      title: 'Minha Rede WiFi',
+      child: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(redeStatusProvider);
           ref.invalidate(redeAparelhosProvider);
@@ -100,11 +98,7 @@ class _RedeScreenState extends ConsumerState<RedeScreen> {
         child: async.when(
           loading: () => ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(
-              top: MediaQuery.paddingOf(context).top +
-                  kToolbarHeight +
-                  BrandTokens.spaceMd,
-            ),
+            padding: const EdgeInsets.only(top: BrandTokens.spaceLg),
             children: const [
               Center(child: CircularProgressIndicator()),
             ],
@@ -169,9 +163,9 @@ class _FormTroca extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListView(
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-      padding: EdgeInsets.fromLTRB(
+      padding: const EdgeInsets.fromLTRB(
         BrandTokens.spaceLg,
-        MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd,
+        BrandTokens.spaceLg,
         BrandTokens.spaceLg,
         BrandTokens.spaceLg,
       ),
@@ -428,9 +422,9 @@ class _EmConstrucao extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-      padding: EdgeInsets.fromLTRB(
+      padding: const EdgeInsets.fromLTRB(
         BrandTokens.spaceXl,
-        MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd,
+        BrandTokens.spaceLg,
         BrandTokens.spaceXl,
         BrandTokens.spaceXl,
       ),
