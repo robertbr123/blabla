@@ -111,12 +111,68 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     await ref.read(authRepositoryProvider).forgot(cpf);
     if (!mounted) return;
     setState(() => _loading = false);
-    _toast(
-        'Se o CPF estiver cadastrado, você recebera um código no WhatsApp.');
+    await _showCodigoACaminhoSheet();
+    if (!mounted) return;
     // Vai pra tela de reset (digita codigo + nova senha). Navega sempre, mesmo
     // se o CPF nao existir — preserva o "nao revelar se CPF existe"; o reset
     // simplesmente falha no codigo se nenhum OTP foi enviado.
     context.push('/forgot/reset', extra: {'cpf': cpf});
+  }
+
+  Future<void> _showCodigoACaminhoSheet() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(BrandTokens.radiusFolha),
+        ),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          BrandTokens.spaceLg,
+          BrandTokens.spaceLg,
+          BrandTokens.spaceLg,
+          MediaQuery.viewInsetsOf(ctx).bottom + BrandTokens.spaceLg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.mark_chat_read_rounded,
+                size: 48, color: BrandTokens.primary),
+            const SizedBox(height: BrandTokens.spaceMd),
+            Text(
+              'Código a caminho!',
+              textAlign: TextAlign.center,
+              style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                  ),
+            ),
+            const SizedBox(height: BrandTokens.spaceSm),
+            Text(
+              'Se esse CPF estiver cadastrado, você vai receber um código '
+              'no WhatsApp em instantes.',
+              textAlign: TextAlign.center,
+              style: Theme.of(ctx).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: BrandTokens.spaceLg),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              style: FilledButton.styleFrom(
+                backgroundColor: BrandTokens.primary,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+                ),
+                textStyle: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              child: const Text('Continuar'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _loginBiometria() async {

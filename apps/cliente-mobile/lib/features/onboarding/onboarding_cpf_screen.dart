@@ -47,17 +47,10 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
         });
       case RegisterStartNotFound():
         await _showNotFoundSheet();
+      case RegisterStartAlreadyExists():
+        await _showAlreadyExistsSheet(cpf);
       case RegisterStartError(:final message):
-        final lower = message.toLowerCase();
-        if (lower.contains('cadastrad')) {
-          _toast('Esse CPF já tem conta. Vou te levar pro login.');
-          await Future.delayed(const Duration(milliseconds: 700));
-          if (!mounted) return;
-          // Leva o CPF junto pro login já vir preenchido.
-          context.go('/login', extra: {'cpf': cpf});
-        } else {
-          _toast(message);
-        }
+        _toast(message);
     }
   }
 
@@ -186,6 +179,67 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showAlreadyExistsSheet(String cpf) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: isDark ? BrandTokens.surfaceDark : BrandTokens.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(BrandTokens.radiusFolha),
+        ),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          BrandTokens.spaceLg,
+          BrandTokens.spaceLg,
+          BrandTokens.spaceLg,
+          MediaQuery.viewInsetsOf(sheetContext).bottom + BrandTokens.spaceLg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.celebration_rounded,
+                color: BrandTokens.primary, size: 48),
+            const SizedBox(height: BrandTokens.spaceMd),
+            Text(
+              'Você já tem conta!',
+              textAlign: TextAlign.center,
+              style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                  ),
+            ),
+            const SizedBox(height: BrandTokens.spaceSm),
+            Text(
+              'Esse CPF já está cadastrado. Bora entrar? Se esqueceu a '
+              'senha, dá pra recuperar na tela de login.',
+              textAlign: TextAlign.center,
+              style: Theme.of(sheetContext).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: BrandTokens.spaceLg),
+            FilledButton(
+              onPressed: () => Navigator.of(sheetContext).pop(),
+              style: FilledButton.styleFrom(
+                backgroundColor: BrandTokens.primary,
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+                ),
+                textStyle: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+              child: const Text('Ir pro login'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted) return;
+    // Leva o CPF junto pro login já vir preenchido.
+    context.go('/login', extra: {'cpf': cpf});
   }
 
   @override

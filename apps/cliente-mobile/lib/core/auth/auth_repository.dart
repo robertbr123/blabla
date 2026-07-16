@@ -23,6 +23,9 @@ class AuthRepository {
       if (e.response?.statusCode == 404) {
         return RegisterStartResult.notFound();
       }
+      if (e.response?.statusCode == 409) {
+        return RegisterStartResult.alreadyExists();
+      }
       return RegisterStartResult.error(_messageFromDio(e));
     }
   }
@@ -161,6 +164,7 @@ sealed class RegisterStartResult {
   factory RegisterStartResult.ok({required String maskedPhone}) =
       RegisterStartOk;
   factory RegisterStartResult.notFound() = RegisterStartNotFound;
+  factory RegisterStartResult.alreadyExists() = RegisterStartAlreadyExists;
   factory RegisterStartResult.error(String message) = RegisterStartError;
 }
 
@@ -171,6 +175,10 @@ class RegisterStartOk extends RegisterStartResult {
 
 class RegisterStartNotFound extends RegisterStartResult {
   const RegisterStartNotFound();
+}
+
+class RegisterStartAlreadyExists extends RegisterStartResult {
+  const RegisterStartAlreadyExists();
 }
 
 class RegisterStartError extends RegisterStartResult {
