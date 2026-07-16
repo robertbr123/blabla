@@ -6,7 +6,7 @@ import '../../core/api/dto.dart';
 import '../../core/api/promocoes_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/async_states.dart';
-import '../../core/ui/glass_app_bar.dart';
+import '../../core/ui/capa_page_scaffold.dart';
 import 'widgets/promo_card.dart';
 
 /// Página dedicada de promoções: vitrine em lista vertical.
@@ -17,14 +17,10 @@ class PromocoesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(promocoesProvider);
-    final topPad =
-        MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd;
 
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: const GlassAppBar(title: 'Promoções'),
-      body: RefreshIndicator(
-        edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
+    return CapaPageScaffold(
+      title: 'Promoções',
+      child: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(promocoesProvider);
           await ref.read(promocoesProvider.future);
@@ -33,14 +29,14 @@ class PromocoesScreen extends ConsumerWidget {
           value: async,
           loading: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(top: topPad),
+            padding: const EdgeInsets.only(top: BrandTokens.spaceLg),
             children: const [Center(child: CircularProgressIndicator())],
           ),
           error: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(
+            padding: const EdgeInsets.fromLTRB(
               BrandTokens.spaceMd,
-              topPad,
+              BrandTokens.spaceLg,
               BrandTokens.spaceMd,
               BrandTokens.spaceMd,
             ),
@@ -52,7 +48,7 @@ class PromocoesScreen extends ConsumerWidget {
             if (promos.isEmpty) {
               return ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.only(top: topPad),
+                padding: const EdgeInsets.only(top: BrandTokens.spaceLg),
                 children: const [
                   EmptyState(
                     icon: Icons.local_offer_outlined,
@@ -64,9 +60,9 @@ class PromocoesScreen extends ConsumerWidget {
             }
             return ListView.separated(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.fromLTRB(
+              padding: const EdgeInsets.fromLTRB(
                 BrandTokens.spaceMd,
-                topPad,
+                BrandTokens.spaceLg,
                 BrandTokens.spaceMd,
                 BrandTokens.spaceXl,
               ),

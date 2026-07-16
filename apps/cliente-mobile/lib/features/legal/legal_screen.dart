@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/branding/brand_tokens.dart';
-import '../../core/ui/glass_app_bar.dart';
+import '../../core/ui/capa_page_scaffold.dart';
 
 /// Tela generica que renderiza um documento legal (termos / privacidade).
 class LegalScreen extends StatelessWidget {
@@ -11,25 +11,18 @@ class LegalScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final topPad = MediaQuery.paddingOf(context).top +
-        kToolbarHeight +
-        BrandTokens.spaceMd;
-    return Scaffold(
-      appBar: GlassAppBar(title: title),
-      extendBodyBehindAppBar: true,
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            BrandTokens.spaceLg,
-            topPad,
-            BrandTokens.spaceLg,
-            BrandTokens.spaceLg,
-          ),
-          child: Text(
-            body,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45),
-          ),
+    return CapaPageScaffold(
+      title: title,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          BrandTokens.spaceLg,
+          BrandTokens.spaceLg,
+          BrandTokens.spaceLg,
+          BrandTokens.spaceLg,
+        ),
+        child: Text(
+          body,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45),
         ),
       ),
     );
