@@ -25,168 +25,271 @@ class _FaturasScreenState extends ConsumerState<FaturasScreen> {
     final pagasAsync = ref.watch(faturasPagasProvider);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final topInset = MediaQuery.paddingOf(context).top;
+    // Clampa a fonte do sistema a no máximo 1.2x pros offsets/extents
+    // fixos do header colapsável escalarem sem cortar texto.
+    final fontScale =
+        MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.2).scale(1.0);
+    final maxExtent = topInset + 120 * fontScale;
+
     return Scaffold(
-      body: Column(
-        children: [
-          // ── Capa vibrante com título ──
-          Stack(
-            children: [
-              CapaBackground(
-                padding: EdgeInsets.only(
-                  left: BrandTokens.spaceLg,
-                  right: BrandTokens.spaceLg,
-                  top: MediaQuery.paddingOf(context).top + BrandTokens.spaceMd,
-                  bottom: BrandTokens.spaceLg + BrandTokens.radiusFolha,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Faturas',
-                      style: TextStyle(
-                        color: BrandTokens.capaInk,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.6,
-                      ),
-                    ),
-                    const SizedBox(height: BrandTokens.spaceXs),
-                    Text(
-                      'Suas contas e pagamentos num só lugar.',
-                      style: TextStyle(
-                        color: BrandTokens.capaInk.withValues(alpha: 0.7),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Positioned(
-                  left: 0, right: 0, bottom: 0, child: FolhaLip()),
-            ],
+      body: RefreshIndicator(
+        edgeOffset: maxExtent,
+        onRefresh: () async {
+          // Força refresh no backend (invalida cache SGP de 1h) — usuario
+          // chamando pull-to-refresh espera dado novo, ex: depois que admin
+          // baixou fatura no SGP.
+          final contratoId = ref.read(contratoAtualProvider);
+          await ref
+              .read(faturasRepositoryProvider)
+              .refreshAll(contratoId: contratoId);
+          ref.invalidate(faturasAbertasProvider);
+          ref.invalidate(faturasPagasProvider);
+        },
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
           ),
-          // ── Folha com a lista ──
-          Expanded(
-            child: Container(
-              color:
-                  isDark ? BrandTokens.backgroundDark : BrandTokens.background,
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  // Força refresh no backend (invalida cache SGP de 1h) — usuario
-                  // chamando pull-to-refresh espera dado novo, ex: depois que admin
-                  // baixou fatura no SGP.
-                  final contratoId = ref.read(contratoAtualProvider);
-                  await ref
-                      .read(faturasRepositoryProvider)
-                      .refreshAll(contratoId: contratoId);
-                  ref.invalidate(faturasAbertasProvider);
-                  ref.invalidate(faturasPagasProvider);
-                },
-                child: ListView(
-                  physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics(),
-                  ),
+          slivers: [
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _FaturasCapaDelegate(
+                topInset: topInset,
+                fontScale: fontScale,
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Container(
+                color: isDark
+                    ? BrandTokens.backgroundDark
+                    : BrandTokens.background,
+                child: Padding(
                   padding: const EdgeInsets.fromLTRB(
                     BrandTokens.spaceLg,
                     BrandTokens.spaceLg,
                     BrandTokens.spaceLg,
                     120,
                   ),
-                  children: [
-                    abertasAsync.when(
-                      loading: () => const _HeroSkeleton(),
-                      error: (_, __) => _ErrorCard(
-                        onRetry: () => ref.invalidate(faturasAbertasProvider),
-                      ),
-                      data: (abertas) {
-                        if (abertas.isEmpty) {
-                          return const _EmAdiaCard();
-                        }
-                        // Pega a mais proxima do vencimento (primeira da lista,
-                        // ja vem ordenada do backend).
-                        final principal = abertas.first;
-                        final outras = abertas.skip(1).toList();
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _AbertaHeroCard(
-                              fatura: principal,
-                              onTap: () =>
-                                  FaturaBottomSheet.show(context, principal),
-                            ),
-                            if (outras.isNotEmpty) ...[
-                              const SizedBox(height: BrandTokens.spaceMd),
-                              ...outras.map(
-                                (f) => _OutraAbertaTile(
-                                  fatura: f,
-                                  onTap: () =>
-                                      FaturaBottomSheet.show(context, f),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      abertasAsync.when(
+                        loading: () => const _HeroSkeleton(),
+                        error: (_, __) => _ErrorCard(
+                          onRetry: () => ref.invalidate(faturasAbertasProvider),
+                        ),
+                        data: (abertas) {
+                          if (abertas.isEmpty) {
+                            return const _EmAdiaCard();
+                          }
+                          // Pega a mais proxima do vencimento (primeira da
+                          // lista, ja vem ordenada do backend).
+                          final principal = abertas.first;
+                          final outras = abertas.skip(1).toList();
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _AbertaHeroCard(
+                                fatura: principal,
+                                onTap: () =>
+                                    FaturaBottomSheet.show(context, principal),
+                              ),
+                              if (outras.isNotEmpty) ...[
+                                const SizedBox(height: BrandTokens.spaceMd),
+                                ...outras.map(
+                                  (f) => _OutraAbertaTile(
+                                    fatura: f,
+                                    onTap: () =>
+                                        FaturaBottomSheet.show(context, f),
+                                  ),
                                 ),
-                              ),
+                              ],
                             ],
-                          ],
-                        );
-                      },
-                    ),
-                    const SizedBox(height: BrandTokens.spaceXl),
-                    _SectionLabel(label: 'Histórico'),
-                    const SizedBox(height: BrandTokens.spaceSm),
-                    pagasAsync.when(
-                      loading: () => const Padding(
-                        padding:
-                            EdgeInsets.symmetric(vertical: BrandTokens.spaceLg),
-                        child: Center(child: CircularProgressIndicator()),
-                      ),
-                      error: (_, __) => const SizedBox.shrink(),
-                      data: (pagas) {
-                        if (pagas.isEmpty) {
-                          return _MutedText(
-                            'Suas faturas pagas vao aparecer aqui.',
                           );
-                        }
-                        // Anos disponiveis pra filtrar
-                        final anos = pagas
-                            .map((f) => f.vencimentoDate.year)
-                            .toSet()
-                            .toList()
-                          ..sort((a, b) => b.compareTo(a));
-                        final filtradas = _anoFiltro == null
-                            ? pagas
-                            : pagas
-                                .where(
-                                    (f) => f.vencimentoDate.year == _anoFiltro)
-                                .toList();
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (anos.length > 1)
-                              _AnoFilter(
-                                anos: anos,
-                                selecionado: _anoFiltro,
-                                onSelect: (a) => setState(() => _anoFiltro = a),
-                              ),
-                            const SizedBox(height: BrandTokens.spaceMd),
-                            for (int i = 0; i < filtradas.length; i++)
-                              _TimelineTile(
-                                fatura: filtradas[i],
-                                isFirst: i == 0,
-                                isLast: i == filtradas.length - 1,
-                                onTap: () => FaturaBottomSheet.show(
-                                    context, filtradas[i]),
-                              ),
-                          ],
-                        );
-                      },
-                    ),
-                  ],
+                        },
+                      ),
+                      const SizedBox(height: BrandTokens.spaceXl),
+                      _SectionLabel(label: 'Histórico'),
+                      const SizedBox(height: BrandTokens.spaceSm),
+                      pagasAsync.when(
+                        loading: () => const Padding(
+                          padding: EdgeInsets.symmetric(
+                              vertical: BrandTokens.spaceLg),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                        error: (_, __) => const SizedBox.shrink(),
+                        data: (pagas) {
+                          if (pagas.isEmpty) {
+                            return _MutedText(
+                              'Suas faturas pagas vao aparecer aqui.',
+                            );
+                          }
+                          // Anos disponiveis pra filtrar
+                          final anos = pagas
+                              .map((f) => f.vencimentoDate.year)
+                              .toSet()
+                              .toList()
+                            ..sort((a, b) => b.compareTo(a));
+                          final filtradas = _anoFiltro == null
+                              ? pagas
+                              : pagas
+                                  .where((f) =>
+                                      f.vencimentoDate.year == _anoFiltro)
+                                  .toList();
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (anos.length > 1)
+                                _AnoFilter(
+                                  anos: anos,
+                                  selecionado: _anoFiltro,
+                                  onSelect: (a) =>
+                                      setState(() => _anoFiltro = a),
+                                ),
+                              const SizedBox(height: BrandTokens.spaceMd),
+                              for (int i = 0; i < filtradas.length; i++)
+                                _TimelineTile(
+                                  fatura: filtradas[i],
+                                  isFirst: i == 0,
+                                  isLast: i == filtradas.length - 1,
+                                  onTap: () => FaturaBottomSheet.show(
+                                      context, filtradas[i]),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+}
+
+// ════════ Header colapsavel: título + subtítulo ════════
+
+class _FaturasCapaDelegate extends SliverPersistentHeaderDelegate {
+  const _FaturasCapaDelegate({
+    required this.topInset,
+    this.fontScale = 1.0,
+  });
+
+  final double topInset;
+
+  /// Fator de escala de fonte já limitado a no máximo 1.2x (calculado
+  /// em `_FaturasScreenState.build` via `MediaQuery.textScalerOf(context)
+  /// .clamp`). Em 1.0 (default) o layout é idêntico ao original.
+  final double fontScale;
+
+  static double _lerp(double a, double b, double t) => a + (b - a) * t;
+
+  /// Altura extra (além do topInset) do header totalmente expandido.
+  static const double expandedExtra = 120;
+
+  /// Altura extra (além do topInset) do header totalmente colapsado: faixa
+  /// útil de uma linha (título) + lábio da folha.
+  static const double collapsedExtra = 56 + BrandTokens.radiusFolha;
+
+  @override
+  double get maxExtent => topInset + expandedExtra * fontScale;
+
+  @override
+  double get minExtent => topInset + collapsedExtra * fontScale;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final range = maxExtent - minExtent;
+    final t = range <= 0 ? 0.0 : (shrinkOffset / range).clamp(0.0, 1.0);
+    // Faixa útil colapsada (acima do lábio da folha), já escalada pra
+    // fonte grande caber sem cortar.
+    final collapsedBand = collapsedExtra * fontScale - BrandTokens.radiusFolha;
+
+    final tituloTop = _lerp(
+      topInset + BrandTokens.spaceMd * fontScale,
+      topInset + (collapsedBand - 22 * fontScale) / 2,
+      t,
+    );
+    final subtituloOpacity = (1 - t * 2).clamp(0.0, 1.0);
+
+    Widget content = Stack(
+      children: [
+        Positioned(
+          left: BrandTokens.spaceLg,
+          right: BrandTokens.spaceLg,
+          top: tituloTop,
+          child: Text(
+            'Faturas',
+            style: TextStyle(
+              color: BrandTokens.capaInk,
+              fontSize: _lerp(24, 18, t),
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.6,
+            ),
+          ),
+        ),
+        Positioned(
+          left: BrandTokens.spaceLg,
+          right: BrandTokens.spaceLg,
+          top: topInset +
+              (BrandTokens.spaceMd + 30) * fontScale,
+          child: Opacity(
+            opacity: subtituloOpacity,
+            child: Text(
+              'Suas contas e pagamentos num só lugar.',
+              style: TextStyle(
+                color: BrandTokens.capaInk.withValues(alpha: 0.7),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    // Clampa a fonte do sistema a no máximo 1.2x dentro do header: acima
+    // disso os offsets/extents (já escalados por `fontScale`) deixam de
+    // garantir espaço suficiente e o texto voltaria a ser cortado pelo
+    // ClipRect abaixo.
+    content = MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.2,
+      child: content,
+    );
+
+    // Lábio da folha pintado por cima do gradiente, dentro do próprio
+    // header — mesmo padrão do PerfilScreen/HomeCapa: capa e folha vivem
+    // no mesmo box e nunca deixam fresta em nenhum shrinkOffset.
+    return ClipRect(
+      child: SizedBox.expand(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            CapaBackground(padding: EdgeInsets.zero, child: content),
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: FolhaLip(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _FaturasCapaDelegate oldDelegate) {
+    return oldDelegate.topInset != topInset ||
+        oldDelegate.fontScale != fontScale;
   }
 }
 
