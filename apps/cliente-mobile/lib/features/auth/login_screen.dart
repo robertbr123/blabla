@@ -229,12 +229,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           // título — não intercepta toques.
                           Positioned.fill(
                             child: IgnorePointer(
-                              child: Opacity(
-                                opacity: 0.08,
-                                child: Image.asset(
-                                  'assets/icon/icon.png',
-                                  fit: BoxFit.cover,
-                                  alignment: Alignment.centerRight,
+                              child: ClipRect(
+                                child: Transform.scale(
+                                  scale: 1.45,
+                                  child: Opacity(
+                                    opacity: 0.08,
+                                    child: Image.asset(
+                                      'assets/icon/icon.png',
+                                      fit: BoxFit.cover,
+                                      alignment: Alignment.center,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
