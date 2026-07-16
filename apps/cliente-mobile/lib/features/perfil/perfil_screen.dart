@@ -15,75 +15,72 @@ import '../../core/ui/formatters.dart';
 class PerfilScreen extends ConsumerWidget {
   const PerfilScreen({super.key});
 
-  EdgeInsets _capaPadding(BuildContext context) => EdgeInsets.only(
-        left: BrandTokens.spaceLg,
-        right: BrandTokens.spaceLg,
-        top: MediaQuery.paddingOf(context).top + BrandTokens.spaceMd,
-        bottom: BrandTokens.spaceLg + BrandTokens.radiusFolha,
-      );
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final meAsync = ref.watch(meProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final topInset = MediaQuery.paddingOf(context).top;
+    final screenHeight = MediaQuery.sizeOf(context).height;
 
     return Scaffold(
       body: meAsync.when(
-        loading: () => const Column(
-          children: [
-            _CapaSkeleton(),
-            Expanded(
-              child: FolhaContainer(
-                overlap: BrandTokens.radiusFolha,
-                padding: EdgeInsets.zero,
-                child: SizedBox.shrink(),
-              ),
+        loading: () => CustomScrollView(
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
+          slivers: [
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _PerfilCapaDelegate(topInset: topInset, loading: true),
+            ),
+            _folhaFiller(
+              context,
+              minHeight: screenHeight,
+              child: const SizedBox.shrink(),
             ),
           ],
         ),
-        error: (_, __) => Column(
-          children: [
-            CapaBackground(
-              padding: _capaPadding(context),
-              child: const Text(
-                'Perfil',
-                style: TextStyle(
-                  color: BrandTokens.capaInk,
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.6,
+        error: (_, __) => CustomScrollView(
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
+          slivers: [
+            SliverPersistentHeader(
+              pinned: true,
+              delegate:
+                  _PerfilCapaDelegate(topInset: topInset, errorMode: true),
+            ),
+            _folhaFiller(
+              context,
+              minHeight: screenHeight,
+              child: const Center(child: Text('Erro carregando perfil')),
+            ),
+          ],
+        ),
+        data: (me) => CustomScrollView(
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
+          slivers: [
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _PerfilCapaDelegate(
+                topInset: topInset,
+                nome: me.nome,
+                plano: me.planoNome,
+              ),
+            ),
+            _folhaFiller(
+              context,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  BrandTokens.spaceLg,
+                  BrandTokens.spaceLg,
+                  BrandTokens.spaceLg,
+                  120,
                 ),
-              ),
-            ),
-            const Expanded(
-              child: FolhaContainer(
-                overlap: BrandTokens.radiusFolha,
-                padding: EdgeInsets.zero,
-                child: Center(child: Text('Erro carregando perfil')),
-              ),
-            ),
-          ],
-        ),
-        data: (me) => Column(
-          children: [
-            CapaBackground(
-              padding: _capaPadding(context),
-              child: _ProfileCapaContent(nome: me.nome, plano: me.planoNome),
-            ),
-            Expanded(
-              child: FolhaContainer(
-                overlap: BrandTokens.radiusFolha,
-                padding: EdgeInsets.zero,
-                child: ListView(
-                  physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics(),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(
-                    BrandTokens.spaceLg,
-                    BrandTokens.spaceLg,
-                    BrandTokens.spaceLg,
-                    120,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     // Dados de contato
                     _CardSection(
@@ -244,29 +241,53 @@ class PerfilScreen extends ConsumerWidget {
   }
 }
 
-// ════════ Skeleton da capa enquanto carrega ════════
-
-class _CapaSkeleton extends StatelessWidget {
-  const _CapaSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 180,
-      decoration: const BoxDecoration(gradient: BrandTokens.gradientCapa),
-      child: const Center(
-        child: CircularProgressIndicator(color: Colors.white),
+// ════════ Sliver com o "canto" da capa por trás da folha ════════
+//
+// Sem o overlap/Transform do FolhaContainer (fonte do corte azul sob
+// scroll): aqui a folha nasce dentro de um Container pintado com o tom
+// final do gradiente da capa (capaDeep), então os cantos arredondados da
+// folha revelam sempre a mesma cor da capa por baixo — nunca uma fresta.
+Widget _folhaFiller(
+  BuildContext context, {
+  required Widget child,
+  double minHeight = 0,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return SliverToBoxAdapter(
+    child: Container(
+      color: BrandTokens.capaDeep,
+      child: Container(
+        constraints: BoxConstraints(minHeight: minHeight),
+        decoration: BoxDecoration(
+          color: isDark ? BrandTokens.backgroundDark : BrandTokens.background,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(BrandTokens.radiusFolha),
+          ),
+        ),
+        child: child,
       ),
-    );
-  }
+    ),
+  );
 }
 
-// ════════ Avatar + nome + plano absorvidos na capa ════════
+// ════════ Header colapsavel: avatar+nome fixos ao rolar ════════
 
-class _ProfileCapaContent extends StatelessWidget {
-  const _ProfileCapaContent({required this.nome, required this.plano});
-  final String nome;
+class _PerfilCapaDelegate extends SliverPersistentHeaderDelegate {
+  const _PerfilCapaDelegate({
+    required this.topInset,
+    this.nome,
+    this.plano,
+    this.loading = false,
+    this.errorMode = false,
+  });
+
+  final double topInset;
+  final String? nome;
   final String? plano;
+  final bool loading;
+  final bool errorMode;
+
+  static double _lerp(double a, double b, double t) => a + (b - a) * t;
 
   String _initials(String full) {
     final parts =
@@ -277,48 +298,154 @@ class _ProfileCapaContent extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Avatar circular translucido sobre a capa ciano
-        Container(
-          width: 104,
-          height: 104,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: 0.25),
-          ),
-          alignment: Alignment.center,
+  double get maxExtent => topInset + 210;
+
+  @override
+  double get minExtent => topInset + 64;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final range = maxExtent - minExtent;
+    final t = range <= 0 ? 0.0 : (shrinkOffset / range).clamp(0.0, 1.0);
+
+    Widget content;
+    if (loading) {
+      content = const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    } else if (errorMode) {
+      content = Padding(
+        padding: EdgeInsets.only(
+          left: BrandTokens.spaceLg,
+          right: BrandTokens.spaceLg,
+          top: topInset + BrandTokens.spaceMd,
+        ),
+        child: Align(
+          alignment: Alignment.topLeft,
           child: Text(
-            _initials(nome),
-            style: const TextStyle(
-              color: BrandTokens.capaInk,
-              fontSize: 38,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
-        const SizedBox(height: BrandTokens.spaceMd),
-        Text(
-          nome.isEmpty ? 'Cliente' : nome,
-          textAlign: TextAlign.center,
-          style: BrandTokens.displayGreeting,
-        ),
-        if (plano != null && plano!.isNotEmpty) ...[
-          const SizedBox(height: BrandTokens.spaceXs),
-          Text(
-            plano!,
-            textAlign: TextAlign.center,
+            'Perfil',
             style: TextStyle(
-              color: BrandTokens.capaInk.withValues(alpha: 0.7),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
+              color: BrandTokens.capaInk,
+              fontSize: _lerp(24, 18, t),
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.6,
             ),
           ),
-        ],
-      ],
+        ),
+      );
+    } else {
+      final displayNome = (nome == null || nome!.isEmpty) ? 'Cliente' : nome!;
+      final displayPlano = plano;
+      content = LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final avatarSize = _lerp(72, 28, t);
+          final avatarLeft = _lerp((width - 72) / 2, BrandTokens.spaceLg, t);
+          final avatarTop = _lerp(
+            topInset + BrandTokens.spaceLg,
+            topInset + (64 - 28) / 2,
+            t,
+          );
+          final nomeLeft = _lerp(
+            0,
+            avatarLeft + avatarSize + BrandTokens.spaceMd,
+            t,
+          );
+          final nomeRightPad = _lerp(0, BrandTokens.spaceLg, t);
+          final nomeWidth = (width - nomeLeft - nomeRightPad).clamp(
+            0.0,
+            width,
+          );
+          final nomeTop = _lerp(
+            avatarTop + 72 + BrandTokens.spaceMd,
+            avatarTop + (28 - 20) / 2,
+            t,
+          );
+          final planoOpacity = (1 - t * 2).clamp(0.0, 1.0);
+
+          return Stack(
+            children: [
+              Positioned(
+                left: avatarLeft,
+                top: avatarTop,
+                width: avatarSize,
+                height: avatarSize,
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.25),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    _initials(displayNome),
+                    style: TextStyle(
+                      color: BrandTokens.capaInk,
+                      fontSize: _lerp(26, 13, t),
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: nomeLeft,
+                top: nomeTop,
+                width: nomeWidth,
+                child: Text(
+                  displayNome,
+                  textAlign: t < 0.5 ? TextAlign.center : TextAlign.left,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: BrandTokens.capaInk,
+                    fontSize: _lerp(26, 16, t),
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.8,
+                    height: 1.1,
+                  ),
+                ),
+              ),
+              if (displayPlano != null && displayPlano.isNotEmpty)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: avatarTop + avatarSize + BrandTokens.spaceXs,
+                  child: Opacity(
+                    opacity: planoOpacity,
+                    child: Text(
+                      displayPlano,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: BrandTokens.capaInk.withValues(alpha: 0.7),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+      );
+    }
+
+    return ClipRect(
+      child: SizedBox.expand(
+        child: CapaBackground(padding: EdgeInsets.zero, child: content),
+      ),
     );
+  }
+
+  @override
+  bool shouldRebuild(covariant _PerfilCapaDelegate oldDelegate) {
+    return oldDelegate.topInset != topInset ||
+        oldDelegate.nome != nome ||
+        oldDelegate.plano != plano ||
+        oldDelegate.loading != loading ||
+        oldDelegate.errorMode != errorMode;
   }
 }
 
