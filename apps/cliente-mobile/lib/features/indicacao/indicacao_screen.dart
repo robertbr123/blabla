@@ -33,10 +33,10 @@ class IndicacaoScreen extends ConsumerWidget {
         },
         child: AsyncBuilder<IndicacaoMeuDto>(
           value: async,
-          loading: const ListView(
-            physics: AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(top: BrandTokens.spaceLg),
-            children: [
+          loading: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.only(top: BrandTokens.spaceLg),
+            children: const [
               Center(child: CircularProgressIndicator()),
             ],
           ),
