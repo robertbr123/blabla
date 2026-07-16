@@ -350,11 +350,12 @@ git commit -m "feat(cliente): lembrar CPF do ultimo acesso no login"
 ### Task 4: Redesign da tela de login (capa + folha)
 
 **Files:**
+- Create: `lib/core/ui/sheet_text_field.dart`
 - Modify: `lib/features/auth/login_screen.dart` (só o método `build` e imports — estado/handlers `_login`, `_forgot`, `_toast` ficam intactos)
 
 **Interfaces:**
 - Consumes: `CapaBackground`, `FolhaContainer` (Task 2); tokens (Task 1).
-- Produces: layout novo; um widget local `_SheetTextField` que a Task 5 replica no reset.
+- Produces: layout novo; `class SheetTextField extends StatelessWidget` em `lib/core/ui/sheet_text_field.dart` — mesmo construtor do snippet abaixo — que a Task 5 também importa.
 
 - [ ] **Step 1: Reescrever o build**
 
@@ -533,13 +534,16 @@ Novo `build`:
   }
 ```
 
-- [ ] **Step 2: Adicionar o _SheetTextField no fim do arquivo**
+- [ ] **Step 2: Criar lib/core/ui/sheet_text_field.dart**
+
+O `build` acima usa `_SheetTextField` — trocar as ocorrências por `SheetTextField` e importar `../../core/ui/sheet_text_field.dart`. Conteúdo do arquivo novo (imports: `package:flutter/material.dart`, `package:flutter/services.dart`, `../branding/brand_tokens.dart`):
 
 ```dart
 /// Campo de texto da folha clara — surface branca/marinho, borda que acende
 /// em ciano no foco. Substitui o GlassTextField nas telas de auth novas.
-class _SheetTextField extends StatelessWidget {
-  const _SheetTextField({
+class SheetTextField extends StatelessWidget {
+  const SheetTextField({
+    super.key,
     required this.controller,
     required this.label,
     this.keyboardType,
@@ -604,7 +608,7 @@ Import necessário no topo do arquivo (se ainda não existir): `package:flutter/
 Run: `flutter analyze` → `No issues found!` (atenção: se `glass_card.dart` ficou sem uso no arquivo, o import precisa ter sido removido).
 
 ```bash
-git add lib/features/auth/login_screen.dart
+git add lib/core/ui/sheet_text_field.dart lib/features/auth/login_screen.dart
 git commit -m "feat(cliente): redesign da tela de login — capa vibrante + folha"
 ```
 
@@ -623,7 +627,7 @@ git commit -m "feat(cliente): redesign da tela de login — capa vibrante + folh
 Ler `lib/features/auth/forgot_reset_screen.dart` (140 linhas). Manter TODOS os controllers/handlers. Substituir o `Scaffold`/fundo atual (`AnimatedGradientBackground` + `GlassCard`/`GlassTextField`/`GlassPrimaryButton`, ou o que estiver lá) pela mesma estrutura da Task 4:
 
 - Capa compacta no topo (não precisa do título gigante): `CapaBackground` com padding `top: MediaQuery.paddingOf(context).top + BrandTokens.spaceLg`, contendo um botão voltar (`IconButton` com `Icons.arrow_back_rounded`, cor `BrandTokens.capaInk`) e título `Redefinir senha` em `TextStyle(color: BrandTokens.capaInk, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.6)` + subtítulo `Digite o código que enviamos no seu WhatsApp.` (fontSize 13, capaInk com 70% de opacidade via `BrandTokens.capaInk.withValues(alpha: 0.7)`).
-- Folha (`FolhaContainer` com `overlap: BrandTokens.radiusFolha`) contendo os campos existentes (código + nova senha) restilizados como `TextField` com a mesma `InputDecoration` da `_SheetTextField` da Task 4 — copiar a classe pra este arquivo como `_SheetTextField` local (duplicação aceita: são 2 telas de auth; se surgir uma 3ª, promover pra `lib/core/ui/`).
+- Folha (`FolhaContainer` com `overlap: BrandTokens.radiusFolha`) contendo os campos existentes (código + nova senha) restilizados com o `SheetTextField` compartilhado (`import '../../core/ui/sheet_text_field.dart'`, criado na Task 4).
 - Botão de confirmar vira o mesmo `FilledButton` ciano da Task 4 (label existente mantida).
 - A capa aqui NÃO usa `Expanded` (conteúdo rola): estrutura = `Column` com capa de altura natural + `Expanded(child: SingleChildScrollView(child: FolhaContainer(...)))`.
 
