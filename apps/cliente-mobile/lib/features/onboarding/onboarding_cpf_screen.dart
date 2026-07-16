@@ -62,21 +62,64 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return AuthScaffold(
       icon: Icons.badge_outlined,
       title: 'Vamos te encontrar',
-      subtitle: 'Digite seu CPF pra continuar.',
-      child: SheetTextField(
-        controller: _ctrl,
-        label: 'CPF',
-        autofocus: true,
-        keyboardType: TextInputType.number,
-        inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(11),
-          CpfFormatter(),
+      subtitle: 'Digite o CPF do titular do contrato pra gente localizar seu cadastro.',
+      child: Column(
+        children: [
+          SheetTextField(
+            controller: _ctrl,
+            label: 'CPF',
+            autofocus: true,
+            keyboardType: TextInputType.number,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(11),
+              CpfFormatter(),
+            ],
+            prefixIcon: Icons.badge_outlined,
+          ),
+          Container(
+            margin: const EdgeInsets.only(top: BrandTokens.spaceLg),
+            padding: const EdgeInsets.all(BrandTokens.spaceMd),
+            decoration: BoxDecoration(
+              color: isDark ? BrandTokens.surfaceDark : BrandTokens.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? Colors.white12 : BrandTokens.divider,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.verified_user_outlined,
+                    color: BrandTokens.primary, size: 22),
+                const SizedBox(width: BrandTokens.spaceSm),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Por que pedimos seu CPF?',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Usamos só pra localizar seu contrato na Ondeline. Seus dados ficam protegidos.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark
+                              ? BrandTokens.textSecondaryDark
+                              : BrandTokens.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
-        prefixIcon: Icons.badge_outlined,
       ),
       bottom: Column(
         children: [
