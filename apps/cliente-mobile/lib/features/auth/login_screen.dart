@@ -243,15 +243,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ),
                             ),
                           ),
-                          Column(
+                          const Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text('Onde\nvocê',
+                              Text('Onde\nvocê',
                                   style: BrandTokens.displayTitle),
-                              const _PalavraRotativa(),
-                              const SizedBox(height: BrandTokens.spaceSm),
-                              const Text(
+                              _PalavraRotativa(),
+                              SizedBox(height: BrandTokens.spaceSm),
+                              Text(
                                 'Ondeline — internet que acompanha você.',
                                 style: TextStyle(
                                   color: BrandTokens.capaInk,
