@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/auth_scaffold.dart';
+import '../../core/ui/formatters.dart';
 import '../../core/ui/sheet_text_field.dart';
+import '../../core/ui/whatsapp_comercial.dart';
 
 class OnboardingOtpScreen extends ConsumerStatefulWidget {
   const OnboardingOtpScreen({
@@ -65,6 +67,20 @@ class _OnboardingOtpScreenState extends ConsumerState<OnboardingOtpScreen> {
   void _toast(String s) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s)));
 
+  Future<void> _atualizarTelefone() async {
+    final ok = await abrirWhatsappComercial(
+      ref,
+      mensagem: 'Olá! Quero atualizar o telefone do meu cadastro pra '
+          'acessar o app. Meu CPF é ${formatCpf(widget.cpf)}.',
+    );
+    if (!ok && mounted) {
+      _toast(
+        'Não conseguimos abrir o WhatsApp agora. '
+        'Tenta de novo mais tarde.',
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
@@ -119,6 +135,32 @@ class _OnboardingOtpScreenState extends ConsumerState<OnboardingOtpScreen> {
             ),
             child: const Text(
               'Reenviar código',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(height: BrandTokens.spaceSm),
+          Builder(builder: (context) {
+            final isDark = Theme.of(context).brightness == Brightness.dark;
+            return Text(
+              'Não usa mais esse número?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isDark
+                    ? BrandTokens.textSecondaryDark
+                    : BrandTokens.textSecondary,
+              ),
+            );
+          }),
+          TextButton(
+            onPressed: _loading ? null : _atualizarTelefone,
+            style: TextButton.styleFrom(
+              foregroundColor: BrandTokens.brandWhatsapp,
+              minimumSize: const Size.fromHeight(48),
+            ),
+            child: const Text(
+              'Atualizar meu cadastro pelo WhatsApp',
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
           ),

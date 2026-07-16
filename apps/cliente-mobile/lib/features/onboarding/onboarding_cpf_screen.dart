@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api/contatos_repository.dart';
 import '../../core/auth/auth_repository.dart';
@@ -10,6 +9,10 @@ import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/auth_scaffold.dart';
 import '../../core/ui/formatters.dart';
 import '../../core/ui/sheet_text_field.dart';
+import '../../core/ui/whatsapp_comercial.dart';
+
+const _kMensagemQueroSerCliente =
+    'Olá! Baixei o app da Ondeline e quero ser cliente 😃';
 
 class OnboardingCpfScreen extends ConsumerStatefulWidget {
   const OnboardingCpfScreen({super.key});
@@ -58,39 +61,6 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
 
   void _toast(String s) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s)));
-
-  /// Busca o contato de WhatsApp com melhor esforço e abre o wa.me com a
-  /// mensagem padrão. Retorna `true` se conseguiu localizar o número e
-  /// disparar o launch, `false` caso contrário (sem número/erro).
-  Future<bool> _abrirWhatsappComercial({String? mensagem}) async {
-    String? whatsNumber;
-    try {
-      final contatos = await ref.read(contatosOperadoraProvider.future);
-      for (final c in contatos) {
-        if (c.tipo == 'whatsapp') {
-          final digits = c.valor.replaceAll(RegExp(r'\D'), '');
-          if (digits.isNotEmpty) whatsNumber = digits;
-          break;
-        }
-      }
-    } on Object {
-      whatsNumber = null;
-    }
-    if (whatsNumber == null) return false;
-    final uri = Uri.parse(
-      'https://wa.me/$whatsNumber'
-      '?text=${Uri.encodeComponent(
-        mensagem ?? 'Olá! Baixei o app da Ondeline e quero ser cliente 😃',
-      )}',
-    );
-    try {
-      // launchUrl devolve false (sem lançar) quando o sistema recusa abrir —
-      // propaga pro caller mostrar o aviso em vez de fingir sucesso.
-      return await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } on Object {
-      return false;
-    }
-  }
 
   Future<void> _showNotFoundSheet() async {
     // Busca o contato de WhatsApp com melhor esforço, antes de exibir a
@@ -152,7 +122,10 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
                 const SizedBox(height: BrandTokens.spaceLg),
                 if (whatsNumber != null) ...[
                   FilledButton.icon(
-                    onPressed: _abrirWhatsappComercial,
+                    onPressed: () => abrirWhatsappComercial(
+                      ref,
+                      mensagem: _kMensagemQueroSerCliente,
+                    ),
                     icon: const Icon(Icons.chat_rounded),
                     label: const Text('Quero ser cliente'),
                     style: FilledButton.styleFrom(
@@ -293,7 +266,8 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
                 ),
                 const SizedBox(height: BrandTokens.spaceLg),
                 FilledButton.icon(
-                  onPressed: () => _abrirWhatsappComercial(
+                  onPressed: () => abrirWhatsappComercial(
+                    ref,
                     mensagem: 'Olá! Quero atualizar o telefone do meu '
                         'cadastro pra acessar o app. Meu CPF é '
                         '${formatCpf(cpf)}.',
@@ -449,7 +423,10 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
           const SizedBox(height: BrandTokens.spaceSm),
           OutlinedButton.icon(
             onPressed: () async {
-              final ok = await _abrirWhatsappComercial();
+              final ok = await abrirWhatsappComercial(
+                ref,
+                mensagem: _kMensagemQueroSerCliente,
+              );
               if (!ok && mounted) {
                 _toast(
                   'Não conseguimos abrir o WhatsApp agora. '
