@@ -19,6 +19,7 @@ import 'connection_status_pill.dart';
 class HomeCapaDelegate extends SliverPersistentHeaderDelegate {
   const HomeCapaDelegate({
     required this.topInset,
+    this.fontScale = 1.0,
     this.me,
     this.rede,
     this.contratoAtual,
@@ -30,6 +31,14 @@ class HomeCapaDelegate extends SliverPersistentHeaderDelegate {
   });
 
   final double topInset;
+
+  /// Fator de escala de fonte já limitado a no máximo 1.2x (ver
+  /// `MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.2)` no
+  /// screen que instancia este delegate). Em 1.0 (default) o layout é
+  /// idêntico ao original — usado pra escalar os offsets/extents fixos
+  /// do header proporcionalmente à fonte do sistema, evitando que texto
+  /// grande seja cortado pelo ClipRect.
+  final double fontScale;
   final MeDto? me;
   final RedeAparelhosDto? rede;
   final ContratoResumoDto? contratoAtual;
@@ -51,10 +60,10 @@ class HomeCapaDelegate extends SliverPersistentHeaderDelegate {
   static const double collapsedExtra = 92;
 
   @override
-  double get maxExtent => topInset + expandedExtra;
+  double get maxExtent => topInset + expandedExtra * fontScale;
 
   @override
-  double get minExtent => topInset + collapsedExtra;
+  double get minExtent => topInset + collapsedExtra * fontScale;
 
   @override
   Widget build(
@@ -64,6 +73,10 @@ class HomeCapaDelegate extends SliverPersistentHeaderDelegate {
   ) {
     final range = maxExtent - minExtent;
     final t = range <= 0 ? 0.0 : (shrinkOffset / range).clamp(0.0, 1.0);
+    // Faixa útil colapsada (acima do lábio da folha), já escalada pra
+    // fonte grande caber sem cortar.
+    final collapsedBand =
+        collapsedExtra * fontScale - BrandTokens.radiusFolha;
 
     Widget content;
     if (loading) {
@@ -78,8 +91,8 @@ class HomeCapaDelegate extends SliverPersistentHeaderDelegate {
         padding: EdgeInsets.fromLTRB(
           BrandTokens.spaceLg,
           _lerp(
-            topInset + BrandTokens.spaceLg + 24,
-            topInset + (64 - BrandTokens.radiusFolha - 22) / 2,
+            topInset + (BrandTokens.spaceLg + 24) * fontScale,
+            topInset + (collapsedBand - 22 * fontScale) / 2,
             t,
           ),
           BrandTokens.spaceLg,
@@ -118,6 +131,8 @@ class HomeCapaDelegate extends SliverPersistentHeaderDelegate {
       content = _ExpandedCollapsedContent(
         t: t,
         topInset: topInset,
+        fontScale: fontScale,
+        collapsedBand: collapsedBand,
         me: me,
         rede: rede,
         contratoAtual: contratoAtual,
@@ -125,6 +140,15 @@ class HomeCapaDelegate extends SliverPersistentHeaderDelegate {
         onTrocarContrato: onTrocarContrato,
       );
     }
+
+    // Clampa a fonte do sistema a no máximo 1.2x dentro do header: acima
+    // disso os offsets/extents (já escalados por `fontScale`, o mesmo
+    // fator) deixam de garantir espaço suficiente e o texto voltaria a
+    // ser cortado pelo ClipRect abaixo.
+    content = MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.2,
+      child: content,
+    );
 
     // Lábio da folha pintado por cima do gradiente, dentro do próprio
     // header — mesmo padrão do PerfilScreen: capa e canto arredondado
@@ -150,6 +174,7 @@ class HomeCapaDelegate extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(covariant HomeCapaDelegate oldDelegate) {
     return oldDelegate.topInset != topInset ||
+        oldDelegate.fontScale != fontScale ||
         oldDelegate.me != me ||
         oldDelegate.rede != rede ||
         oldDelegate.contratoAtual != contratoAtual ||
@@ -164,6 +189,8 @@ class _ExpandedCollapsedContent extends StatelessWidget {
   const _ExpandedCollapsedContent({
     required this.t,
     required this.topInset,
+    required this.fontScale,
+    required this.collapsedBand,
     required this.me,
     required this.rede,
     required this.contratoAtual,
@@ -173,6 +200,8 @@ class _ExpandedCollapsedContent extends StatelessWidget {
 
   final double t;
   final double topInset;
+  final double fontScale;
+  final double collapsedBand;
   final MeDto? me;
   final RedeAparelhosDto? rede;
   final ContratoResumoDto? contratoAtual;
@@ -201,9 +230,11 @@ class _ExpandedCollapsedContent extends StatelessWidget {
     final contratoOpacity = (1 - t * 4).clamp(0.0, 1.0);
 
     // Faixa útil do estado colapsado (acima do lábio da folha): minExtent
-    // (92) menos o lábio da folha (radiusFolha=28) = 64.
-    final expandedStatusTop = topInset + BrandTokens.spaceMd + 46 + BrandTokens.spaceMd;
-    final collapsedStatusTop = topInset + (64 - 40) / 2;
+    // (92) menos o lábio da folha (radiusFolha=28) = 64 — escalada em
+    // `collapsedBand` (calculado pelo delegate) pra caber fonte grande.
+    final expandedStatusTop = topInset +
+        (BrandTokens.spaceMd + 46 + BrandTokens.spaceMd) * fontScale;
+    final collapsedStatusTop = topInset + (collapsedBand - 40 * fontScale) / 2;
     final statusTop = _lerp(expandedStatusTop, collapsedStatusTop, t);
 
     return Stack(
@@ -212,7 +243,7 @@ class _ExpandedCollapsedContent extends StatelessWidget {
         Positioned(
           left: BrandTokens.spaceLg,
           right: BrandTokens.spaceLg + 48,
-          top: topInset + BrandTokens.spaceMd,
+          top: topInset + BrandTokens.spaceMd * fontScale,
           child: Opacity(
             opacity: greetingOpacity,
             child: Column(
@@ -239,7 +270,7 @@ class _ExpandedCollapsedContent extends StatelessWidget {
         // Sino de notificações
         Positioned(
           right: BrandTokens.spaceLg - 12,
-          top: topInset + BrandTokens.spaceMd - 8,
+          top: topInset + (BrandTokens.spaceMd - 8) * fontScale,
           child: Opacity(
             opacity: greetingOpacity,
             child: const NotifBell(color: BrandTokens.capaInk),
@@ -257,7 +288,7 @@ class _ExpandedCollapsedContent extends StatelessWidget {
           Positioned(
             left: BrandTokens.spaceLg,
             right: BrandTokens.spaceLg,
-            top: expandedStatusTop + BrandTokens.spaceSm + 78,
+            top: expandedStatusTop + (BrandTokens.spaceSm + 78) * fontScale,
             child: Opacity(
               opacity: contratoOpacity,
               child: _ContratoLinha(

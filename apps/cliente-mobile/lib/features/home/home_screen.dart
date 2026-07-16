@@ -49,6 +49,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final promosAsync = ref.watch(promocoesProvider);
     final redeAsync = ref.watch(redeAparelhosProvider);
     final topInset = MediaQuery.paddingOf(context).top;
+    // Clampa a fonte do sistema a no máximo 1.2x pros offsets/extents
+    // fixos do header colapsável escalarem sem cortar texto (fontes bem
+    // grandes ainda entram no espaço, só que colapsam menos).
+    final fontScale =
+        MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.2).scale(1.0);
 
     // Auto-popup de NPS pendente: quando a lista de OS chega, se houver
     // alguma com npsPendente que ainda nao foi mostrada nesta sessao,
@@ -80,6 +85,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   pinned: true,
                   delegate: HomeCapaDelegate(
                     topInset: topInset,
+                    fontScale: fontScale,
                     me: me,
                     rede: rede,
                     contratoAtual: contratoAtual,
@@ -91,9 +97,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               },
               loading: () => SliverPersistentHeader(
                 pinned: true,
-                delegate: HomeCapaDelegate(topInset: topInset, loading: true),
+                delegate: HomeCapaDelegate(
+                  topInset: topInset,
+                  fontScale: fontScale,
+                  loading: true,
+                ),
               ),
-              error: (_, __) => _CachedCapaHeader(topInset: topInset),
+              error: (_, __) => _CachedCapaHeader(
+                topInset: topInset,
+                fontScale: fontScale,
+              ),
             ),
             // ── Folha (cor chapada — o canto arredondado já foi pintado
             // dentro do header, no lábio da folha) ──
@@ -317,8 +330,9 @@ class _SectionLabel extends StatelessWidget {
 /// conhecido em cache (mostra o header normal) e, sem cache nenhum, mostra
 /// o header em modo de erro com botão de retry.
 class _CachedCapaHeader extends ConsumerWidget {
-  const _CachedCapaHeader({required this.topInset});
+  const _CachedCapaHeader({required this.topInset, required this.fontScale});
   final double topInset;
+  final double fontScale;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -328,7 +342,11 @@ class _CachedCapaHeader extends ConsumerWidget {
         if (snap.connectionState != ConnectionState.done) {
           return SliverPersistentHeader(
             pinned: true,
-            delegate: HomeCapaDelegate(topInset: topInset, loading: true),
+            delegate: HomeCapaDelegate(
+              topInset: topInset,
+              fontScale: fontScale,
+              loading: true,
+            ),
           );
         }
         final me = snap.data;
@@ -337,6 +355,7 @@ class _CachedCapaHeader extends ConsumerWidget {
             pinned: true,
             delegate: HomeCapaDelegate(
               topInset: topInset,
+              fontScale: fontScale,
               errorMode: true,
               onRetry: () => ref.invalidate(meProvider),
             ),
@@ -358,6 +377,7 @@ class _CachedCapaHeader extends ConsumerWidget {
           pinned: true,
           delegate: HomeCapaDelegate(
             topInset: topInset,
+            fontScale: fontScale,
             me: me,
             rede: rede,
             contratoAtual: contratoAtual,

@@ -21,6 +21,10 @@ class PerfilScreen extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final topInset = MediaQuery.paddingOf(context).top;
     final screenHeight = MediaQuery.sizeOf(context).height;
+    // Clampa a fonte do sistema a no máximo 1.2x pros offsets/extents
+    // fixos do header colapsável escalarem sem cortar texto.
+    final fontScale =
+        MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.2).scale(1.0);
 
     return Scaffold(
       body: meAsync.when(
@@ -31,7 +35,11 @@ class PerfilScreen extends ConsumerWidget {
           slivers: [
             SliverPersistentHeader(
               pinned: true,
-              delegate: _PerfilCapaDelegate(topInset: topInset, loading: true),
+              delegate: _PerfilCapaDelegate(
+                topInset: topInset,
+                fontScale: fontScale,
+                loading: true,
+              ),
             ),
             _folhaFiller(
               context,
@@ -47,8 +55,11 @@ class PerfilScreen extends ConsumerWidget {
           slivers: [
             SliverPersistentHeader(
               pinned: true,
-              delegate:
-                  _PerfilCapaDelegate(topInset: topInset, errorMode: true),
+              delegate: _PerfilCapaDelegate(
+                topInset: topInset,
+                fontScale: fontScale,
+                errorMode: true,
+              ),
             ),
             _folhaFiller(
               context,
@@ -66,6 +77,7 @@ class PerfilScreen extends ConsumerWidget {
               pinned: true,
               delegate: _PerfilCapaDelegate(
                 topInset: topInset,
+                fontScale: fontScale,
                 nome: me.nome,
                 plano: me.planoNome,
               ),
@@ -268,6 +280,7 @@ Widget _folhaFiller(
 class _PerfilCapaDelegate extends SliverPersistentHeaderDelegate {
   const _PerfilCapaDelegate({
     required this.topInset,
+    this.fontScale = 1.0,
     this.nome,
     this.plano,
     this.loading = false,
@@ -275,6 +288,11 @@ class _PerfilCapaDelegate extends SliverPersistentHeaderDelegate {
   });
 
   final double topInset;
+
+  /// Fator de escala de fonte já limitado a no máximo 1.2x (calculado
+  /// em `PerfilScreen.build` via `MediaQuery.textScalerOf(context).clamp`).
+  /// Em 1.0 (default) o layout é idêntico ao original.
+  final double fontScale;
   final String? nome;
   final String? plano;
   final bool loading;
@@ -291,10 +309,10 @@ class _PerfilCapaDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  double get maxExtent => topInset + 210;
+  double get maxExtent => topInset + 210 * fontScale;
 
   @override
-  double get minExtent => topInset + 64;
+  double get minExtent => topInset + 64 * fontScale;
 
   @override
   Widget build(
@@ -304,6 +322,9 @@ class _PerfilCapaDelegate extends SliverPersistentHeaderDelegate {
   ) {
     final range = maxExtent - minExtent;
     final t = range <= 0 ? 0.0 : (shrinkOffset / range).clamp(0.0, 1.0);
+    // Faixa útil colapsada (acima do lábio da folha), já escalada pra
+    // fonte grande caber sem cortar.
+    final collapsedBand = 64 * fontScale - BrandTokens.radiusFolha;
 
     Widget content;
     if (loading) {
@@ -320,8 +341,8 @@ class _PerfilCapaDelegate extends SliverPersistentHeaderDelegate {
           right: BrandTokens.spaceLg,
           // Colapsado: centraliza na faixa util acima do labio da folha.
           top: _lerp(
-            topInset + BrandTokens.spaceMd,
-            topInset + (64 - BrandTokens.radiusFolha - 22) / 2,
+            topInset + BrandTokens.spaceMd * fontScale,
+            topInset + (collapsedBand - 22 * fontScale) / 2,
             t,
           ),
         ),
@@ -345,34 +366,40 @@ class _PerfilCapaDelegate extends SliverPersistentHeaderDelegate {
         builder: (context, constraints) {
           final width = constraints.maxWidth;
           // Faixa util do estado colapsado: minExtent menos o labio da
-          // folha pintado no fundo do header (radiusFolha).
-          const collapsedBand = 64 - BrandTokens.radiusFolha;
-          final avatarSize = _lerp(72, 28, t);
-          final avatarLeft = _lerp((width - 72) / 2, BrandTokens.spaceLg, t);
+          // folha pintado no fundo do header (radiusFolha) — já escalada
+          // (ver `collapsedBand` calculado acima em build()).
+          final avatarSize = _lerp(72 * fontScale, 28 * fontScale, t);
+          final avatarLeft = _lerp(
+            (width - 72 * fontScale) / 2,
+            BrandTokens.spaceLg,
+            t,
+          );
           final avatarTop = _lerp(
-            topInset + BrandTokens.spaceLg,
-            topInset + (collapsedBand - 28) / 2,
+            topInset + BrandTokens.spaceLg * fontScale,
+            topInset + (collapsedBand - 28 * fontScale) / 2,
             t,
           );
           final nomeLeft = _lerp(
             0,
-            avatarLeft + avatarSize + BrandTokens.spaceMd,
+            avatarLeft + avatarSize + BrandTokens.spaceMd * fontScale,
             t,
           );
-          final nomeRightPad = _lerp(0, BrandTokens.spaceLg, t);
+          final nomeRightPad = _lerp(0, BrandTokens.spaceLg * fontScale, t);
           final nomeWidth = (width - nomeLeft - nomeRightPad).clamp(
             0.0,
             width,
           );
           final nomeTop = _lerp(
-            avatarTop + 72 + BrandTokens.spaceMd,
-            avatarTop + (28 - 20) / 2,
+            avatarTop + (72 + BrandTokens.spaceMd) * fontScale,
+            avatarTop + (28 - 20) * fontScale / 2,
             t,
           );
           final planoOpacity = (1 - t * 2).clamp(0.0, 1.0);
           // Plano sempre abaixo do nome (fade some na primeira metade do
           // colapso, entao so a geometria expandida importa visualmente).
-          final planoTop = nomeTop + _lerp(30, 20, t) + BrandTokens.spaceXs;
+          final planoTop = nomeTop +
+              _lerp(30 * fontScale, 20 * fontScale, t) +
+              BrandTokens.spaceXs * fontScale;
 
           return Stack(
             children: [
@@ -439,6 +466,15 @@ class _PerfilCapaDelegate extends SliverPersistentHeaderDelegate {
       );
     }
 
+    // Clampa a fonte do sistema a no máximo 1.2x dentro do header: acima
+    // disso os offsets/extents (já escalados por `fontScale`) deixam de
+    // garantir espaço suficiente e o texto voltaria a ser cortado pelo
+    // ClipRect abaixo.
+    content = MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.2,
+      child: content,
+    );
+
     // Labio da folha pintado POR CIMA do gradiente, dentro do proprio
     // header: como gradiente e canto arredondado vivem no mesmo box, eles
     // se encontram perfeitamente em qualquer shrinkOffset — o gradiente
@@ -475,6 +511,7 @@ class _PerfilCapaDelegate extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(covariant _PerfilCapaDelegate oldDelegate) {
     return oldDelegate.topInset != topInset ||
+        oldDelegate.fontScale != fontScale ||
         oldDelegate.nome != nome ||
         oldDelegate.plano != plano ||
         oldDelegate.loading != loading ||
