@@ -7,7 +7,6 @@ import '../../core/auth/auth_storage.dart';
 import '../../core/auth/biometric_service.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/auth_scaffold.dart';
-import '../../core/ui/glass_card.dart';
 
 class OnboardingBiometricScreen extends ConsumerStatefulWidget {
   const OnboardingBiometricScreen({super.key});
@@ -43,24 +42,24 @@ class _OnboardingBiometricScreenState
       title: 'Quer entrar com biometria?',
       subtitle:
           'Mais rapido e seguro. Você ainda pode usar a senha quando quiser.',
-      child: GlassCard(
-        padding: const EdgeInsets.all(BrandTokens.spaceXl),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: BrandTokens.spaceLg),
         child: Column(
           children: [
             Container(
               width: 96,
               height: 96,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.10),
+                color: BrandTokens.primary.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(BrandTokens.radiusXl),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.18),
+                  color: BrandTokens.primary.withValues(alpha: 0.24),
                 ),
               ),
               child: const Icon(
                 Icons.fingerprint,
                 size: 56,
-                color: Colors.white,
+                color: BrandTokens.primary,
               ),
             ),
             const SizedBox(height: BrandTokens.spaceMd),
@@ -68,7 +67,7 @@ class _OnboardingBiometricScreenState
               'Sua digital ou Face ID protegem seu acesso.',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white,
+                color: BrandTokens.textPrimary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -77,16 +76,34 @@ class _OnboardingBiometricScreenState
       ),
       bottom: Column(
         children: [
-          GlassPrimaryButton(
+          FilledButton(
             onPressed: _loading ? null : _enable,
-            label: 'Ativar biometria',
-            loading: _loading,
-            icon: Icons.fingerprint,
+            style: FilledButton.styleFrom(
+              backgroundColor: BrandTokens.primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+              ),
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+            ),
+            child: _loading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text('Ativar biometria'),
           ),
           TextButton(
             onPressed: _loading ? null : _skip,
             style: TextButton.styleFrom(
-              foregroundColor: Colors.white,
               minimumSize: const Size.fromHeight(48),
             ),
             child: const Text(

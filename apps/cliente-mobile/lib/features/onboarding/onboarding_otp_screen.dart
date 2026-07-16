@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/auth_scaffold.dart';
-import '../../core/ui/glass_card.dart';
+import '../../core/ui/sheet_text_field.dart';
 
 class OnboardingOtpScreen extends ConsumerStatefulWidget {
   const OnboardingOtpScreen({
@@ -73,36 +73,46 @@ class _OnboardingOtpScreenState extends ConsumerState<OnboardingOtpScreen> {
       title: 'Confirme seu telefone',
       subtitle:
           'Enviamos um código de 6 digitos no WhatsApp ${widget.maskedPhone}.',
-      child: GlassCard(
-        child: GlassTextField(
-          controller: _ctrl,
-          label: 'Código',
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(6),
-          ],
-          textStyle: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            fontSize: 28,
-            letterSpacing: 14,
-          ),
-        ),
+      child: SheetTextField(
+        controller: _ctrl,
+        label: 'Código',
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(6),
+        ],
+        prefixIcon: Icons.sms_outlined,
       ),
       bottom: Column(
         children: [
-          GlassPrimaryButton(
+          FilledButton(
             onPressed: _loading ? null : _continue,
-            label: 'Validar código',
-            loading: _loading,
-            icon: Icons.check_rounded,
+            style: FilledButton.styleFrom(
+              backgroundColor: BrandTokens.primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+              ),
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+            ),
+            child: _loading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text('Validar código'),
           ),
           TextButton(
             onPressed: _loading ? null : _resend,
             style: TextButton.styleFrom(
-              foregroundColor: Colors.white,
               minimumSize: const Size.fromHeight(48),
             ),
             child: const Text(

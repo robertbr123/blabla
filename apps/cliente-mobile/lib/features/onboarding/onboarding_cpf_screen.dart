@@ -7,7 +7,7 @@ import '../../core/auth/auth_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/auth_scaffold.dart';
 import '../../core/ui/formatters.dart';
-import '../../core/ui/glass_card.dart';
+import '../../core/ui/sheet_text_field.dart';
 
 class OnboardingCpfScreen extends ConsumerStatefulWidget {
   const OnboardingCpfScreen({super.key});
@@ -66,32 +66,43 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
       icon: Icons.badge_outlined,
       title: 'Vamos te encontrar',
       subtitle: 'Digite seu CPF pra continuar.',
-      child: GlassCard(
-        child: GlassTextField(
-          controller: _ctrl,
-          label: 'CPF',
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(11),
-            CpfFormatter(),
-          ],
-          textStyle: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-            letterSpacing: 1,
-          ),
-        ),
+      child: SheetTextField(
+        controller: _ctrl,
+        label: 'CPF',
+        keyboardType: TextInputType.number,
+        inputFormatters: [
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(11),
+          CpfFormatter(),
+        ],
+        prefixIcon: Icons.badge_outlined,
       ),
       bottom: Column(
         children: [
-          GlassPrimaryButton(
+          FilledButton(
             onPressed: _loading ? null : _continue,
-            label: 'Continuar',
-            loading: _loading,
-            icon: Icons.arrow_forward_rounded,
+            style: FilledButton.styleFrom(
+              backgroundColor: BrandTokens.primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+              ),
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+            ),
+            child: _loading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text('Continuar'),
           ),
           TextButton(
             onPressed: () {
@@ -103,7 +114,6 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
               );
             },
             style: TextButton.styleFrom(
-              foregroundColor: Colors.white,
               minimumSize: const Size.fromHeight(48),
             ),
             child: const Text(

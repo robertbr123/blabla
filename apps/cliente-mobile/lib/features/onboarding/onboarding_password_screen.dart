@@ -7,8 +7,8 @@ import '../../core/auth/auth_repository.dart';
 import '../../core/auth/auth_state.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/auth_scaffold.dart';
-import '../../core/ui/glass_card.dart';
 import '../../core/ui/haptics.dart';
+import '../../core/ui/sheet_text_field.dart';
 
 class OnboardingPasswordScreen extends ConsumerStatefulWidget {
   const OnboardingPasswordScreen({
@@ -78,35 +78,31 @@ class _OnboardingPasswordScreenState
       icon: Icons.lock_outline_rounded,
       title: 'Crie uma senha',
       subtitle: 'No mínimo 8 caracteres. Você vai usar pra entrar no app.',
-      child: GlassCard(
-        child: Column(
-          children: [
-            GlassTextField(
-              controller: _p1,
-              label: 'Senha',
-              obscureText: _hide,
-              prefixIcon: const Icon(Icons.lock_outline,
-                  color: Colors.white70, size: 20),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _hide
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                  color: Colors.white70,
-                ),
-                onPressed: () => setState(() => _hide = !_hide),
+      child: Column(
+        children: [
+          SheetTextField(
+            controller: _p1,
+            label: 'Senha',
+            obscureText: _hide,
+            prefixIcon: Icons.lock_outline,
+            suffix: IconButton(
+              icon: Icon(
+                _hide
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined,
+                size: 20,
               ),
+              onPressed: () => setState(() => _hide = !_hide),
             ),
-            const SizedBox(height: BrandTokens.spaceMd),
-            GlassTextField(
-              controller: _p2,
-              label: 'Confirme a senha',
-              obscureText: _hide,
-              prefixIcon: const Icon(Icons.lock_outline,
-                  color: Colors.white70, size: 20),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: BrandTokens.spaceMd),
+          SheetTextField(
+            controller: _p2,
+            label: 'Confirme a senha',
+            obscureText: _hide,
+            prefixIcon: Icons.lock_outline,
+          ),
+        ],
       ),
       bottom: Column(
         children: [
@@ -115,7 +111,7 @@ class _OnboardingPasswordScreenState
             child: Text.rich(
               TextSpan(
                 style: const TextStyle(
-                  color: Colors.white70,
+                  color: BrandTokens.textSecondary,
                   fontSize: 12,
                 ),
                 children: [
@@ -124,7 +120,7 @@ class _OnboardingPasswordScreenState
                   TextSpan(
                     text: 'Termos de Uso',
                     style: const TextStyle(
-                      color: BrandTokens.primaryLight,
+                      color: BrandTokens.primary,
                       fontWeight: FontWeight.w700,
                     ),
                     recognizer: TapGestureRecognizer()
@@ -134,7 +130,7 @@ class _OnboardingPasswordScreenState
                   TextSpan(
                     text: 'Política de Privacidade',
                     style: const TextStyle(
-                      color: BrandTokens.primaryLight,
+                      color: BrandTokens.primary,
                       fontWeight: FontWeight.w700,
                     ),
                     recognizer: TapGestureRecognizer()
@@ -146,11 +142,30 @@ class _OnboardingPasswordScreenState
               textAlign: TextAlign.center,
             ),
           ),
-          GlassPrimaryButton(
+          FilledButton(
             onPressed: _loading ? null : _continue,
-            label: 'Criar conta',
-            loading: _loading,
-            icon: Icons.check_rounded,
+            style: FilledButton.styleFrom(
+              backgroundColor: BrandTokens.primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+              ),
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+            ),
+            child: _loading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text('Criar conta'),
           ),
           const SizedBox(height: BrandTokens.spaceXs),
         ],
