@@ -6,6 +6,7 @@ import '../../core/api/dto.dart';
 import '../../core/api/faturas_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/contrato/contrato_atual_provider.dart';
+import '../../core/ui/capa_folha.dart';
 import 'widgets/fatura_bottom_sheet.dart';
 
 class FaturasScreen extends ConsumerStatefulWidget {
@@ -24,126 +25,145 @@ class _FaturasScreenState extends ConsumerState<FaturasScreen> {
     final pagasAsync = ref.watch(faturasPagasProvider);
 
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          onRefresh: () async {
-            // Força refresh no backend (invalida cache SGP de 1h) — usuario
-            // chamando pull-to-refresh espera dado novo, ex: depois que admin
-            // baixou fatura no SGP.
-            final contratoId = ref.read(contratoAtualProvider);
-            await ref
-                .read(faturasRepositoryProvider)
-                .refreshAll(contratoId: contratoId);
-            ref.invalidate(faturasAbertasProvider);
-            ref.invalidate(faturasPagasProvider);
-          },
-          child: ListView(
-            physics: const BouncingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
+      body: Column(
+        children: [
+          // ── Capa vibrante com título ──
+          CapaBackground(
+            padding: EdgeInsets.only(
+              left: BrandTokens.spaceLg,
+              right: BrandTokens.spaceLg,
+              top: MediaQuery.paddingOf(context).top + BrandTokens.spaceMd,
+              bottom: BrandTokens.spaceLg + BrandTokens.radiusFolha,
             ),
-            padding: const EdgeInsets.fromLTRB(
-              BrandTokens.spaceLg,
-              BrandTokens.spaceLg,
-              BrandTokens.spaceLg,
-              120,
+            child: const Text(
+              'Faturas',
+              style: TextStyle(
+                color: BrandTokens.capaInk,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.6,
+              ),
             ),
-            children: [
-              Text(
-                'Faturas',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-              ),
-              const SizedBox(height: BrandTokens.spaceLg),
-              abertasAsync.when(
-                loading: () => const _HeroSkeleton(),
-                error: (_, __) => _ErrorCard(
-                  onRetry: () =>
-                      ref.invalidate(faturasAbertasProvider),
-                ),
-                data: (abertas) {
-                  if (abertas.isEmpty) {
-                    return const _EmAdiaCard();
-                  }
-                  // Pega a mais proxima do vencimento (primeira da lista,
-                  // ja vem ordenada do backend).
-                  final principal = abertas.first;
-                  final outras = abertas.skip(1).toList();
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _AbertaHeroCard(
-                        fatura: principal,
-                        onTap: () =>
-                            FaturaBottomSheet.show(context, principal),
-                      ),
-                      if (outras.isNotEmpty) ...[
-                        const SizedBox(height: BrandTokens.spaceMd),
-                        ...outras.map(
-                          (f) => _OutraAbertaTile(
-                            fatura: f,
-                            onTap: () =>
-                                FaturaBottomSheet.show(context, f),
-                          ),
-                        ),
-                      ],
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: BrandTokens.spaceXl),
-              _SectionLabel(label: 'Histórico'),
-              const SizedBox(height: BrandTokens.spaceSm),
-              pagasAsync.when(
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: BrandTokens.spaceLg),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (_, __) => const SizedBox.shrink(),
-                data: (pagas) {
-                  if (pagas.isEmpty) {
-                    return _MutedText(
-                      'Suas faturas pagas vao aparecer aqui.',
-                    );
-                  }
-                  // Anos disponiveis pra filtrar
-                  final anos = pagas
-                      .map((f) => f.vencimentoDate.year)
-                      .toSet()
-                      .toList()
-                    ..sort((a, b) => b.compareTo(a));
-                  final filtradas = _anoFiltro == null
-                      ? pagas
-                      : pagas
-                          .where((f) => f.vencimentoDate.year == _anoFiltro)
-                          .toList();
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      if (anos.length > 1)
-                        _AnoFilter(
-                          anos: anos,
-                          selecionado: _anoFiltro,
-                          onSelect: (a) =>
-                              setState(() => _anoFiltro = a),
-                        ),
-                      const SizedBox(height: BrandTokens.spaceMd),
-                      for (int i = 0; i < filtradas.length; i++)
-                        _TimelineTile(
-                          fatura: filtradas[i],
-                          isFirst: i == 0,
-                          isLast: i == filtradas.length - 1,
-                          onTap: () =>
-                              FaturaBottomSheet.show(context, filtradas[i]),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ],
           ),
-        ),
+          // ── Folha com a lista ──
+          Expanded(
+            child: FolhaContainer(
+              overlap: BrandTokens.radiusFolha,
+              padding: EdgeInsets.zero,
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  // Força refresh no backend (invalida cache SGP de 1h) — usuario
+                  // chamando pull-to-refresh espera dado novo, ex: depois que admin
+                  // baixou fatura no SGP.
+                  final contratoId = ref.read(contratoAtualProvider);
+                  await ref
+                      .read(faturasRepositoryProvider)
+                      .refreshAll(contratoId: contratoId);
+                  ref.invalidate(faturasAbertasProvider);
+                  ref.invalidate(faturasPagasProvider);
+                },
+                child: ListView(
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(
+                    BrandTokens.spaceLg,
+                    BrandTokens.spaceMd,
+                    BrandTokens.spaceLg,
+                    120,
+                  ),
+                  children: [
+                    abertasAsync.when(
+                      loading: () => const _HeroSkeleton(),
+                      error: (_, __) => _ErrorCard(
+                        onRetry: () => ref.invalidate(faturasAbertasProvider),
+                      ),
+                      data: (abertas) {
+                        if (abertas.isEmpty) {
+                          return const _EmAdiaCard();
+                        }
+                        // Pega a mais proxima do vencimento (primeira da lista,
+                        // ja vem ordenada do backend).
+                        final principal = abertas.first;
+                        final outras = abertas.skip(1).toList();
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _AbertaHeroCard(
+                              fatura: principal,
+                              onTap: () =>
+                                  FaturaBottomSheet.show(context, principal),
+                            ),
+                            if (outras.isNotEmpty) ...[
+                              const SizedBox(height: BrandTokens.spaceMd),
+                              ...outras.map(
+                                (f) => _OutraAbertaTile(
+                                  fatura: f,
+                                  onTap: () =>
+                                      FaturaBottomSheet.show(context, f),
+                                ),
+                              ),
+                            ],
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: BrandTokens.spaceXl),
+                    _SectionLabel(label: 'Histórico'),
+                    const SizedBox(height: BrandTokens.spaceSm),
+                    pagasAsync.when(
+                      loading: () => const Padding(
+                        padding:
+                            EdgeInsets.symmetric(vertical: BrandTokens.spaceLg),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                      error: (_, __) => const SizedBox.shrink(),
+                      data: (pagas) {
+                        if (pagas.isEmpty) {
+                          return _MutedText(
+                            'Suas faturas pagas vao aparecer aqui.',
+                          );
+                        }
+                        // Anos disponiveis pra filtrar
+                        final anos = pagas
+                            .map((f) => f.vencimentoDate.year)
+                            .toSet()
+                            .toList()
+                          ..sort((a, b) => b.compareTo(a));
+                        final filtradas = _anoFiltro == null
+                            ? pagas
+                            : pagas
+                                .where(
+                                    (f) => f.vencimentoDate.year == _anoFiltro)
+                                .toList();
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (anos.length > 1)
+                              _AnoFilter(
+                                anos: anos,
+                                selecionado: _anoFiltro,
+                                onSelect: (a) => setState(() => _anoFiltro = a),
+                              ),
+                            const SizedBox(height: BrandTokens.spaceMd),
+                            for (int i = 0; i < filtradas.length; i++)
+                              _TimelineTile(
+                                fatura: filtradas[i],
+                                isFirst: i == 0,
+                                isLast: i == filtradas.length - 1,
+                                onTap: () => FaturaBottomSheet.show(
+                                    context, filtradas[i]),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -161,8 +181,7 @@ class _AbertaHeroCard extends StatelessWidget {
     final fmtValor = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final fmtData = DateFormat('dd/MM/yyyy', 'pt_BR');
     final venceHoje = _diasAteVencimento(fatura.vencimentoDate);
-    final statusColor =
-        fatura.isVencido ? BrandTokens.danger : Colors.white;
+    final statusColor = fatura.isVencido ? BrandTokens.danger : Colors.white;
     final statusTexto = _heroStatusTexto(fatura, venceHoje);
     return InkWell(
       onTap: onTap,
@@ -195,8 +214,7 @@ class _AbertaHeroCard extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.18),
-                    borderRadius:
-                        BorderRadius.circular(BrandTokens.radiusSm),
+                    borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
                     border: Border.all(
                       color: Colors.white.withOpacity(0.30),
                     ),
@@ -284,8 +302,7 @@ class _AbertaHeroCard extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.18),
-                borderRadius:
-                    BorderRadius.circular(BrandTokens.radiusMd),
+                borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
               ),
               child: Row(
                 children: [
@@ -334,7 +351,9 @@ class _AbertaHeroCard extends StatelessWidget {
   }
 
   String _heroStatusTexto(FaturaDto f, int dias) {
-    if (f.isVencido) return 'VENCIDA HA ${f.diasAtraso} DIA${f.diasAtraso == 1 ? '' : 'S'}';
+    if (f.isVencido) {
+      return 'VENCIDA HA ${f.diasAtraso} DIA${f.diasAtraso == 1 ? '' : 'S'}';
+    }
     if (dias == 0) return 'VENCE HOJE';
     if (dias == 1) return 'VENCE AMANHA';
     if (dias > 0) return 'VENCE EM $dias DIAS';
@@ -382,8 +401,7 @@ class _OutraAbertaTile extends StatelessWidget {
                             ? BrandTokens.danger
                             : BrandTokens.warning)
                         .withOpacity(0.14),
-                    borderRadius:
-                        BorderRadius.circular(BrandTokens.radiusSm),
+                    borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
                   ),
                   child: Icon(
                     fatura.isVencido
@@ -543,8 +561,7 @@ class _TimelineTile extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color:
-                                BrandTokens.success.withOpacity(0.14),
+                            color: BrandTokens.success.withOpacity(0.14),
                             borderRadius:
                                 BorderRadius.circular(BrandTokens.radiusSm),
                           ),
