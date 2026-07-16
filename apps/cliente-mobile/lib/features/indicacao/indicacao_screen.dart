@@ -12,7 +12,7 @@ import '../../core/api/dto.dart';
 import '../../core/api/indicacao_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/async_states.dart';
-import '../../core/ui/glass_app_bar.dart';
+import '../../core/ui/capa_page_scaffold.dart';
 import '../../core/share/render_to_png.dart';
 import '../../core/ui/haptics.dart';
 import 'widgets/indicacao_share_card.dart';
@@ -23,14 +23,9 @@ class IndicacaoScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(indicacaoMeuProvider);
-    final topPadding = MediaQuery.paddingOf(context).top +
-        kToolbarHeight +
-        BrandTokens.spaceMd;
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: GlassAppBar(title: 'Indique e ganhe'),
-      body: RefreshIndicator(
-        edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
+    return CapaPageScaffold(
+      title: 'Indique e ganhe',
+      child: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(indicacaoMeuProvider);
           ref.invalidate(indicacaoTimelineProvider);
@@ -38,10 +33,10 @@ class IndicacaoScreen extends ConsumerWidget {
         },
         child: AsyncBuilder<IndicacaoMeuDto>(
           value: async,
-          loading: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(top: topPadding),
-            children: const [
+          loading: const ListView(
+            physics: AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.only(top: BrandTokens.spaceLg),
+            children: [
               Center(child: CircularProgressIndicator()),
             ],
           ),
@@ -49,7 +44,7 @@ class IndicacaoScreen extends ConsumerWidget {
               ? _ErrorView(
                   message: async.error.toString(),
                   onRetry: () => ref.invalidate(indicacaoMeuProvider),
-                  topPadding: topPadding,
+                  topPadding: BrandTokens.spaceLg,
                 )
               : null,
           builder: (data) => _Content(data: data),
@@ -189,9 +184,9 @@ class _Content extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return ListView(
-      padding: EdgeInsets.fromLTRB(
+      padding: const EdgeInsets.fromLTRB(
         BrandTokens.spaceLg,
-        MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd,
+        BrandTokens.spaceLg,
         BrandTokens.spaceLg,
         BrandTokens.spaceLg,
       ),
