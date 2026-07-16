@@ -241,12 +241,13 @@ class PerfilScreen extends ConsumerWidget {
   }
 }
 
-// ════════ Sliver com o "canto" da capa por trás da folha ════════
+// ════════ Sliver da folha (cor chapada, sem canto) ════════
 //
-// Sem o overlap/Transform do FolhaContainer (fonte do corte azul sob
-// scroll): aqui a folha nasce dentro de um Container pintado com o tom
-// final do gradiente da capa (capaDeep), então os cantos arredondados da
-// folha revelam sempre a mesma cor da capa por baixo — nunca uma fresta.
+// Os cantos arredondados da folha são pintados DENTRO do header (lábio no
+// fundo do _PerfilCapaDelegate), sobre o próprio gradiente — assim capa e
+// canto se encontram perfeitamente em qualquer shrinkOffset e nunca existe
+// fresta/corte azul. Aqui embaixo a folha é só um container chapado que
+// continua a mesma cor do lábio.
 Widget _folhaFiller(
   BuildContext context, {
   required Widget child,
@@ -255,17 +256,9 @@ Widget _folhaFiller(
   final isDark = Theme.of(context).brightness == Brightness.dark;
   return SliverToBoxAdapter(
     child: Container(
-      color: BrandTokens.capaDeep,
-      child: Container(
-        constraints: BoxConstraints(minHeight: minHeight),
-        decoration: BoxDecoration(
-          color: isDark ? BrandTokens.backgroundDark : BrandTokens.background,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(BrandTokens.radiusFolha),
-          ),
-        ),
-        child: child,
-      ),
+      constraints: BoxConstraints(minHeight: minHeight),
+      color: isDark ? BrandTokens.backgroundDark : BrandTokens.background,
+      child: child,
     ),
   );
 }
@@ -314,15 +307,23 @@ class _PerfilCapaDelegate extends SliverPersistentHeaderDelegate {
 
     Widget content;
     if (loading) {
-      content = const Center(
-        child: CircularProgressIndicator(color: Colors.white),
+      content = const Padding(
+        padding: EdgeInsets.only(bottom: BrandTokens.radiusFolha),
+        child: Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
       );
     } else if (errorMode) {
       content = Padding(
         padding: EdgeInsets.only(
           left: BrandTokens.spaceLg,
           right: BrandTokens.spaceLg,
-          top: topInset + BrandTokens.spaceMd,
+          // Colapsado: centraliza na faixa util acima do labio da folha.
+          top: _lerp(
+            topInset + BrandTokens.spaceMd,
+            topInset + (64 - BrandTokens.radiusFolha - 22) / 2,
+            t,
+          ),
         ),
         child: Align(
           alignment: Alignment.topLeft,
@@ -343,11 +344,14 @@ class _PerfilCapaDelegate extends SliverPersistentHeaderDelegate {
       content = LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
+          // Faixa util do estado colapsado: minExtent menos o labio da
+          // folha pintado no fundo do header (radiusFolha).
+          const collapsedBand = 64 - BrandTokens.radiusFolha;
           final avatarSize = _lerp(72, 28, t);
           final avatarLeft = _lerp((width - 72) / 2, BrandTokens.spaceLg, t);
           final avatarTop = _lerp(
             topInset + BrandTokens.spaceLg,
-            topInset + (64 - 28) / 2,
+            topInset + (collapsedBand - 28) / 2,
             t,
           );
           final nomeLeft = _lerp(
@@ -366,6 +370,9 @@ class _PerfilCapaDelegate extends SliverPersistentHeaderDelegate {
             t,
           );
           final planoOpacity = (1 - t * 2).clamp(0.0, 1.0);
+          // Plano sempre abaixo do nome (fade some na primeira metade do
+          // colapso, entao so a geometria expandida importa visualmente).
+          final planoTop = nomeTop + _lerp(30, 20, t) + BrandTokens.spaceXs;
 
           return Stack(
             children: [
@@ -412,7 +419,7 @@ class _PerfilCapaDelegate extends SliverPersistentHeaderDelegate {
                 Positioned(
                   left: 0,
                   right: 0,
-                  top: avatarTop + avatarSize + BrandTokens.spaceXs,
+                  top: planoTop,
                   child: Opacity(
                     opacity: planoOpacity,
                     child: Text(
@@ -432,9 +439,35 @@ class _PerfilCapaDelegate extends SliverPersistentHeaderDelegate {
       );
     }
 
+    // Labio da folha pintado POR CIMA do gradiente, dentro do proprio
+    // header: como gradiente e canto arredondado vivem no mesmo box, eles
+    // se encontram perfeitamente em qualquer shrinkOffset — o gradiente
+    // diagonal nunca "vaza" numa fresta (o antigo corte azul).
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ClipRect(
       child: SizedBox.expand(
-        child: CapaBackground(padding: EdgeInsets.zero, child: content),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            CapaBackground(padding: EdgeInsets.zero, child: content),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                height: BrandTokens.radiusFolha,
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? BrandTokens.backgroundDark
+                      : BrandTokens.background,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(BrandTokens.radiusFolha),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
