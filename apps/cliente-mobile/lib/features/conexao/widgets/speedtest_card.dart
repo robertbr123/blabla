@@ -30,7 +30,7 @@ class _SpeedtestCardState extends State<SpeedtestCard> {
 
   @override
   void dispose() {
-    _service.cancel();
+    _service.close();
     super.dispose();
   }
 
