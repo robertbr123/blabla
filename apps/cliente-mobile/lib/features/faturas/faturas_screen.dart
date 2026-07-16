@@ -110,7 +110,7 @@ class _FaturasScreenState extends ConsumerState<FaturasScreen> {
                         },
                       ),
                       const SizedBox(height: BrandTokens.spaceXl),
-                      _SectionLabel(label: 'Histórico'),
+                      const _SectionLabel(label: 'Histórico'),
                       const SizedBox(height: BrandTokens.spaceSm),
                       pagasAsync.when(
                         loading: () => const Padding(
@@ -121,7 +121,7 @@ class _FaturasScreenState extends ConsumerState<FaturasScreen> {
                         error: (_, __) => const SizedBox.shrink(),
                         data: (pagas) {
                           if (pagas.isEmpty) {
-                            return _MutedText(
+                            return const _MutedText(
                               'Suas faturas pagas vao aparecer aqui.',
                             );
                           }
@@ -347,7 +347,7 @@ class _AbertaHeroCard extends StatelessWidget {
                   ),
                   child: Text(
                     statusTexto,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: statusColor,
                       fontWeight: FontWeight.w800,
                       fontSize: 11,
