@@ -266,12 +266,20 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
                 ),
                 const SizedBox(height: BrandTokens.spaceLg),
                 FilledButton.icon(
-                  onPressed: () => abrirWhatsappComercial(
-                    ref,
-                    mensagem: 'Olá! Quero atualizar o telefone do meu '
-                        'cadastro pra acessar o app. Meu CPF é '
-                        '${formatCpf(cpf)}.',
-                  ),
+                  onPressed: () async {
+                    final ok = await abrirWhatsappComercial(
+                      ref,
+                      mensagem: 'Olá! Quero atualizar o telefone do meu '
+                          'cadastro pra acessar o app. Meu CPF é '
+                          '${formatCpf(cpf)}.',
+                    );
+                    if (!ok && mounted) {
+                      _toast(
+                        'Não conseguimos abrir o WhatsApp agora. '
+                        'Tenta de novo mais tarde.',
+                      );
+                    }
+                  },
                   icon: const Icon(Icons.chat_rounded),
                   label: const Text('Atualizar meu cadastro'),
                   style: FilledButton.styleFrom(
