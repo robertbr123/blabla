@@ -56,8 +56,10 @@ class HomeCapaDelegate extends SliverPersistentHeaderDelegate {
   static const double expandedExtra = 230;
 
   /// Altura extra (além do topInset) do header totalmente colapsado:
-  /// faixa compacta de status (uma linha) + lábio da folha.
-  static const double collapsedExtra = 92;
+  /// faixa compacta de status (uma linha) + linha compacta do contrato
+  /// (endereço + troca) + lábio da folha. +20 sobre o valor original pra
+  /// acomodar a linha de contrato sem colidir com o lip.
+  static const double collapsedExtra = 112;
 
   @override
   double get maxExtent => topInset + expandedExtra * fontScale;
@@ -223,19 +225,33 @@ class _ExpandedCollapsedContent extends StatelessWidget {
     final nome = me == null ? 'Cliente' : _primeiroNome(me!.nome);
     final planoNome = me?.planoNome ?? 'Sem plano vinculado';
 
-    // Fade rápido: saudação, sino e linha de contrato somem já no início
-    // do colapso (por volta de 40-25% do scroll) — quando o bloco de
-    // status já assumiu a posição fixa deles.
+    // Fade rápido: saudação e sino somem já no início do colapso (por
+    // volta de 40% do scroll) — quando o bloco de status já assumiu a
+    // posição fixa deles. A linha de contrato NÃO some mais: em vez de
+    // fade, ela desliza pra uma posição compacta logo abaixo da faixa de
+    // status colapsada (ver `contratoTop` abaixo).
     final greetingOpacity = (1 - t * 2.5).clamp(0.0, 1.0);
-    final contratoOpacity = (1 - t * 4).clamp(0.0, 1.0);
 
     // Faixa útil do estado colapsado (acima do lábio da folha): minExtent
-    // (92) menos o lábio da folha (radiusFolha=28) = 64 — escalada em
+    // (112) menos o lábio da folha (radiusFolha=28) = 84 — escalada em
     // `collapsedBand` (calculado pelo delegate) pra caber fonte grande.
+    // Conteúdo compacto total = faixa de status (40) + espaço (4) + linha
+    // de contrato (16), centralizado na faixa disponível.
+    const compactStatusHeight = 40.0;
+    const compactContratoGap = 4.0;
+    const compactContratoHeight = 16.0;
+    const compactContentHeight =
+        compactStatusHeight + compactContratoGap + compactContratoHeight;
     final expandedStatusTop = topInset +
         (BrandTokens.spaceMd + 46 + BrandTokens.spaceMd) * fontScale;
-    final collapsedStatusTop = topInset + (collapsedBand - 40 * fontScale) / 2;
+    final collapsedStatusTop =
+        topInset + (collapsedBand - compactContentHeight * fontScale) / 2;
     final statusTop = _lerp(expandedStatusTop, collapsedStatusTop, t);
+    final collapsedContratoTop = collapsedStatusTop +
+        (compactStatusHeight + compactContratoGap) * fontScale;
+    final expandedContratoTop =
+        expandedStatusTop + (BrandTokens.spaceSm + 78) * fontScale;
+    final contratoTop = _lerp(expandedContratoTop, collapsedContratoTop, t);
 
     return Stack(
       children: [
@@ -283,21 +299,21 @@ class _ExpandedCollapsedContent extends StatelessWidget {
           top: statusTop,
           child: _StatusBlock(t: t, planoNome: planoNome, rede: rede),
         ),
-        // Linha de endereço / troca de contrato
+        // Linha de endereço / troca de contrato — permanece visível e
+        // clicável mesmo colapsada, deslizando pra uma linha compacta
+        // logo abaixo da faixa de status (sem fade a zero).
         if (contratoAtual != null && contratoAtual!.enderecoResumido.isNotEmpty)
           Positioned(
             left: BrandTokens.spaceLg,
             right: BrandTokens.spaceLg,
-            top: expandedStatusTop + (BrandTokens.spaceSm + 78) * fontScale,
-            child: Opacity(
-              opacity: contratoOpacity,
-              child: _ContratoLinha(
-                contrato: contratoAtual!,
-                podeTrocar: podeTrocarContrato,
-                onTrocar: onTrocarContrato == null
-                    ? null
-                    : () => onTrocarContrato!(context),
-              ),
+            top: contratoTop,
+            child: _ContratoLinha(
+              t: t,
+              contrato: contratoAtual!,
+              podeTrocar: podeTrocarContrato,
+              onTrocar: onTrocarContrato == null
+                  ? null
+                  : () => onTrocarContrato!(context),
             ),
           ),
       ],
@@ -438,22 +454,31 @@ class _MinhaRedeChip extends StatelessWidget {
 }
 
 /// Linha de endereço do contrato na capa; clicável quando multi-contrato.
+/// Interpola tamanho de ícones/fonte do estado expandido pro colapsado
+/// (via `t`) — nunca some, permanece legível e tocável em t=1.
 class _ContratoLinha extends StatelessWidget {
   const _ContratoLinha({
+    required this.t,
     required this.contrato,
     required this.podeTrocar,
     required this.onTrocar,
   });
+  final double t;
   final ContratoResumoDto contrato;
   final bool podeTrocar;
   final VoidCallback? onTrocar;
 
+  static double _lerp(double a, double b, double t) => a + (b - a) * t;
+
   @override
   Widget build(BuildContext context) {
+    final iconSize = _lerp(14, 12, t);
+    final fontSize = _lerp(12, 11, t);
+    final swapIconSize = _lerp(16, 13, t);
     final linha = Row(
       children: [
         Icon(Icons.location_on_outlined,
-            size: 14, color: BrandTokens.capaInk.withValues(alpha: 0.7)),
+            size: iconSize, color: BrandTokens.capaInk.withValues(alpha: 0.7)),
         const SizedBox(width: 4),
         Expanded(
           child: Text(
@@ -462,14 +487,15 @@ class _ContratoLinha extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: BrandTokens.capaInk.withValues(alpha: 0.7),
-              fontSize: 12,
+              fontSize: fontSize,
               fontWeight: FontWeight.w600,
             ),
           ),
         ),
         if (podeTrocar)
           Icon(Icons.swap_horiz_rounded,
-              size: 16, color: BrandTokens.capaInk.withValues(alpha: 0.7)),
+              size: swapIconSize,
+              color: BrandTokens.capaInk.withValues(alpha: 0.7)),
       ],
     );
     if (!podeTrocar || onTrocar == null) return linha;

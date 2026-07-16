@@ -70,7 +70,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _onRefresh,
-        edgeOffset: topInset + HomeCapaDelegate.expandedExtra,
+        edgeOffset: topInset + HomeCapaDelegate.expandedExtra * fontScale,
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(
             parent: AlwaysScrollableScrollPhysics(),
