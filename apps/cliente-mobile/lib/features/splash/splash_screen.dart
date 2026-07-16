@@ -6,7 +6,7 @@ import '../../core/auth/auth_state.dart';
 import '../../core/auth/auth_storage.dart';
 import '../../core/auth/biometric_service.dart';
 import '../../core/branding/brand_tokens.dart';
-import '../../core/ui/animated_gradient_background.dart';
+import '../../core/ui/capa_folha.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -72,8 +72,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: BrandTokens.primaryDark,
-      body: AnimatedGradientBackground(
+      body: CapaBackground(
         child: SafeArea(
           child: Center(
             child: AnimatedBuilder(
@@ -105,32 +104,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     ),
                   ),
                   const SizedBox(height: BrandTokens.spaceLg),
-                  const Text(
-                    'Ondeline',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 30,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
                   Text(
-                    'Sua internet, na palma da mão',
+                    'Ondeline — internet que acompanha você.',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.75),
+                      color: BrandTokens.capaInk.withValues(alpha: 0.7),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      letterSpacing: 0.2,
                     ),
                   ),
                   const SizedBox(height: BrandTokens.spaceXxl),
-                  const SizedBox(
+                  SizedBox(
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        BrandTokens.capaInk.withValues(alpha: 0.6),
+                      ),
                     ),
                   ),
                 ],
