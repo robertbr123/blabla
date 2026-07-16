@@ -339,10 +339,10 @@ class _AbertaHeroCard extends StatelessWidget {
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
+                    color: Colors.white.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.30),
+                      color: Colors.white.withValues(alpha: 0.30),
                     ),
                   ),
                   child: Text(
@@ -427,7 +427,7 @@ class _AbertaHeroCard extends StatelessWidget {
                 vertical: BrandTokens.spaceSm,
               ),
               decoration: BoxDecoration(
-                color: isVencido ? Colors.white : Colors.white.withOpacity(0.18),
+                color: isVencido ? Colors.white : Colors.white.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
               ),
               child: Row(
@@ -515,7 +515,7 @@ class _OutraAbertaTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
               border: Border.all(
                 color: fatura.isVencido
-                    ? BrandTokens.danger.withOpacity(0.30)
+                    ? BrandTokens.danger.withValues(alpha: 0.30)
                     : (isDark ? Colors.white12 : BrandTokens.divider),
               ),
             ),
@@ -528,7 +528,7 @@ class _OutraAbertaTile extends StatelessWidget {
                     color: (fatura.isVencido
                             ? BrandTokens.danger
                             : BrandTokens.warning)
-                        .withOpacity(0.14),
+                        .withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
                   ),
                   child: Icon(
@@ -615,7 +615,7 @@ class _TimelineTile extends StatelessWidget {
                       ? const SizedBox.shrink()
                       : Container(
                           width: 2,
-                          color: BrandTokens.success.withOpacity(0.30),
+                          color: BrandTokens.success.withValues(alpha: 0.30),
                         ),
                 ),
                 Container(
@@ -632,7 +632,7 @@ class _TimelineTile extends StatelessWidget {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: BrandTokens.success.withOpacity(0.30),
+                        color: BrandTokens.success.withValues(alpha: 0.30),
                         blurRadius: 8,
                       ),
                     ],
@@ -643,7 +643,7 @@ class _TimelineTile extends StatelessWidget {
                       ? const SizedBox.shrink()
                       : Container(
                           width: 2,
-                          color: BrandTokens.success.withOpacity(0.30),
+                          color: BrandTokens.success.withValues(alpha: 0.30),
                         ),
                 ),
               ],
@@ -689,7 +689,7 @@ class _TimelineTile extends StatelessWidget {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: BrandTokens.success.withOpacity(0.14),
+                            color: BrandTokens.success.withValues(alpha: 0.14),
                             borderRadius:
                                 BorderRadius.circular(BrandTokens.radiusSm),
                           ),
@@ -768,10 +768,10 @@ class _EmAdiaCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(BrandTokens.spaceLg),
       decoration: BoxDecoration(
-        color: BrandTokens.success.withOpacity(0.10),
+        color: BrandTokens.success.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
         border: Border.all(
-          color: BrandTokens.success.withOpacity(0.30),
+          color: BrandTokens.success.withValues(alpha: 0.30),
         ),
       ),
       child: Column(
@@ -780,7 +780,7 @@ class _EmAdiaCard extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: BrandTokens.success.withOpacity(0.18),
+              color: BrandTokens.success.withValues(alpha: 0.18),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -820,7 +820,7 @@ class _HeroSkeleton extends StatelessWidget {
     return Container(
       height: 200,
       decoration: BoxDecoration(
-        color: BrandTokens.primary.withOpacity(0.08),
+        color: BrandTokens.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
       ),
       child: const Center(child: CircularProgressIndicator()),
@@ -836,7 +836,7 @@ class _ErrorCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(BrandTokens.spaceLg),
       decoration: BoxDecoration(
-        color: BrandTokens.danger.withOpacity(0.08),
+        color: BrandTokens.danger.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
       ),
       child: Column(
