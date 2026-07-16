@@ -49,6 +49,8 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
         await _showNotFoundSheet();
       case RegisterStartAlreadyExists():
         await _showAlreadyExistsSheet(cpf);
+      case RegisterStartSemTelefone():
+        await _showSemTelefoneSheet(cpf);
       case RegisterStartError(:final message):
         _toast(message);
     }
@@ -60,7 +62,7 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
   /// Busca o contato de WhatsApp com melhor esforço e abre o wa.me com a
   /// mensagem padrão. Retorna `true` se conseguiu localizar o número e
   /// disparar o launch, `false` caso contrário (sem número/erro).
-  Future<bool> _abrirWhatsappComercial() async {
+  Future<bool> _abrirWhatsappComercial({String? mensagem}) async {
     String? whatsNumber;
     try {
       final contatos = await ref.read(contatosOperadoraProvider.future);
@@ -78,7 +80,7 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
     final uri = Uri.parse(
       'https://wa.me/$whatsNumber'
       '?text=${Uri.encodeComponent(
-        'Olá! Baixei o app da Ondeline e quero ser cliente 😃',
+        mensagem ?? 'Olá! Baixei o app da Ondeline e quero ser cliente 😃',
       )}',
     );
     try {
@@ -246,6 +248,85 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
     if (!mounted) return;
     // Leva o CPF junto pro login já vir preenchido.
     context.go('/login', extra: {'cpf': cpf});
+  }
+
+  Future<void> _showSemTelefoneSheet(String cpf) async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: isDark ? BrandTokens.surfaceDark : BrandTokens.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(BrandTokens.radiusFolha),
+        ),
+      ),
+      builder: (sheetContext) => SingleChildScrollView(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              BrandTokens.spaceLg,
+              BrandTokens.spaceLg,
+              BrandTokens.spaceLg,
+              BrandTokens.spaceLg,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.phone_disabled_rounded,
+                    color: BrandTokens.warning, size: 48),
+                const SizedBox(height: BrandTokens.spaceMd),
+                Text(
+                  'Achamos seu cadastro, mas...',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
+                ),
+                const SizedBox(height: BrandTokens.spaceSm),
+                Text(
+                  'Ele está sem um WhatsApp válido. Fala com a gente que '
+                  'atualizamos rapidinho — aí é só voltar e continuar.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(sheetContext).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: BrandTokens.spaceLg),
+                FilledButton.icon(
+                  onPressed: () => _abrirWhatsappComercial(
+                    mensagem: 'Olá! Quero atualizar o telefone do meu '
+                        'cadastro pra acessar o app. Meu CPF é '
+                        '${formatCpf(cpf)}.',
+                  ),
+                  icon: const Icon(Icons.chat_rounded),
+                  label: const Text('Atualizar meu cadastro'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: BrandTokens.brandWhatsapp,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+                    ),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                const SizedBox(height: BrandTokens.spaceSm),
+                TextButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  child: const Text(
+                    'Fechar',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override

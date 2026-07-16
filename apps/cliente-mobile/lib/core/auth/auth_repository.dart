@@ -24,6 +24,13 @@ class AuthRepository {
         return RegisterStartResult.notFound();
       }
       if (e.response?.statusCode == 409) {
+        final data = e.response?.data;
+        if (data is Map && data['detail'] is Map) {
+          final detail = data['detail'] as Map;
+          if (detail['code'] == 'sem_telefone') {
+            return RegisterStartResult.semTelefone();
+          }
+        }
         return RegisterStartResult.alreadyExists();
       }
       return RegisterStartResult.error(_messageFromDio(e));
@@ -165,6 +172,7 @@ sealed class RegisterStartResult {
       RegisterStartOk;
   factory RegisterStartResult.notFound() = RegisterStartNotFound;
   factory RegisterStartResult.alreadyExists() = RegisterStartAlreadyExists;
+  factory RegisterStartResult.semTelefone() = RegisterStartSemTelefone;
   factory RegisterStartResult.error(String message) = RegisterStartError;
 }
 
@@ -179,6 +187,10 @@ class RegisterStartNotFound extends RegisterStartResult {
 
 class RegisterStartAlreadyExists extends RegisterStartResult {
   const RegisterStartAlreadyExists();
+}
+
+class RegisterStartSemTelefone extends RegisterStartResult {
+  const RegisterStartSemTelefone();
 }
 
 class RegisterStartError extends RegisterStartResult {

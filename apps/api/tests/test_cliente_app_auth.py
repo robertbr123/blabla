@@ -179,6 +179,53 @@ async def test_register_start_unknown_cpf_returns_404(client: AsyncClient) -> No
 
 
 @pytest.mark.asyncio
+async def test_register_start_sem_telefone_returns_409_with_code(
+    db_session: AsyncSession,
+    redis_client: Redis,  # type: ignore[type-arg]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """SGP acha o cliente mas sem whatsapp cadastrado -> 409 com detail tipado."""
+    sem_telefone_cliente = ClienteSgp(
+        provider=SgpProviderEnum.ONDELINE,
+        sgp_id="99999",
+        nome="Cliente Sem Telefone",
+        cpf_cnpj=TEST_CPF,
+        whatsapp="",
+        contratos=[],
+        endereco=EnderecoSgp(),
+    )
+
+    async def _fake_sgp(_session: AsyncSession, cpf: str) -> ClienteSgp | None:
+        if cpf == TEST_CPF:
+            return sem_telefone_cliente
+        return None
+
+    monkeypatch.setattr(
+        "ondeline_api.api.v1.cliente_app_auth._sgp_lookup_by_cpf",
+        _fake_sgp,
+    )
+
+    app = create_app()
+
+    async def _override_db() -> collections.abc.AsyncIterator[AsyncSession]:
+        yield db_session
+
+    async def _override_redis() -> Any:
+        return redis_client
+
+    app.dependency_overrides[get_db] = _override_db
+    app.dependency_overrides[get_redis] = _override_redis
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+        r = await c.post("/api/v1/cliente-app/auth/register/start", json={"cpf": TEST_CPF})
+    assert r.status_code == 409, r.text
+    assert r.json()["detail"] == {
+        "code": "sem_telefone",
+        "msg": "cliente sem telefone cadastrado no SGP",
+    }
+
+
+@pytest.mark.asyncio
 async def test_isolation_cliente_token_rejected_by_staff_endpoint(
     client: AsyncClient,
 ) -> None:

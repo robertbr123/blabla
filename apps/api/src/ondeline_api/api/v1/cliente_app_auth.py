@@ -175,7 +175,13 @@ async def register_start(
         telefone = sgp_cliente.whatsapp
         sgp_id = sgp_cliente.sgp_id
         if not telefone:
-            raise HTTPException(status_code=409, detail="cliente sem telefone cadastrado no SGP")
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "sem_telefone",
+                    "msg": "cliente sem telefone cadastrado no SGP",
+                },
+            )
         user = await repo.create_pending(
             session,
             cpf=body.cpf,
