@@ -70,9 +70,10 @@ class _OnboardingOtpScreenState extends ConsumerState<OnboardingOtpScreen> {
     return AuthScaffold(
       showBack: true,
       icon: Icons.message_outlined,
-      title: 'Confirme seu telefone',
-      subtitle:
-          'Enviamos um código de 6 digitos no WhatsApp ${widget.maskedPhone}.',
+      title: 'Achamos seu cadastro! 🎉',
+      subtitle: widget.maskedPhone.isEmpty
+          ? 'Enviamos um código pro seu WhatsApp. Digita ele aqui embaixo.'
+          : 'Enviamos um código pro seu WhatsApp ${widget.maskedPhone}. Digita ele aqui embaixo.',
       child: SheetTextField(
         controller: _ctrl,
         label: 'Código',

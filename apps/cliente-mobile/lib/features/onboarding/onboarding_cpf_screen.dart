@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/api/contatos_repository.dart';
 import '../../core/auth/auth_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/auth_scaffold.dart';
@@ -43,6 +45,8 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
           'cpf': cpf,
           'masked_phone': maskedPhone,
         });
+      case RegisterStartNotFound():
+        await _showNotFoundSheet();
       case RegisterStartError(:final message):
         final lower = message.toLowerCase();
         if (lower.contains('cadastrad')) {
@@ -60,6 +64,111 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
   void _toast(String s) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s)));
 
+  Future<void> _showNotFoundSheet() async {
+    // Busca o contato de WhatsApp com melhor esforço, antes de exibir a
+    // sheet, pra decidir se mostra o CTA (sem contato/erro -> some, graceful).
+    String? whatsNumber;
+    try {
+      final contatos =
+          await ref.read(contatosOperadoraProvider.future);
+      for (final c in contatos) {
+        if (c.tipo == 'whatsapp') {
+          final digits = c.valor.replaceAll(RegExp(r'\D'), '');
+          if (digits.isNotEmpty) whatsNumber = digits;
+          break;
+        }
+      }
+    } on Object {
+      whatsNumber = null;
+    }
+    if (!mounted) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: isDark ? BrandTokens.surfaceDark : BrandTokens.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(BrandTokens.radiusFolha),
+        ),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            BrandTokens.spaceLg,
+            BrandTokens.spaceLg,
+            BrandTokens.spaceLg,
+            BrandTokens.spaceLg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.search_off_rounded,
+                  color: BrandTokens.warning, size: 48),
+              const SizedBox(height: BrandTokens.spaceMd),
+              Text(
+                'Não achamos esse CPF',
+                textAlign: TextAlign.center,
+                style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
+              ),
+              const SizedBox(height: BrandTokens.spaceSm),
+              Text(
+                'Confere se digitou certinho. Ainda não é cliente Ondeline? '
+                'Bora resolver isso agora 😉',
+                textAlign: TextAlign.center,
+                style: Theme.of(sheetContext).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: BrandTokens.spaceLg),
+              if (whatsNumber != null) ...[
+                FilledButton.icon(
+                  onPressed: () async {
+                    final uri = Uri.parse(
+                      'https://wa.me/$whatsNumber'
+                      '?text=${Uri.encodeComponent(
+                        'Olá! Baixei o app da Ondeline e quero ser cliente 😃',
+                      )}',
+                    );
+                    try {
+                      await launchUrl(uri,
+                          mode: LaunchMode.externalApplication);
+                    } on Object {
+                      // Best-effort — se falhar, apenas ignora.
+                    }
+                  },
+                  icon: const Icon(Icons.chat_rounded),
+                  label: const Text('Quero ser cliente'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: BrandTokens.brandWhatsapp,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(BrandTokens.radiusMd),
+                    ),
+                    textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                const SizedBox(height: BrandTokens.spaceSm),
+              ],
+              TextButton(
+                onPressed: () => Navigator.of(sheetContext).pop(),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                child: const Text(
+                  'Tentar de novo',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -69,6 +178,42 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
       subtitle: 'Digite o CPF do titular do contrato pra gente localizar seu cadastro.',
       child: Column(
         children: [
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: BrandTokens.spaceSm + 2,
+              vertical: BrandTokens.spaceXs,
+            ),
+            decoration: BoxDecoration(
+              color: isDark ? BrandTokens.surfaceDark : BrandTokens.surface,
+              borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
+            ),
+            child: Text(
+              'Passo 1 de 3',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: isDark
+                    ? BrandTokens.textSecondaryDark
+                    : BrandTokens.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(height: BrandTokens.spaceLg),
+          Container(
+            width: 88,
+            height: 88,
+            decoration: BoxDecoration(
+              gradient: BrandTokens.gradientPrimary,
+              shape: BoxShape.circle,
+              boxShadow: BrandTokens.shadowColored,
+            ),
+            child: const Icon(
+              Icons.person_search_rounded,
+              color: Colors.white,
+              size: 44,
+            ),
+          ),
+          const SizedBox(height: BrandTokens.spaceLg),
           SheetTextField(
             controller: _ctrl,
             label: 'CPF',

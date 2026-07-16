@@ -20,6 +20,9 @@ class AuthRepository {
       return RegisterStartResult.ok(
           maskedPhone: r.data['masked_phone'] as String);
     } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return RegisterStartResult.notFound();
+      }
       return RegisterStartResult.error(_messageFromDio(e));
     }
   }
@@ -157,12 +160,17 @@ sealed class RegisterStartResult {
   const RegisterStartResult();
   factory RegisterStartResult.ok({required String maskedPhone}) =
       RegisterStartOk;
+  factory RegisterStartResult.notFound() = RegisterStartNotFound;
   factory RegisterStartResult.error(String message) = RegisterStartError;
 }
 
 class RegisterStartOk extends RegisterStartResult {
   const RegisterStartOk({required this.maskedPhone});
   final String maskedPhone;
+}
+
+class RegisterStartNotFound extends RegisterStartResult {
+  const RegisterStartNotFound();
 }
 
 class RegisterStartError extends RegisterStartResult {
