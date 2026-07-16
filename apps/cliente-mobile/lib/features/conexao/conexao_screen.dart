@@ -6,7 +6,7 @@ import '../../core/api/conexao_repository.dart';
 import '../../core/api/dto.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/async_states.dart';
-import '../../core/ui/glass_app_bar.dart';
+import '../../core/ui/capa_page_scaffold.dart';
 
 class ConexaoScreen extends ConsumerWidget {
   const ConexaoScreen({super.key});
@@ -14,11 +14,9 @@ class ConexaoScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(conexaoProvider);
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: GlassAppBar(title: 'Status da conexão'),
-      body: RefreshIndicator(
-        edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
+    return CapaPageScaffold(
+      title: 'Status da conexão',
+      child: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(conexaoProvider);
           await ref.read(conexaoProvider.future);
@@ -27,10 +25,8 @@ class ConexaoScreen extends ConsumerWidget {
           value: async,
           loading: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(
-              top: MediaQuery.paddingOf(context).top +
-                  kToolbarHeight +
-                  BrandTokens.spaceMd,
+            padding: const EdgeInsets.only(
+              top: BrandTokens.spaceLg,
             ),
             children: const [
               Padding(
@@ -41,10 +37,8 @@ class ConexaoScreen extends ConsumerWidget {
           ),
           error: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(
-              top: MediaQuery.paddingOf(context).top +
-                  kToolbarHeight +
-                  BrandTokens.spaceMd,
+            padding: const EdgeInsets.only(
+              top: BrandTokens.spaceLg,
               left: BrandTokens.spaceLg,
               right: BrandTokens.spaceLg,
               bottom: BrandTokens.spaceLg,
@@ -60,11 +54,9 @@ class ConexaoScreen extends ConsumerWidget {
             physics: const BouncingScrollPhysics(
               parent: AlwaysScrollableScrollPhysics(),
             ),
-            padding: EdgeInsets.fromLTRB(
+            padding: const EdgeInsets.fromLTRB(
               BrandTokens.spaceLg,
-              MediaQuery.paddingOf(context).top +
-                  kToolbarHeight +
-                  BrandTokens.spaceMd,
+              BrandTokens.spaceLg,
               BrandTokens.spaceLg,
               BrandTokens.spaceLg,
             ),
