@@ -9,10 +9,18 @@ import '../../core/auth/auth_state.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/notifications/push_service.dart';
 import '../../core/theme/theme_mode_controller.dart';
+import '../../core/ui/capa_folha.dart';
 import '../../core/ui/formatters.dart';
 
 class PerfilScreen extends ConsumerWidget {
   const PerfilScreen({super.key});
+
+  EdgeInsets _capaPadding(BuildContext context) => EdgeInsets.only(
+        left: BrandTokens.spaceLg,
+        right: BrandTokens.spaceLg,
+        top: MediaQuery.paddingOf(context).top + BrandTokens.spaceMd,
+        bottom: BrandTokens.spaceLg + BrandTokens.radiusFolha,
+      );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -20,188 +28,249 @@ class PerfilScreen extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
 
     return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: meAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (_, __) => const Center(child: Text('Erro carregando perfil')),
-          data: (me) => ListView(
-            physics: const BouncingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
+      body: meAsync.when(
+        loading: () => const Column(
+          children: [
+            _CapaSkeleton(),
+            Expanded(
+              child: FolhaContainer(
+                overlap: BrandTokens.radiusFolha,
+                padding: EdgeInsets.zero,
+                child: SizedBox.shrink(),
+              ),
             ),
-            padding: const EdgeInsets.fromLTRB(
-              BrandTokens.spaceLg,
-              BrandTokens.spaceLg,
-              BrandTokens.spaceLg,
-              120,
+          ],
+        ),
+        error: (_, __) => Column(
+          children: [
+            CapaBackground(
+              padding: _capaPadding(context),
+              child: const Text(
+                'Perfil',
+                style: TextStyle(
+                  color: BrandTokens.capaInk,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.6,
+                ),
+              ),
             ),
-            children: [
-              _ProfileHeader(nome: me.nome, plano: me.planoNome),
-              const SizedBox(height: BrandTokens.spaceLg),
-
-              // Dados de contato
-              _CardSection(
-                title: 'Dados pessoais',
-                children: [
-                  _CardTile(
-                    icon: Icons.badge_outlined,
-                    iconColor: BrandTokens.catBilling,
-                    label: 'CPF',
-                    value: '***.***.***-${me.cpfLast4}',
-                  ),
-                  _CardTile(
-                    icon: Icons.phone_outlined,
-                    iconColor: BrandTokens.info,
-                    label: 'Telefone',
-                    value: formatTelefone(me.telefone),
-                    onTap: () => context.push('/perfil/editar', extra: {
-                      'campo': 'telefone',
-                      'valor': me.telefone,
-                    }),
-                  ),
-                  _CardTile(
-                    icon: Icons.mail_outline,
-                    iconColor: BrandTokens.catSupport,
-                    label: 'Email',
-                    value: (me.email ?? '').isEmpty
-                        ? 'Não informado'
-                        : me.email!,
-                    onTap: () => context.push('/perfil/editar', extra: {
-                      'campo': 'email',
-                      'valor': me.email ?? '',
-                    }),
-                  ),
-                ],
+            const Expanded(
+              child: FolhaContainer(
+                overlap: BrandTokens.radiusFolha,
+                padding: EdgeInsets.zero,
+                child: Center(child: Text('Erro carregando perfil')),
               ),
-
-              // Seguranca
-              _CardSection(
-                title: 'Seguranca',
-                children: [
-                  _CardTile(
-                    icon: Icons.lock_outline,
-                    iconColor: BrandTokens.warning,
-                    label: 'Mudar senha',
-                    onTap: () => context.push('/perfil/mudar-senha'),
+            ),
+          ],
+        ),
+        data: (me) => Column(
+          children: [
+            CapaBackground(
+              padding: _capaPadding(context),
+              child: _ProfileCapaContent(nome: me.nome, plano: me.planoNome),
+            ),
+            Expanded(
+              child: FolhaContainer(
+                overlap: BrandTokens.radiusFolha,
+                padding: EdgeInsets.zero,
+                child: ListView(
+                  physics: const BouncingScrollPhysics(
+                    parent: AlwaysScrollableScrollPhysics(),
                   ),
-                ],
-              ),
-
-              // Vantagens
-              _CardSection(
-                title: 'Vantagens',
-                children: [
-                  _CardTile(
-                    icon: Icons.workspace_premium_rounded,
-                    iconColor: BrandTokens.warning,
-                    label: 'Programa de fidelidade',
-                    value: 'Acumule pontos e troque por descontos',
-                    onTap: () => context.push('/fidelidade'),
+                  padding: const EdgeInsets.fromLTRB(
+                    BrandTokens.spaceLg,
+                    BrandTokens.spaceLg,
+                    BrandTokens.spaceLg,
+                    120,
                   ),
-                  _CardTile(
-                    icon: Icons.card_giftcard_rounded,
-                    iconColor: BrandTokens.catPlan,
-                    label: 'Indique e ganhe',
-                    value: 'Compartilhe seu código e ganhe desconto',
-                    onTap: () => context.push('/indicacao'),
-                  ),
-                ],
-              ),
+                  children: [
+                    // Dados de contato
+                    _CardSection(
+                      title: 'Dados pessoais',
+                      children: [
+                        _CardTile(
+                          icon: Icons.badge_outlined,
+                          iconColor: BrandTokens.catBilling,
+                          label: 'CPF',
+                          value: '***.***.***-${me.cpfLast4}',
+                        ),
+                        _CardTile(
+                          icon: Icons.phone_outlined,
+                          iconColor: BrandTokens.info,
+                          label: 'Telefone',
+                          value: formatTelefone(me.telefone),
+                          onTap: () => context.push('/perfil/editar', extra: {
+                            'campo': 'telefone',
+                            'valor': me.telefone,
+                          }),
+                        ),
+                        _CardTile(
+                          icon: Icons.mail_outline,
+                          iconColor: BrandTokens.catSupport,
+                          label: 'Email',
+                          value: (me.email ?? '').isEmpty
+                              ? 'Não informado'
+                              : me.email!,
+                          onTap: () => context.push('/perfil/editar', extra: {
+                            'campo': 'email',
+                            'valor': me.email ?? '',
+                          }),
+                        ),
+                      ],
+                    ),
 
-              // Atendimento
-              _CardSection(
-                title: 'Atendimento',
-                children: [
-                  _CardTile(
-                    icon: Icons.contact_phone_outlined,
-                    iconColor: BrandTokens.primary,
-                    label: 'Fale conosco',
-                    value: 'WhatsApp, telefone, endereço e redes',
-                    onTap: () => context.push('/contatos'),
-                  ),
-                ],
-              ),
+                    // Seguranca
+                    _CardSection(
+                      title: 'Seguranca',
+                      children: [
+                        _CardTile(
+                          icon: Icons.lock_outline,
+                          iconColor: BrandTokens.warning,
+                          label: 'Mudar senha',
+                          onTap: () => context.push('/perfil/mudar-senha'),
+                        ),
+                      ],
+                    ),
 
-              // Aparencia (com toggle dark visivel)
-              _CardSection(
-                title: 'Aparencia',
-                children: [
-                  _ThemeTile(
-                    currentMode: themeMode,
-                    onChanged: (m) =>
-                        ref.read(themeModeProvider.notifier).set(m),
-                  ),
-                ],
-              ),
+                    // Vantagens
+                    _CardSection(
+                      title: 'Vantagens',
+                      children: [
+                        _CardTile(
+                          icon: Icons.workspace_premium_rounded,
+                          iconColor: BrandTokens.warning,
+                          label: 'Programa de fidelidade',
+                          value: 'Acumule pontos e troque por descontos',
+                          onTap: () => context.push('/fidelidade'),
+                        ),
+                        _CardTile(
+                          icon: Icons.card_giftcard_rounded,
+                          iconColor: BrandTokens.catPlan,
+                          label: 'Indique e ganhe',
+                          value: 'Compartilhe seu código e ganhe desconto',
+                          onTap: () => context.push('/indicacao'),
+                        ),
+                      ],
+                    ),
 
-              // Sobre
-              _CardSection(
-                title: 'Sobre',
-                children: [
-                  _CardTile(
-                    icon: Icons.description_outlined,
-                    iconColor: BrandTokens.textSecondary,
-                    label: 'Termos de Uso',
-                    onTap: () => context.push('/legal/termos'),
-                  ),
-                  _CardTile(
-                    icon: Icons.privacy_tip_outlined,
-                    iconColor: BrandTokens.textSecondary,
-                    label: 'Política de Privacidade',
-                    onTap: () => context.push('/legal/privacidade'),
-                  ),
-                ],
-              ),
+                    // Atendimento
+                    _CardSection(
+                      title: 'Atendimento',
+                      children: [
+                        _CardTile(
+                          icon: Icons.contact_phone_outlined,
+                          iconColor: BrandTokens.primary,
+                          label: 'Fale conosco',
+                          value: 'WhatsApp, telefone, endereço e redes',
+                          onTap: () => context.push('/contatos'),
+                        ),
+                      ],
+                    ),
 
-              const SizedBox(height: BrandTokens.spaceLg),
+                    // Aparencia (com toggle dark visivel)
+                    _CardSection(
+                      title: 'Aparencia',
+                      children: [
+                        _ThemeTile(
+                          currentMode: themeMode,
+                          onChanged: (m) =>
+                              ref.read(themeModeProvider.notifier).set(m),
+                        ),
+                      ],
+                    ),
 
-              // Acoes finais
-              SizedBox(
-                height: 52,
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.logout_rounded),
-                  label: const Text('Sair'),
-                  onPressed: () async {
-                    // Limpa push token no backend ANTES do logout (precisa
-                    // do token de auth ainda valido).
-                    await ref.read(pushServiceProvider).clear();
-                    await ref.read(authRepositoryProvider).logout();
-                    // Limpa selecao de contrato pra nao vazar entre contas.
-                    await ref.read(contratoAtualProvider.notifier).clear();
-                    ref.read(authRefreshProvider).bump();
-                    if (context.mounted) context.go('/onboarding/cpf');
-                  },
+                    // Sobre
+                    _CardSection(
+                      title: 'Sobre',
+                      children: [
+                        _CardTile(
+                          icon: Icons.description_outlined,
+                          iconColor: BrandTokens.textSecondary,
+                          label: 'Termos de Uso',
+                          onTap: () => context.push('/legal/termos'),
+                        ),
+                        _CardTile(
+                          icon: Icons.privacy_tip_outlined,
+                          iconColor: BrandTokens.textSecondary,
+                          label: 'Política de Privacidade',
+                          onTap: () => context.push('/legal/privacidade'),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: BrandTokens.spaceLg),
+
+                    // Acoes finais
+                    SizedBox(
+                      height: 52,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.logout_rounded),
+                        label: const Text('Sair'),
+                        onPressed: () async {
+                          // Limpa push token no backend ANTES do logout (precisa
+                          // do token de auth ainda valido).
+                          await ref.read(pushServiceProvider).clear();
+                          await ref.read(authRepositoryProvider).logout();
+                          // Limpa selecao de contrato pra nao vazar entre contas.
+                          await ref
+                              .read(contratoAtualProvider.notifier)
+                              .clear();
+                          ref.read(authRefreshProvider).bump();
+                          if (context.mounted) context.go('/onboarding/cpf');
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: BrandTokens.spaceSm),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: BrandTokens.danger,
+                        minimumSize: const Size.fromHeight(44),
+                      ),
+                      onPressed: () => _confirmDelete(context, ref),
+                      child: const Text(
+                        'Excluir minha conta',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: BrandTokens.spaceSm),
-              TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: BrandTokens.danger,
-                  minimumSize: const Size.fromHeight(44),
-                ),
-                onPressed: () => _confirmDelete(context, ref),
-                child: const Text(
-                  'Excluir minha conta',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-// ════════ Header com avatar gradient + nome + plano ════════
+// ════════ Skeleton da capa enquanto carrega ════════
 
-class _ProfileHeader extends StatelessWidget {
-  const _ProfileHeader({required this.nome, required this.plano});
+class _CapaSkeleton extends StatelessWidget {
+  const _CapaSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 180,
+      decoration: const BoxDecoration(gradient: BrandTokens.gradientCapa),
+      child: const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      ),
+    );
+  }
+}
+
+// ════════ Avatar + nome + plano absorvidos na capa ════════
+
+class _ProfileCapaContent extends StatelessWidget {
+  const _ProfileCapaContent({required this.nome, required this.plano});
   final String nome;
   final String? plano;
 
   String _initials(String full) {
-    final parts = full.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
+    final parts =
+        full.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toList();
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first[0].toUpperCase();
     return (parts.first[0] + parts.last[0]).toUpperCase();
@@ -211,20 +280,19 @@ class _ProfileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Avatar circular gradient + ring
+        // Avatar circular translucido sobre a capa ciano
         Container(
           width: 104,
           height: 104,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: BrandTokens.gradientHero,
-            boxShadow: BrandTokens.shadowColored,
+            color: Colors.white.withValues(alpha: 0.25),
           ),
           alignment: Alignment.center,
           child: Text(
             _initials(nome),
             style: const TextStyle(
-              color: Colors.white,
+              color: BrandTokens.capaInk,
               fontSize: 38,
               fontWeight: FontWeight.w900,
               letterSpacing: 0.5,
@@ -235,37 +303,17 @@ class _ProfileHeader extends StatelessWidget {
         Text(
           nome.isEmpty ? 'Cliente' : nome,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.3,
-              ),
+          style: BrandTokens.displayGreeting,
         ),
         if (plano != null && plano!.isNotEmpty) ...[
           const SizedBox(height: BrandTokens.spaceXs),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: BrandTokens.spaceMd,
-              vertical: 6,
-            ),
-            decoration: BoxDecoration(
-              color: BrandTokens.primary.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.wifi_rounded,
-                    size: 14, color: BrandTokens.primary),
-                const SizedBox(width: 6),
-                Text(
-                  plano!,
-                  style: const TextStyle(
-                    color: BrandTokens.primary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+          Text(
+            plano!,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: BrandTokens.capaInk.withValues(alpha: 0.7),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -306,9 +354,7 @@ class _CardSection extends StatelessWidget {
           ),
           Container(
             decoration: BoxDecoration(
-              color: isDark
-                  ? BrandTokens.surfaceDark
-                  : BrandTokens.surface,
+              color: isDark ? BrandTokens.surfaceDark : BrandTokens.surface,
               borderRadius: BorderRadius.circular(BrandTokens.radiusLg),
               border: Border.all(
                 color: isDark ? Colors.white12 : BrandTokens.divider,
