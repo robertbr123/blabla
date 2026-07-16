@@ -316,7 +316,36 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
               ],
             ),
           ),
-          const SizedBox(height: BrandTokens.spaceLg),
+        ],
+      ),
+      bottom: Column(
+        children: [
+          FilledButton(
+            onPressed: _loading ? null : _continue,
+            style: FilledButton.styleFrom(
+              backgroundColor: BrandTokens.primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+              ),
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+            ),
+            child: _loading
+                ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text('Continuar'),
+          ),
+          const SizedBox(height: BrandTokens.spaceSm),
           Text(
             'Ainda não é cliente?',
             textAlign: TextAlign.center,
@@ -354,53 +383,6 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
               textStyle: const TextStyle(fontWeight: FontWeight.w800),
             ),
           ),
-        ],
-      ),
-      bottom: Column(
-        children: [
-          FilledButton(
-            onPressed: _loading ? null : _continue,
-            style: FilledButton.styleFrom(
-              backgroundColor: BrandTokens.primary,
-              foregroundColor: Colors.white,
-              minimumSize: const Size.fromHeight(52),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
-              ),
-              textStyle: const TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 16,
-              ),
-            ),
-            child: _loading
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Text('Continuar'),
-          ),
-          TextButton(
-            onPressed: () {
-              // Se já digitou um CPF válido, leva pro login pré-preenchido.
-              final cpf = _ctrl.text.replaceAll(RegExp(r'\D'), '');
-              context.go(
-                '/login',
-                extra: cpf.length == 11 ? {'cpf': cpf} : null,
-              );
-            },
-            style: TextButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
-            ),
-            child: const Text(
-              'Ja tenho conta',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-          const SizedBox(height: BrandTokens.spaceXs),
         ],
       ),
     );
