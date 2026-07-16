@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/async_states.dart';
-import '../../core/ui/glass_app_bar.dart';
+import '../../core/ui/capa_page_scaffold.dart';
 import 'faq_data.dart';
 
 const _catColors = <String, Color>{
@@ -63,16 +63,18 @@ class _FaqScreenState extends State<FaqScreen> {
   @override
   Widget build(BuildContext context) {
     final cats = _filtradas;
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: GlassAppBar(title: 'Perguntas frequentes'),
-      body: Column(
+    return CapaPageScaffold(
+      title: 'Perguntas frequentes',
+      child: Column(
         children: [
-          // Offset para compensar o GlassAppBar (status bar + toolbar)
-          SizedBox(height: MediaQuery.paddingOf(context).top + kToolbarHeight),
           // Barra de busca
           Padding(
-            padding: const EdgeInsets.all(BrandTokens.spaceMd),
+            padding: const EdgeInsets.fromLTRB(
+              BrandTokens.spaceMd,
+              BrandTokens.spaceLg,
+              BrandTokens.spaceMd,
+              BrandTokens.spaceMd,
+            ),
             child: TextField(
               controller: _searchCtrl,
               onChanged: (v) => setState(() => _query = v),
