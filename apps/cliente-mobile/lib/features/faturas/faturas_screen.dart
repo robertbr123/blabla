@@ -307,7 +307,7 @@ class _AbertaHeroCard extends StatelessWidget {
     final fmtData = DateFormat('dd/MM/yyyy', 'pt_BR');
     final venceHoje = _diasAteVencimento(fatura.vencimentoDate);
     final isVencido = fatura.isVencido;
-    final statusColor = isVencido ? Colors.white : Colors.white;
+    const statusColor = Colors.white;
     final statusTexto = _heroStatusTexto(fatura, venceHoje);
     return InkWell(
       onTap: onTap,

@@ -267,7 +267,9 @@ class _HeaderCrossfade extends StatelessWidget {
           child: IgnorePointer(
             ignoring: t > 0.5,
             child: Opacity(
-              opacity: (1 - t * 2).clamp(0.0, 1.0),
+              // Rampas sobrepostas (0→0.55 sai / 0.45→1 entra): sem frame
+              // 100% transparente no meio do crossfade.
+              opacity: (1 - t / 0.55).clamp(0.0, 1.0),
               child: expanded,
             ),
           ),
@@ -282,7 +284,7 @@ class _HeaderCrossfade extends StatelessWidget {
           child: IgnorePointer(
             ignoring: t <= 0.5,
             child: Opacity(
-              opacity: ((t - 0.5) * 2).clamp(0.0, 1.0),
+              opacity: ((t - 0.45) / 0.55).clamp(0.0, 1.0),
               child: collapsed,
             ),
           ),
