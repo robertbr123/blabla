@@ -24,46 +24,53 @@ class _FaturasScreenState extends ConsumerState<FaturasScreen> {
     final abertasAsync = ref.watch(faturasAbertasProvider);
     final pagasAsync = ref.watch(faturasPagasProvider);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       body: Column(
         children: [
           // ── Capa vibrante com título ──
-          CapaBackground(
-            padding: EdgeInsets.only(
-              left: BrandTokens.spaceLg,
-              right: BrandTokens.spaceLg,
-              top: MediaQuery.paddingOf(context).top + BrandTokens.spaceMd,
-              bottom: BrandTokens.spaceLg + BrandTokens.radiusFolha,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Faturas',
-                  style: TextStyle(
-                    color: BrandTokens.capaInk,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.6,
-                  ),
+          Stack(
+            children: [
+              CapaBackground(
+                padding: EdgeInsets.only(
+                  left: BrandTokens.spaceLg,
+                  right: BrandTokens.spaceLg,
+                  top: MediaQuery.paddingOf(context).top + BrandTokens.spaceMd,
+                  bottom: BrandTokens.spaceLg + BrandTokens.radiusFolha,
                 ),
-                const SizedBox(height: BrandTokens.spaceXs),
-                Text(
-                  'Suas contas e pagamentos num só lugar.',
-                  style: TextStyle(
-                    color: BrandTokens.capaInk.withValues(alpha: 0.7),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Faturas',
+                      style: TextStyle(
+                        color: BrandTokens.capaInk,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.6,
+                      ),
+                    ),
+                    const SizedBox(height: BrandTokens.spaceXs),
+                    Text(
+                      'Suas contas e pagamentos num só lugar.',
+                      style: TextStyle(
+                        color: BrandTokens.capaInk.withValues(alpha: 0.7),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              const Positioned(
+                  left: 0, right: 0, bottom: 0, child: FolhaLip()),
+            ],
           ),
           // ── Folha com a lista ──
           Expanded(
-            child: FolhaContainer(
-              overlap: BrandTokens.radiusFolha,
-              padding: EdgeInsets.zero,
+            child: Container(
+              color:
+                  isDark ? BrandTokens.backgroundDark : BrandTokens.background,
               child: RefreshIndicator(
                 onRefresh: () async {
                   // Força refresh no backend (invalida cache SGP de 1h) — usuario

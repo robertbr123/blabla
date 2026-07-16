@@ -92,3 +92,25 @@ class FolhaContainer extends StatelessWidget {
     return Transform.translate(offset: Offset(0, -overlap), child: folha);
   }
 }
+
+/// "Lábio" da folha: cantos superiores arredondados na cor da folha,
+/// pintado por cima da capa (Positioned bottom: 0 dentro de um Stack), sem
+/// Transform. Reproduz o padrão do Perfil (`_PerfilCapaDelegate`) — capa e
+/// folha se encontram no mesmo box, sem fresta/corte.
+class FolhaLip extends StatelessWidget {
+  const FolhaLip({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      height: BrandTokens.radiusFolha,
+      decoration: BoxDecoration(
+        color: isDark ? BrandTokens.backgroundDark : BrandTokens.background,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(BrandTokens.radiusFolha),
+        ),
+      ),
+    );
+  }
+}

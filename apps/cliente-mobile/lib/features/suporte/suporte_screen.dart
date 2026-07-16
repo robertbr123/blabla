@@ -33,6 +33,7 @@ class _SuporteScreenState extends ConsumerState<SuporteScreen>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       // Stack pro FAB ficar exatamente acima da navbar (Scaffold.FAB padrao
       // somava margens extras). bottom = altura visual da navbar (~78px:
@@ -43,57 +44,66 @@ class _SuporteScreenState extends ConsumerState<SuporteScreen>
           Column(
             children: [
               // ── Capa vibrante com título + TabBar ──
-              CapaBackground(
-                padding: EdgeInsets.only(
-                  left: BrandTokens.spaceLg,
-                  right: BrandTokens.spaceLg,
-                  top: MediaQuery.paddingOf(context).top + BrandTokens.spaceMd,
-                  bottom: BrandTokens.spaceLg + BrandTokens.radiusFolha,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
+              Stack(
+                children: [
+                  CapaBackground(
+                    padding: EdgeInsets.only(
+                      left: BrandTokens.spaceLg,
+                      right: BrandTokens.spaceLg,
+                      top: MediaQuery.paddingOf(context).top +
+                          BrandTokens.spaceMd,
+                      bottom: BrandTokens.spaceLg + BrandTokens.radiusFolha,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Expanded(
-                          child: Text(
-                            'Suporte',
-                            style: TextStyle(
-                              color: BrandTokens.capaInk,
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.6,
+                        Row(
+                          children: [
+                            const Expanded(
+                              child: Text(
+                                'Suporte',
+                                style: TextStyle(
+                                  color: BrandTokens.capaInk,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.6,
+                                ),
+                              ),
                             ),
-                          ),
+                            IconButton(
+                              icon: const Icon(Icons.help_outline_rounded,
+                                  color: BrandTokens.capaInk),
+                              tooltip: 'Perguntas frequentes',
+                              onPressed: () => context.push('/faq'),
+                            ),
+                          ],
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.help_outline_rounded,
-                              color: BrandTokens.capaInk),
-                          tooltip: 'Perguntas frequentes',
-                          onPressed: () => context.push('/faq'),
+                        const SizedBox(height: BrandTokens.spaceSm),
+                        TabBar(
+                          controller: _tabs,
+                          labelColor: Colors.white,
+                          unselectedLabelColor:
+                              Colors.white.withValues(alpha: 0.75),
+                          indicatorColor: Colors.white,
+                          dividerColor: Colors.transparent,
+                          tabs: const [
+                            Tab(text: 'Chat'),
+                            Tab(text: 'Meus chamados'),
+                          ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: BrandTokens.spaceSm),
-                    TabBar(
-                      controller: _tabs,
-                      labelColor: Colors.white,
-                      unselectedLabelColor: Colors.white.withValues(alpha: 0.75),
-                      indicatorColor: Colors.white,
-                      dividerColor: Colors.transparent,
-                      tabs: const [
-                        Tab(text: 'Chat'),
-                        Tab(text: 'Meus chamados'),
-                      ],
-                    ),
-                  ],
-                ),
+                  ),
+                  const Positioned(
+                      left: 0, right: 0, bottom: 0, child: FolhaLip()),
+                ],
               ),
               // ── Folha com o conteúdo das abas ──
               Expanded(
-                child: FolhaContainer(
-                  overlap: BrandTokens.radiusFolha,
-                  padding: EdgeInsets.zero,
+                child: Container(
+                  color: isDark
+                      ? BrandTokens.backgroundDark
+                      : BrandTokens.background,
                   child: TabBarView(
                     controller: _tabs,
                     children: const [

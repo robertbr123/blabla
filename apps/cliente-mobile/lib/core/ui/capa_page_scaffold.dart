@@ -38,55 +38,61 @@ class CapaPageScaffold extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          CapaBackground(
-            padding: EdgeInsets.fromLTRB(
-              BrandTokens.spaceMd,
-              MediaQuery.paddingOf(context).top + BrandTokens.spaceSm,
-              BrandTokens.spaceMd,
-              capaBottom != null
-                  ? BrandTokens.spaceSm + BrandTokens.radiusFolha
-                  : BrandTokens.spaceLg + BrandTokens.radiusFolha,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                IconTheme.merge(
-                  data: const IconThemeData(color: BrandTokens.capaInk),
-                  child: Row(
-                    children: [
-                      if (canPop)
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back_rounded),
-                          onPressed: () => Navigator.of(context).pop(),
-                        )
-                      else
-                        const SizedBox(width: BrandTokens.spaceSm),
-                      Expanded(
-                        child: Text(
-                          title,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: BrandTokens.capaInk,
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.6,
-                          ),
-                        ),
-                      ),
-                      ...actions,
-                    ],
-                  ),
+          Stack(
+            children: [
+              CapaBackground(
+                padding: EdgeInsets.fromLTRB(
+                  BrandTokens.spaceMd,
+                  MediaQuery.paddingOf(context).top + BrandTokens.spaceSm,
+                  BrandTokens.spaceMd,
+                  capaBottom != null
+                      ? BrandTokens.spaceSm + BrandTokens.radiusFolha
+                      : BrandTokens.spaceLg + BrandTokens.radiusFolha,
                 ),
-                if (capaBottom != null) ...[
-                  const SizedBox(height: BrandTokens.spaceSm),
-                  capaBottom!,
-                ],
-              ],
-            ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    IconTheme.merge(
+                      data: const IconThemeData(color: BrandTokens.capaInk),
+                      child: Row(
+                        children: [
+                          if (canPop)
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back_rounded),
+                              onPressed: () => Navigator.of(context).pop(),
+                            )
+                          else
+                            const SizedBox(width: BrandTokens.spaceSm),
+                          Expanded(
+                            child: Text(
+                              title,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: BrandTokens.capaInk,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.6,
+                              ),
+                            ),
+                          ),
+                          ...actions,
+                        ],
+                      ),
+                    ),
+                    if (capaBottom != null) ...[
+                      const SizedBox(height: BrandTokens.spaceSm),
+                      capaBottom!,
+                    ],
+                  ],
+                ),
+              ),
+              const Positioned(left: 0, right: 0, bottom: 0, child: FolhaLip()),
+            ],
           ),
           Expanded(
-            child: FolhaContainer(
-              overlap: BrandTokens.radiusFolha,
+            child: Container(
+              color:
+                  isDark ? BrandTokens.backgroundDark : BrandTokens.background,
               padding: folhaPadding ?? EdgeInsets.zero,
               child: child,
             ),
