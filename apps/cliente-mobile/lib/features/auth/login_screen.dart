@@ -130,50 +130,50 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       builder: (ctx) => SingleChildScrollView(
         child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          BrandTokens.spaceLg,
-          BrandTokens.spaceLg,
-          BrandTokens.spaceLg,
-          MediaQuery.viewInsetsOf(ctx).bottom + BrandTokens.spaceLg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.mark_chat_read_rounded,
-                size: 48, color: BrandTokens.primary),
-            const SizedBox(height: BrandTokens.spaceMd),
-            Text(
-              'Código a caminho!',
-              textAlign: TextAlign.center,
-              style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.5,
-                  ),
-            ),
-            const SizedBox(height: BrandTokens.spaceSm),
-            Text(
-              'Se esse CPF estiver cadastrado, você vai receber um código '
-              'no WhatsApp em instantes.',
-              textAlign: TextAlign.center,
-              style: Theme.of(ctx).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: BrandTokens.spaceLg),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              style: FilledButton.styleFrom(
-                backgroundColor: BrandTokens.primary,
-                foregroundColor: Colors.white,
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
-                ),
-                textStyle: const TextStyle(fontWeight: FontWeight.w800),
+          padding: EdgeInsets.fromLTRB(
+            BrandTokens.spaceLg,
+            BrandTokens.spaceLg,
+            BrandTokens.spaceLg,
+            MediaQuery.viewInsetsOf(ctx).bottom + BrandTokens.spaceLg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.mark_chat_read_rounded,
+                  size: 48, color: BrandTokens.primary),
+              const SizedBox(height: BrandTokens.spaceMd),
+              Text(
+                'Código a caminho!',
+                textAlign: TextAlign.center,
+                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
               ),
-              child: const Text('Continuar'),
-            ),
-          ],
+              const SizedBox(height: BrandTokens.spaceSm),
+              Text(
+                'Se esse CPF estiver cadastrado, você vai receber um código '
+                'no WhatsApp em instantes.',
+                textAlign: TextAlign.center,
+                style: Theme.of(ctx).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: BrandTokens.spaceLg),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                style: FilledButton.styleFrom(
+                  backgroundColor: BrandTokens.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+                  ),
+                  textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                child: const Text('Continuar'),
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -194,8 +194,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _maybeOfferBiometria() async {
     final enabled = await readBiometricEnabled().catchError((_) => false);
     if (enabled) return;
-    final available =
-        await ref.read(biometricServiceProvider).isAvailable();
+    final available = await ref.read(biometricServiceProvider).isAvailable();
     if (!available || !mounted) return;
     FocusManager.instance.primaryFocus?.unfocus();
     final aceitar = await showModalBottomSheet<bool>(
@@ -207,49 +206,49 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       builder: (ctx) => SingleChildScrollView(
         child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          BrandTokens.spaceLg,
-          BrandTokens.spaceLg,
-          BrandTokens.spaceLg,
-          MediaQuery.paddingOf(ctx).bottom + BrandTokens.spaceLg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Icon(Icons.fingerprint_rounded,
-                size: 48, color: BrandTokens.primary),
-            const SizedBox(height: BrandTokens.spaceMd),
-            Text(
-              'Entrar mais rápido?',
-              textAlign: TextAlign.center,
-              style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.5,
-                  ),
-            ),
-            const SizedBox(height: BrandTokens.spaceXs),
-            Text(
-              'Use sua digital ou Face ID pra desbloquear o app sem digitar a senha.',
-              textAlign: TextAlign.center,
-              style: Theme.of(ctx).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: BrandTokens.spaceLg),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              style: FilledButton.styleFrom(
-                backgroundColor: BrandTokens.primary,
-                minimumSize: const Size.fromHeight(48),
+          padding: EdgeInsets.fromLTRB(
+            BrandTokens.spaceLg,
+            BrandTokens.spaceLg,
+            BrandTokens.spaceLg,
+            MediaQuery.paddingOf(ctx).bottom + BrandTokens.spaceLg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Icon(Icons.fingerprint_rounded,
+                  size: 48, color: BrandTokens.primary),
+              const SizedBox(height: BrandTokens.spaceMd),
+              Text(
+                'Entrar mais rápido?',
+                textAlign: TextAlign.center,
+                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
               ),
-              child: const Text('Ativar biometria'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Agora não'),
-            ),
-          ],
+              const SizedBox(height: BrandTokens.spaceXs),
+              Text(
+                'Use sua digital ou Face ID pra desbloquear o app sem digitar a senha.',
+                textAlign: TextAlign.center,
+                style: Theme.of(ctx).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: BrandTokens.spaceLg),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: BrandTokens.primary,
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                child: const Text('Ativar biometria'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Agora não'),
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
     if (aceitar == true) {
@@ -264,7 +263,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? BrandTokens.backgroundDark : BrandTokens.background,
+      backgroundColor:
+          isDark ? BrandTokens.backgroundDark : BrandTokens.background,
       resizeToAvoidBottomInset: true,
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
@@ -282,7 +282,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       padding: EdgeInsets.only(
                         left: BrandTokens.spaceLg,
                         right: BrandTokens.spaceLg,
-                        top: MediaQuery.paddingOf(context).top + BrandTokens.spaceXl,
+                        top: MediaQuery.paddingOf(context).top +
+                            BrandTokens.spaceXl,
                         bottom: BrandTokens.spaceXl + BrandTokens.radiusFolha,
                       ),
                       child: Stack(
@@ -330,7 +331,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       BrandTokens.spaceLg,
                       BrandTokens.spaceLg,
                       BrandTokens.spaceLg,
-                      MediaQuery.paddingOf(context).bottom + BrandTokens.spaceLg,
+                      MediaQuery.paddingOf(context).bottom +
+                          BrandTokens.spaceLg,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -505,7 +507,8 @@ class _PalavraRotativaState extends State<_PalavraRotativa> {
   Widget build(BuildContext context) {
     final palavra = _palavras[_index];
     return SizedBox(
-      height: BrandTokens.displayTitle.fontSize! * BrandTokens.displayTitle.height!,
+      height:
+          BrandTokens.displayTitle.fontSize! * BrandTokens.displayTitle.height!,
       child: ClipRect(
         child: Align(
           alignment: Alignment.centerLeft,

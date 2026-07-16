@@ -95,8 +95,7 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
     // sheet, pra decidir se mostra o CTA (sem contato/erro -> some, graceful).
     String? whatsNumber;
     try {
-      final contatos =
-          await ref.read(contatosOperadoraProvider.future);
+      final contatos = await ref.read(contatosOperadoraProvider.future);
       for (final c in contatos) {
         if (c.tipo == 'whatsapp') {
           final digits = c.valor.replaceAll(RegExp(r'\D'), '');
@@ -120,67 +119,67 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
       ),
       builder: (sheetContext) => SingleChildScrollView(
         child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            BrandTokens.spaceLg,
-            BrandTokens.spaceLg,
-            BrandTokens.spaceLg,
-            BrandTokens.spaceLg,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.search_off_rounded,
-                  color: BrandTokens.warning, size: 48),
-              const SizedBox(height: BrandTokens.spaceMd),
-              Text(
-                'Não achamos esse CPF',
-                textAlign: TextAlign.center,
-                style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                    ),
-              ),
-              const SizedBox(height: BrandTokens.spaceSm),
-              Text(
-                'Confere se digitou certinho. Ainda não é cliente Ondeline? '
-                'Bora resolver isso agora 😉',
-                textAlign: TextAlign.center,
-                style: Theme.of(sheetContext).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: BrandTokens.spaceLg),
-              if (whatsNumber != null) ...[
-                FilledButton.icon(
-                  onPressed: _abrirWhatsappComercial,
-                  icon: const Icon(Icons.chat_rounded),
-                  label: const Text('Quero ser cliente'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: BrandTokens.brandWhatsapp,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(48),
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(BrandTokens.radiusMd),
-                    ),
-                    textStyle: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              BrandTokens.spaceLg,
+              BrandTokens.spaceLg,
+              BrandTokens.spaceLg,
+              BrandTokens.spaceLg,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.search_off_rounded,
+                    color: BrandTokens.warning, size: 48),
+                const SizedBox(height: BrandTokens.spaceMd),
+                Text(
+                  'Não achamos esse CPF',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
                 ),
                 const SizedBox(height: BrandTokens.spaceSm),
+                Text(
+                  'Confere se digitou certinho. Ainda não é cliente Ondeline? '
+                  'Bora resolver isso agora 😉',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(sheetContext).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: BrandTokens.spaceLg),
+                if (whatsNumber != null) ...[
+                  FilledButton.icon(
+                    onPressed: _abrirWhatsappComercial,
+                    icon: const Icon(Icons.chat_rounded),
+                    label: const Text('Quero ser cliente'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: BrandTokens.brandWhatsapp,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(BrandTokens.radiusMd),
+                      ),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  const SizedBox(height: BrandTokens.spaceSm),
+                ],
+                TextButton(
+                  onPressed: () => Navigator.of(sheetContext).pop(),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                  ),
+                  child: const Text(
+                    'Tentar de novo',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
               ],
-              TextButton(
-                onPressed: () => Navigator.of(sheetContext).pop(),
-                style: TextButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                ),
-                child: const Text(
-                  'Tentar de novo',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -198,50 +197,50 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
       ),
       builder: (sheetContext) => SingleChildScrollView(
         child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          BrandTokens.spaceLg,
-          BrandTokens.spaceLg,
-          BrandTokens.spaceLg,
-          MediaQuery.viewInsetsOf(sheetContext).bottom + BrandTokens.spaceLg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.celebration_rounded,
-                color: BrandTokens.primary, size: 48),
-            const SizedBox(height: BrandTokens.spaceMd),
-            Text(
-              'Você já tem conta!',
-              textAlign: TextAlign.center,
-              style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.5,
-                  ),
-            ),
-            const SizedBox(height: BrandTokens.spaceSm),
-            Text(
-              'Esse CPF já está cadastrado. Bora entrar? Se esqueceu a '
-              'senha, dá pra recuperar na tela de login.',
-              textAlign: TextAlign.center,
-              style: Theme.of(sheetContext).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: BrandTokens.spaceLg),
-            FilledButton(
-              onPressed: () => Navigator.of(sheetContext).pop(),
-              style: FilledButton.styleFrom(
-                backgroundColor: BrandTokens.primary,
-                foregroundColor: Colors.white,
-                minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
-                ),
-                textStyle: const TextStyle(fontWeight: FontWeight.w800),
+          padding: EdgeInsets.fromLTRB(
+            BrandTokens.spaceLg,
+            BrandTokens.spaceLg,
+            BrandTokens.spaceLg,
+            MediaQuery.viewInsetsOf(sheetContext).bottom + BrandTokens.spaceLg,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.celebration_rounded,
+                  color: BrandTokens.primary, size: 48),
+              const SizedBox(height: BrandTokens.spaceMd),
+              Text(
+                'Você já tem conta!',
+                textAlign: TextAlign.center,
+                style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
               ),
-              child: const Text('Ir pro login'),
-            ),
-          ],
+              const SizedBox(height: BrandTokens.spaceSm),
+              Text(
+                'Esse CPF já está cadastrado. Bora entrar? Se esqueceu a '
+                'senha, dá pra recuperar na tela de login.',
+                textAlign: TextAlign.center,
+                style: Theme.of(sheetContext).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: BrandTokens.spaceLg),
+              FilledButton(
+                onPressed: () => Navigator.of(sheetContext).pop(),
+                style: FilledButton.styleFrom(
+                  backgroundColor: BrandTokens.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+                  ),
+                  textStyle: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                child: const Text('Ir pro login'),
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
     if (!mounted) return;
@@ -255,7 +254,8 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
     return AuthScaffold(
       icon: Icons.badge_outlined,
       title: 'Vamos te encontrar',
-      subtitle: 'Digite o CPF do titular do contrato pra gente localizar seu cadastro.',
+      subtitle:
+          'Digite o CPF do titular do contrato pra gente localizar seu cadastro.',
       child: Column(
         children: [
           Container(
@@ -306,7 +306,8 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('Por que pedimos seu CPF?',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+                          style: TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w800)),
                       const SizedBox(height: 2),
                       Text(
                         'Usamos só pra localizar seu contrato na Ondeline. Seus dados ficam protegidos.',
