@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_state.dart';
+import '../../core/auth/auth_storage.dart';
+import '../../core/auth/biometric_service.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/animated_gradient_background.dart';
 
@@ -48,7 +50,23 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final hasToken =
         await ref.read(hasTokenProvider.future).catchError((_) => false);
     if (!mounted) return;
-    context.go(hasToken ? '/home' : '/onboarding/cpf');
+    if (!hasToken) {
+      context.go('/onboarding/cpf');
+      return;
+    }
+    // Token válido: se o cliente ativou biometria, exige desbloqueio.
+    final bioEnabled = await readBiometricEnabled().catchError((_) => false);
+    if (!mounted) return;
+    if (!bioEnabled) {
+      context.go('/home');
+      return;
+    }
+    final bio = ref.read(biometricServiceProvider);
+    final ok = await bio.isAvailable() &&
+        await bio.authenticate('Desbloqueie o app Ondeline');
+    if (!mounted) return;
+    // Falhou/cancelou: cai no login (senha ou nova tentativa de biometria).
+    context.go(ok ? '/home' : '/login');
   }
 
   @override

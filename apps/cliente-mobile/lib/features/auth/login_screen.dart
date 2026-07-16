@@ -4,8 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_repository.dart';
-import '../../core/auth/auth_storage.dart';
 import '../../core/auth/auth_state.dart';
+import '../../core/auth/auth_storage.dart';
+import '../../core/auth/biometric_service.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/capa_folha.dart';
 import '../../core/ui/formatters.dart';
@@ -28,6 +29,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _pwdCtrl = TextEditingController();
   bool _loading = false;
   bool _hide = true;
+  bool _bioAvailable = false;
 
   @override
   void initState() {
@@ -35,15 +37,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final cpf = widget.initialCpf;
     if (cpf != null && cpf.length == 11) {
       _cpfCtrl.text = formatCpf(cpf);
-      return;
+    } else {
+      // Sem CPF vindo do onboarding: tenta o último CPF logado (best-effort;
+      // storage pode falhar em testes/simulador sem keychain — ignora).
+      readLastCpf().then((saved) {
+        if (!mounted || saved == null || saved.length != 11) return;
+        if (_cpfCtrl.text.isNotEmpty) return;
+        setState(() => _cpfCtrl.text = formatCpf(saved));
+      }).catchError((_) {});
     }
-    // Sem CPF vindo do onboarding: tenta o último CPF logado (best-effort;
-    // storage pode falhar em testes/simulador sem keychain — ignora).
-    readLastCpf().then((saved) {
-      if (!mounted || saved == null || saved.length != 11) return;
-      if (_cpfCtrl.text.isNotEmpty) return;
-      setState(() => _cpfCtrl.text = formatCpf(saved));
-    }).catchError((_) {});
+    // Botão "Entrar com biometria": só quando há sessão guardada + flag ativa
+    // + hardware disponível.
+    Future.wait([
+      readAccessToken().catchError((_) => null),
+      readBiometricEnabled().catchError((_) => false),
+      ref.read(biometricServiceProvider).isAvailable(),
+    ]).then((r) {
+      final hasToken = r[0] != null;
+      final enabled = r[1] == true;
+      final available = r[2] == true;
+      if (!mounted) return;
+      setState(() => _bioAvailable = hasToken && enabled && available);
+    });
   }
 
   @override
@@ -74,6 +89,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       case AuthOk():
         await Haptics.success();
         ref.read(authRefreshProvider).bump();
+        if (!mounted) return;
+        await _maybeOfferBiometria();
+        if (!mounted) return;
         context.go('/home');
       case AuthError(:final message):
         await Haptics.error();
@@ -97,6 +115,82 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     // se o CPF nao existir — preserva o "nao revelar se CPF existe"; o reset
     // simplesmente falha no codigo se nenhum OTP foi enviado.
     context.push('/forgot/reset', extra: {'cpf': cpf});
+  }
+
+  Future<void> _loginBiometria() async {
+    final ok = await ref
+        .read(biometricServiceProvider)
+        .authenticate('Entre com sua digital ou Face ID');
+    if (!mounted) return;
+    if (!ok) return;
+    await Haptics.success();
+    ref.read(authRefreshProvider).bump();
+    if (!mounted) return;
+    context.go('/home');
+  }
+
+  /// Oferece ativar biometria uma vez após login com senha (opt-in).
+  Future<void> _maybeOfferBiometria() async {
+    final enabled = await readBiometricEnabled().catchError((_) => false);
+    if (enabled) return;
+    final available =
+        await ref.read(biometricServiceProvider).isAvailable();
+    if (!available || !mounted) return;
+    final aceitar = await showModalBottomSheet<bool>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(BrandTokens.radiusFolha),
+        ),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          BrandTokens.spaceLg,
+          BrandTokens.spaceLg,
+          BrandTokens.spaceLg,
+          MediaQuery.paddingOf(ctx).bottom + BrandTokens.spaceLg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Icon(Icons.fingerprint_rounded,
+                size: 48, color: BrandTokens.primary),
+            const SizedBox(height: BrandTokens.spaceMd),
+            Text(
+              'Entrar mais rápido?',
+              textAlign: TextAlign.center,
+              style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                  ),
+            ),
+            const SizedBox(height: BrandTokens.spaceXs),
+            Text(
+              'Use sua digital ou Face ID pra desbloquear o app sem digitar a senha.',
+              textAlign: TextAlign.center,
+              style: Theme.of(ctx).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: BrandTokens.spaceLg),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              style: FilledButton.styleFrom(
+                backgroundColor: BrandTokens.primary,
+                minimumSize: const Size.fromHeight(48),
+              ),
+              child: const Text('Ativar biometria'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Agora não'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (aceitar == true) {
+      await writeBiometricEnabled(true);
+    }
   }
 
   void _toast(String s) =>
@@ -227,6 +321,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 )
                               : const Text('Entrar'),
                         ),
+                        if (_bioAvailable) ...[
+                          const SizedBox(height: BrandTokens.spaceSm),
+                          OutlinedButton.icon(
+                            onPressed: _loading ? null : _loginBiometria,
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(52),
+                              foregroundColor: BrandTokens.primary,
+                              side: const BorderSide(
+                                  color: BrandTokens.primary, width: 1.2),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(BrandTokens.radiusMd),
+                              ),
+                              textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w800, fontSize: 15),
+                            ),
+                            icon: const Icon(Icons.fingerprint_rounded),
+                            label: const Text('Entrar com biometria'),
+                          ),
+                        ],
                         const SizedBox(height: BrandTokens.spaceSm),
                         TextButton(
                           onPressed: _loading
