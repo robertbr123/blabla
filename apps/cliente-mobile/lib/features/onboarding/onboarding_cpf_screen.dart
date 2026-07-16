@@ -82,8 +82,9 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
       )}',
     );
     try {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-      return true;
+      // launchUrl devolve false (sem lançar) quando o sistema recusa abrir —
+      // propaga pro caller mostrar o aviso em vez de fingir sucesso.
+      return await launchUrl(uri, mode: LaunchMode.externalApplication);
     } on Object {
       return false;
     }
