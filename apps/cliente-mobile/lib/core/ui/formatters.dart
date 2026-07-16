@@ -94,3 +94,11 @@ class TelefoneFormatter extends TextInputFormatter {
     );
   }
 }
+
+/// Saudação por faixa de horário (5h–11h59 dia, 12h–17h59 tarde, resto noite).
+String saudacao(DateTime now) {
+  final h = now.hour;
+  if (h >= 5 && h < 12) return 'Bom dia,';
+  if (h >= 12 && h < 18) return 'Boa tarde,';
+  return 'Boa noite,';
+}
