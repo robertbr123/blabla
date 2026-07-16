@@ -30,7 +30,8 @@ class _FaturasScreenState extends ConsumerState<FaturasScreen> {
     // fixos do header colapsável escalarem sem cortar texto.
     final fontScale =
         MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.2).scale(1.0);
-    final maxExtent = topInset + 120 * fontScale;
+    final maxExtent =
+        topInset + _FaturasCapaDelegate.expandedExtra * fontScale;
 
     return Scaffold(
       body: RefreshIndicator(
