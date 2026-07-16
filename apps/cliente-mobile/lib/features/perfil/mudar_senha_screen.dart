@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/me_repository.dart';
 import '../../core/branding/brand_tokens.dart';
-import '../../core/ui/glass_app_bar.dart';
+import '../../core/ui/capa_page_scaffold.dart';
 
 class MudarSenhaScreen extends ConsumerStatefulWidget {
   const MudarSenhaScreen({super.key});
@@ -57,58 +57,49 @@ class _MudarSenhaScreenState extends ConsumerState<MudarSenhaScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: GlassAppBar(title: 'Mudar senha'),
-      extendBodyBehindAppBar: true,
-      body: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.all(BrandTokens.spaceLg),
-          child: Column(
-            children: [
-              SizedBox(
-                height: MediaQuery.paddingOf(context).top +
-                    kToolbarHeight +
-                    BrandTokens.spaceMd,
-              ),
-              TextField(
-                controller: _atual,
-                obscureText: _hide,
-                decoration: InputDecoration(
-                  labelText: 'Senha atual',
-                  suffixIcon: IconButton(
-                    icon:
-                        Icon(_hide ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setState(() => _hide = !_hide),
-                  ),
+    return CapaPageScaffold(
+      title: 'Mudar senha',
+      child: Padding(
+        padding: const EdgeInsets.all(BrandTokens.spaceLg),
+        child: Column(
+          children: [
+            TextField(
+              controller: _atual,
+              obscureText: _hide,
+              decoration: InputDecoration(
+                labelText: 'Senha atual',
+                suffixIcon: IconButton(
+                  icon:
+                      Icon(_hide ? Icons.visibility : Icons.visibility_off),
+                  onPressed: () => setState(() => _hide = !_hide),
                 ),
               ),
-              const SizedBox(height: BrandTokens.spaceMd),
-              TextField(
-                controller: _nova,
-                obscureText: _hide,
-                decoration: const InputDecoration(labelText: 'Nova senha'),
-              ),
-              const SizedBox(height: BrandTokens.spaceMd),
-              TextField(
-                controller: _conf,
-                obscureText: _hide,
-                decoration:
-                    const InputDecoration(labelText: 'Confirme a nova senha'),
-              ),
-              const Spacer(),
-              FilledButton(
-                onPressed: _loading ? null : _save,
-                child: _loading
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Atualizar senha'),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: BrandTokens.spaceMd),
+            TextField(
+              controller: _nova,
+              obscureText: _hide,
+              decoration: const InputDecoration(labelText: 'Nova senha'),
+            ),
+            const SizedBox(height: BrandTokens.spaceMd),
+            TextField(
+              controller: _conf,
+              obscureText: _hide,
+              decoration:
+                  const InputDecoration(labelText: 'Confirme a nova senha'),
+            ),
+            const Spacer(),
+            FilledButton(
+              onPressed: _loading ? null : _save,
+              child: _loading
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Atualizar senha'),
+            ),
+          ],
         ),
       ),
     );

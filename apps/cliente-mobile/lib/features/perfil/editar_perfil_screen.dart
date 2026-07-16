@@ -5,8 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/me_repository.dart';
 import '../../core/branding/brand_tokens.dart';
+import '../../core/ui/capa_page_scaffold.dart';
 import '../../core/ui/formatters.dart';
-import '../../core/ui/glass_app_bar.dart';
 
 class EditarPerfilScreen extends ConsumerStatefulWidget {
   const EditarPerfilScreen({
@@ -71,51 +71,42 @@ class _EditarPerfilScreenState extends ConsumerState<EditarPerfilScreen> {
     final keyboardType = widget.campo == 'telefone'
         ? TextInputType.phone
         : TextInputType.emailAddress;
-    return Scaffold(
-      appBar: GlassAppBar(title: label),
-      extendBodyBehindAppBar: true,
-      body: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.all(BrandTokens.spaceLg),
-          child: Column(
-            children: [
-              SizedBox(
-                height: MediaQuery.paddingOf(context).top +
-                    kToolbarHeight +
-                    BrandTokens.spaceMd,
+    return CapaPageScaffold(
+      title: label,
+      child: Padding(
+        padding: const EdgeInsets.all(BrandTokens.spaceLg),
+        child: Column(
+          children: [
+            TextField(
+              controller: _ctrl,
+              keyboardType: keyboardType,
+              autofocus: true,
+              inputFormatters: widget.campo == 'telefone'
+                  ? [
+                      FilteringTextInputFormatter.digitsOnly,
+                      LengthLimitingTextInputFormatter(11),
+                      TelefoneFormatter(),
+                    ]
+                  : null,
+              decoration: InputDecoration(
+                labelText: label,
+                hintText: widget.campo == 'telefone'
+                    ? '(47) 99999-8888'
+                    : 'voce@exemplo.com',
               ),
-              TextField(
-                controller: _ctrl,
-                keyboardType: keyboardType,
-                autofocus: true,
-                inputFormatters: widget.campo == 'telefone'
-                    ? [
-                        FilteringTextInputFormatter.digitsOnly,
-                        LengthLimitingTextInputFormatter(11),
-                        TelefoneFormatter(),
-                      ]
-                    : null,
-                decoration: InputDecoration(
-                  labelText: label,
-                  hintText: widget.campo == 'telefone'
-                      ? '(47) 99999-8888'
-                      : 'voce@exemplo.com',
-                ),
-              ),
-              const Spacer(),
-              FilledButton(
-                onPressed: _loading ? null : _save,
-                child: _loading
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Salvar'),
-              ),
-            ],
-          ),
+            ),
+            const Spacer(),
+            FilledButton(
+              onPressed: _loading ? null : _save,
+              child: _loading
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Salvar'),
+            ),
+          ],
         ),
       ),
     );
