@@ -8,9 +8,8 @@ import '../api/dto.dart';
 /// Facade pra atualizar o widget de home screen com dados frescos.
 ///
 /// Chamado de pontos-chave da app (após /me, após /faturas, após /conexao).
-/// Em iOS, [HomeWidget.updateWidget] não faz nada até que o WidgetKit (Swift)
-/// seja implementado numa onda futura — então iOS recebe os saves mas não
-/// renderiza.
+/// Em iOS, todas as operações são no-op até que o WidgetKit (Swift)
+/// seja implementado numa onda futura.
 class HomeWidgetService {
   static const _kStatus = 'status_conexao';
   static const _kProxFaturaValor = 'proxima_fatura_valor';
@@ -27,12 +26,14 @@ class HomeWidgetService {
 
   /// Atualiza status de conexão. Aceita nulo pra limpar.
   static Future<void> setStatus(String? status) async {
+    if (!Platform.isAndroid) return;
     await HomeWidget.saveWidgetData<String>(_kStatus, status);
   }
 
   /// Atualiza próxima fatura (a com vencimento mais próximo no futuro,
   /// ou a aberta mais antiga se houver atraso). Passe null pra zerar.
   static Future<void> setProximaFatura(FaturaDto? fatura) async {
+    if (!Platform.isAndroid) return;
     if (fatura == null) {
       await HomeWidget.saveWidgetData<String>(_kProxFaturaValor, null);
       await HomeWidget.saveWidgetData<String>(_kProxFaturaVencimento, null);
