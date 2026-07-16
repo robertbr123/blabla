@@ -227,18 +227,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         children: [
                           // Marca d'água: logo grande, discreta, atrás do
                           // título — não intercepta toques.
-                          Positioned(
-                            right: -40,
-                            top: 0,
-                            bottom: 0,
+                          Positioned.fill(
                             child: IgnorePointer(
                               child: Opacity(
-                                opacity: 0.10,
+                                opacity: 0.08,
                                 child: Image.asset(
                                   'assets/icon/icon.png',
-                                  width: 220,
-                                  height: 220,
-                                  fit: BoxFit.contain,
+                                  fit: BoxFit.cover,
+                                  alignment: Alignment.centerRight,
                                 ),
                               ),
                             ),
@@ -431,7 +427,7 @@ class _PalavraRotativaState extends State<_PalavraRotativa> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 2600), (_) {
+    _timer = Timer.periodic(const Duration(milliseconds: 2800), (_) {
       if (!mounted) return;
       setState(() => _index = (_index + 1) % _palavras.length);
     });
@@ -452,16 +448,43 @@ class _PalavraRotativaState extends State<_PalavraRotativa> {
         child: Align(
           alignment: Alignment.centerLeft,
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 400),
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.35),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: child,
+            duration: const Duration(milliseconds: 450),
+            layoutBuilder: (currentChild, previousChildren) => Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                ...previousChildren,
+                if (currentChild != null) currentChild,
+              ],
+            ),
+            transitionBuilder: (child, animation) => DualTransitionBuilder(
+              animation: animation,
+              // Palavra nova: entra de baixo pra cima, com fade-in.
+              forwardBuilder: (context, animation, child) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.6),
+                    end: Offset.zero,
+                  )
+                      .chain(CurveTween(curve: Curves.easeOutCubic))
+                      .animate(animation),
+                  child: child,
+                ),
               ),
+              // Palavra antiga: continua subindo (sai por cima), com fade-out.
+              reverseBuilder: (context, animation, child) => FadeTransition(
+                opacity: Tween<double>(begin: 1, end: 0).animate(animation),
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: Offset.zero,
+                    end: const Offset(0, -0.6),
+                  )
+                      .chain(CurveTween(curve: Curves.easeInCubic))
+                      .animate(animation),
+                  child: child,
+                ),
+              ),
+              child: child,
             ),
             child: Text(
               palavra,
