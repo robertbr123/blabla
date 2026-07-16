@@ -7,10 +7,10 @@ import '../../core/auth/auth_repository.dart';
 import '../../core/auth/auth_storage.dart';
 import '../../core/auth/auth_state.dart';
 import '../../core/branding/brand_tokens.dart';
-import '../../core/ui/animated_gradient_background.dart';
+import '../../core/ui/capa_folha.dart';
 import '../../core/ui/formatters.dart';
-import '../../core/ui/glass_card.dart';
 import '../../core/ui/haptics.dart';
+import '../../core/ui/sheet_text_field.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key, this.initialCpf});
@@ -104,66 +104,60 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: BrandTokens.primaryDark,
-      body: AnimatedGradientBackground(
-        child: SafeArea(
-          child: GestureDetector(
-            onTap: () => FocusScope.of(context).unfocus(),
-            behavior: HitTestBehavior.translucent,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: BrandTokens.spaceLg,
-                vertical: BrandTokens.spaceXl,
-              ),
+      backgroundColor: isDark ? BrandTokens.backgroundDark : BrandTokens.background,
+      resizeToAvoidBottomInset: true,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: CustomScrollView(
+          slivers: [
+            SliverFillRemaining(
+              hasScrollBody: false,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: BrandTokens.spaceXl),
-                  // Logo / ícone marca
-                  Center(
-                    child: Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        gradient: BrandTokens.gradientPrimary,
-                        borderRadius:
-                            BorderRadius.circular(BrandTokens.radiusLg),
-                        boxShadow: BrandTokens.shadowColored,
+                  // ── Capa ciano com tipografia display ──
+                  Expanded(
+                    child: CapaBackground(
+                      padding: EdgeInsets.only(
+                        left: BrandTokens.spaceLg,
+                        right: BrandTokens.spaceLg,
+                        top: MediaQuery.paddingOf(context).top + BrandTokens.spaceXl,
+                        bottom: BrandTokens.spaceXl + BrandTokens.radiusFolha,
                       ),
-                      child: const Icon(
-                        Icons.wifi_rounded,
-                        color: Colors.white,
-                        size: 38,
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text('onde\nvocê\nestiver.', style: BrandTokens.displayTitle),
+                          SizedBox(height: BrandTokens.spaceSm),
+                          Text(
+                            'Ondeline — internet que acompanha você.',
+                            style: TextStyle(
+                              color: BrandTokens.capaInk,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: BrandTokens.spaceLg),
-                  const Text(
-                    'Bem-vindo de volta',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 28,
-                      letterSpacing: -0.5,
+                  // ── Folha com o formulário ──
+                  FolhaContainer(
+                    overlap: BrandTokens.radiusFolha,
+                    padding: EdgeInsets.fromLTRB(
+                      BrandTokens.spaceLg,
+                      BrandTokens.spaceLg,
+                      BrandTokens.spaceLg,
+                      MediaQuery.paddingOf(context).bottom + BrandTokens.spaceLg,
                     ),
-                  ),
-                  const SizedBox(height: BrandTokens.spaceXs),
-                  const Text(
-                    'Entre com seu CPF e senha pra continuar.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: BrandTokens.spaceXl),
-                  GlassCard(
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        GlassTextField(
+                        SheetTextField(
                           controller: _cpfCtrl,
                           label: 'CPF',
                           keyboardType: TextInputType.number,
@@ -172,28 +166,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             LengthLimitingTextInputFormatter(11),
                             CpfFormatter(),
                           ],
-                          prefixIcon: const Icon(
-                            Icons.badge_outlined,
-                            color: Colors.white70,
-                            size: 20,
-                          ),
+                          prefixIcon: Icons.badge_outlined,
                         ),
                         const SizedBox(height: BrandTokens.spaceMd),
-                        GlassTextField(
+                        SheetTextField(
                           controller: _pwdCtrl,
                           label: 'Senha',
                           obscureText: _hide,
-                          prefixIcon: const Icon(
-                            Icons.lock_outline,
-                            color: Colors.white70,
-                            size: 20,
-                          ),
-                          suffixIcon: IconButton(
+                          prefixIcon: Icons.lock_outline,
+                          suffix: IconButton(
                             icon: Icon(
                               _hide
                                   ? Icons.visibility_outlined
                                   : Icons.visibility_off_outlined,
-                              color: Colors.white70,
+                              size: 20,
                             ),
                             onPressed: () => setState(() => _hide = !_hide),
                           ),
@@ -204,10 +190,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           child: TextButton(
                             onPressed: _loading ? null : _forgot,
                             style: TextButton.styleFrom(
-                              foregroundColor: BrandTokens.primaryLight,
+                              foregroundColor: BrandTokens.primary,
                               padding: EdgeInsets.zero,
-                              tapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                             child: const Text(
                               'Esqueci minha senha',
@@ -215,33 +200,66 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: BrandTokens.spaceMd),
+                        FilledButton(
+                          onPressed: _loading ? null : _login,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: BrandTokens.primary,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size.fromHeight(52),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(BrandTokens.radiusMd),
+                            ),
+                            textStyle: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
+                          ),
+                          child: _loading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Entrar'),
+                        ),
+                        const SizedBox(height: BrandTokens.spaceSm),
+                        TextButton(
+                          onPressed: _loading
+                              ? null
+                              : () => context.go('/onboarding/cpf'),
+                          style: TextButton.styleFrom(
+                            minimumSize: const Size.fromHeight(44),
+                            foregroundColor: isDark
+                                ? BrandTokens.textPrimaryDark
+                                : BrandTokens.textPrimary,
+                          ),
+                          child: const Text.rich(
+                            TextSpan(
+                              text: 'Novo aqui? ',
+                              children: [
+                                TextSpan(
+                                  text: 'Criar conta',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: BrandTokens.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
-                    ),
-                  ),
-                  const SizedBox(height: BrandTokens.spaceLg),
-                  GlassPrimaryButton(
-                    onPressed: _loading ? null : _login,
-                    label: 'Entrar',
-                    loading: _loading,
-                    icon: Icons.arrow_forward_rounded,
-                  ),
-                  const SizedBox(height: BrandTokens.spaceMd),
-                  TextButton(
-                    onPressed:
-                        _loading ? null : () => context.go('/onboarding/cpf'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size.fromHeight(48),
-                    ),
-                    child: const Text(
-                      'Criar conta',
-                      style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
