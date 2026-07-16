@@ -10,7 +10,10 @@ class ContatosRepository {
   static const _base = '/api/v1/cliente-app/contatos';
 
   Future<List<ContatoOperadoraDto>> list() async {
-    final r = await _dio.get(_base);
+    final r = await _dio.get(
+      _base,
+      options: Options(extra: const {'skipAuth': true}),
+    );
     final items = (r.data as Map)['items'] as List? ?? const [];
     return items
         .map((j) => ContatoOperadoraDto.fromJson(j as Map<String, dynamic>))

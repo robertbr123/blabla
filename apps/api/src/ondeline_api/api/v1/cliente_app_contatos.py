@@ -1,8 +1,10 @@
 """Contatos da operadora — Fale conosco.
 
-- GET cliente-app/contatos: lista publica (auth cliente) dos contatos ativos.
+- GET cliente-app/contatos: lista publica (sem auth) dos contatos ativos,
+  usada tambem no fluxo pre-login do app do cliente.
 - CRUD admin em /api/v1/admin/cliente-app-contatos pra gestao via dashboard.
 """
+
 from __future__ import annotations
 
 from typing import Annotated
@@ -13,12 +15,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy import asc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ondeline_api.auth.cliente_deps import get_current_cliente_user
 from ondeline_api.auth.rbac import require_role
-from ondeline_api.db.models.cliente_app import (
-    ClienteAppContatoOperadora,
-    ClienteAppUser,
-)
+from ondeline_api.db.models.cliente_app import ClienteAppContatoOperadora
 from ondeline_api.db.models.identity import Role
 from ondeline_api.deps import get_db
 
@@ -56,7 +54,6 @@ def _out(c: ClienteAppContatoOperadora) -> ContatoOut:
 
 @router.get("", response_model=ContatosListOut)
 async def listar_cliente(
-    _user: ClienteAppUser = Depends(get_current_cliente_user),  # noqa: B008
     session: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> ContatosListOut:
     stmt = (
