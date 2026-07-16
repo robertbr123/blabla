@@ -9,7 +9,7 @@ import '../../core/api/notificacoes_repository.dart';
 import '../../core/api/os_repository.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/async_states.dart';
-import '../../core/ui/glass_app_bar.dart';
+import '../../core/ui/capa_page_scaffold.dart';
 import '../nps/nps_bottom_sheet.dart';
 import '../shell/main_shell.dart';
 
@@ -37,31 +37,33 @@ class NotificacoesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(notificacoesProvider);
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: GlassAppBar(
-        title: 'Notificações',
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.done_all_rounded),
-            tooltip: 'Marcar todas como lidas',
-            onPressed: () async {
-              await ref
-                  .read(notificacoesRepositoryProvider)
-                  .marcarTodasLidas();
-              ref.invalidate(notificacoesProvider);
-              ref.invalidate(notificacoesUnreadCountProvider);
-            },
+    return CapaPageScaffold(
+      title: 'Notificações',
+      actions: [
+        IconButton(
+          icon: const Icon(
+            Icons.done_all_rounded,
+            color: BrandTokens.capaInk,
           ),
-          IconButton(
-            icon: const Icon(Icons.settings_rounded),
-            tooltip: 'Preferências',
-            onPressed: () => context.push('/notificacoes/preferencias'),
+          tooltip: 'Marcar todas como lidas',
+          onPressed: () async {
+            await ref
+                .read(notificacoesRepositoryProvider)
+                .marcarTodasLidas();
+            ref.invalidate(notificacoesProvider);
+            ref.invalidate(notificacoesUnreadCountProvider);
+          },
+        ),
+        IconButton(
+          icon: const Icon(
+            Icons.settings_rounded,
+            color: BrandTokens.capaInk,
           ),
-        ],
-      ),
-      body: RefreshIndicator(
-        edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
+          tooltip: 'Preferências',
+          onPressed: () => context.push('/notificacoes/preferencias'),
+        ),
+      ],
+      child: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(notificacoesProvider);
           ref.invalidate(notificacoesUnreadCountProvider);
@@ -71,10 +73,8 @@ class NotificacoesScreen extends ConsumerWidget {
           value: async,
           loading: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(
-              top: MediaQuery.paddingOf(context).top +
-                  kToolbarHeight +
-                  BrandTokens.spaceMd,
+            padding: const EdgeInsets.only(
+              top: BrandTokens.spaceLg,
             ),
             children: const [
               Padding(
@@ -85,10 +85,8 @@ class NotificacoesScreen extends ConsumerWidget {
           ),
           error: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(
-              top: MediaQuery.paddingOf(context).top +
-                  kToolbarHeight +
-                  BrandTokens.spaceMd,
+            padding: const EdgeInsets.only(
+              top: BrandTokens.spaceLg,
               left: BrandTokens.spaceLg,
               right: BrandTokens.spaceLg,
               bottom: BrandTokens.spaceMd,
@@ -107,10 +105,8 @@ class NotificacoesScreen extends ConsumerWidget {
             if (lista.isEmpty) {
               return ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: EdgeInsets.only(
-                  top: MediaQuery.paddingOf(context).top +
-                      kToolbarHeight +
-                      BrandTokens.spaceMd,
+                padding: const EdgeInsets.only(
+                  top: BrandTokens.spaceLg,
                 ),
                 children: const [
                   EmptyState(
@@ -126,11 +122,9 @@ class NotificacoesScreen extends ConsumerWidget {
               physics: const BouncingScrollPhysics(
                 parent: AlwaysScrollableScrollPhysics(),
               ),
-              padding: EdgeInsets.fromLTRB(
+              padding: const EdgeInsets.fromLTRB(
                 0,
-                MediaQuery.paddingOf(context).top +
-                    kToolbarHeight +
-                    BrandTokens.spaceMd,
+                BrandTokens.spaceLg,
                 0,
                 BrandTokens.spaceMd,
               ),
