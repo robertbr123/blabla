@@ -64,6 +64,38 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
   void _toast(String s) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s)));
 
+  /// Busca o contato de WhatsApp com melhor esforço e abre o wa.me com a
+  /// mensagem padrão. Retorna `true` se conseguiu localizar o número e
+  /// disparar o launch, `false` caso contrário (sem número/erro).
+  Future<bool> _abrirWhatsappComercial() async {
+    String? whatsNumber;
+    try {
+      final contatos = await ref.read(contatosOperadoraProvider.future);
+      for (final c in contatos) {
+        if (c.tipo == 'whatsapp') {
+          final digits = c.valor.replaceAll(RegExp(r'\D'), '');
+          if (digits.isNotEmpty) whatsNumber = digits;
+          break;
+        }
+      }
+    } on Object {
+      whatsNumber = null;
+    }
+    if (whatsNumber == null) return false;
+    final uri = Uri.parse(
+      'https://wa.me/$whatsNumber'
+      '?text=${Uri.encodeComponent(
+        'Olá! Baixei o app da Ondeline e quero ser cliente 😃',
+      )}',
+    );
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+      return true;
+    } on Object {
+      return false;
+    }
+  }
+
   Future<void> _showNotFoundSheet() async {
     // Busca o contato de WhatsApp com melhor esforço, antes de exibir a
     // sheet, pra decidir se mostra o CTA (sem contato/erro -> some, graceful).
@@ -123,20 +155,7 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
               const SizedBox(height: BrandTokens.spaceLg),
               if (whatsNumber != null) ...[
                 FilledButton.icon(
-                  onPressed: () async {
-                    final uri = Uri.parse(
-                      'https://wa.me/$whatsNumber'
-                      '?text=${Uri.encodeComponent(
-                        'Olá! Baixei o app da Ondeline e quero ser cliente 😃',
-                      )}',
-                    );
-                    try {
-                      await launchUrl(uri,
-                          mode: LaunchMode.externalApplication);
-                    } on Object {
-                      // Best-effort — se falhar, apenas ignora.
-                    }
-                  },
+                  onPressed: _abrirWhatsappComercial,
                   icon: const Icon(Icons.chat_rounded),
                   label: const Text('Quero ser cliente'),
                   style: FilledButton.styleFrom(
@@ -178,27 +197,6 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
       subtitle: 'Digite o CPF do titular do contrato pra gente localizar seu cadastro.',
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: BrandTokens.spaceSm + 2,
-              vertical: BrandTokens.spaceXs,
-            ),
-            decoration: BoxDecoration(
-              color: isDark ? BrandTokens.surfaceDark : BrandTokens.surface,
-              borderRadius: BorderRadius.circular(BrandTokens.radiusSm),
-            ),
-            child: Text(
-              'Passo 1 de 3',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-                color: isDark
-                    ? BrandTokens.textSecondaryDark
-                    : BrandTokens.textSecondary,
-              ),
-            ),
-          ),
-          const SizedBox(height: BrandTokens.spaceLg),
           Container(
             width: 88,
             height: 88,
@@ -262,6 +260,44 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: BrandTokens.spaceLg),
+          Text(
+            'Ainda não é cliente?',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDark
+                  ? BrandTokens.textSecondaryDark
+                  : BrandTokens.textSecondary,
+            ),
+          ),
+          const SizedBox(height: BrandTokens.spaceSm),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final ok = await _abrirWhatsappComercial();
+              if (!ok && mounted) {
+                _toast(
+                  'Não conseguimos abrir o WhatsApp agora. '
+                  'Tenta de novo mais tarde.',
+                );
+              }
+            },
+            icon: const Icon(Icons.chat_rounded),
+            label: const Text('Quero ser cliente'),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(
+                color: BrandTokens.brandWhatsapp,
+                width: 1.2,
+              ),
+              foregroundColor: BrandTokens.brandWhatsapp,
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+              ),
+              textStyle: const TextStyle(fontWeight: FontWeight.w800),
             ),
           ),
         ],
