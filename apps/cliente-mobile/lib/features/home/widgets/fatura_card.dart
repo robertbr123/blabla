@@ -28,6 +28,12 @@ class FaturaCard extends ConsumerWidget {
         venc == null ? fatura.vencimento : DateFormat('dd/MM').format(venc);
     final valor = NumberFormat.currency(locale: 'pt_BR', symbol: r'R$')
         .format(fatura.valor);
+    final hoje = DateTime.now();
+    final diasAteVencer = venc == null
+        ? null
+        : DateTime(venc.year, venc.month, venc.day)
+            .difference(DateTime(hoje.year, hoje.month, hoje.day))
+            .inDays;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: BrandTokens.spaceMd),
@@ -72,11 +78,11 @@ class FaturaCard extends ConsumerWidget {
                     Builder(builder: (context) {
                       final String label;
                       final bool overdue;
-                      if (fatura.isVencido && fatura.diasAtraso >= 1) {
+                      if (fatura.isVencido) {
                         label =
                             'vencida há ${fatura.diasAtraso} ${fatura.diasAtraso == 1 ? "dia" : "dias"}';
                         overdue = true;
-                      } else if (fatura.isVencido && fatura.diasAtraso == 0) {
+                      } else if (diasAteVencer == 0) {
                         label = 'vence hoje';
                         overdue = true;
                       } else {
