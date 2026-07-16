@@ -87,10 +87,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const ManutencaoBreakingBar(),
-                  meAsync.maybeWhen(
-                    data: (me) => AniversarianteBanner(me: me),
-                    orElse: () => const SizedBox.shrink(),
-                  ),
                   const FaturaCard(),
                   const StreakBadge(),
                   const _SectionLabel(label: 'Ações rapidas'),
@@ -156,6 +152,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     },
                     loading: () => const <Widget>[],
                     error: (_, __) => const <Widget>[],
+                  ),
+                  meAsync.maybeWhen(
+                    data: (me) => AniversarianteBanner(me: me),
+                    orElse: () => const SizedBox.shrink(),
                   ),
                   avisosAsync.when(
                     data: (a) => AvisosList(avisos: a),

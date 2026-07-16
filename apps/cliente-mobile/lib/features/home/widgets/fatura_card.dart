@@ -69,16 +69,34 @@ class FaturaCard extends ConsumerWidget {
                         letterSpacing: -0.5,
                       ),
                     ),
-                    Text(
-                      'vence em $vencLabel',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: isDark
-                            ? BrandTokens.textSecondaryDark
-                            : BrandTokens.textSecondary,
-                      ),
-                    ),
+                    Builder(builder: (context) {
+                      final String label;
+                      final bool overdue;
+                      if (fatura.isVencido && fatura.diasAtraso >= 1) {
+                        label =
+                            'vencida há ${fatura.diasAtraso} ${fatura.diasAtraso == 1 ? "dia" : "dias"}';
+                        overdue = true;
+                      } else if (fatura.isVencido && fatura.diasAtraso == 0) {
+                        label = 'vence hoje';
+                        overdue = true;
+                      } else {
+                        label = 'vence em $vencLabel';
+                        overdue = false;
+                      }
+                      return Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight:
+                              overdue ? FontWeight.w700 : FontWeight.w600,
+                          color: overdue
+                              ? BrandTokens.danger
+                              : (isDark
+                                  ? BrandTokens.textSecondaryDark
+                                  : BrandTokens.textSecondary),
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ),

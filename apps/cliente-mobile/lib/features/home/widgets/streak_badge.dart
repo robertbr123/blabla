@@ -14,12 +14,7 @@ class StreakBadge extends ConsumerWidget {
     return async.maybeWhen(
       data: (s) {
         if (s.atual < 3) return const SizedBox.shrink();
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final divider = isDark ? Colors.white10 : BrandTokens.divider;
         return Container(
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: divider)),
-          ),
           padding: const EdgeInsets.symmetric(
             horizontal: BrandTokens.spaceMd,
             vertical: 10,
