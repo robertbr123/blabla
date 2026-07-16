@@ -348,7 +348,8 @@ class _CtaSuporte extends StatelessWidget {
 
   String _texto() {
     if (status == 'suspenso') {
-      return 'Serviço suspenso? Vamos resolver — abra um chamado pra normalizar seu acesso.';
+      return 'Seu acesso está suspenso, normalmente por fatura em aberto. '
+          'Regularize o pagamento e a conexão volta automaticamente.';
     }
     if (status == 'cancelado') {
       return 'Quer voltar a ser cliente Ondeline? Fale com a gente.';
@@ -358,6 +359,7 @@ class _CtaSuporte extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ehSuspenso = status == 'suspenso';
     return Container(
       padding: const EdgeInsets.all(BrandTokens.spaceLg),
       decoration: BoxDecoration(
@@ -370,8 +372,10 @@ class _CtaSuporte extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(
-                Icons.support_agent_rounded,
+              Icon(
+                ehSuspenso
+                    ? Icons.receipt_long_rounded
+                    : Icons.support_agent_rounded,
                 color: BrandTokens.warning,
               ),
               const SizedBox(width: BrandTokens.spaceSm),
@@ -387,11 +391,26 @@ class _CtaSuporte extends StatelessWidget {
             ],
           ),
           const SizedBox(height: BrandTokens.spaceMd),
-          FilledButton.icon(
-            icon: const Icon(Icons.message_outlined, size: 18),
-            label: const Text('Falar com suporte'),
-            onPressed: () => context.push('/suporte/novo'),
-          ),
+          if (ehSuspenso) ...[
+            // Suspensao e quase sempre financeira: CTA primario leva ao
+            // pagamento; suporte fica como saida secundaria.
+            FilledButton.icon(
+              icon: const Icon(Icons.receipt_long_rounded, size: 18),
+              label: const Text('Ver faturas em aberto'),
+              onPressed: () => context.push('/faturas'),
+            ),
+            const SizedBox(height: BrandTokens.spaceSm),
+            TextButton.icon(
+              icon: const Icon(Icons.message_outlined, size: 18),
+              label: const Text('Falar com suporte'),
+              onPressed: () => context.push('/suporte/novo'),
+            ),
+          ] else
+            FilledButton.icon(
+              icon: const Icon(Icons.message_outlined, size: 18),
+              label: const Text('Falar com suporte'),
+              onPressed: () => context.push('/suporte/novo'),
+            ),
         ],
       ),
     );
