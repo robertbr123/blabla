@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/os_repository.dart';
 import '../../core/branding/brand_tokens.dart';
-import '../../core/ui/glass_app_bar.dart';
+import '../../core/ui/capa_folha.dart';
 import 'chat_tab.dart';
 import 'widgets/os_card.dart';
 
@@ -33,43 +33,77 @@ class _SuporteScreenState extends ConsumerState<SuporteScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Compensação dupla: appbar de vidro (kToolbarHeight) + TabBar (~48px).
-    final headerH = MediaQuery.paddingOf(context).top + kToolbarHeight + 48.0;
-
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: GlassAppBar(
-        title: 'Suporte',
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline_rounded),
-            tooltip: 'Perguntas frequentes',
-            onPressed: () => context.push('/faq'),
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabs,
-          labelColor: BrandTokens.primary,
-          unselectedLabelColor: BrandTokens.textSecondary,
-          indicatorColor: BrandTokens.primary,
-          tabs: const [
-            Tab(text: 'Chat'),
-            Tab(text: 'Meus chamados'),
-          ],
-        ),
-      ),
       // Stack pro FAB ficar exatamente acima da navbar (Scaffold.FAB padrao
       // somava margens extras). bottom = altura visual da navbar (~78px:
       // 16 margem externa + 8 padding interno + 10*2 padding tile + 42 conteudo)
-      // + 4 folga = 82, sem somar safe area porque Scaffold extendBody:true
-      // ja considera no body abaixo.
+      // + 4 folga = 82, somando a safe area inferior do dispositivo.
       body: Stack(
         children: [
-          TabBarView(
-            controller: _tabs,
+          Column(
             children: [
-              ChatTab(topPadding: headerH),
-              _ChamadosTab(topPadding: headerH),
+              // ── Capa vibrante com título + TabBar ──
+              CapaBackground(
+                padding: EdgeInsets.only(
+                  left: BrandTokens.spaceLg,
+                  right: BrandTokens.spaceLg,
+                  top: MediaQuery.paddingOf(context).top + BrandTokens.spaceMd,
+                  bottom: BrandTokens.spaceLg + BrandTokens.radiusFolha,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Suporte',
+                            style: TextStyle(
+                              color: BrandTokens.capaInk,
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.6,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.help_outline_rounded,
+                              color: BrandTokens.capaInk),
+                          tooltip: 'Perguntas frequentes',
+                          onPressed: () => context.push('/faq'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: BrandTokens.spaceSm),
+                    TabBar(
+                      controller: _tabs,
+                      labelColor: Colors.white,
+                      unselectedLabelColor:
+                          BrandTokens.capaInk.withValues(alpha: 0.55),
+                      indicatorColor: Colors.white,
+                      dividerColor: Colors.transparent,
+                      tabs: const [
+                        Tab(text: 'Chat'),
+                        Tab(text: 'Meus chamados'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // ── Folha com o conteúdo das abas ──
+              Expanded(
+                child: FolhaContainer(
+                  overlap: BrandTokens.radiusFolha,
+                  padding: EdgeInsets.zero,
+                  child: TabBarView(
+                    controller: _tabs,
+                    children: const [
+                      ChatTab(),
+                      _ChamadosTab(),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
           Positioned(
@@ -95,15 +129,12 @@ class _SuporteScreenState extends ConsumerState<SuporteScreen>
 }
 
 class _ChamadosTab extends ConsumerWidget {
-  const _ChamadosTab({required this.topPadding});
-
-  final double topPadding;
+  const _ChamadosTab();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(osListProvider);
     return RefreshIndicator(
-      edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight + 48.0,
       onRefresh: () async {
         ref.invalidate(osListProvider);
         await ref.read(osListProvider.future);
@@ -115,8 +146,8 @@ class _ChamadosTab extends ConsumerWidget {
           if (list.isEmpty) {
             return ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.only(
-                top: topPadding + BrandTokens.spaceSm,
+              padding: const EdgeInsets.only(
+                top: BrandTokens.spaceSm,
                 left: BrandTokens.spaceXl,
                 right: BrandTokens.spaceXl,
                 bottom: BrandTokens.spaceXl,
@@ -147,8 +178,8 @@ class _ChamadosTab extends ConsumerWidget {
             );
           }
           return ListView.builder(
-            padding: EdgeInsets.only(
-              top: topPadding + BrandTokens.spaceSm,
+            padding: const EdgeInsets.only(
+              top: BrandTokens.spaceSm,
               left: BrandTokens.spaceLg,
               right: BrandTokens.spaceLg,
               bottom: BrandTokens.spaceLg,
