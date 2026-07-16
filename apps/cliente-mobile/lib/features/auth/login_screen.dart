@@ -120,6 +120,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _showCodigoACaminhoSheet() async {
+    FocusManager.instance.primaryFocus?.unfocus();
     await showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -127,7 +128,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           top: Radius.circular(BrandTokens.radiusFolha),
         ),
       ),
-      builder: (ctx) => Padding(
+      builder: (ctx) => SingleChildScrollView(
+        child: Padding(
         padding: EdgeInsets.fromLTRB(
           BrandTokens.spaceLg,
           BrandTokens.spaceLg,
@@ -172,6 +174,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -194,6 +197,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final available =
         await ref.read(biometricServiceProvider).isAvailable();
     if (!available || !mounted) return;
+    FocusManager.instance.primaryFocus?.unfocus();
     final aceitar = await showModalBottomSheet<bool>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -201,7 +205,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           top: Radius.circular(BrandTokens.radiusFolha),
         ),
       ),
-      builder: (ctx) => Padding(
+      builder: (ctx) => SingleChildScrollView(
+        child: Padding(
         padding: EdgeInsets.fromLTRB(
           BrandTokens.spaceLg,
           BrandTokens.spaceLg,
@@ -244,6 +249,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
     if (aceitar == true) {

@@ -109,6 +109,7 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
     }
     if (!mounted) return;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    FocusManager.instance.primaryFocus?.unfocus();
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: isDark ? BrandTokens.surfaceDark : BrandTokens.surface,
@@ -117,7 +118,8 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
           top: Radius.circular(BrandTokens.radiusFolha),
         ),
       ),
-      builder: (sheetContext) => SafeArea(
+      builder: (sheetContext) => SingleChildScrollView(
+        child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(
             BrandTokens.spaceLg,
@@ -179,11 +181,13 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
           ),
         ),
       ),
+      ),
     );
   }
 
   Future<void> _showAlreadyExistsSheet(String cpf) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    FocusManager.instance.primaryFocus?.unfocus();
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: isDark ? BrandTokens.surfaceDark : BrandTokens.surface,
@@ -192,7 +196,8 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
           top: Radius.circular(BrandTokens.radiusFolha),
         ),
       ),
-      builder: (sheetContext) => Padding(
+      builder: (sheetContext) => SingleChildScrollView(
+        child: Padding(
         padding: EdgeInsets.fromLTRB(
           BrandTokens.spaceLg,
           BrandTokens.spaceLg,
@@ -236,6 +241,7 @@ class _OnboardingCpfScreenState extends ConsumerState<OnboardingCpfScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
     if (!mounted) return;
