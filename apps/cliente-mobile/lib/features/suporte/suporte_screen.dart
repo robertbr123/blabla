@@ -150,7 +150,7 @@ class _ChamadosTab extends ConsumerWidget {
                 top: BrandTokens.spaceSm,
                 left: BrandTokens.spaceXl,
                 right: BrandTokens.spaceXl,
-                bottom: BrandTokens.spaceXl,
+                bottom: 120,
               ),
               children: [
                 Column(
@@ -182,7 +182,7 @@ class _ChamadosTab extends ConsumerWidget {
               top: BrandTokens.spaceSm,
               left: BrandTokens.spaceLg,
               right: BrandTokens.spaceLg,
-              bottom: BrandTokens.spaceLg,
+              bottom: 120,
             ),
             itemCount: list.length,
             itemBuilder: (_, i) => OsCard(os: list[i]),

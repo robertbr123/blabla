@@ -68,7 +68,7 @@ class _FaturasScreenState extends ConsumerState<FaturasScreen> {
                   ),
                   padding: const EdgeInsets.fromLTRB(
                     BrandTokens.spaceLg,
-                    BrandTokens.spaceMd,
+                    BrandTokens.spaceLg,
                     BrandTokens.spaceLg,
                     120,
                   ),
