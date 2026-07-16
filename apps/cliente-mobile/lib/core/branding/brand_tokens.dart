@@ -100,6 +100,43 @@ class BrandTokens {
     stops: [0.0, 0.4, 0.75, 1.0],
   );
 
+  // ── Identidade "Vibrante de marca" (redesign login+home 2026-07) ──
+
+  /// Tinta escura pra texto sobre a capa ciano.
+  static const Color capaInk = Color(0xFF04222B);
+
+  /// Tom profundo que fecha o gradiente da capa.
+  static const Color capaDeep = Color(0xFF0C6E75);
+
+  /// Gradiente da capa (topo do login e da home).
+  static const LinearGradient gradientCapa = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [primary, accentDark, capaDeep],
+    stops: [0.0, 0.6, 1.0],
+  );
+
+  /// Raio dos cantos superiores da "folha" sobreposta à capa.
+  static const double radiusFolha = 28;
+
+  /// Título display gigante (login).
+  static const TextStyle displayTitle = TextStyle(
+    color: capaInk,
+    fontSize: 40,
+    fontWeight: FontWeight.w900,
+    letterSpacing: -1.2,
+    height: 1.0,
+  );
+
+  /// Saudação da capa da home.
+  static const TextStyle displayGreeting = TextStyle(
+    color: capaInk,
+    fontSize: 26,
+    fontWeight: FontWeight.w900,
+    letterSpacing: -0.8,
+    height: 1.1,
+  );
+
   // Sombras
   static final List<BoxShadow> shadowSoft = [
     BoxShadow(
