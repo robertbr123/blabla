@@ -12,10 +12,16 @@ import 'connection_status_pill.dart';
 
 /// Header colapsável e fixo (pinned) da home: capa ciano com saudação + sino
 /// + bloco de status integrado (conexão, plano, aparelhos, atalho "Minha
-/// rede") + linha de endereço/troca de contrato. Ao rolar, saudação/sino/
-/// linha de contrato somem (fade) e o bloco de status vira uma faixa
-/// compacta única, sempre fixa no topo — igual ao padrão do PerfilScreen
-/// (`_PerfilCapaDelegate`).
+/// rede") + linha de endereço/troca de contrato. Ao rolar, o layout
+/// expandido (saudação/sino/bloco completo/linha de contrato) faz crossfade
+/// pra um layout colapsado compacto (faixa de status de uma linha + linha
+/// de contrato compacta), ambos sempre fixos no topo — igual ao padrão do
+/// PerfilScreen (`_PerfilCapaDelegate`).
+///
+/// Implementação: dois layouts NATURAIS (Column/Padding, layout por flow) em
+/// vez de posicionamento absoluto por elemento — cada layout é montado uma
+/// vez e só a opacidade cruza entre eles, o que elimina os desalinhamentos
+/// que o lerp de posição por elemento produzia.
 class HomeCapaDelegate extends SliverPersistentHeaderDelegate {
   const HomeCapaDelegate({
     required this.topInset,
@@ -130,7 +136,7 @@ class HomeCapaDelegate extends SliverPersistentHeaderDelegate {
         ),
       );
     } else {
-      content = _ExpandedCollapsedContent(
+      content = _HeaderCrossfade(
         t: t,
         topInset: topInset,
         fontScale: fontScale,
@@ -186,9 +192,14 @@ class HomeCapaDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-/// Conteúdo real do header (estado com dados), interpolado por `t`.
-class _ExpandedCollapsedContent extends StatelessWidget {
-  const _ExpandedCollapsedContent({
+/// Crossfade entre os dois layouts naturais (expandido/colapsado) do
+/// conteúdo do header. Cada layout é montado inteiro e só a opacidade
+/// cruza entre `t=0` (expandido) e `t=1` (colapsado) — nenhuma posição é
+/// interpolada, então cada layout é sempre internamente consistente
+/// (Column/Padding normais), o que elimina os desalinhamentos do esquema
+/// anterior de `Positioned` por elemento com lerp de topo.
+class _HeaderCrossfade extends StatelessWidget {
+  const _HeaderCrossfade({
     required this.t,
     required this.topInset,
     required this.fontScale,
@@ -210,12 +221,10 @@ class _ExpandedCollapsedContent extends StatelessWidget {
   final bool podeTrocarContrato;
   final void Function(BuildContext context)? onTrocarContrato;
 
-  static double _lerp(double a, double b, double t) => a + (b - a) * t;
-
   String _primeiroNome(String full) {
-    final t = full.trim();
-    if (t.isEmpty) return 'Cliente';
-    final p = t.split(RegExp(r'\s+')).first;
+    final s = full.trim();
+    if (s.isEmpty) return 'Cliente';
+    final p = s.split(RegExp(r'\s+')).first;
     if (p.isEmpty) return 'Cliente';
     return p[0].toUpperCase() + p.substring(1).toLowerCase();
   }
@@ -224,116 +233,88 @@ class _ExpandedCollapsedContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final nome = me == null ? 'Cliente' : _primeiroNome(me!.nome);
     final planoNome = me?.planoNome ?? 'Sem plano vinculado';
+    final onTrocar =
+        onTrocarContrato == null ? null : () => onTrocarContrato!(context);
 
-    // Fade rápido: saudação e sino somem já no início do colapso (por
-    // volta de 40% do scroll) — quando o bloco de status já assumiu a
-    // posição fixa deles. A linha de contrato NÃO some mais: em vez de
-    // fade, ela desliza pra uma posição compacta logo abaixo da faixa de
-    // status colapsada (ver `contratoTop` abaixo).
-    final greetingOpacity = (1 - t * 2.5).clamp(0.0, 1.0);
+    final expanded = _ExpandedLayout(
+      topInset: topInset,
+      fontScale: fontScale,
+      nome: nome,
+      planoNome: planoNome,
+      rede: rede,
+      contratoAtual: contratoAtual,
+      podeTrocarContrato: podeTrocarContrato,
+      onTrocar: onTrocar,
+    );
 
-    // Faixa útil do estado colapsado (acima do lábio da folha): minExtent
-    // (112) menos o lábio da folha (radiusFolha=28) = 84 — escalada em
-    // `collapsedBand` (calculado pelo delegate) pra caber fonte grande.
-    // Conteúdo compacto total = faixa de status (40) + espaço (4) + linha
-    // de contrato (16), centralizado na faixa disponível.
-    const compactStatusHeight = 40.0;
-    const compactContratoGap = 4.0;
-    const compactContratoHeight = 16.0;
-    const compactContentHeight =
-        compactStatusHeight + compactContratoGap + compactContratoHeight;
-    final expandedStatusTop = topInset +
-        (BrandTokens.spaceMd + 46 + BrandTokens.spaceMd) * fontScale;
-    final collapsedStatusTop =
-        topInset + (collapsedBand - compactContentHeight * fontScale) / 2;
-    final statusTop = _lerp(expandedStatusTop, collapsedStatusTop, t);
-    final collapsedContratoTop = collapsedStatusTop +
-        (compactStatusHeight + compactContratoGap) * fontScale;
-    final expandedContratoTop =
-        expandedStatusTop + (BrandTokens.spaceSm + 78) * fontScale;
-    final contratoTop = _lerp(expandedContratoTop, collapsedContratoTop, t);
+    final collapsed = _CollapsedLayout(
+      planoNome: planoNome,
+      rede: rede,
+      contratoAtual: contratoAtual,
+      podeTrocarContrato: podeTrocarContrato,
+      onTrocar: onTrocar,
+    );
 
     return Stack(
       children: [
-        // Saudação + nome
+        // Layout expandido: preenche o topo do header e some (fade) por
+        // volta da metade do colapso — quando o layout colapsado já
+        // assumiu a faixa fixa no topo.
         Positioned(
-          left: BrandTokens.spaceLg,
-          right: BrandTokens.spaceLg + 48,
-          top: topInset + BrandTokens.spaceMd * fontScale,
-          child: Opacity(
-            opacity: greetingOpacity,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  saudacao(DateTime.now()),
-                  style: TextStyle(
-                    color: BrandTokens.capaInk.withValues(alpha: 0.65),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  '$nome 👋',
-                  style: BrandTokens.displayGreeting,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+          left: 0,
+          right: 0,
+          top: 0,
+          child: IgnorePointer(
+            ignoring: t > 0.5,
+            child: Opacity(
+              opacity: (1 - t * 2).clamp(0.0, 1.0),
+              child: expanded,
             ),
           ),
         ),
-        // Sino de notificações
+        // Layout colapsado: faixa fixa logo abaixo do topInset, centrada
+        // na banda útil acima do lábio da folha.
         Positioned(
-          right: BrandTokens.spaceLg - 12,
-          top: topInset + (BrandTokens.spaceMd - 8) * fontScale,
-          child: Opacity(
-            opacity: greetingOpacity,
-            child: const NotifBell(color: BrandTokens.capaInk),
-          ),
-        ),
-        // Bloco de status (conexão + plano + aparelhos + atalho rede)
-        Positioned(
-          left: BrandTokens.spaceLg,
-          right: BrandTokens.spaceLg,
-          top: statusTop,
-          child: _StatusBlock(t: t, planoNome: planoNome, rede: rede),
-        ),
-        // Linha de endereço / troca de contrato — permanece visível e
-        // clicável mesmo colapsada, deslizando pra uma linha compacta
-        // logo abaixo da faixa de status (sem fade a zero).
-        if (contratoAtual != null && contratoAtual!.enderecoResumido.isNotEmpty)
-          Positioned(
-            left: BrandTokens.spaceLg,
-            right: BrandTokens.spaceLg,
-            top: contratoTop,
-            child: _ContratoLinha(
-              t: t,
-              contrato: contratoAtual!,
-              podeTrocar: podeTrocarContrato,
-              onTrocar: onTrocarContrato == null
-                  ? null
-                  : () => onTrocarContrato!(context),
+          left: 0,
+          right: 0,
+          top: topInset,
+          height: collapsedBand,
+          child: IgnorePointer(
+            ignoring: t <= 0.5,
+            child: Opacity(
+              opacity: ((t - 0.5) * 2).clamp(0.0, 1.0),
+              child: collapsed,
             ),
           ),
+        ),
       ],
     );
   }
 }
 
-/// Bloco translúcido com status da conexão + plano + linha de rede.
-/// Em `t=0` é idêntico ao bloco original da home; conforme `t` cresce, a
-/// linha de aparelhos encolhe (Align heightFactor) e um chip "Minha rede →"
-/// aparece dentro da própria linha do status (largura/opacidade animadas),
-/// formando a faixa compacta de uma linha só quando totalmente colapsado.
-class _StatusBlock extends StatelessWidget {
-  const _StatusBlock({required this.t, required this.planoNome, required this.rede});
+/// Layout natural (por flow, sem `Positioned` por elemento) do estado
+/// totalmente expandido: saudação + sino, bloco de status completo e linha
+/// de contrato — o visual pré-colapso.
+class _ExpandedLayout extends StatelessWidget {
+  const _ExpandedLayout({
+    required this.topInset,
+    required this.fontScale,
+    required this.nome,
+    required this.planoNome,
+    required this.rede,
+    required this.contratoAtual,
+    required this.podeTrocarContrato,
+    required this.onTrocar,
+  });
 
-  final double t;
+  final double topInset;
+  final double fontScale;
+  final String nome;
   final String planoNome;
   final RedeAparelhosDto? rede;
-
-  static double _lerp(double a, double b, double t) => a + (b - a) * t;
+  final ContratoResumoDto? contratoAtual;
+  final bool podeTrocarContrato;
+  final VoidCallback? onTrocar;
 
   String _saudeLabel(String saude) => switch (saude) {
         'excelente' => 'Ótimo',
@@ -345,77 +326,184 @@ class _StatusBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rede = this.rede;
-    return Container(
-      padding: EdgeInsets.all(_lerp(16, 10, t)),
-      decoration: BoxDecoration(
-        color: BrandTokens.capaInk.withValues(alpha: 0.22),
-        borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+    final contrato = contratoAtual;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        BrandTokens.spaceLg,
+        topInset + BrandTokens.spaceMd * fontScale,
+        BrandTokens.spaceLg,
+        BrandTokens.radiusFolha + BrandTokens.spaceMd,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Saudação + nome + sino de notificações.
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const ConnectionStatusPill(),
-              const SizedBox(width: BrandTokens.spaceSm),
               Expanded(
-                child: Text(
-                  planoNome,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      saudacao(DateTime.now()),
+                      style: TextStyle(
+                        color: BrandTokens.capaInk.withValues(alpha: 0.65),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      '$nome 👋',
+                      style: BrandTokens.displayGreeting,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
-              // Chip compacto "Minha rede →": sem largura/opacidade em
-              // t=0 (idêntico a hoje), cresce conforme colapsa — visível
-              // mesmo quando a rede não foi encontrada (é só atalho de
-              // navegação).
-              ClipRect(
-                child: SizedBox(
-                  width: _lerp(0, 108, t),
-                  child: Opacity(
-                    opacity: t,
-                    child: const Align(
-                      alignment: Alignment.centerRight,
-                      child: _MinhaRedeChip(),
+              const NotifBell(color: BrandTokens.capaInk),
+            ],
+          ),
+          const SizedBox(height: BrandTokens.spaceMd),
+          // Bloco de status completo: conexão + plano + (aparelhos +
+          // atalho "Minha rede"), com degrade gracioso quando a rede
+          // ainda não foi carregada (chip fica na linha principal).
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: BrandTokens.capaInk.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const ConnectionStatusPill(),
+                    const SizedBox(width: BrandTokens.spaceSm),
+                    Expanded(
+                      child: Text(
+                        planoNome,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    if (rede == null) ...[
+                      const SizedBox(width: BrandTokens.spaceSm),
+                      const _MinhaRedeChip(),
+                    ],
+                  ],
+                ),
+                if (rede != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: BrandTokens.spaceSm),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '📱 ${rede.aparelhos.length} '
+                            '${rede.aparelhos.length == 1 ? "aparelho" : "aparelhos"}'
+                            ' · sinal ${_saudeLabel(rede.saude)}',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: BrandTokens.spaceSm),
+                        const _MinhaRedeChip(),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (contrato != null && contrato.enderecoResumido.isNotEmpty) ...[
+            const SizedBox(height: BrandTokens.spaceSm),
+            _ContratoLinha(
+              contrato: contrato,
+              podeTrocar: podeTrocarContrato,
+              onTrocar: onTrocar,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Layout natural do estado colapsado: faixa compacta de status (pill +
+/// plano elidido + chip "Minha rede") e linha de contrato compacta,
+/// centralizados verticalmente na banda útil acima do lábio da folha.
+class _CollapsedLayout extends StatelessWidget {
+  const _CollapsedLayout({
+    required this.planoNome,
+    required this.rede,
+    required this.contratoAtual,
+    required this.podeTrocarContrato,
+    required this.onTrocar,
+  });
+
+  final String planoNome;
+  final RedeAparelhosDto? rede;
+  final ContratoResumoDto? contratoAtual;
+  final bool podeTrocarContrato;
+  final VoidCallback? onTrocar;
+
+  @override
+  Widget build(BuildContext context) {
+    final contrato = contratoAtual;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: BrandTokens.spaceLg),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.max,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: BrandTokens.capaInk.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
+            ),
+            child: Row(
+              children: [
+                const ConnectionStatusPill(),
+                const SizedBox(width: BrandTokens.spaceSm),
+                Expanded(
+                  child: Text(
+                    planoNome,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          if (rede != null)
-            Align(
-              alignment: Alignment.topLeft,
-              heightFactor: (1 - t).clamp(0.0, 1.0),
-              child: ClipRect(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: BrandTokens.spaceSm),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          '📱 ${rede.aparelhos.length} '
-                          '${rede.aparelhos.length == 1 ? "aparelho" : "aparelhos"}'
-                          ' · sinal ${_saudeLabel(rede.saude)}',
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const _MinhaRedeChip(),
-                    ],
-                  ),
-                ),
-              ),
+                const SizedBox(width: BrandTokens.spaceSm),
+                const _MinhaRedeChip(),
+              ],
             ),
+          ),
+          if (contrato != null && contrato.enderecoResumido.isNotEmpty) ...[
+            const SizedBox(height: BrandTokens.spaceSm - 4),
+            _ContratoLinha(
+              contrato: contrato,
+              podeTrocar: podeTrocarContrato,
+              onTrocar: onTrocar,
+              compact: true,
+            ),
+          ],
         ],
       ),
     );
@@ -454,27 +542,27 @@ class _MinhaRedeChip extends StatelessWidget {
 }
 
 /// Linha de endereço do contrato na capa; clicável quando multi-contrato.
-/// Interpola tamanho de ícones/fonte do estado expandido pro colapsado
-/// (via `t`) — nunca some, permanece legível e tocável em t=1.
+/// `compact` seleciona o tamanho reduzido usado no layout colapsado —
+/// nenhuma posição/tamanho é interpolado, cada layout usa seus próprios
+/// valores fixos.
 class _ContratoLinha extends StatelessWidget {
   const _ContratoLinha({
-    required this.t,
     required this.contrato,
     required this.podeTrocar,
     required this.onTrocar,
+    this.compact = false,
   });
-  final double t;
+
   final ContratoResumoDto contrato;
   final bool podeTrocar;
   final VoidCallback? onTrocar;
-
-  static double _lerp(double a, double b, double t) => a + (b - a) * t;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    final iconSize = _lerp(14, 12, t);
-    final fontSize = _lerp(12, 11, t);
-    final swapIconSize = _lerp(16, 13, t);
+    final iconSize = compact ? 12.0 : 14.0;
+    final fontSize = compact ? 11.0 : 12.0;
+    final swapIconSize = compact ? 13.0 : 16.0;
     final linha = Row(
       children: [
         Icon(Icons.location_on_outlined,
