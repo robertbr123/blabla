@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -221,19 +223,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         top: MediaQuery.paddingOf(context).top + BrandTokens.spaceXl,
                         bottom: BrandTokens.spaceXl + BrandTokens.radiusFolha,
                       ),
-                      child: const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: Stack(
                         children: [
-                          Text('onde\nvocê\nestiver.', style: BrandTokens.displayTitle),
-                          SizedBox(height: BrandTokens.spaceSm),
-                          Text(
-                            'Ondeline — internet que acompanha você.',
-                            style: TextStyle(
-                              color: BrandTokens.capaInk,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                          // Marca d'água: logo grande, discreta, atrás do
+                          // título — não intercepta toques.
+                          Positioned(
+                            right: -40,
+                            top: 0,
+                            bottom: 0,
+                            child: IgnorePointer(
+                              child: Opacity(
+                                opacity: 0.10,
+                                child: Image.asset(
+                                  'assets/icon/icon.png',
+                                  width: 220,
+                                  height: 220,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
                             ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text('Onde\nvocê',
+                                  style: BrandTokens.displayTitle),
+                              const _PalavraRotativa(),
+                              const SizedBox(height: BrandTokens.spaceSm),
+                              const Text(
+                                'Ondeline — internet que acompanha você.',
+                                style: TextStyle(
+                                  color: BrandTokens.capaInk,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -374,6 +400,75 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Terceira linha do título da capa: alterna entre palavras que completam
+/// "Onde você ___" (estiver, morar, trabalhar...), reforçando o nome
+/// Ondeline. Altura fixa pra não empurrar o layout ao trocar de palavra.
+class _PalavraRotativa extends StatefulWidget {
+  const _PalavraRotativa();
+
+  @override
+  State<_PalavraRotativa> createState() => _PalavraRotativaState();
+}
+
+class _PalavraRotativaState extends State<_PalavraRotativa> {
+  static const _palavras = [
+    'estiver.',
+    'morar.',
+    'trabalhar.',
+    'estudar.',
+    'precisar.',
+  ];
+
+  int _index = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 2600), (_) {
+      if (!mounted) return;
+      setState(() => _index = (_index + 1) % _palavras.length);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final palavra = _palavras[_index];
+    return SizedBox(
+      height: BrandTokens.displayTitle.fontSize! * BrandTokens.displayTitle.height!,
+      child: ClipRect(
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 400),
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.35),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            ),
+            child: Text(
+              palavra,
+              key: ValueKey(palavra),
+              style: BrandTokens.displayTitle,
+            ),
+          ),
         ),
       ),
     );
