@@ -306,7 +306,8 @@ class _AbertaHeroCard extends StatelessWidget {
     final fmtValor = NumberFormat.currency(locale: 'pt_BR', symbol: 'R\$');
     final fmtData = DateFormat('dd/MM/yyyy', 'pt_BR');
     final venceHoje = _diasAteVencimento(fatura.vencimentoDate);
-    final statusColor = fatura.isVencido ? BrandTokens.danger : Colors.white;
+    final isVencido = fatura.isVencido;
+    final statusColor = isVencido ? Colors.white : Colors.white;
     final statusTexto = _heroStatusTexto(fatura, venceHoje);
     return InkWell(
       onTap: onTap,
@@ -426,38 +427,40 @@ class _AbertaHeroCard extends StatelessWidget {
                 vertical: BrandTokens.spaceSm,
               ),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.18),
+                color: isVencido ? Colors.white : Colors.white.withOpacity(0.18),
                 borderRadius: BorderRadius.circular(BrandTokens.radiusMd),
               ),
               child: Row(
                 children: [
                   if (fatura.temPix) ...[
-                    const Icon(Icons.qr_code_2_rounded,
-                        color: Colors.white, size: 20),
+                    Icon(Icons.qr_code_2_rounded,
+                        color: isVencido ? BrandTokens.danger : Colors.white,
+                        size: 20),
                     const SizedBox(width: BrandTokens.spaceSm),
-                    const Text(
+                    Text(
                       'Pagar com Pix',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: isVencido ? BrandTokens.danger : Colors.white,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ] else if (fatura.temPdf) ...[
-                    const Icon(Icons.picture_as_pdf_outlined,
-                        color: Colors.white, size: 20),
+                    Icon(Icons.picture_as_pdf_outlined,
+                        color: isVencido ? BrandTokens.danger : Colors.white,
+                        size: 20),
                     const SizedBox(width: BrandTokens.spaceSm),
-                    const Text(
+                    Text(
                       'Abrir boleto',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: isVencido ? BrandTokens.danger : Colors.white,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                   const Spacer(),
-                  const Icon(
+                  Icon(
                     Icons.arrow_forward_rounded,
-                    color: Colors.white,
+                    color: isVencido ? BrandTokens.danger : Colors.white,
                   ),
                 ],
               ),
