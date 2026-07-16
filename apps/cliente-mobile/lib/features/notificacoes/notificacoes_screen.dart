@@ -41,10 +41,7 @@ class NotificacoesScreen extends ConsumerWidget {
       title: 'Notificações',
       actions: [
         IconButton(
-          icon: const Icon(
-            Icons.done_all_rounded,
-            color: BrandTokens.capaInk,
-          ),
+          icon: const Icon(Icons.done_all_rounded),
           tooltip: 'Marcar todas como lidas',
           onPressed: () async {
             await ref
@@ -55,10 +52,7 @@ class NotificacoesScreen extends ConsumerWidget {
           },
         ),
         IconButton(
-          icon: const Icon(
-            Icons.settings_rounded,
-            color: BrandTokens.capaInk,
-          ),
+          icon: const Icon(Icons.settings_rounded),
           tooltip: 'Preferências',
           onPressed: () => context.push('/notificacoes/preferencias'),
         ),

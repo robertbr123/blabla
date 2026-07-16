@@ -38,10 +38,7 @@ class _NovoChamadoScreenState extends ConsumerState<NovoChamadoScreen> {
       title: 'Novo chamado',
       actions: [
         IconButton(
-          icon: const Icon(
-            Icons.help_outline_rounded,
-            color: BrandTokens.capaInk,
-          ),
+          icon: const Icon(Icons.help_outline_rounded),
           tooltip: 'Perguntas frequentes',
           onPressed: () => context.push('/faq'),
         ),

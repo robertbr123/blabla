@@ -43,37 +43,39 @@ class CapaPageScaffold extends StatelessWidget {
               BrandTokens.spaceMd,
               MediaQuery.paddingOf(context).top + BrandTokens.spaceSm,
               BrandTokens.spaceMd,
-              BrandTokens.spaceLg + BrandTokens.radiusFolha,
+              capaBottom != null
+                  ? BrandTokens.spaceSm + BrandTokens.radiusFolha
+                  : BrandTokens.spaceLg + BrandTokens.radiusFolha,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  children: [
-                    if (canPop)
-                      IconButton(
-                        icon: const Icon(
-                          Icons.arrow_back_rounded,
-                          color: BrandTokens.capaInk,
-                        ),
-                        onPressed: () => Navigator.of(context).pop(),
-                      )
-                    else
-                      const SizedBox(width: BrandTokens.spaceSm),
-                    Expanded(
-                      child: Text(
-                        title,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: BrandTokens.capaInk,
-                          fontSize: 24,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.6,
+                IconTheme.merge(
+                  data: const IconThemeData(color: BrandTokens.capaInk),
+                  child: Row(
+                    children: [
+                      if (canPop)
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_rounded),
+                          onPressed: () => Navigator.of(context).pop(),
+                        )
+                      else
+                        const SizedBox(width: BrandTokens.spaceSm),
+                      Expanded(
+                        child: Text(
+                          title,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: BrandTokens.capaInk,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.6,
+                          ),
                         ),
                       ),
-                    ),
-                    ...actions,
-                  ],
+                      ...actions,
+                    ],
+                  ),
                 ),
                 if (capaBottom != null) ...[
                   const SizedBox(height: BrandTokens.spaceSm),
