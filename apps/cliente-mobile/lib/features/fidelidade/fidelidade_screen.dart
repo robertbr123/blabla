@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import '../../core/api/fidelidade_repository.dart';
 import '../../core/api/missoes_repository.dart';
 import '../../core/branding/brand_tokens.dart';
-import '../../core/ui/glass_app_bar.dart';
+import '../../core/ui/capa_page_scaffold.dart';
 import '../../core/ui/haptics.dart';
 import '../home/promo_icon_map.dart';
 
@@ -15,11 +15,9 @@ class FidelidadeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(fidelidadeProvider);
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: GlassAppBar(title: 'Programa de fidelidade'),
-      body: RefreshIndicator(
-        edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
+    return CapaPageScaffold(
+      title: 'Fidelidade',
+      child: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(fidelidadeProvider);
           ref.invalidate(missoesProvider);
@@ -29,9 +27,7 @@ class FidelidadeScreen extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (_, __) => ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: EdgeInsets.only(
-              top: MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd,
-            ),
+            padding: const EdgeInsets.only(top: BrandTokens.spaceLg),
             children: const [
               Icon(Icons.error_outline, size: 64, color: BrandTokens.danger),
               SizedBox(height: BrandTokens.spaceMd),
@@ -58,9 +54,9 @@ class _Content extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(
+      padding: const EdgeInsets.fromLTRB(
         BrandTokens.spaceLg,
-        MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd,
+        BrandTokens.spaceLg,
         BrandTokens.spaceLg,
         BrandTokens.spaceLg,
       ),
