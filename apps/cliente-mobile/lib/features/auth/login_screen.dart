@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_repository.dart';
+import '../../core/auth/auth_storage.dart';
 import '../../core/auth/auth_state.dart';
 import '../../core/branding/brand_tokens.dart';
 import '../../core/ui/animated_gradient_background.dart';
@@ -34,7 +35,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final cpf = widget.initialCpf;
     if (cpf != null && cpf.length == 11) {
       _cpfCtrl.text = formatCpf(cpf);
+      return;
     }
+    // Sem CPF vindo do onboarding: tenta o último CPF logado (best-effort;
+    // storage pode falhar em testes/simulador sem keychain — ignora).
+    readLastCpf().then((saved) {
+      if (!mounted || saved == null || saved.length != 11) return;
+      if (_cpfCtrl.text.isNotEmpty) return;
+      setState(() => _cpfCtrl.text = formatCpf(saved));
+    }).catchError((_) {});
   }
 
   @override

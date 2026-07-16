@@ -74,6 +74,7 @@ class AuthRepository {
       await writeAccessToken(token);
       final existingNome = (await readNome()) ?? '';
       final cpfDigits = cpf.replaceAll(RegExp(r'\D'), '');
+      await writeLastCpf(cpfDigits);
       await writeSession(
         cpfLast4: cpfDigits.substring(cpfDigits.length - 4),
         nome: existingNome,

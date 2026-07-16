@@ -4,6 +4,7 @@ const _kAccess = 'cliente_access_token';
 const _kCpfLast4 = 'cliente_cpf_last4';
 const _kNome = 'cliente_nome';
 const _kBiometric = 'cliente_biometric_enabled';
+const _kCpfFull = 'cliente_cpf_full';
 
 const _storage = FlutterSecureStorage(
   aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -32,6 +33,13 @@ Future<bool> readBiometricEnabled() async {
 
 Future<void> writeBiometricEnabled(bool enabled) =>
     _storage.write(key: _kBiometric, value: enabled.toString());
+
+/// CPF completo do último login bem-sucedido — pré-preenche a tela de login.
+/// Fica no secure storage (mesma proteção do token) e NÃO é limpo no logout,
+/// pra facilitar o próximo acesso do mesmo cliente.
+Future<String?> readLastCpf() => _storage.read(key: _kCpfFull);
+Future<void> writeLastCpf(String cpfDigits) =>
+    _storage.write(key: _kCpfFull, value: cpfDigits);
 
 Future<void> clearAuth() async {
   await _storage.delete(key: _kAccess);
