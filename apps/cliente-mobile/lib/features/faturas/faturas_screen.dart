@@ -35,14 +35,28 @@ class _FaturasScreenState extends ConsumerState<FaturasScreen> {
               top: MediaQuery.paddingOf(context).top + BrandTokens.spaceMd,
               bottom: BrandTokens.spaceLg + BrandTokens.radiusFolha,
             ),
-            child: const Text(
-              'Faturas',
-              style: TextStyle(
-                color: BrandTokens.capaInk,
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.6,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Faturas',
+                  style: TextStyle(
+                    color: BrandTokens.capaInk,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.6,
+                  ),
+                ),
+                const SizedBox(height: BrandTokens.spaceXs),
+                Text(
+                  'Suas contas e pagamentos num só lugar.',
+                  style: TextStyle(
+                    color: BrandTokens.capaInk.withValues(alpha: 0.7),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
           // ── Folha com a lista ──

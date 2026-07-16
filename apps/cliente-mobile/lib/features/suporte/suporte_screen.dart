@@ -78,8 +78,7 @@ class _SuporteScreenState extends ConsumerState<SuporteScreen>
                     TabBar(
                       controller: _tabs,
                       labelColor: Colors.white,
-                      unselectedLabelColor:
-                          BrandTokens.capaInk.withValues(alpha: 0.55),
+                      unselectedLabelColor: Colors.white.withValues(alpha: 0.75),
                       indicatorColor: Colors.white,
                       dividerColor: Colors.transparent,
                       tabs: const [
