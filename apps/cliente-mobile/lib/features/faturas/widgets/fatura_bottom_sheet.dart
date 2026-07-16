@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -66,9 +68,15 @@ class _FaturaBottomSheetState extends ConsumerState<FaturaBottomSheet> {
         _loadingPix = false;
       });
     } catch (e) {
+      debugPrint('pix indisponivel: $e');
       if (!mounted) return;
+      final is404 = e is DioException && e.response?.statusCode == 404;
       setState(() {
-        _pixError = 'Não consegui gerar o PIX agora.';
+        _pixError = is404
+            ? 'Essa fatura não tem Pix disponível no momento. Você ainda '
+                'pode pagar pelo boleto — ou fala com a gente que resolvemos '
+                'junto.'
+            : 'Não consegui gerar o PIX agora.';
         _loadingPix = false;
       });
     }
