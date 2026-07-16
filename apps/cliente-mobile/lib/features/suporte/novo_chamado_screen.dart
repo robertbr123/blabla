@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/os_repository.dart';
 import '../../core/branding/brand_tokens.dart';
-import '../../core/ui/glass_app_bar.dart';
+import '../../core/ui/capa_page_scaffold.dart';
 import '../../core/ui/haptics.dart';
 import 'widgets/triagem_rede.dart';
 
@@ -34,111 +34,95 @@ class _NovoChamadoScreenState extends ConsumerState<NovoChamadoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final topPad = MediaQuery.paddingOf(context).top + kToolbarHeight + BrandTokens.spaceMd;
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: GlassAppBar(
-        title: 'Novo chamado',
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => context.pop(),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline_rounded),
-            tooltip: 'Perguntas frequentes',
-            onPressed: () => context.push('/faq'),
+    return CapaPageScaffold(
+      title: 'Novo chamado',
+      actions: [
+        IconButton(
+          icon: const Icon(
+            Icons.help_outline_rounded,
+            color: BrandTokens.capaInk,
           ),
-        ],
-      ),
-      body: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.all(BrandTokens.spaceLg),
-          child: _triagemPendente
-              ? Column(
-                  children: [
-                    SizedBox(height: topPad),
-                    Expanded(
-                      child: TriagemRede(
-                        onConcluir: (diag) => setState(() {
-                          _diagnostico = diag;
-                          _triagemPendente = false;
-                          _step = 1;
-                        }),
-                        onResolveu: () => context.pop(),
-                      ),
-                    ),
-                  ],
-                )
-              : Column(
-                  children: [
-                    SizedBox(height: topPad),
-                    _StepIndicator(current: _step, total: 3),
-                    const SizedBox(height: BrandTokens.spaceLg),
-                    Expanded(
-                      child: switch (_step) {
-                        0 => _StepTipo(
-                            selected: _tipo,
-                            onSelect: (t) {
-                              if (t == 'sem_internet') {
-                                setState(() {
-                                  _tipo = t;
-                                  _triagemPendente = true;
-                                });
-                              } else {
-                                setState(() {
-                                  _tipo = t;
-                                  _step = 1;
-                                });
-                              }
-                            },
-                          ),
-                        1 => _StepDetalhes(
-                            tipo: _tipo!,
-                            descCtrl: _descCtrl,
-                            extraCtrl: _extraCtrl,
-                          ),
-                        _ => _StepConfirma(
-                            tipo: _tipo!,
-                            descricao: _descCtrl.text,
-                            extra: _extraCtrl.text,
-                          ),
-                      },
-                    ),
-                    if (_step > 0)
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: _loading
-                                  ? null
-                                  : () => setState(() {
-                                        _step--;
-                                        if (_step == 0) _diagnostico = null;
-                                      }),
-                              child: const Text('Voltar'),
-                            ),
-                          ),
-                          const SizedBox(width: BrandTokens.spaceMd),
-                          Expanded(
-                            child: FilledButton(
-                              onPressed: _loading ? null : _next,
-                              child: _loading
-                                  ? const SizedBox(
-                                      height: 22,
-                                      width: 22,
-                                      child: CircularProgressIndicator(
-                                          strokeWidth: 2),
-                                    )
-                                  : Text(_step == 2 ? 'Confirmar' : 'Continuar'),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
+          tooltip: 'Perguntas frequentes',
+          onPressed: () => context.push('/faq'),
         ),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.all(BrandTokens.spaceLg),
+        child: _triagemPendente
+            ? TriagemRede(
+                onConcluir: (diag) => setState(() {
+                  _diagnostico = diag;
+                  _triagemPendente = false;
+                  _step = 1;
+                }),
+                onResolveu: () => context.pop(),
+              )
+            : Column(
+                children: [
+                  _StepIndicator(current: _step, total: 3),
+                  const SizedBox(height: BrandTokens.spaceLg),
+                  Expanded(
+                    child: switch (_step) {
+                      0 => _StepTipo(
+                          selected: _tipo,
+                          onSelect: (t) {
+                            if (t == 'sem_internet') {
+                              setState(() {
+                                _tipo = t;
+                                _triagemPendente = true;
+                              });
+                            } else {
+                              setState(() {
+                                _tipo = t;
+                                _step = 1;
+                              });
+                            }
+                          },
+                        ),
+                      1 => _StepDetalhes(
+                          tipo: _tipo!,
+                          descCtrl: _descCtrl,
+                          extraCtrl: _extraCtrl,
+                        ),
+                      _ => _StepConfirma(
+                          tipo: _tipo!,
+                          descricao: _descCtrl.text,
+                          extra: _extraCtrl.text,
+                        ),
+                    },
+                  ),
+                  if (_step > 0)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _loading
+                                ? null
+                                : () => setState(() {
+                                      _step--;
+                                      if (_step == 0) _diagnostico = null;
+                                    }),
+                            child: const Text('Voltar'),
+                          ),
+                        ),
+                        const SizedBox(width: BrandTokens.spaceMd),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: _loading ? null : _next,
+                            child: _loading
+                                ? const SizedBox(
+                                    height: 22,
+                                    width: 22,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : Text(_step == 2 ? 'Confirmar' : 'Continuar'),
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
       ),
     );
   }
