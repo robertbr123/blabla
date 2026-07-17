@@ -20,6 +20,12 @@ APP="build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app/Framewo
 echo "==> re-estampando App.framework (minos $MINOS, sdk $SDK_ALVO)"
 vtool -set-build-version ios "$MINOS" "$SDK_ALVO" -replace -output "$APP" "$APP"
 
+# O plist do framework precisa casar com o minos do binário, senão a Apple
+# devolve ITMS-90208 (Invalid Bundle: does not support the minimum OS Version).
+FWPLIST="$(dirname "$APP")/Info.plist"
+echo "==> alinhando MinimumOSVersion do App.framework/Info.plist -> $MINOS"
+plutil -replace MinimumOSVersion -string "$MINOS" "$FWPLIST"
+
 echo "==> re-exportando (re-assina)"
 rm -rf build/ios/ipa_release
 xcodebuild -exportArchive \
