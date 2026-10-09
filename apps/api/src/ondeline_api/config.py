@@ -76,6 +76,9 @@ class Settings(BaseSettings):
     business_hours_start: str = "08:00"
     business_hours_end: str = "18:00"
     business_days: str = "1,2,3,4,5"
+    # Fuso usado pra decidir "hoje" e o horario de envio das notificacoes de
+    # cobranca (vencimento/atraso/pagamento). A base da Ondeline fica no AM.
+    notify_timezone: str = "America/Manaus"
 
     # Celery
     celery_broker_url: str = ""  # default: usa redis_url

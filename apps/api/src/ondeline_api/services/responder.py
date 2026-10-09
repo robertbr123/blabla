@@ -19,7 +19,9 @@ from ondeline_api.services.conversa_events import publish as publish_event
 
 
 class _OutboundEnqueuer(Protocol):
-    def enqueue_send_outbound(self, jid: str, text: str, conversa_id: UUID) -> None: ...
+    def enqueue_send_outbound(
+        self, jid: str, text: str, conversa_id: UUID, *, persist: bool = True
+    ) -> None: ...
 
 
 async def responder(
@@ -56,7 +58,9 @@ async def responder(
         text_outbound = text
     else:
         text_outbound = f"*SUPORTE:*\n\n{text}"
-    enqueuer.enqueue_send_outbound(c.whatsapp, text_outbound, c.id)
+    # persist=False: a mensagem ja foi gravada acima como ATENDENTE. Sem isso o
+    # worker gravava de novo como BOT ("*SUPORTE:* ...") e o chat mostrava 2x.
+    enqueuer.enqueue_send_outbound(c.whatsapp, text_outbound, c.id, persist=False)
 
     if redis is not None:
         try:

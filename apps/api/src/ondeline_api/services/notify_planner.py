@@ -6,12 +6,14 @@ Notificacao records that the notify_sender worker will process.
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 import structlog
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.adapters.sgp.base import Fatura
+from ondeline_api.config import get_settings
 from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.business import (
     Cliente,
@@ -23,10 +25,36 @@ from ondeline_api.services.sgp_cache import SgpCacheService
 log = structlog.get_logger(__name__)
 
 
+_HORA_VENCIMENTO = 9
+_HORA_ATRASO = 10
+_HORA_PAGAMENTO = 11
+
+
+def _now_local() -> datetime:
+    """Agora no fuso de cobranca (settings.notify_timezone)."""
+    return datetime.now(tz=ZoneInfo(get_settings().notify_timezone))
+
+
 def _today_at(hour: int = 9) -> datetime:
-    """Today's UTC date at the specified hour (default 09:00 UTC)."""
-    now = datetime.now(tz=UTC)
-    return datetime.combine(now.date(), time(hour=hour, tzinfo=UTC))
+    """Hoje (data local) na hora local indicada, como instante em UTC."""
+    now = _now_local()
+    return datetime.combine(now.date(), time(hour=hour), tzinfo=now.tzinfo).astimezone(UTC)
+
+
+def _janela_hoje() -> tuple[datetime, datetime]:
+    """[inicio, fim) do dia local, em UTC — janela de dedup por dia."""
+    start = _today_at(0)
+    return start, start + timedelta(days=1)
+
+
+def _antes_da_hora(hour: int) -> bool:
+    """True enquanto ainda nao chegou a hora local de envio.
+
+    O planner so agenda a partir da hora de envio: assim a foto do SGP usada
+    e a do momento do disparo, e nao a da madrugada (quem pagou de noite nao
+    recebe "em atraso" de manha).
+    """
+    return _now_local().hour < hour
 
 
 def _parse_iso_date(s: str | None) -> date | None:
@@ -46,7 +74,7 @@ def _vence_em_dias(t: Fatura, days: int) -> bool:
         v = datetime.fromisoformat(t.vencimento).date()
     except ValueError:
         return False
-    return (v - datetime.now(tz=UTC).date()).days == days
+    return (v - _now_local().date()).days == days
 
 
 async def _list_active_clientes(session: AsyncSession) -> list[Cliente]:
@@ -61,12 +89,15 @@ async def schedule_vencimentos(
     """For each active cliente, schedule VENCIMENTO notification for titulos
     que vencem HOJE (D-0).
 
-    Dispara uma unica vez, no dia do vencimento — a chave de dedup
-    (cliente, tipo, agendada_para=hoje 09h) garante 1 por dia, e como so
-    casa o dia exato, nao ha repeticao nos dias anteriores.
+    Dispara uma unica vez, no dia do vencimento, a partir das 09h locais —
+    o dedup e por (cliente, tipo, dia local), e como so casa o dia exato,
+    nao ha repeticao nos dias anteriores.
     """
+    if _antes_da_hora(_HORA_VENCIMENTO):
+        return 0
     repo = NotificacaoRepo(session)
-    when = _today_at(9)
+    when = _today_at(_HORA_VENCIMENTO)
+    dia_ini, dia_fim = _janela_hoje()
     count = 0
     for cliente in await _list_active_clientes(session):
         try:
@@ -81,6 +112,13 @@ async def schedule_vencimentos(
             if t.status == "aberto" and _vence_em_dias(t, 0)
         ]
         if not proximos:
+            continue
+        if await repo.already_scheduled_in_window(
+            cliente_id=cliente.id,
+            tipo=NotificacaoTipo.VENCIMENTO,
+            start=dia_ini,
+            end=dia_fim,
+        ):
             continue
         n = await repo.schedule(
             cliente_id=cliente.id,
@@ -110,8 +148,12 @@ async def schedule_atrasos(
 
     Each delay bucket gets a distinct agendada_para minute offset so the
     dedup key (cliente_id, tipo, agendada_para) remains unique across buckets.
+    Envia a partir das 10h locais; dedup por (cliente, bucket, dia local).
     """
+    if _antes_da_hora(_HORA_ATRASO):
+        return 0
     repo = NotificacaoRepo(session)
+    dia_ini, dia_fim = _janela_hoje()
     count = 0
     for cliente in await _list_active_clientes(session):
         try:
@@ -128,8 +170,16 @@ async def schedule_atrasos(
             ]
             if not atrasados:
                 continue
+            if await repo.already_scheduled_in_window(
+                cliente_id=cliente.id,
+                tipo=NotificacaoTipo.ATRASO,
+                start=dia_ini,
+                end=dia_fim,
+                dias_atraso=d,
+            ):
+                continue
             # Offset by bucket index so dedup key is unique per (cliente, tipo, bucket).
-            when = _today_at(10) + timedelta(minutes=idx)
+            when = _today_at(_HORA_ATRASO) + timedelta(minutes=idx)
             n = await repo.schedule(
                 cliente_id=cliente.id,
                 tipo=NotificacaoTipo.ATRASO,
@@ -162,9 +212,11 @@ async def schedule_pagamentos(
     tambem recebem a confirmacao. Janela `look_back_days` evita backlog no
     primeiro run. Idempotente por titulo (pagamento_titulo_ids).
     """
+    if _antes_da_hora(_HORA_PAGAMENTO):
+        return 0
     repo = NotificacaoRepo(session)
-    when = _today_at(11)
-    hoje = datetime.now(tz=UTC).date()
+    when = _today_at(_HORA_PAGAMENTO)
+    hoje = _now_local().date()
     count = 0
     for cliente in await _list_active_clientes(session):
         try:

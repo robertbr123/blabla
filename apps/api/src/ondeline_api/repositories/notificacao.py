@@ -41,6 +41,31 @@ class NotificacaoRepo:
         )
         return (await self._session.execute(stmt)).scalar_one_or_none() is not None
 
+    async def already_scheduled_in_window(
+        self,
+        *,
+        cliente_id: UUID,
+        tipo: NotificacaoTipo,
+        start: datetime,
+        end: datetime,
+        dias_atraso: int | None = None,
+    ) -> bool:
+        """Ja existe notificacao desse tipo pro cliente em [start, end)?
+
+        Dedup por dia (e nao por timestamp exato): continua valendo se a hora
+        de envio ou o fuso mudarem. `dias_atraso` restringe ao bucket do ATRASO.
+        """
+        conds = [
+            Notificacao.cliente_id == cliente_id,
+            Notificacao.tipo == tipo,
+            Notificacao.agendada_para >= start,
+            Notificacao.agendada_para < end,
+        ]
+        if dias_atraso is not None:
+            conds.append(Notificacao.payload["dias_atraso"].as_integer() == dias_atraso)
+        stmt = select(Notificacao.id).where(and_(*conds)).limit(1)
+        return (await self._session.execute(stmt)).scalar_one_or_none() is not None
+
     async def already_scheduled_followup_os(
         self,
         *,

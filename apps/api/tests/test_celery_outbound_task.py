@@ -21,16 +21,18 @@ from ondeline_api.config import get_settings
 from ondeline_api.db.engine import get_sessionmaker, reset_engine_cache
 from ondeline_api.repositories.conversa import ConversaRepo
 from ondeline_api.workers.outbound import _run as outbound_run
-from ondeline_api.workers.runtime import get_redis, task_session
+from ondeline_api.workers.runtime import get_redis, reset_redis_cache, task_session
 
 pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture(autouse=True)
 def _reset_engine() -> Generator[None, None, None]:
-    """Limpa o cache do engine apos cada teste."""
+    """Limpa o cache do engine e do redis a cada teste (um event loop por teste)."""
+    reset_redis_cache()
     yield
     reset_engine_cache()
+    reset_redis_cache()
 
 
 async def test_send_outbound_persists_and_calls_evolution() -> None:
@@ -102,3 +104,81 @@ async def test_send_outbound_idempotente_nao_reenvia() -> None:
             )
         ).scalars().all()
     assert len(msgs) == 1  # bot_reply persistido mesmo sem reenviar
+
+
+async def test_send_outbound_persist_false_so_envia() -> None:
+    """Resposta do atendente: ja gravada como ATENDENTE pelo responder — o worker
+    envia mas NAO grava de novo como BOT (o chat mostrava a mensagem 2x)."""
+    settings = get_settings()
+    jid = f"outb_{uuid.uuid4().hex[:8]}@s.whatsapp.net"
+    async with task_session() as session:
+        conv = await ConversaRepo(session).get_or_create_by_whatsapp(jid)
+    conversa_id = conv.id
+
+    base = settings.evolution_url.rstrip("/")
+    inst = settings.evolution_instance
+    with respx.mock(assert_all_called=True) as router:
+        router.post(f"{base}/message/sendText/{inst}").respond(
+            200, json={"key": {"id": "WAEVT_OUT_Z"}}
+        )
+        out = await outbound_run(jid, "*SUPORTE:*\n\noi", conversa_id, persist=False)
+    assert out["status"] == "ok"
+
+    from ondeline_api.db.models.business import Mensagem
+    from sqlalchemy import select
+
+    sm = get_sessionmaker()
+    async with sm() as fresh_session:
+        msgs = (
+            await fresh_session.execute(
+                select(Mensagem).where(Mensagem.conversa_id == conversa_id)
+            )
+        ).scalars().all()
+    assert msgs == []
+
+
+async def test_send_outbound_publica_sse_com_id_da_mensagem() -> None:
+    """O evento SSE leva o id do banco — e por ele que o dashboard deduplica."""
+    import json
+
+    from ondeline_api.db.models.business import Mensagem
+    from ondeline_api.services.conversa_events import _channel
+    from sqlalchemy import select
+
+    settings = get_settings()
+    jid = f"outb_{uuid.uuid4().hex[:8]}@s.whatsapp.net"
+    async with task_session() as session:
+        conv = await ConversaRepo(session).get_or_create_by_whatsapp(jid)
+    conversa_id = conv.id
+
+    redis = await get_redis()
+    pubsub = redis.pubsub()
+    await pubsub.subscribe(_channel(conversa_id))
+    try:
+        base = settings.evolution_url.rstrip("/")
+        inst = settings.evolution_instance
+        with respx.mock(assert_all_called=True) as router:
+            router.post(f"{base}/message/sendText/{inst}").respond(
+                200, json={"key": {"id": "WAEVT_OUT_W"}}
+            )
+            await outbound_run(jid, "Oi!", conversa_id)
+
+        event = None
+        for _ in range(20):
+            m = await pubsub.get_message(ignore_subscribe_messages=True, timeout=0.5)
+            if m is not None:
+                event = json.loads(m["data"])
+                break
+    finally:
+        await pubsub.unsubscribe()
+        await pubsub.close()
+
+    sm = get_sessionmaker()
+    async with sm() as fresh_session:
+        msg = (
+            await fresh_session.execute(
+                select(Mensagem).where(Mensagem.conversa_id == conversa_id)
+            )
+        ).scalar_one()
+    assert event is not None
+    assert event["id"] == str(msg.id)

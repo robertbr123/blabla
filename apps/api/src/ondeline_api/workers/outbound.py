@@ -1,5 +1,8 @@
 """Task Celery: envia mensagem do bot via adapter provider-aware + persiste Mensagem(role=BOT).
 
+Com ``persist=False`` so envia: usado na resposta do atendente, que ja foi
+gravada (role=ATENDENTE) e publicada no SSE por ``services/responder.py``.
+
 Resolve o canal da conversa (Evolution ou Cloud) e usa o WhatsAppAdapter
 correto. Caminho Evolution preservado: ``adapter_for_conversa`` devolve
 EvolutionAdapter quando ``canal.provider='evolution'``.
@@ -26,7 +29,11 @@ log = structlog.get_logger(__name__)
 
 
 async def _run(
-    jid: str, text: str, conversa_id: UUID, idempotency_key: str | None = None
+    jid: str,
+    text: str,
+    conversa_id: UUID,
+    idempotency_key: str | None = None,
+    persist: bool = True,
 ) -> dict[str, str]:
     settings = get_settings()
     redis = await get_redis()
@@ -69,25 +76,33 @@ async def _run(
                 raise
             finally:
                 await adapter.aclose()
-        await MensagemRepo(session).insert_bot_reply(conversa_id=conversa_id, text=text)
-
-    try:
-        import datetime
-
-        from ondeline_api.services.conversa_events import publish as _pub
-
-        await _pub(
-            redis,
-            conversa_id,
-            {
-                "type": "msg",
-                "role": "bot",
-                "text": text,
-                "ts": datetime.datetime.now(tz=datetime.UTC).isoformat(),
-            },
+        msg = (
+            await MensagemRepo(session).insert_bot_reply(conversa_id=conversa_id, text=text)
+            if persist
+            else None
         )
-    except Exception:
-        pass
+
+    if msg is not None:
+        try:
+            import datetime
+
+            from ondeline_api.services.conversa_events import publish as _pub
+
+            # `id` e o mesmo do banco: o dashboard deduplica o evento live
+            # contra o refetch por id (sem ele a mensagem aparecia 2x).
+            await _pub(
+                redis,
+                conversa_id,
+                {
+                    "type": "msg",
+                    "id": str(msg.id),
+                    "role": "bot",
+                    "text": text,
+                    "ts": datetime.datetime.now(tz=datetime.UTC).isoformat(),
+                },
+            )
+        except Exception:
+            pass
 
     # msg_id pode vir de 2 shapes diferentes (None se o envio foi pulado por
     # idempotência):
@@ -120,13 +135,13 @@ async def _run(
     default_retry_delay=5,
 )
 def send_outbound_task(
-    self: Any, *, jid: str, text: str, conversa_id: str
+    self: Any, *, jid: str, text: str, conversa_id: str, persist: bool = True
 ) -> dict[str, str]:
     cid = UUID(conversa_id)
     # self.request.id é o task_id do Celery — estável entre re-tentativas, então
     # serve de chave de idempotência pra não reenviar a mesma mensagem.
     idem = self.request.id
     try:
-        return cast(dict[str, str], run_task(lambda: _run(jid, text, cid, idem)))
+        return cast(dict[str, str], run_task(lambda: _run(jid, text, cid, idem, persist)))
     except Exception as e:
         raise self.retry(exc=e) from e

@@ -130,6 +130,25 @@ def _set_secrets() -> None:
 
 
 @pytest.fixture(scope="session", autouse=True)
+def _ensure_mensagens_partitions(_set_secrets: None) -> None:
+    """Cria a particao do mes corrente de `mensagens` no banco de teste.
+
+    As migrations so criam particoes ate 2026-09; em prod o beat diario cria as
+    seguintes, mas num banco novo (CI) todo insert em `mensagens` falhava com
+    "no partition of relation" a partir de 2026-10.
+    """
+    from datetime import UTC, datetime
+
+    from ondeline_api.workers.partition_jobs import ensure_partitions
+
+    try:
+        ensure_partitions(today=datetime.now(tz=UTC).date(), n=2)
+    except Exception:
+        # Sem banco (testes puramente unitarios): os de integracao falham sozinhos.
+        pass
+
+
+@pytest.fixture(scope="session", autouse=True)
 def _flush_lockout_keys() -> None:
     """Wipe lockout keys at session start so leftover state from prior runs doesn't pollute tests."""
     import os

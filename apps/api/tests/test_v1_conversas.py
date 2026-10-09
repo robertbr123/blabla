@@ -190,13 +190,17 @@ async def test_responder_enqueues_outbound(
     client, token, _admin, db_session = app_and_token
     c = await _make_conversa(db_session)
 
-    captured: list[tuple[str, str, Any]] = []
+    captured: list[tuple[str, str, Any, bool]] = []
     monkeypatch.setattr(
         "ondeline_api.api.v1.conversas.CeleryOutboundEnqueuer",
         lambda: type(
             "FakeEnq",
             (),
-            {"enqueue_send_outbound": lambda self, jid, text, cid: captured.append((jid, text, cid))},
+            {
+                "enqueue_send_outbound": lambda self, jid, text, cid, persist=True: captured.append(
+                    (jid, text, cid, persist)
+                )
+            },
         )(),
     )
 
@@ -211,6 +215,8 @@ async def test_responder_enqueues_outbound(
     # F11: atendente humano envia com prefixo *SUPORTE:* + 2 quebras de linha
     # pra cliente identificar que eh humano, nao bot.
     assert captured[0][1] == "*SUPORTE:*\n\nOlá, posso ajudar?"
+    # Ja gravada como ATENDENTE pelo responder — o worker nao deve regravar como BOT.
+    assert captured[0][3] is False
 
 
 @pytest.mark.asyncio

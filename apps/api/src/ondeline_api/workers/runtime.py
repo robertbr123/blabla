@@ -98,11 +98,18 @@ async def task_session() -> AsyncIterator[AsyncSession]:
 class CeleryOutboundEnqueuer(_OutboundQueueProto):
     """Adapter pro service: enfileira via task Celery em vez de lista in-mem."""
 
-    def enqueue_send_outbound(self, jid: str, text: str, conversa_id: UUID) -> None:
+    def enqueue_send_outbound(
+        self, jid: str, text: str, conversa_id: UUID, *, persist: bool = True
+    ) -> None:
         # Import local pra evitar ciclo (outbound.py importa runtime indiretamente).
         from ondeline_api.workers.outbound import send_outbound_task
 
-        send_outbound_task.delay(jid=jid, text=text, conversa_id=str(conversa_id))
+        kwargs: dict[str, Any] = {"jid": jid, "text": text, "conversa_id": str(conversa_id)}
+        # So manda `persist` quando difere do default — worker antigo (deploy em
+        # andamento) nao conhece o argumento.
+        if not persist:
+            kwargs["persist"] = False
+        send_outbound_task.delay(**kwargs)
 
     def enqueue_llm_turn(self, conversa_id: UUID) -> None:
         from ondeline_api.workers.llm_turn import llm_turn_task
