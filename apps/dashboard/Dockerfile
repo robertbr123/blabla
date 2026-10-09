@@ -1,5 +1,4 @@
-# syntax=docker/dockerfile:1.7
-FROM node:22-alpine AS base
+FROM public.ecr.aws/docker/library/node:22-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
@@ -25,7 +24,7 @@ RUN pnpm --filter=ondeline-dashboard build && \
     mkdir -p /app/apps/dashboard/public
 
 # ── Runner ────────────────────────────────────────────────────────────────────
-FROM node:22-alpine AS runner
+FROM public.ecr.aws/docker/library/node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0
 COPY --from=builder /app/apps/dashboard/.next/standalone ./

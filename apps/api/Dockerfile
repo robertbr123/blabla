@@ -1,6 +1,4 @@
-# syntax=docker/dockerfile:1.7
-
-FROM python:3.11-slim-bookworm AS base
+FROM public.ecr.aws/docker/library/python:3.11-slim-bookworm AS base
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
