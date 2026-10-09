@@ -15,7 +15,7 @@ from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.business import Cliente
 
 
-def resolver_segmento(filtros: dict[str, Any]) -> Select[tuple[Cliente]]:
+def resolver_segmento(filtros: dict[str, Any]) -> Select[Any]:
     """Monta o SELECT base de clientes elegíveis para o segmento."""
     stmt = select(Cliente).where(
         Cliente.deleted_at.is_(None),
