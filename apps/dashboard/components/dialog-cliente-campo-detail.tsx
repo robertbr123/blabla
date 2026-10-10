@@ -82,8 +82,8 @@ export function DialogClienteCampoDetail({ id, onClose }: Props) {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="flex w-full max-w-3xl max-h-[90vh] flex-col overflow-hidden rounded-lg border bg-card shadow-lg">
-        <div className="flex items-start justify-between gap-3 shrink-0 border-b bg-card px-6 py-4">
+      <div className="flex w-full max-w-3xl max-h-[90dvh] flex-col overflow-hidden rounded-lg border bg-card shadow-lg">
+        <div className="flex items-start justify-between gap-3 shrink-0 border-b bg-card px-4 py-4 sm:px-6">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold truncate">
               {c?.nome ?? 'Carregando…'}
@@ -110,7 +110,7 @@ export function DialogClienteCampoDetail({ id, onClose }: Props) {
             </Button>
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 sm:px-6">
 
         {isLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
         {error && (
@@ -281,7 +281,7 @@ export function DialogClienteCampoDetail({ id, onClose }: Props) {
                     className="mt-1"
                   />
                 </div>
-                <div className="flex justify-end gap-2 pt-2 border-t">
+                <div className="flex flex-wrap justify-end gap-2 pt-2 border-t">
                   <Button type="button" variant="outline" onClick={() => setEditing(false)} disabled={patch.isPending}>
                     Cancelar
                   </Button>
@@ -296,7 +296,7 @@ export function DialogClienteCampoDetail({ id, onClose }: Props) {
 
         </div>
         {!editing && (
-          <div className="flex justify-end shrink-0 border-t bg-card px-6 py-3">
+          <div className="flex justify-end shrink-0 border-t bg-card px-4 py-3 sm:px-6">
             <Button variant="outline" onClick={onClose}>
               Fechar
             </Button>

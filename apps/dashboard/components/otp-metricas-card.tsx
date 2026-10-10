@@ -9,6 +9,7 @@ import {
 } from '@/components/noc/primitives'
 import { useOtpMetricas } from '@/lib/api/queries'
 import { cn } from '@/lib/utils'
+import { PANEL_HEADER_WRAP, TILE_LABEL_WRAP } from './responsive'
 
 /**
  * Painel de métricas de OTP — Fase 2.3 do plano de evolução.
@@ -104,6 +105,7 @@ export function OtpMetricasCard() {
       <PanelHeader
         title={TITULO}
         icon={Send}
+        className={PANEL_HEADER_WRAP}
         actions={
           <span className="flex items-baseline gap-1.5 text-xs text-muted-foreground">
             Total
@@ -121,7 +123,7 @@ export function OtpMetricasCard() {
             Sem envios registrados ainda nesta instância.
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className={cn('grid grid-cols-2 gap-3', TILE_LABEL_WRAP)}>
             <StatTile
               label="Taxa de sucesso Cloud"
               value={pct(data.cloud_success_rate)}
@@ -146,7 +148,7 @@ export function OtpMetricasCard() {
 
       {!noData && (
         <div className="overflow-x-auto border-t">
-          <table className="data-table">
+          <table className="data-table min-w-[460px]">
             <thead>
               <tr>
                 <th scope="col">Provedor</th>

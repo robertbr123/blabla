@@ -84,7 +84,7 @@ export function TecnicoDetail({ id }: { id: string }) {
     <div className="grid gap-6 lg:grid-cols-3">
       <Card className="lg:col-span-2">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <CardTitle>{data.nome}</CardTitle>
             <Badge variant={data.ativo ? 'default' : 'outline'}>
               {data.ativo ? 'Ativo' : 'Inativo'}
@@ -123,7 +123,7 @@ export function TecnicoDetail({ id }: { id: string }) {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <div className="text-xs uppercase text-muted-foreground">WhatsApp</div>
                   <p className="mt-1 text-sm">{data.whatsapp ?? '—'}</p>
@@ -167,9 +167,9 @@ export function TecnicoDetail({ id }: { id: string }) {
             {data.areas.map((a) => (
               <div
                 key={`${a.cidade}|${a.rua}`}
-                className="flex items-center justify-between rounded border px-3 py-2 text-sm"
+                className="flex items-center justify-between gap-2 rounded border px-3 py-2 text-sm"
               >
-                <div>
+                <div className="min-w-0 break-words">
                   <span className="font-medium">{a.cidade}</span>
                   <span className="mx-1 text-muted-foreground">—</span>
                   <span>{a.rua}</span>

@@ -96,13 +96,13 @@ export default function CardsDiaPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-warning/[0.10] text-warning">
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-warning/[0.10] text-warning">
             <Sparkles className="size-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Card do dia — App cliente</h1>
+            <h1 className="text-xl font-bold sm:text-2xl">Card do dia — App cliente</h1>
             <p className="text-sm text-muted-foreground">
               Cards rotativos exibidos na Home. Cliente vê 1 ativo por dia
               (escolhido por hash determinístico — o mesmo card por 24h).
@@ -199,7 +199,7 @@ function CardForm({
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* Form */}
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label>Slug (único)</Label>
                 <Input
@@ -236,7 +236,7 @@ function CardForm({
                 maxLength={2000}
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label>Texto do botão</Label>
                 <Input

@@ -76,6 +76,7 @@ class ConversaRepo:
         cidade: str | None = None,
         q: str | None = None,
         canal_id: UUID | None = None,
+        scope_cidades: list[str] | None = None,
         cursor: datetime | None = None,
         limit: int = 50,
     ) -> tuple[list[tuple[Conversa, str | None]], datetime | None]:
@@ -116,7 +117,11 @@ class ConversaRepo:
             stmt = stmt.where(or_(*conds))
         if canal_id is not None:
             stmt = stmt.where(Conversa.canal_id == canal_id)
-        # cidade filter requires join with Cliente — skip for M6 v1 baseline
+        if scope_cidades is not None:
+            # Escopo do atendente (auth/scope.py): cidades dele + sem cidade conhecida.
+            from ondeline_api.auth.scope import cliente_in_scope
+
+            stmt = stmt.where(cliente_in_scope(Conversa.cliente_id, scope_cidades))
         order_col = case(
             (Conversa.last_message_at.is_(None), Conversa.created_at),
             else_=Conversa.last_message_at,

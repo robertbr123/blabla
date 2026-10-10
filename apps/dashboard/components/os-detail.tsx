@@ -98,7 +98,7 @@ function Marco({
   iso: string | null | undefined
 }) {
   return (
-    <li className="flex items-center gap-2.5 text-sm">
+    <li className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-sm">
       <StatusDot tone={iso ? tone : 'muted'} className={iso ? undefined : 'opacity-40'} />
       <span className="text-muted-foreground">{label}</span>
       <span className="num ml-auto text-[13px]">{iso ? fmtDataHora(iso) : '—'}</span>
@@ -208,7 +208,7 @@ export function OsDetail({ id }: { id: string }) {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="num text-xl font-semibold tracking-tight">{data.codigo}</h1>
+            <h1 className="num min-w-0 break-all text-xl font-semibold tracking-tight">{data.codigo}</h1>
             <OsStatusPill status={data.status} />
           </div>
           <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
@@ -222,11 +222,12 @@ export function OsDetail({ id }: { id: string }) {
             <Age iso={data.criada_em} className="text-sm" />
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={handleBaixarPdf}>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <Button variant="outline" className="flex-1 sm:flex-none" onClick={handleBaixarPdf}>
             <FileDown className="h-4 w-4" /> Baixar PDF
           </Button>
           <Button
+            className="flex-1 sm:flex-none"
             disabled={enviandoPdf || !data?.tecnico_id}
             onClick={handleEnviarPdfTecnico}
             title={!data?.tecnico_id ? 'OS sem técnico atribuído' : undefined}

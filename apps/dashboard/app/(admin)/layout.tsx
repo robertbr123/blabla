@@ -14,7 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect('/login') // técnicos usam o PWA, não o dashboard
   }
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-dvh">
       <a href="#main-content" className="skip-to-main">
         Pular para o conteúdo
       </a>

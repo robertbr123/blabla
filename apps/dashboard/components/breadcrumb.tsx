@@ -31,6 +31,7 @@ const LABELS: Record<string, string> = {
   estoque: 'Estoque',
   canais: 'Canais WhatsApp',
   config: 'Configurações',
+  usuarios: 'Usuários',
 }
 
 function labelize(seg: string): string {

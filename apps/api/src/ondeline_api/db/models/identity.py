@@ -45,6 +45,8 @@ class User(Base):
         DateTime(timezone=True), nullable=True
     )
     foto_b64: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Escopo de cidades do ATENDENTE (ver auth/scope.py). NULL/[] = ve tudo.
+    cidades: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

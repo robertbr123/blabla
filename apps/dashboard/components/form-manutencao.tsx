@@ -64,7 +64,7 @@ export function FormManutencao() {
             <Label htmlFor="descricao">Descrição</Label>
             <Textarea id="descricao" {...register('descricao')} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="inicio_at">Início</Label>
               <Input id="inicio_at" type="datetime-local" {...register('inicio_at')} />

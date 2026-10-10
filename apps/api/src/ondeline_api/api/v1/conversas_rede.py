@@ -24,7 +24,7 @@ from ondeline_api.api.v1.rede import (
     status_out,
 )
 from ondeline_api.auth.deps import get_current_user
-from ondeline_api.auth.rbac import require_role
+from ondeline_api.auth.scope import require_scoped_role
 from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.business import Cliente, Conversa
 from ondeline_api.db.models.identity import Role, User
@@ -37,7 +37,11 @@ from ondeline_api.services.rede_service import (
 )
 
 router = APIRouter(prefix="/api/v1/conversas", tags=["conversas:rede"])
-_role_dep = Depends(require_role(Role.ADMIN, Role.ATENDENTE, Role.TECNICO))
+_role_dep = Depends(
+    require_scoped_role(
+        Role.ADMIN, Role.ATENDENTE, Role.TECNICO, param="conversa_id", model=Conversa
+    )
+)
 
 
 class ConversaSemClienteError(Exception):

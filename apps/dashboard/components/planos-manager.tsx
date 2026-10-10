@@ -28,7 +28,7 @@ export function PlanosManager() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">Planos de Internet</h2>
         <Button onClick={() => setEditingPlano(null)}>+ Novo Plano</Button>
       </div>

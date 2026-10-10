@@ -117,7 +117,7 @@ export function ComunicadoEditForm({ id }: { id: string }) {
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid gap-3 sm:grid-cols-3 [&>select]:w-full [&>select]:min-w-0">
         <select
           className="rounded-md border bg-background px-3 py-2 text-sm"
           value={filtros.cidade ?? ''}

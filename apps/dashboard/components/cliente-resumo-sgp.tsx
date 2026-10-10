@@ -59,7 +59,7 @@ export function ClienteResumoSgp({ clienteId, cpf }: Props) {
           )}
           {sgp && (
             <>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <div className="text-xs uppercase text-muted-foreground">Plano</div>
                   <p className="mt-1 text-sm font-medium">{sgp.plano ?? '—'}</p>
@@ -69,7 +69,7 @@ export function ClienteResumoSgp({ clienteId, cpf }: Props) {
                   <p className="mt-1 text-sm capitalize">{sgp.status_contrato ?? '—'}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <div className="text-xs uppercase text-muted-foreground">
                     Próxima fatura

@@ -56,7 +56,9 @@ export function OsCreatePanel({
   const contratoAtivo = cliente?.status_contrato?.toLowerCase() === 'ativo'
 
   return (
-    <Panel className="h-full overflow-y-auto">
+    // No celular a página empilha em uma coluna: o formulário sobe pra antes da
+    // lista (senão ficaria escondido lá embaixo, depois de todas as OS).
+    <Panel className="h-full overflow-y-auto max-md:order-first">
       <PanelHeader
         title="Nova OS"
         icon={ClipboardList}

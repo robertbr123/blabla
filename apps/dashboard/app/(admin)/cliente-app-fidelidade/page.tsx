@@ -55,11 +55,11 @@ export default function FidelidadePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-warning/[0.10] text-warning">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-warning/[0.10] text-warning">
           <Award className="size-5" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Fidelidade — Resgates</h1>
+          <h1 className="text-xl font-bold sm:text-2xl">Fidelidade — Resgates</h1>
           <p className="text-sm text-muted-foreground">
             Aprove resgates de pontos solicitados pelo app cliente.
           </p>
@@ -121,8 +121,8 @@ function ResgateRow({ resgate }: { resgate: AdminFidelidadeResgate }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-3 pb-3">
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
             <CardTitle className="text-base">
               {resgate.recompensa_label}
             </CardTitle>

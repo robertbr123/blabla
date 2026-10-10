@@ -21,6 +21,7 @@ from ondeline_api.api.schemas.metrica import (
     TimeseriesPontoOut,
 )
 from ondeline_api.auth.rbac import require_role
+from ondeline_api.auth.scope import cliente_in_scope, get_scope
 from ondeline_api.db.models.business import (
     Conversa,
     ConversaStatus,
@@ -41,7 +42,16 @@ _role_dep = Depends(require_role(Role.ATENDENTE, Role.ADMIN))
 @router.get("", response_model=MetricasOut, dependencies=[_role_dep])
 async def get_metricas(
     session: Annotated[AsyncSession, Depends(get_db)],
+    scope: Annotated[list[str] | None, Depends(get_scope)] = None,
 ) -> MetricasOut:
+    # Atendente limitado a cidades: fila e OS contam so o que ele enxerga
+    # (mesma regra das listagens). Mensagens e leads nao tem cidade — globais.
+    conv_scope = (
+        [cliente_in_scope(Conversa.cliente_id, scope)] if scope is not None else []
+    )
+    os_scope = (
+        [cliente_in_scope(OrdemServico.cliente_id, scope)] if scope is not None else []
+    )
     now = datetime.now(tz=UTC)
     yesterday = now - timedelta(hours=24)
     week_ago = now - timedelta(days=7)
@@ -53,6 +63,7 @@ async def get_metricas(
             select(func.count(Conversa.id)).where(
                 Conversa.status == ConversaStatus.AGUARDANDO,
                 Conversa.deleted_at.is_(None),
+                *conv_scope,
             )
         )
     ).scalar_one()
@@ -62,6 +73,7 @@ async def get_metricas(
             select(func.count(Conversa.id)).where(
                 Conversa.status == ConversaStatus.HUMANO,
                 Conversa.deleted_at.is_(None),
+                *conv_scope,
             )
         )
     ).scalar_one()
@@ -77,7 +89,8 @@ async def get_metricas(
     os_abertas = (
         await session.execute(
             select(func.count(OrdemServico.id)).where(
-                OrdemServico.status.in_([OsStatus.PENDENTE, OsStatus.EM_ANDAMENTO])
+                OrdemServico.status.in_([OsStatus.PENDENTE, OsStatus.EM_ANDAMENTO]),
+                *os_scope,
             )
         )
     ).scalar_one()
@@ -88,6 +101,7 @@ async def get_metricas(
             select(func.count(OrdemServico.id)).where(
                 OrdemServico.status == OsStatus.CONCLUIDA,
                 OrdemServico.concluida_em >= yesterday,
+                *os_scope,
             )
         )
     ).scalar_one()
@@ -98,6 +112,7 @@ async def get_metricas(
             select(func.avg(OrdemServico.csat)).where(
                 OrdemServico.csat.isnot(None),
                 OrdemServico.concluida_em >= month_ago,
+                *os_scope,
             )
         )
     ).scalar_one()

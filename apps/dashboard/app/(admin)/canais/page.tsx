@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { CanalFormDialog } from '@/components/canal-form-dialog'
+import { PageHeader } from '@/components/noc/primitives'
 
 export default function CanaisPage() {
   const { data, isLoading, error } = useCanais()
@@ -25,19 +26,16 @@ export default function CanaisPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Canais WhatsApp</h1>
-          <p className="text-sm text-muted-foreground">
-            Mapeie cada número WhatsApp (Evolution self-hosted ou Cloud API
-            oficial da Meta) a um canal com regras próprias.
-          </p>
-        </div>
-        <Button onClick={handleNew}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo canal
-        </Button>
-      </div>
+      <PageHeader
+        title="Canais WhatsApp"
+        description="Mapeie cada número WhatsApp (Evolution self-hosted ou Cloud API oficial da Meta) a um canal com regras próprias."
+        actions={
+          <Button onClick={handleNew}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo canal
+          </Button>
+        }
+      />
 
       {isLoading && (
         <p className="text-sm text-muted-foreground">Carregando…</p>
@@ -57,8 +55,8 @@ export default function CanaisPage() {
       )}
 
       {data && data.length > 0 && (
-        <div className="rounded-md border bg-card overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-md border bg-card overflow-x-auto">
+          <table className="w-full min-w-[720px] text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="px-4 py-2.5 font-semibold">Nome</th>

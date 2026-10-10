@@ -61,12 +61,12 @@ export function PlanoModal({ plano, onClose }: PlanoModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-xl">
+      <div className="mx-4 max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-lg bg-card p-4 shadow-xl sm:p-6">
         <h2 className="mb-4 text-lg font-semibold">
           {isEditing ? 'Editar Plano' : 'Novo Plano'}
         </h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="nome">Nome</Label>
               <Input
@@ -141,7 +141,7 @@ export function PlanoModal({ plano, onClose }: PlanoModalProps) {
               </div>
             )}
           </div>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
             <label className="flex cursor-pointer items-center gap-2 text-sm">
               <input
                 type="checkbox"

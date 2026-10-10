@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useRankingTecnicos, downloadRankingCsv } from '@/lib/api/queries'
+import { PageHeader } from '@/components/noc/primitives'
 
 function formatTempo(min: number | null): string {
   if (min === null) return '—'
@@ -38,14 +39,12 @@ export default function RankingTecnicosPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Ranking de Técnicos</h1>
-        <p className="text-sm text-muted-foreground">
-          OS concluídas, CSAT médio e tempo médio por técnico no período
-        </p>
-      </div>
+      <PageHeader
+        title="Ranking de Técnicos"
+        description="OS concluídas, CSAT médio e tempo médio por técnico no período"
+      />
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <input
           type="month"
           value={mes}
@@ -69,7 +68,7 @@ export default function RankingTecnicosPage() {
             </p>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[560px] text-sm">
                 <thead className="bg-muted text-xs text-muted-foreground">
                   <tr>
                     <th className="px-4 py-2 text-left">#</th>

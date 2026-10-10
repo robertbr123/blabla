@@ -7,7 +7,10 @@ export default async function ConversaDetailPage({
 }) {
   const { id } = await params
   return (
-    <div className="h-[calc(100vh-5.5rem)]">
+    // Topbar (3rem) + padding vertical do container: 2rem no celular, 2.5rem de
+    // `sm` pra cima. `dvh` acompanha a barra do navegador no celular, então a
+    // página não rola — só a lista de mensagens.
+    <div className="h-[calc(100dvh-5rem)] sm:h-[calc(100dvh-5.5rem)]">
       <ConversaChat conversaId={id} />
     </div>
   )

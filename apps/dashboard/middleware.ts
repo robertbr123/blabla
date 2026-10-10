@@ -10,6 +10,7 @@ const PROTECTED_PREFIXES = [
   '/manutencoes',
   '/config',
   '/metricas',
+  '/usuarios',
 ]
 
 export function middleware(req: NextRequest) {

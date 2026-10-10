@@ -54,6 +54,7 @@ import { apiFetch } from '@/lib/api/client'
 import type { MensagemOut } from '@/lib/api/types'
 import { cn } from '@/lib/utils'
 import { formatWhatsappBr } from './conversa-list'
+import { TABS_SCROLL } from './responsive'
 import { ConversaSlaTimer } from './conversa-sla-timer'
 import { ConversaStatusPill } from './conversa-status-pill'
 import { ConversaMedia, mediaKind } from './conversa-media'
@@ -151,6 +152,8 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentMatch, setCurrentMatch] = useState(0)
+  // Só layout: abaixo de `lg` o painel de contexto fica atrás do botão "Detalhes".
+  const [detalhesOpen, setDetalhesOpen] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const msgRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
@@ -355,7 +358,7 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
 
   if (isLoading) {
     return (
-      <div className="flex h-full flex-col gap-3">
+      <div className="flex h-full flex-col gap-2 sm:gap-3">
         <Skeleton className="h-14 w-full shrink-0 rounded-lg" />
         <div className="min-h-0 flex-1 overflow-hidden rounded-lg border bg-card">
           <SkeletonRows rows={8} />
@@ -396,12 +399,17 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
   const telefone = formatWhatsappBr(data.whatsapp)
   const nome = data.cliente?.nome ?? data.cliente_nome ?? null
   const titulo = nome ?? telefone
+  // Sinaliza no botão "Detalhes" (celular) que há algo pra ler lá dentro.
+  const temAlerta = osAbertas.length > 0 || !!data.resumo_handoff
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3">
-      {/* ── barra do atendimento: quem é, estado, ações ── */}
-      <header className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border bg-card px-4 py-2.5">
-        <div className="flex min-w-0 items-center gap-3">
+    <div className="flex h-full min-h-0 flex-col gap-2 sm:gap-3">
+      {/* ── barra do atendimento: quem é, estado, ações ──
+          Celular: linha 1 = avatar + nome + status; linha 2 = SLA/ao vivo + ações
+          só com ícone. De `sm` pra cima vira uma faixa única (o wrapper da linha 2
+          some com `sm:contents`). */}
+      <header className="flex shrink-0 flex-wrap items-center gap-2 rounded-lg border bg-card px-3 py-2 sm:px-4 sm:py-2.5">
+        <div className="flex min-w-0 flex-1 items-center gap-3 sm:mr-2 sm:flex-initial">
           <Avatar name={nome ?? '?'} />
           <div className="min-w-0">
             <h1
@@ -417,96 +425,139 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <ConversaStatusPill status={data.status} size="sm" />
-          {data.status === 'aguardando' && data.transferred_at && (
-            <ConversaSlaTimer
-              transferredAt={data.transferred_at}
-              slaMinutes={data.sla_minutes ?? 15}
-            />
-          )}
-          <span
-            role="status"
-            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
-            title={
-              sseDown
-                ? 'Conexão em tempo real caiu — atualizando a cada 10 s até reconectar'
-                : 'Mensagens novas chegam em tempo real'
-            }
-          >
-            <StatusDot
-              tone={sseDown ? 'warning' : sseOpen ? 'success' : 'muted'}
-              pulse={!sseDown && sseOpen}
-            />
-            {sseDown ? 'Reconectando…' : sseOpen ? 'Ao vivo' : 'Conectando…'}
-          </span>
-        </div>
+        <ConversaStatusPill status={data.status} size="sm" className="shrink-0" />
 
-        <div className="ml-auto flex flex-wrap items-center gap-1.5">
-          <Button
-            size="icon"
-            variant="ghost"
-            className={cn('h-8 w-8', searchOpen && 'bg-secondary')}
-            onClick={() => setSearchOpen((v) => !v)}
-            title="Buscar nesta conversa (Ctrl+F)"
-            aria-label="Buscar nesta conversa"
-            aria-pressed={searchOpen}
-          >
-            <Search />
-          </Button>
-
-          {/* Botão Assumir: aguardando (bot escalou) ou bot (atendente quer
-              intervir mesmo sem escalação). Esconde quando já estou atendendo. */}
-          {(data.status === 'aguardando' || data.status === 'bot') && (
-            <Button size="sm" onClick={() => atender.mutate()} disabled={atender.isPending}>
-              <UserCheck /> {data.status === 'aguardando' ? 'Assumir' : 'Atender'}
-            </Button>
-          )}
-
-          {/* Encerrar: só faz sentido em atendimento humano ou aguardando.
-              Em BOT, não tem o que encerrar (bot já está respondendo). */}
-          {(data.status === 'humano' || data.status === 'aguardando') && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => encerrar.mutate()}
-              disabled={encerrar.isPending}
+        <div className="flex w-full items-center gap-2 sm:contents">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            {data.status === 'aguardando' && data.transferred_at && (
+              <ConversaSlaTimer
+                transferredAt={data.transferred_at}
+                slaMinutes={data.sla_minutes ?? 15}
+              />
+            )}
+            <span
+              role="status"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground"
+              title={
+                sseDown
+                  ? 'Conexão em tempo real caiu — atualizando a cada 10 s até reconectar'
+                  : 'Mensagens novas chegam em tempo real'
+              }
             >
-              <X /> Encerrar atendimento
-            </Button>
-          )}
+              <StatusDot
+                tone={sseDown ? 'warning' : sseOpen ? 'success' : 'muted'}
+                pulse={!sseDown && sseOpen}
+              />
+              {sseDown ? 'Reconectando…' : sseOpen ? 'Ao vivo' : 'Conectando…'}
+            </span>
+          </div>
 
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-8 w-8 text-muted-foreground hover:bg-destructive/[0.13] hover:text-destructive"
-            onClick={() => void handleDelete()}
-            disabled={deleteConversa.isPending}
-            title="Excluir conversa"
-            aria-label="Excluir conversa"
-          >
-            <Trash2 />
-          </Button>
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:shrink sm:flex-wrap sm:gap-1.5">
+            <Button
+              size="icon"
+              variant="ghost"
+              className={cn('h-9 w-9 sm:h-8 sm:w-8', searchOpen && 'bg-secondary')}
+              onClick={() => setSearchOpen((v) => !v)}
+              title="Buscar nesta conversa (Ctrl+F)"
+              aria-label="Buscar nesta conversa"
+              aria-pressed={searchOpen}
+            >
+              <Search />
+            </Button>
+
+            {/* Botão Assumir: aguardando (bot escalou) ou bot (atendente quer
+                intervir mesmo sem escalação). Esconde quando já estou atendendo. */}
+            {(data.status === 'aguardando' || data.status === 'bot') && (
+              <Button
+                size="sm"
+                className="max-sm:h-9 max-sm:w-9 max-sm:px-0"
+                onClick={() => atender.mutate()}
+                disabled={atender.isPending}
+                title={data.status === 'aguardando' ? 'Assumir conversa' : 'Atender conversa'}
+                aria-label={data.status === 'aguardando' ? 'Assumir conversa' : 'Atender conversa'}
+              >
+                <UserCheck />
+                <span className="hidden sm:inline">
+                  {data.status === 'aguardando' ? 'Assumir' : 'Atender'}
+                </span>
+              </Button>
+            )}
+
+            {/* Encerrar: só faz sentido em atendimento humano ou aguardando.
+                Em BOT, não tem o que encerrar (bot já está respondendo). */}
+            {(data.status === 'humano' || data.status === 'aguardando') && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="max-sm:h-9 max-sm:w-9 max-sm:px-0"
+                onClick={() => encerrar.mutate()}
+                disabled={encerrar.isPending}
+                title="Encerrar atendimento"
+                aria-label="Encerrar atendimento"
+              >
+                <X />
+                <span className="hidden sm:inline">Encerrar atendimento</span>
+              </Button>
+            )}
+
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-9 w-9 text-muted-foreground hover:bg-destructive/[0.13] hover:text-destructive sm:h-8 sm:w-8"
+              onClick={() => void handleDelete()}
+              disabled={deleteConversa.isPending}
+              title="Excluir conversa"
+              aria-label="Excluir conversa"
+            >
+              <Trash2 />
+            </Button>
+          </div>
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
-        {/* ── painel principal: abas ── */}
-        <div className="order-2 flex min-h-0 min-w-0 flex-1 flex-col gap-3 lg:order-1">
+      {/* Celular/tablet: coluna única (abas → detalhes recolhíveis → conteúdo).
+          De `lg` pra cima: grade com o conteúdo à esquerda e o contexto à direita. */}
+      <div className="flex min-h-0 flex-1 flex-col gap-2 sm:gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:grid-rows-[auto_minmax(0,1fr)]">
+        {/* ── abas + botão "Detalhes" (abaixo de lg) ── */}
+        <div className="flex min-w-0 shrink-0 items-center gap-2 lg:col-start-1 lg:row-start-1">
           <FilterTabs
             tabs={TABS}
             value={tab}
             onChange={setTab}
             ariaLabel="Seções da conversa"
-            className="shrink-0 self-start"
+            className={cn('min-w-0', TABS_SCROLL)}
           />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn(
+              'ml-auto h-[38px] shrink-0 gap-1.5 px-2.5 lg:hidden',
+              detalhesOpen && 'bg-secondary',
+            )}
+            onClick={() => setDetalhesOpen((v) => !v)}
+            aria-expanded={detalhesOpen}
+            aria-controls="conversa-detalhes"
+            title={temAlerta ? 'Detalhes do atendimento (há avisos)' : 'Detalhes do atendimento'}
+          >
+            {temAlerta && <StatusDot tone="warning" />}
+            Detalhes
+            {temAlerta && <span className="sr-only">(há avisos)</span>}
+            <ChevronDown
+              aria-hidden
+              className={cn('transition-transform', detalhesOpen && 'rotate-180')}
+            />
+          </Button>
+        </div>
 
+        {/* ── painel principal: conteúdo da aba ── */}
+        <div className="order-3 flex min-h-0 min-w-0 flex-1 flex-col lg:order-none lg:col-start-1 lg:row-start-2">
           {/* Tab: Mensagens */}
           {tab === 'mensagens' && (
             <div className="flex min-h-0 flex-1 flex-col gap-2">
               {/* Barra de busca (toggle pelo botao ou Cmd+F) */}
               {searchOpen && (
-                <div className="flex shrink-0 items-center gap-2 rounded-lg border bg-card px-3 py-1.5 focus-within:ring-2 focus-within:ring-ring">
+                <div className="flex shrink-0 items-center gap-1 rounded-lg border bg-card px-2 py-1.5 focus-within:ring-2 focus-within:ring-ring sm:gap-2 sm:px-3">
                   <Search aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
                   <Input
                     autoFocus
@@ -514,7 +565,7 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Buscar nesta conversa…"
                     aria-label="Buscar nesta conversa"
-                    className="h-8 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                    className="h-8 min-w-0 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 max-sm:text-base"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault()
@@ -568,7 +619,7 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
 
               <div
                 ref={scrollRef}
-                className="min-h-0 flex-1 overflow-y-auto rounded-lg border bg-card px-4 pb-4 pt-1"
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-lg border bg-card px-3 pb-3 pt-1 sm:px-4 sm:pb-4"
               >
                 {allMsgs.length === 0 && (
                   <p className="pt-8 text-center text-sm text-muted-foreground">Sem mensagens</p>
@@ -644,7 +695,7 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
 
           {/* Tab: Cliente SGP */}
           {tab === 'cliente' && (
-            <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border bg-card p-4 text-sm">
+            <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border bg-card p-3 text-sm sm:p-4">
               {!data.cliente ? (
                 <VincularClienteBox conversaId={conversaId} onSuccess={() => void refetch()} />
               ) : (
@@ -676,7 +727,7 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
 
           {/* Tab: Rede */}
           {tab === 'rede' && (
-            <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border bg-card p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border bg-card p-3 sm:p-4">
               <ConversaRedePanel
                 conversaId={conversaId}
                 temCliente={!!data.cliente_id}
@@ -690,7 +741,7 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
 
           {/* Tab: Nova OS */}
           {tab === 'nova-os' && (
-            <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border bg-card p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border bg-card p-3 sm:p-4">
               {!data.cliente_id ? (
                 <p className="text-sm text-muted-foreground">
                   Cliente não identificado — não é possível abrir OS sem cliente vinculado.
@@ -775,8 +826,13 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
 
         {/* ── painel de contexto: alertas + dados do atendimento ── */}
         <aside
+          id="conversa-detalhes"
           aria-label="Contexto do atendimento"
-          className="order-1 flex max-h-44 shrink-0 flex-col gap-3 overflow-y-auto lg:order-2 lg:max-h-none lg:w-72"
+          className={cn(
+            'order-2 max-h-[45dvh] shrink-0 flex-col gap-2 overflow-y-auto sm:gap-3',
+            'lg:order-none lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:flex lg:max-h-none',
+            detalhesOpen ? 'flex' : 'hidden',
+          )}
         >
           {/* OS abertas alert */}
           {osAbertas.length > 0 && (
@@ -816,7 +872,7 @@ export function ConversaChat({ conversaId }: { conversaId: string }) {
             </div>
           )}
 
-          <Panel className="hidden shrink-0 lg:flex">
+          <Panel className="shrink-0">
             <PanelHeader title="Atendimento" />
             <PanelBody>
               <dl className="space-y-3 text-sm">
@@ -1066,7 +1122,8 @@ function ResponderBox({
             void handleSend()
           }
         }}
-        className="min-h-[64px] resize-none border-0 bg-transparent px-3 pb-1 pt-2.5 focus-visible:ring-0 focus-visible:ring-offset-0"
+        // 16px no celular: abaixo disso o iOS dá zoom na página ao focar o campo.
+        className="min-h-[64px] resize-none border-0 bg-transparent px-3 pb-1 pt-2.5 text-base focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-sm"
       />
       <input
         ref={fileRef}
@@ -1075,12 +1132,15 @@ function ResponderBox({
         onChange={handleFilePick}
         className="hidden"
       />
-      <div className="flex items-center gap-1 px-2 pb-2">
+      <div className="flex items-center gap-1 px-2 pb-1.5 sm:pb-2">
         <Button
           variant="ghost"
           size="icon"
           type="button"
-          className={cn('h-8 w-8 text-muted-foreground', qr.isMenuOpen && 'bg-secondary text-foreground')}
+          className={cn(
+            'h-10 w-10 text-muted-foreground sm:h-8 sm:w-8',
+            qr.isMenuOpen && 'bg-secondary text-foreground',
+          )}
           onClick={toggleQuickReplies}
           disabled={!!text.trim() && !qr.isMenuOpen}
           title="Respostas rápidas (digite / no campo vazio)"
@@ -1093,7 +1153,7 @@ function ResponderBox({
           variant="ghost"
           size="icon"
           type="button"
-          className="h-8 w-8 text-muted-foreground"
+          className="h-10 w-10 text-muted-foreground sm:h-8 sm:w-8"
           onClick={() => fileRef.current?.click()}
           disabled={uploading || pending}
           title="Anexar imagem, PDF, áudio ou vídeo (máx. 10 MB; o texto vira legenda)"
@@ -1107,7 +1167,7 @@ function ResponderBox({
         </span>
         <Button
           size="sm"
-          className="ml-auto"
+          className="ml-auto max-sm:h-10 max-sm:px-4"
           onClick={() => void handleSend()}
           disabled={pending || uploading || !text.trim()}
         >

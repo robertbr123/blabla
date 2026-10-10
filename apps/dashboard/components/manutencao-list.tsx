@@ -16,7 +16,7 @@ export function ManutencaoList() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Select value={filter} onChange={(e) => setFilter(e.target.value)} className="max-w-[200px]">
+        <Select value={filter} onChange={(e) => setFilter(e.target.value)} className="w-auto min-w-0 flex-1 sm:max-w-[200px]">
           <option value="">Todas</option>
           <option value="ativas">Ativas agora</option>
         </Select>
@@ -42,8 +42,8 @@ export function ManutencaoList() {
         />
       )}
       {data && data.items.length > 0 && (
-        <div className="rounded-md border bg-card overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-md border bg-card overflow-x-auto">
+          <table className="w-full min-w-[720px] text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="px-4 py-2.5 font-semibold">Título</th>

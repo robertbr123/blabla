@@ -16,8 +16,9 @@ from sse_starlette.sse import EventSourceResponse
 
 from ondeline_api.auth import jwt as jwt_mod
 from ondeline_api.auth.deps import get_current_user
-from ondeline_api.auth.rbac import require_role
+from ondeline_api.auth.scope import require_scoped_role
 from ondeline_api.db.engine import get_sessionmaker
+from ondeline_api.db.models.business import Conversa
 from ondeline_api.db.models.identity import Role, User
 from ondeline_api.deps import get_db
 from ondeline_api.repositories.conversa import ConversaRepo
@@ -31,7 +32,13 @@ _ROLES_STREAM = (Role.ATENDENTE.value, Role.ADMIN.value)
 
 @router.post(
     "/{conversa_id}/stream-ticket",
-    dependencies=[Depends(require_role(Role.ATENDENTE, Role.ADMIN))],
+    dependencies=[
+        Depends(
+            require_scoped_role(
+                Role.ATENDENTE, Role.ADMIN, param="conversa_id", model=Conversa
+            )
+        )
+    ],
 )
 async def stream_ticket(
     conversa_id: UUID,

@@ -29,6 +29,7 @@ import {
 } from '@/lib/api/queries'
 import type { RankingTecnicoOut, TimeseriesPontoOut } from '@/lib/api/types'
 import { cn } from '@/lib/utils'
+import { PANEL_HEADER_WRAP, TILE_LABEL_WRAP } from './responsive'
 
 /* ── Controle segmentado (período) ───────────────────────────────────── */
 
@@ -482,7 +483,10 @@ function BarChartTecnicos({ ranking }: { ranking: RankingTecnicoOut[] }) {
 
 /* ── Dashboard ───────────────────────────────────────────────────────── */
 
-const KPI_GRID = 'grid grid-cols-2 gap-3 lg:grid-cols-4 min-[1800px]:grid-cols-7'
+const KPI_GRID = cn(
+  'grid grid-cols-2 gap-3 lg:grid-cols-4 min-[1800px]:grid-cols-7',
+  TILE_LABEL_WRAP,
+)
 
 export function MetricasDashboard() {
   const [days, setDays] = useState<number>(30)
@@ -577,6 +581,7 @@ export function MetricasDashboard() {
         <PanelHeader
           title="Tendência diária"
           icon={TrendingUp}
+          className={PANEL_HEADER_WRAP}
           actions={
             <>
               <Segmented options={PERIODOS} value={days} onChange={setDays} ariaLabel="Período" />

@@ -96,7 +96,12 @@ export function PanelHeader({
   className?: string
 }) {
   return (
-    <header className={cn('flex h-11 shrink-0 items-center gap-2 border-b px-4', className)}>
+    <header
+      className={cn(
+        'flex min-h-11 shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b px-4 py-2',
+        className,
+      )}
+    >
       {Icon && <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
       <h2 className="eyebrow truncate text-foreground/80">{title}</h2>
       {meta != null && <span className="num text-xs text-muted-foreground">{meta}</span>}

@@ -123,7 +123,7 @@ export function CanalFormDialog({ open, canal, onClose }: Props) {
         aria-hidden
       />
       <div className="relative ml-auto flex h-full w-full max-w-xl flex-col bg-background shadow-2xl">
-        <div className="flex items-center justify-between border-b px-6 py-4">
+        <div className="flex items-center justify-between gap-3 border-b px-4 py-4 sm:px-6">
           <div>
             <h2 className="text-lg font-semibold">
               {isEditing ? `Editar canal — ${canal?.slug}` : 'Novo canal'}
@@ -139,7 +139,7 @@ export function CanalFormDialog({ open, canal, onClose }: Props) {
           </Button>
         </div>
 
-        <div className="flex-1 space-y-4 overflow-y-auto p-6">
+        <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
           {/* Provider toggle — destaque visual */}
           <div className="rounded-md border bg-muted/30 p-3">
             <Label className="mb-2 block text-xs uppercase tracking-wider text-muted-foreground">
@@ -185,7 +185,7 @@ export function CanalFormDialog({ open, canal, onClose }: Props) {
           </div>
 
           {/* Comuns */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="slug">Slug *</Label>
               <Input
@@ -304,7 +304,7 @@ export function CanalFormDialog({ open, canal, onClose }: Props) {
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t px-6 py-4">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t px-4 py-4 sm:px-6">
           <Button variant="ghost" onClick={onClose} disabled={saving}>
             Cancelar
           </Button>

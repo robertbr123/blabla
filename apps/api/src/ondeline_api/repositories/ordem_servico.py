@@ -57,6 +57,7 @@ class OrdemServicoRepo:
         cliente_id: UUID | None = None,
         cidade: str | None = None,  # filter via Cliente.cidade join
         q: str | None = None,
+        scope_cidades: list[str] | None = None,
         cursor: datetime | None = None,
         limit: int = 50,
     ) -> tuple[list[OrdemServico], datetime | None]:
@@ -80,6 +81,11 @@ class OrdemServicoRepo:
                     Tecnico.nome.ilike(pat),
                 )
             )
+        if scope_cidades is not None:
+            # Escopo do atendente (auth/scope.py): cidades dele + sem cidade conhecida.
+            from ondeline_api.auth.scope import cliente_in_scope
+
+            stmt = stmt.where(cliente_in_scope(OrdemServico.cliente_id, scope_cidades))
         if cursor is not None:
             stmt = stmt.where(OrdemServico.criada_em < cursor)
         stmt = stmt.order_by(desc(OrdemServico.criada_em)).limit(limit + 1)

@@ -238,7 +238,7 @@ export function ComunicadoForm() {
       )}
 
       <div className="rounded-md border p-4 space-y-3">
-        <div className="flex gap-4 text-sm">
+        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
           <label className="flex items-center gap-2">
             <input type="radio" checked={origem === 'segmento'}
                    onChange={() => { setOrigem('segmento'); setCampanhaId(null) }} /> Segmento da base
@@ -251,7 +251,7 @@ export function ComunicadoForm() {
 
         {origem === 'segmento' && (
           <>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid gap-3 sm:grid-cols-3 [&>select]:w-full [&>select]:min-w-0">
               <select className="rounded-md border bg-background px-3 py-2 text-sm"
                       value={filtros.cidade ?? ''}
                       onChange={(e) => setFiltros((f) => ({ ...f, cidade: e.target.value || undefined }))}>
@@ -287,8 +287,8 @@ export function ComunicadoForm() {
               </button>
             </div>
             {preview.data && preview.data.amostra.length > 0 && (
-              <div className="rounded-md border bg-card overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="rounded-md border bg-card overflow-x-auto">
+                <table className="w-full min-w-[420px] text-sm">
                   <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <tr>
                       <th className="px-3 py-2 font-semibold">Nome</th>
@@ -320,7 +320,7 @@ export function ComunicadoForm() {
 
         {origem === 'importado' && !campanhaId && (
           <div className="space-y-2">
-            <input type="file" accept=".csv,text/csv"
+            <input type="file" accept=".csv,text/csv" className="max-w-full text-sm"
                    onChange={(e) => setCsvFile(e.target.files?.[0] ?? null)} />
             <p className="text-xs text-muted-foreground">
               CSV com a coluna de telefone + (opcional) cidade, status, plano para filtrar.
@@ -344,7 +344,7 @@ export function ComunicadoForm() {
             <p className="text-sm text-muted-foreground">
               {importInfo?.importados} importados, {importInfo?.invalidos} inválidos. Filtre quem recebe:
             </p>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid gap-3 sm:grid-cols-3 [&>select]:w-full [&>select]:min-w-0">
               <select className="rounded-md border bg-background px-3 py-2 text-sm"
                       value={filtros.cidade ?? ''}
                       onChange={(e) => recontar({ ...filtros, cidade: e.target.value || undefined })}>
@@ -366,8 +366,8 @@ export function ComunicadoForm() {
             </div>
             <p className="text-sm font-medium">{contagem ?? 0} contato(s) vão receber</p>
             {amostraImport.length > 0 && (
-              <div className="rounded-md border bg-card overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="rounded-md border bg-card overflow-x-auto">
+                <table className="w-full min-w-[420px] text-sm">
                   <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
                     <tr>
                       <th className="px-3 py-2 font-semibold">Telefone</th>

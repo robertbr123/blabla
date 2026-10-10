@@ -22,10 +22,11 @@ from ondeline_api.api.schemas.conversa import (
 from ondeline_api.api.schemas.mensagem import MensagemOut
 from ondeline_api.api.schemas.pagination import CursorPage, encode_cursor
 from ondeline_api.auth.deps import get_current_user
-from ondeline_api.auth.rbac import require_role
+from ondeline_api.auth.scope import get_scope, require_scoped_role
 from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.business import (
     Cliente,
+    Conversa,
     ConversaEstado,
     Mensagem,
     MensagemRole,
@@ -43,7 +44,11 @@ from ondeline_api.services.responder import responder
 from ondeline_api.workers.runtime import CeleryOutboundEnqueuer, get_redis
 
 router = APIRouter(prefix="/api/v1/conversas", tags=["conversas"])
-_role_dep = Depends(require_role(Role.ATENDENTE, Role.ADMIN))
+# Role + escopo de cidades: rotas com {conversa_id} devolvem 404 pro atendente
+# quando a conversa e de cliente de cidade fora do escopo dele.
+_role_dep = Depends(
+    require_scoped_role(Role.ATENDENTE, Role.ADMIN, param="conversa_id", model=Conversa)
+)
 
 
 def _to_msg_out(m: Mensagem) -> MensagemOut:
@@ -81,12 +86,14 @@ async def list_conversas(
     status_filter: Annotated[str | None, Query(alias="status")] = None,
     q: Annotated[str | None, Query()] = None,
     canal_id: Annotated[UUID | None, Query()] = None,
+    scope: Annotated[list[str] | None, Depends(get_scope)] = None,
 ) -> CursorPage[ConversaListItem]:
     repo = ConversaRepo(session)
     rows, next_cur = await repo.list_paginated(
         status=status_filter,
         q=q,
         canal_id=canal_id,
+        scope_cidades=scope,
         cursor=parse_cursor(cursor),
         limit=parse_limit(limit),
     )

@@ -24,6 +24,7 @@ import {
   Award,
   Sparkles,
   ChevronRight,
+  UserCog,
 } from 'lucide-react'
 import { useTemChamadoAberto, useTemConversaAguardando } from '@/lib/api/queries'
 import { cn } from '@/lib/utils'
@@ -115,6 +116,7 @@ const SECTIONS: ReadonlyArray<NavSection> = [
     items: [
       { href: '/comunicados', label: 'Comunicados', icon: Megaphone, roles: ['admin'] },
       { href: '/canais', label: 'Canais WhatsApp', icon: Radio, roles: ['admin'] },
+      { href: '/usuarios', label: 'Usuários', icon: UserCog, roles: ['admin'] },
       { href: '/config', label: 'Configurações', icon: Settings, roles: ['admin'] },
     ],
   },

@@ -12,7 +12,7 @@ export function ClienteEquipamentos({ clienteId }: { clienteId: string }) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <Package className="h-4 w-4" /> Equipamentos
           </CardTitle>

@@ -30,7 +30,7 @@ export function DialogMarcarSyncSgp({ cliente, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-y-auto py-4">
-      <div className="w-full max-w-md rounded-lg border bg-card p-6 shadow-lg space-y-4 mx-4">
+      <div className="w-full max-w-md mx-4 max-h-[90dvh] overflow-y-auto rounded-lg border bg-card p-4 shadow-lg space-y-4 sm:p-6">
         <div>
           <h2 className="text-lg font-semibold">Marcar como sincronizado</h2>
           <p className="text-xs text-muted-foreground">

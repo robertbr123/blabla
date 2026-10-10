@@ -98,9 +98,9 @@ export default function ClientesCampoPage() {
       )}
 
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Clientes em campo</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight">Clientes em campo</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
             Cadastros feitos pelos técnicos durante a instalação. Diferente
             de <strong>Clientes</strong> (cache do SGP), aqui está a fonte
             primária do que foi instalado.
@@ -133,9 +133,9 @@ export default function ClientesCampoPage() {
           placeholder="Buscar por endereço, cidade, bairro, serial…"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          className="max-w-sm"
+          className="sm:max-w-sm"
         />
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           <FiltroChip label="Todos" active={filtroSgp === 'all'} onClick={() => setFiltroSgp('all')} />
           <FiltroChip
             label="Sincronizado"
@@ -162,7 +162,7 @@ export default function ClientesCampoPage() {
       {data && (
         <div className="overflow-hidden rounded-md border bg-card">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[900px] text-sm">
               <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-4 py-2.5 font-semibold">Cliente</th>
@@ -254,7 +254,7 @@ export default function ClientesCampoPage() {
           </div>
 
           {/* Paginação anterior/próximo */}
-          <div className="flex items-center justify-between gap-3 border-t bg-muted/20 px-4 py-2.5 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t bg-muted/20 px-4 py-2.5 text-xs">
             <span className="text-muted-foreground" style={{ fontVariantNumeric: 'tabular-nums' }}>
               {items.length > 0 ? (
                 <>

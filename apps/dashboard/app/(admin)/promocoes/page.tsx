@@ -61,16 +61,16 @@ export default function PromocoesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            <Megaphone className="h-6 w-6" /> Promoções (app cliente)
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-2 text-xl font-semibold sm:text-2xl">
+            <Megaphone className="h-6 w-6 shrink-0" /> Promoções (app cliente)
           </h1>
           <p className="text-sm text-muted-foreground">
             Cards do carrossel da home do app. Refletidos em tempo real após salvar.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             onClick={() => seed.mutate()}
@@ -178,7 +178,7 @@ export default function PromocoesPage() {
               {sorted.map((p, idx) => (
                 <li
                   key={p.id}
-                  className="flex items-center gap-3 p-3 hover:bg-muted/30"
+                  className="flex items-center gap-2 p-3 hover:bg-muted/30 sm:gap-3"
                 >
                   <div className="flex flex-col gap-0.5">
                     <button
@@ -202,7 +202,7 @@ export default function PromocoesPage() {
                   </div>
 
                   <div
-                    className="h-12 w-16 shrink-0 rounded-md"
+                    className="h-12 w-10 shrink-0 rounded-md sm:w-16"
                     style={{
                       background: `linear-gradient(135deg, ${
                         p.gradient_from || '#8B5CF6'
@@ -211,8 +211,8 @@ export default function PromocoesPage() {
                   />
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate font-medium">{p.titulo}</p>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <p className="min-w-0 truncate font-medium">{p.titulo}</p>
                       {!p.ativa && (
                         <Badge variant="outline" className="text-[10px]">
                           inativa

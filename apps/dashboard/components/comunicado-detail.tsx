@@ -78,12 +78,12 @@ export function ComunicadoDetail({ id }: { id: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{c.titulo}</h1>
-          <p className="mt-1 text-sm text-muted-foreground font-mono">{c.template_name}</p>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div className="min-w-0">
+          <h1 className="break-words text-xl font-semibold sm:text-2xl">{c.titulo}</h1>
+          <p className="mt-1 break-all text-sm text-muted-foreground font-mono">{c.template_name}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{c.status}</Badge>
           {(c.status === 'rascunho' || c.status === 'erro') && (
             <Link
@@ -141,8 +141,8 @@ export function ComunicadoDetail({ id }: { id: string }) {
             </button>
           ))}
         </div>
-        <div className="rounded-md border bg-card overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-md border bg-card overflow-x-auto">
+          <table className="w-full min-w-[480px] text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="px-4 py-2.5 font-semibold">Telefone</th>
@@ -170,7 +170,7 @@ export function ComunicadoDetail({ id }: { id: string }) {
 
       <div className="rounded-md border p-4 space-y-3 max-w-md">
         <p className="text-sm font-medium">Enviar teste</p>
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3">
           <Input placeholder="5592999999999" value={testNum}
                  onChange={(e) => setTestNum(e.target.value)} />
           <button type="button"

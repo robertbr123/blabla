@@ -18,7 +18,7 @@ export function ComunicadoList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end gap-3">
+      <div className="flex flex-wrap justify-end gap-3">
         <Link
           href="/comunicados/templates"
           className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm hover:bg-accent"
@@ -49,8 +49,8 @@ export function ComunicadoList() {
       )}
 
       {data && data.length > 0 && (
-        <div className="rounded-md border bg-card overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-md border bg-card overflow-x-auto">
+          <table className="w-full min-w-[640px] text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="px-4 py-2.5 font-semibold">Título</th>

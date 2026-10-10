@@ -104,7 +104,7 @@ export function DialogDespacharTecnico(props: Props) {
       onClick={close}
     >
       <div
-        className="w-full max-w-lg rounded-xl bg-card shadow-xl"
+        className="max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border p-5">
@@ -200,7 +200,7 @@ export function DialogDespacharTecnico(props: Props) {
               />
             </Field>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Plano">
                 <input
                   value={plano}

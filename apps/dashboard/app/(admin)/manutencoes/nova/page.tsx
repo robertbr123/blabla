@@ -1,11 +1,10 @@
 import { FormManutencao } from '@/components/form-manutencao'
+import { PageHeader } from '@/components/noc/primitives'
 
 export default function NovaManutencaoPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Nova manutenção</h1>
-      </div>
+      <PageHeader title="Nova manutenção" />
       <FormManutencao />
     </div>
   )

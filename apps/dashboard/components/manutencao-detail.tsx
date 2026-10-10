@@ -26,7 +26,7 @@ export function ManutencaoDetail({ id }: { id: string }) {
   return (
     <Card className="max-w-2xl">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <CardTitle>{data.titulo}</CardTitle>
           <Button variant="destructive" size="sm" onClick={handleDelete} disabled={del.isPending}>
             <Trash2 className="h-4 w-4" /> Excluir
@@ -40,7 +40,7 @@ export function ManutencaoDetail({ id }: { id: string }) {
             <p className="mt-1 whitespace-pre-wrap">{data.descricao}</p>
           </div>
         )}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <div className="text-xs uppercase text-muted-foreground">Início</div>
             <p className="mt-1">{new Date(data.inicio_at).toLocaleString('pt-BR')}</p>

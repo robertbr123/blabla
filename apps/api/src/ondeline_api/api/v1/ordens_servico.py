@@ -29,6 +29,7 @@ from ondeline_api.api.schemas.pagination import CursorPage, encode_cursor
 from ondeline_api.api.v1.rede import get_rede_service
 from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.rbac import require_role
+from ondeline_api.auth.scope import get_scope, require_scoped_role
 from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.business import Cliente, ConversaEstado, OrdemServico, OsStatus
 from ondeline_api.db.models.identity import Role, User
@@ -61,7 +62,11 @@ async def _batch_nomes_clientes(session: AsyncSession, ids: set[UUID]) -> dict[U
     from sqlalchemy import select
     rows = (await session.execute(select(Cliente).where(Cliente.id.in_(ids)))).scalars().all()
     return {r.id: decrypt_pii(r.nome_encrypted) for r in rows}
-_role_dep = Depends(require_role(Role.ATENDENTE, Role.ADMIN))
+# Role + escopo de cidades: rotas com {os_id} devolvem 404 pro atendente quando
+# a OS e de cliente de cidade fora do escopo dele.
+_role_dep = Depends(
+    require_scoped_role(Role.ATENDENTE, Role.ADMIN, param="os_id", model=OrdemServico)
+)
 _admin_dep = Depends(require_role(Role.ADMIN))
 
 # Storage path for photos. In production this should be a configured volume.
@@ -131,6 +136,7 @@ async def list_os(
     tecnico: Annotated[UUID | None, Query()] = None,
     cliente_id: Annotated[UUID | None, Query()] = None,
     q: Annotated[str | None, Query()] = None,
+    scope: Annotated[list[str] | None, Depends(get_scope)] = None,
 ) -> CursorPage[OsListItem]:
     repo = OrdemServicoRepo(session)
     rows, next_cur = await repo.list_paginated(
@@ -138,6 +144,7 @@ async def list_os(
         tecnico_id=tecnico,
         cliente_id=cliente_id,
         q=q,
+        scope_cidades=scope,
         cursor=parse_cursor(cursor),
         limit=parse_limit(limit),
     )

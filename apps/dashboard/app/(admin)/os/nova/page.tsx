@@ -1,11 +1,10 @@
 import { FormOsCreate } from '@/components/form-os-create'
+import { PageHeader } from '@/components/noc/primitives'
 
 export default function NovaOsPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Nova OS</h1>
-      </div>
+      <PageHeader title="Nova OS" />
       <FormOsCreate />
     </div>
   )

@@ -273,7 +273,7 @@ function OsPanel({
                 className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="num text-sm font-medium">{o.codigo}</span>
                     <OsStatusPill status={o.status} size="sm" />
                   </div>
@@ -284,7 +284,9 @@ function OsPanel({
                 </div>
                 <div className="shrink-0 text-right">
                   {o.tecnico_id ? (
-                    <div className="max-w-[140px] truncate text-xs">{tecnicoNome(o.tecnico_id)}</div>
+                    <div className="max-w-[96px] truncate text-xs sm:max-w-[140px]">
+                      {tecnicoNome(o.tecnico_id)}
+                    </div>
                   ) : (
                     <span
                       className={cn(
@@ -350,7 +352,7 @@ function CargaPanel({ carga, isLoading }: { carga: Carga[]; isLoading: boolean }
                 className="flex items-center gap-3 text-sm"
                 title={`${c.nome}: ${c.andamento} em andamento, ${c.pendente} pendente(s)`}
               >
-                <span className="w-32 shrink-0 truncate text-muted-foreground">{c.nome}</span>
+                <span className="w-24 shrink-0 truncate text-muted-foreground sm:w-32">{c.nome}</span>
                 {/* Barra empilhada: segmentos separados por 2px da cor da superficie. */}
                 <div className="flex h-3.5 flex-1 items-center gap-[2px]">
                   {c.andamento > 0 && (
@@ -419,9 +421,10 @@ function ManutencoesPanel({
                     <div className="truncate text-xs text-muted-foreground">
                       {emAndamento ? 'Em andamento' : 'Agendada'}
                       {m.cidades && m.cidades.length > 0 ? ` · ${m.cidades.join(', ')}` : ''}
+                      <span className="num sm:hidden"> · {fmtHora(m.inicio_at)}</span>
                     </div>
                   </div>
-                  <div className="num shrink-0 text-right text-[11px] text-muted-foreground">
+                  <div className="num hidden shrink-0 text-right text-[11px] text-muted-foreground sm:block">
                     <div>{fmtHora(m.inicio_at)}</div>
                     <div>até {fmtHora(m.fim_at)}</div>
                   </div>

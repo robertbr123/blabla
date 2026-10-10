@@ -1,12 +1,13 @@
 import { TecnicoList } from '@/components/tecnico-list'
+import { PageHeader } from '@/components/noc/primitives'
 
 export default function TecnicosPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Técnicos</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Gerencie os técnicos de campo.</p>
-      </div>
+      <PageHeader
+        title="Técnicos"
+        description="Gerencie os técnicos de campo."
+      />
       <TecnicoList />
     </div>
   )

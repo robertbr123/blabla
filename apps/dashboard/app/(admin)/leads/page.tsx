@@ -1,12 +1,13 @@
 import { LeadList } from '@/components/lead-list'
+import { PageHeader } from '@/components/noc/primitives'
 
 export default function LeadsPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Leads</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Gerencie os leads de entrada.</p>
-      </div>
+      <PageHeader
+        title="Leads"
+        description="Gerencie os leads de entrada."
+      />
       <LeadList />
     </div>
   )

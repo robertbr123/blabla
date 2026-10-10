@@ -3,16 +3,15 @@ import { ConfigEditor } from '@/components/config-editor'
 import { EvolutionStatus } from '@/components/evolution-status'
 import { IndicacaoConfigEditor } from '@/components/indicacao-config-editor'
 import { SgpConfigEditor } from '@/components/sgp-config-editor'
+import { PageHeader } from '@/components/noc/primitives'
 
 export default function ConfigPage() {
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Configurações</h1>
-        <p className="text-sm text-muted-foreground">
-          Editor de chaves de configuração (admin only)
-        </p>
-      </div>
+      <PageHeader
+        title="Configurações"
+        description="Editor de chaves de configuração (admin only)"
+      />
       <EvolutionStatus />
       <BotToggle />
       <SgpConfigEditor />

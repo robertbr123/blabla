@@ -62,8 +62,8 @@ export default function IndicacoesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
-          <Gift className="h-6 w-6" /> Indicações
+        <h1 className="flex items-center gap-2 text-xl font-semibold sm:text-2xl">
+          <Gift className="h-6 w-6 shrink-0" /> Indicações
         </h1>
         <p className="text-sm text-muted-foreground">
           Dois canais ativos: <strong>WhatsApp</strong> (cliente manda <code>INDICAR</code> no bot)
@@ -138,7 +138,8 @@ export default function IndicacoesPage() {
               Sem indicações registradas ainda.
             </p>
           ) : (
-            <table className="w-full text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[320px] text-sm">
               <thead className="text-left text-xs uppercase text-muted-foreground">
                 <tr>
                   <th className="pb-2">Cliente</th>
@@ -156,6 +157,7 @@ export default function IndicacoesPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -287,7 +289,8 @@ export default function IndicacoesPage() {
           Ver todos os códigos gerados ({indicacoes?.length ?? 0})
         </summary>
         {indicacoes && (
-          <table className="mt-2 w-full text-xs">
+          <div className="overflow-x-auto">
+          <table className="mt-2 w-full min-w-[420px] text-xs">
             <thead className="text-left uppercase text-muted-foreground">
               <tr>
                 <th className="pb-1">Código</th>
@@ -309,6 +312,7 @@ export default function IndicacoesPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </details>
     </div>

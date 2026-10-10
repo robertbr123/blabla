@@ -56,6 +56,7 @@ from ondeline_api.api.v1 import prompts as v1_prompts
 from ondeline_api.api.v1 import rede as v1_rede
 from ondeline_api.api.v1 import tecnico_me as v1_tecnico_me
 from ondeline_api.api.v1 import tecnicos as v1_tecnicos
+from ondeline_api.api.v1 import usuarios as v1_usuarios
 from ondeline_api.api.webhook import limiter as webhook_limiter
 from ondeline_api.auth.csrf import CSRFMiddleware
 from ondeline_api.config import get_settings
@@ -179,6 +180,7 @@ def create_app() -> FastAPI:
     app.include_router(v1_clientes_cadastro.sgp_router)
     app.include_router(v1_comunicados.router)
     app.include_router(v1_tecnicos.router)
+    app.include_router(v1_usuarios.router)
     app.include_router(v1_tecnico_me.router)
     app.include_router(v1_manutencoes.router)
     app.include_router(v1_config.router)

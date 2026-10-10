@@ -184,9 +184,9 @@ export default function EstoquePage() {
 
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Estoque</h1>
-          <p className="text-sm text-muted-foreground">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight">Estoque</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
             Depósito central + estoque em mãos com os técnicos.
           </p>
         </div>
@@ -249,7 +249,7 @@ export default function EstoquePage() {
               placeholder="Buscar por nome, SKU ou categoria…"
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              className="max-w-sm"
+              className="sm:max-w-sm"
             />
             <Button
               variant="outline"
@@ -288,7 +288,7 @@ export default function EstoquePage() {
               placeholder="Buscar por técnico, item ou SKU…"
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              className="max-w-sm"
+              className="sm:max-w-sm"
             />
             <Button
               variant="outline"
@@ -329,10 +329,10 @@ export default function EstoquePage() {
             placeholder="Buscar item…"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            className="max-w-sm"
+            className="sm:max-w-sm"
           />
           <div className="overflow-x-auto rounded-md border bg-card">
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[820px] text-sm">
               <thead className="border-b text-left text-xs uppercase text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3">SKU</th>
@@ -510,7 +510,7 @@ function TabelaSaldo({
 }) {
   return (
     <div className="overflow-x-auto rounded-md border bg-card">
-      <table className="w-full text-sm">
+      <table className="w-full min-w-[520px] text-sm">
         <thead className="border-b text-left text-xs uppercase text-muted-foreground">
           <tr>
             <th className="px-4 py-3">Item</th>
@@ -686,7 +686,7 @@ function TabelaMovimentos({
 }) {
   return (
     <div className="overflow-x-auto rounded-md border bg-card">
-      <table className="w-full text-sm">
+      <table className="w-full min-w-[720px] text-sm">
         <thead className="border-b text-left text-xs uppercase text-muted-foreground">
           <tr>
             <th className="px-4 py-3">Data</th>

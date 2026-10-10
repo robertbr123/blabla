@@ -52,8 +52,8 @@ export function ComunicadoTemplates() {
         </button>
       </div>
 
-      <div className="flex items-end gap-3">
-        <div className="space-y-1.5 flex-1 max-w-xs">
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="min-w-[12rem] flex-1 space-y-1.5 sm:max-w-xs">
           <label className="text-sm font-medium">Cadastrar manual (nome do template)</label>
           <Input value={novoNome} onChange={(e) => setNovoNome(e.target.value)}
                  placeholder="ex: comunicado_geral" />
@@ -66,8 +66,8 @@ export function ComunicadoTemplates() {
 
       {isLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
       {templates && (
-        <div className="rounded-md border bg-card overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-md border bg-card overflow-x-auto">
+          <table className="w-full min-w-[520px] text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="px-4 py-2.5 font-semibold">Nome</th>

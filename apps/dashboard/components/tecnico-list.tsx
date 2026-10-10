@@ -20,7 +20,7 @@ export function TecnicoList() {
         <Select
           value={ativoFilter}
           onChange={(e) => setAtivoFilter(e.target.value)}
-          className="max-w-[200px]"
+          className="w-auto min-w-0 flex-1 sm:max-w-[200px]"
         >
           <option value="">Todos</option>
           <option value="true">Ativos</option>
@@ -54,8 +54,8 @@ export function TecnicoList() {
         />
       )}
       {data && data.items.length > 0 && (
-        <div className="rounded-md border bg-card overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-md border bg-card overflow-x-auto">
+          <table className="w-full min-w-[520px] text-sm">
             <thead className="border-b bg-muted/40 text-left text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="px-4 py-2.5 font-semibold">Nome</th>

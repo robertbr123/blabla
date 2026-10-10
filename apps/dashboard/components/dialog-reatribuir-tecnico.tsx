@@ -23,7 +23,7 @@ export function DialogReatribuirTecnico({ osId, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-sm rounded-lg border bg-card p-6 shadow-lg space-y-4">
+      <div className="mx-4 max-h-[90dvh] w-full max-w-sm overflow-y-auto rounded-lg border bg-card p-4 shadow-lg space-y-4 sm:p-6">
         <h2 className="text-lg font-semibold">Reatribuir técnico</h2>
         <div>
           <Label htmlFor="novo-tecnico">Novo técnico</Label>

@@ -39,13 +39,13 @@ export function ClienteDetail({ id }: { id: string }) {
       <div className="space-y-6 lg:col-span-2">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <CardTitle>{data.nome}</CardTitle>
             {data.status && <Badge variant="outline">{data.status}</Badge>}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <div className="text-xs uppercase text-muted-foreground">WhatsApp</div>
               <p className="mt-1 text-sm">{data.whatsapp}</p>
@@ -55,7 +55,7 @@ export function ClienteDetail({ id }: { id: string }) {
               <p className="mt-1 text-sm">{data.cpf_cnpj}</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <div className="text-xs uppercase text-muted-foreground">Plano</div>
               <p className="mt-1 text-sm">{data.plano ?? '—'}</p>
@@ -71,7 +71,7 @@ export function ClienteDetail({ id }: { id: string }) {
               <p className="mt-1 text-sm">{data.endereco}</p>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <div className="text-xs uppercase text-muted-foreground">SGP Provider</div>
               <p className="mt-1 text-sm">{data.sgp_provider ?? '—'}</p>
@@ -81,7 +81,7 @@ export function ClienteDetail({ id }: { id: string }) {
               <p className="mt-1 text-sm">{data.sgp_id ?? '—'}</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <div className="text-xs uppercase text-muted-foreground">Criado</div>
               <p className="mt-1 text-sm">{new Date(data.created_at).toLocaleString('pt-BR')}</p>

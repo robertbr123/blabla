@@ -66,7 +66,7 @@ export function LeadDetail({ id }: { id: string }) {
     <div className="grid gap-6 lg:grid-cols-3">
       <Card className="lg:col-span-2">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <CardTitle>{data.nome}</CardTitle>
             <Badge variant={STATUS_VARIANTS[data.status] ?? 'outline'}>{data.status}</Badge>
           </div>
@@ -126,7 +126,7 @@ export function LeadDetail({ id }: { id: string }) {
                   <p className="mt-1 text-sm whitespace-pre-wrap">{data.notas}</p>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <div className="text-xs uppercase text-muted-foreground">Criado</div>
                   <p className="mt-1 text-sm">

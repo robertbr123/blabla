@@ -1034,3 +1034,35 @@ export interface Destinatario {
   erro: string | null
   enviada_em: string | null
 }
+
+// ════════ Usuários do dashboard (admins e atendentes) ════════
+
+export type UsuarioRole = 'admin' | 'atendente'
+
+export interface UsuarioOut {
+  id: string
+  email: string
+  name: string
+  role: UsuarioRole
+  is_active: boolean
+  /** Cidades que o atendente enxerga. Vazio = todas. Ignorado para admin. */
+  cidades: string[]
+  last_login_at: string | null
+  created_at: string
+}
+
+export interface UsuarioCreate {
+  email: string
+  name: string
+  role: UsuarioRole
+  password: string
+  cidades?: string[]
+}
+
+export interface UsuarioPatch {
+  name?: string
+  role?: UsuarioRole
+  is_active?: boolean
+  cidades?: string[]
+  password?: string
+}

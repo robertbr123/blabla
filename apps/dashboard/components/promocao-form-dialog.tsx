@@ -181,7 +181,7 @@ export function PromocaoFormDialog(props: Props) {
         aria-hidden
       />
       <div className="relative ml-auto flex h-full w-full max-w-3xl flex-col bg-background shadow-2xl">
-        <div className="flex items-center justify-between border-b px-6 py-4">
+        <div className="flex items-center justify-between gap-3 border-b px-4 py-4 sm:px-6">
           <div>
             <h2 className="text-lg font-semibold">
               {isEditing ? 'Editar promoção' : 'Nova promoção'}
@@ -197,7 +197,7 @@ export function PromocaoFormDialog(props: Props) {
           </Button>
         </div>
 
-        <div className="grid flex-1 grid-cols-1 gap-6 overflow-y-auto p-6 lg:grid-cols-2">
+        <div className="grid flex-1 grid-cols-1 gap-6 overflow-y-auto p-4 sm:p-6 lg:grid-cols-2">
           {/* Form */}
           <div className="space-y-4">
             <div>
@@ -242,7 +242,7 @@ export function PromocaoFormDialog(props: Props) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="tipo">Tipo</Label>
                 <select
@@ -339,7 +339,7 @@ export function PromocaoFormDialog(props: Props) {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="gradient_from">Cor inicial (hex)</Label>
                 <Input
@@ -364,7 +364,7 @@ export function PromocaoFormDialog(props: Props) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="valido_de">Válido de</Label>
                 <Input
@@ -501,7 +501,7 @@ export function PromocaoFormDialog(props: Props) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between border-t px-6 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3 sm:px-6">
           <div>
             {isEditing && (
               <Button

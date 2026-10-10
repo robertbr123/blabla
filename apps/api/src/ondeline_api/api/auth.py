@@ -275,6 +275,8 @@ class MeResponse(BaseModel):
     name: str
     role: str
     is_active: bool
+    # Escopo de cidades do atendente ([] = ve tudo). Ver auth/scope.py.
+    cidades: list[str] = []
 
 
 @router.get("/me", response_model=MeResponse)
@@ -285,4 +287,5 @@ async def me(user: User = Depends(get_current_user)) -> MeResponse:  # noqa: B00
         name=user.name,
         role=user.role.value,
         is_active=user.is_active,
+        cidades=list(user.cidades or []),
     )

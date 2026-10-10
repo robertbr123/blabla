@@ -1955,3 +1955,51 @@ export function useDeleteCampanha() {
 export function resultadoExportUrl(campanhaId: string) {
   return `/api/v1/admin/comunicados/${campanhaId}/resultado/export`
 }
+
+// ════════ Usuários do dashboard (admins e atendentes) ════════
+
+export function useUsuarios() {
+  return useQuery<import('./types').UsuarioOut[]>({
+    queryKey: ['usuarios'],
+    queryFn: () => apiFetch('/api/v1/usuarios'),
+    staleTime: 30_000,
+  })
+}
+
+/** Cidades conhecidas (base de clientes) — alimenta o seletor do atendente. */
+export function useUsuariosCidades() {
+  return useQuery<string[]>({
+    // Sob o prefixo ['usuarios'] de proposito: as mutacoes invalidam junto.
+    queryKey: ['usuarios', 'cidades'],
+    queryFn: () => apiFetch('/api/v1/usuarios/cidades'),
+    staleTime: 5 * 60_000,
+  })
+}
+
+export function useCreateUsuario() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: import('./types').UsuarioCreate) =>
+      apiFetch<import('./types').UsuarioOut>('/api/v1/usuarios', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['usuarios'] }),
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : 'Falha ao criar usuário'),
+  })
+}
+
+export function usePatchUsuario() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: import('./types').UsuarioPatch }) =>
+      apiFetch<import('./types').UsuarioOut>(`/api/v1/usuarios/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['usuarios'] }),
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : 'Falha ao atualizar usuário'),
+  })
+}

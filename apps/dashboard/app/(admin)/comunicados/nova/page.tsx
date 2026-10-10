@@ -1,14 +1,13 @@
 import { ComunicadoForm } from '@/components/comunicado-form'
+import { PageHeader } from '@/components/noc/primitives'
 
 export default function NovaCampanhaPage() {
   return (
     <div className="space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-semibold">Nova campanha</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Escolha o template, preencha as variáveis e segmente quem vai receber.
-        </p>
-      </div>
+      <PageHeader
+        title="Nova campanha"
+        description="Escolha o template, preencha as variáveis e segmente quem vai receber."
+      />
       <ComunicadoForm />
     </div>
   )

@@ -99,7 +99,7 @@ export function DialogNovoMovimentoEstoque({ onClose, defaultTecnicoId }: Props)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-y-auto py-4">
-      <div className="w-full max-w-lg rounded-lg border bg-card p-6 shadow-lg space-y-4 mx-4">
+      <div className="w-full max-w-lg mx-4 max-h-[90dvh] overflow-y-auto rounded-lg border bg-card p-4 shadow-lg space-y-4 sm:p-6">
         <h2 className="text-lg font-semibold">Novo movimento de estoque</h2>
 
         <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
@@ -138,7 +138,7 @@ export function DialogNovoMovimentoEstoque({ onClose, defaultTecnicoId }: Props)
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="quantidade">Quantidade *</Label>
               <Input

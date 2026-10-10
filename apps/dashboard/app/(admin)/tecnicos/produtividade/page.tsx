@@ -28,16 +28,16 @@ export default function ProdutividadePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            <Trophy className="h-6 w-6" /> Produtividade & Comissão
+      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row">
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-2 text-xl font-semibold sm:text-2xl">
+            <Trophy className="h-6 w-6 shrink-0" /> Produtividade & Comissão
           </h1>
           <p className="text-sm text-muted-foreground">
             Ranking de técnicos + cálculo de comissão por mês.
           </p>
         </div>
-        <div className="w-44">
+        <div className="w-44 shrink-0">
           <Label htmlFor="mes">Mês</Label>
           <Input
             id="mes"
@@ -70,7 +70,7 @@ export default function ProdutividadePage() {
 
       {data && (
         <div className="overflow-x-auto rounded-md border bg-card">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[1000px] text-sm">
             <thead className="border-b text-left text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="px-3 py-3">Técnico</th>

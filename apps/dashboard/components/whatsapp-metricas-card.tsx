@@ -12,6 +12,7 @@ import { useWhatsAppMetricas } from '@/lib/api/queries'
 import type { TemplateStats } from '@/lib/api/types'
 import { cn } from '@/lib/utils'
 import { Segmented } from './metricas-dashboard'
+import { PANEL_HEADER_WRAP, TILE_LABEL_WRAP } from './responsive'
 
 /**
  * Painel de métricas de templates WhatsApp — Fase 2.2 do plano de evolução.
@@ -120,6 +121,7 @@ export function WhatsAppMetricasCard() {
       <PanelHeader
         title="WhatsApp — templates"
         icon={MessageSquare}
+        className={PANEL_HEADER_WRAP}
         actions={
           <Segmented options={DAYS_OPTIONS} value={days} onChange={setDays} ariaLabel="Período" />
         }
@@ -147,7 +149,7 @@ export function WhatsAppMetricasCard() {
         )}
 
         {data && data.items.length > 0 && (
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className={cn('grid grid-cols-2 gap-3 md:grid-cols-4', TILE_LABEL_WRAP)}>
             <StatTile label="Enviadas" value={fmt(data.total_sent)} icon={MessageSquare} />
             <StatTile
               label="Entregues"
@@ -181,7 +183,7 @@ export function WhatsAppMetricasCard() {
 
       {data && data.items.length > 0 && (
         <div className="overflow-x-auto border-t">
-          <table className="data-table">
+          <table className="data-table min-w-[560px]">
             <thead>
               <tr>
                 <th scope="col">Template</th>
