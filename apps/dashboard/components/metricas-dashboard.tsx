@@ -482,7 +482,7 @@ function BarChartTecnicos({ ranking }: { ranking: RankingTecnicoOut[] }) {
 
 /* ── Dashboard ───────────────────────────────────────────────────────── */
 
-const KPI_GRID = 'grid grid-cols-2 gap-3 lg:grid-cols-4 2xl:grid-cols-7'
+const KPI_GRID = 'grid grid-cols-2 gap-3 lg:grid-cols-4 min-[1800px]:grid-cols-7'
 
 export function MetricasDashboard() {
   const [days, setDays] = useState<number>(30)

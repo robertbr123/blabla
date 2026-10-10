@@ -183,7 +183,14 @@ function SidebarStatus() {
   )
 }
 
-export function NavSidebar({ role }: { role: Role }) {
+export function NavSidebar({
+  role,
+  className,
+}: {
+  role: Role
+  /** Layout passa `hidden lg:flex`; a gaveta mobile passa `flex`. */
+  className?: string
+}) {
   const pathname = usePathname()
   const { data: temConversaAguardando } = useTemConversaAguardando()
   const { data: temChamadoAberto } = useTemChamadoAberto()
@@ -262,7 +269,7 @@ export function NavSidebar({ role }: { role: Role }) {
   }).filter((s) => s.items.length > 0)
 
   return (
-    <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col border-r bg-sidebar">
+    <aside className={cn('sticky top-0 h-screen w-60 shrink-0 flex-col border-r bg-sidebar', className ?? 'flex')}>
       <div className="flex h-12 items-center border-b px-4">
         <Link href="/noc" className="flex items-center" aria-label="BlaBla — Painel NOC">
           <Image

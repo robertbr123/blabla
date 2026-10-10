@@ -292,8 +292,13 @@ export function FilterTabs<T extends string>({
 /* ── Avatar de iniciais ──────────────────────────────────────────────── */
 
 export function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
+  // So letras: um telefone como nome ("(97) 9 8401-4115") nao vira "(8".
+  const parts = name
+    .replace(/[^\p{L}\s]/gu, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  if (parts.length === 0) return '#'
   const first = parts[0]?.[0] ?? ''
   const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : ''
   return (first + last).toUpperCase()
@@ -341,17 +346,17 @@ export function SkeletonRows({ rows = 6, className }: { rows?: number; className
 
 /* ── Tempo ───────────────────────────────────────────────────────────── */
 
-/** "agora", "5 min", "3 h", "2 d" — idade compacta pra colunas densas. */
+/** "agora", "5min", "3h", "2d" — idade compacta pra colunas densas. */
 export function ageShort(iso: string | null | undefined, now: number = Date.now()): string {
   if (!iso) return '—'
   const ms = now - new Date(iso).getTime()
   if (Number.isNaN(ms)) return '—'
   const min = Math.floor(ms / 60_000)
   if (min < 1) return 'agora'
-  if (min < 60) return `${min} min`
+  if (min < 60) return `${min}min`
   const h = Math.floor(min / 60)
-  if (h < 48) return `${h} h`
-  return `${Math.floor(h / 24)} d`
+  if (h < 48) return `${h}h`
+  return `${Math.floor(h / 24)}d`
 }
 
 /** Re-renderiza a cada `ms` — pra idades/relogios andarem sem refetch. */

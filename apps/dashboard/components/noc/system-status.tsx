@@ -71,13 +71,15 @@ export function LiveClock({ className }: { className?: string }) {
   const time = now
     ? now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : '--:--:--'
-  const date = now
+  const rawDate = now
     ? now.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' }).replace(/\./g, '')
     : ''
+  // "sex, 09 de out" -> "Sex, 09 de out" (so a primeira letra; `capitalize` do CSS subia o "de").
+  const date = rawDate.charAt(0).toUpperCase() + rawDate.slice(1)
   return (
     <time className={className} dateTime={now?.toISOString()} suppressHydrationWarning>
       <span className="num text-sm font-medium text-foreground">{time}</span>
-      {date && <span className="ml-2 hidden text-xs capitalize text-muted-foreground lg:inline">{date}</span>}
+      {date && <span className="ml-2 hidden text-xs text-muted-foreground xl:inline">{date}</span>}
     </time>
   )
 }

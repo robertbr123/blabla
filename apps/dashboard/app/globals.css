@@ -46,7 +46,7 @@
     --chart-2: #eb6834;
     --chart-3: #1baf7a;
     --chart-grid: 220 14% 90%;
-    --grid-line: 220 14% 86% / 0.55;
+    --grid-line: 220 14% 84% / 0.32;
   }
   .dark {
     --background: 222 26% 6%;

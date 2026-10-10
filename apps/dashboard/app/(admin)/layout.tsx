@@ -19,11 +19,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         Pular para o conteúdo
       </a>
       <TokenInitializer token={accessToken} />
-      <NavSidebar role={me.role} />
+      <NavSidebar role={me.role} className="hidden lg:flex" />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar email={me.email} name={me.name} role={me.role} />
         <main id="main-content" tabIndex={-1} className="noc-canvas flex-1 focus:outline-none">
-          <div className="mx-auto max-w-[1600px] px-5 py-5">{children}</div>
+          <div className="mx-auto max-w-[1600px] px-3 py-4 sm:px-5 sm:py-5">{children}</div>
         </main>
       </div>
     </div>

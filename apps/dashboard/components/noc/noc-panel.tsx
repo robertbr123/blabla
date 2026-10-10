@@ -150,7 +150,7 @@ function QueueRow({ c, now }: { c: ConversaListItem; now: number }) {
         <Avatar name={nome} />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">{nome}</div>
-          <div className="num truncate text-xs text-muted-foreground">
+          <div className={cn('truncate text-xs text-muted-foreground', c.cliente_nome && 'num')}>
             {c.cliente_nome ? telefone : 'Cliente não identificado'}
           </div>
         </div>
@@ -623,7 +623,7 @@ export function NocPanel() {
         </StatTile>
         <StatTile
           label="CSAT 30 dias"
-          value={m && m.csat_avg_30d !== null ? m.csat_avg_30d.toFixed(2) : '—'}
+          value={m && m.csat_avg_30d !== null ? m.csat_avg_30d.toFixed(2).replace('.', ',') : '—'}
           unit="/ 5"
           icon={Star}
           tone="primary"
