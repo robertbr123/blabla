@@ -44,6 +44,7 @@ class ClienteRepo:
         *,
         q: str | None = None,
         cidade: str | None = None,
+        scope_cidades: list[str] | None = None,
         cursor: datetime | None = None,
         limit: int = 50,
     ) -> tuple[list[Cliente], datetime | None]:
@@ -53,6 +54,11 @@ class ClienteRepo:
             stmt = stmt.where(Cliente.whatsapp.ilike(f"%{q}%"))
         if cidade:
             stmt = stmt.where(Cliente.cidade == cidade)
+        if scope_cidades is not None:
+            # Escopo do atendente (auth/scope.py): cidades dele + sem cidade conhecida.
+            from ondeline_api.auth.scope import cliente_in_scope
+
+            stmt = stmt.where(cliente_in_scope(Cliente.id, scope_cidades))
         if cursor is not None:
             stmt = stmt.where(Cliente.created_at < cursor)
         stmt = stmt.order_by(desc(Cliente.created_at)).limit(limit + 1)

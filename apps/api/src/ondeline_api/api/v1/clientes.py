@@ -20,6 +20,12 @@ from ondeline_api.api.schemas.cliente_equipamento import ClienteEquipamentoOut
 from ondeline_api.api.schemas.pagination import CursorPage, encode_cursor
 from ondeline_api.auth.deps import get_current_user
 from ondeline_api.auth.rbac import require_role
+from ondeline_api.auth.scope import (
+    get_scope,
+    normalize_cidade,
+    require_scoped_role,
+    user_scope,
+)
 from ondeline_api.db.crypto import decrypt_pii
 from ondeline_api.db.models.business import (
     Cliente,
@@ -32,7 +38,11 @@ from ondeline_api.deps import get_db
 from ondeline_api.repositories.cliente import ClienteRepo
 
 router = APIRouter(prefix="/api/v1/clientes", tags=["clientes"])
-_attendant_dep = Depends(require_role(Role.ATENDENTE, Role.ADMIN))
+# Role + escopo de cidades: rotas com {cliente_id} devolvem 404 pro atendente
+# quando o cliente e de cidade fora do escopo dele.
+_attendant_dep = Depends(
+    require_scoped_role(Role.ATENDENTE, Role.ADMIN, param="cliente_id", model=Cliente)
+)
 _admin_dep = Depends(require_role(Role.ADMIN))
 
 
@@ -186,6 +196,14 @@ async def sgp_lookup(
         if (v := _venc_to_date(t.vencimento)) is not None and v < hoje
     )
 
+    # Atendente limitado a cidades nao consulta cliente de outra cidade pelo CPF.
+    scope = user_scope(_current_user)
+    if scope is not None and cidade and normalize_cidade(cidade) not in scope:
+        raise HTTPException(
+            status_code=404,
+            detail="Cliente de uma cidade fora da sua área de atendimento.",
+        )
+
     return SgpClienteOut(
         nome=cli.nome,
         cpf_cnpj=cpf_digits,
@@ -210,10 +228,15 @@ async def list_clientes(
     limit: LimitParam = None,
     q: Annotated[str | None, Query()] = None,
     cidade: Annotated[str | None, Query()] = None,
+    scope: Annotated[list[str] | None, Depends(get_scope)] = None,
 ) -> CursorPage[ClienteListItem]:
     repo = ClienteRepo(session)
     rows, next_cur = await repo.list_paginated(
-        q=q, cidade=cidade, cursor=parse_cursor(cursor), limit=parse_limit(limit)
+        q=q,
+        cidade=cidade,
+        scope_cidades=scope,
+        cursor=parse_cursor(cursor),
+        limit=parse_limit(limit),
     )
     items = [_to_list_item(c) for c in rows]
     return CursorPage[ClienteListItem](

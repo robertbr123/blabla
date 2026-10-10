@@ -1,7 +1,7 @@
 """Escopo de cidades do atendente.
 
 Um atendente pode ser limitado a um conjunto de cidades (``users.cidades``).
-A regra, aplicada a conversas e ordens de servico:
+A regra, aplicada a conversas, ordens de servico e clientes:
 
 - admin e tecnico: sem restricao;
 - atendente sem cidades marcadas: sem restricao;
@@ -85,7 +85,9 @@ async def get_scope(user: User = Depends(get_current_user)) -> list[str] | None:
 
 
 def require_scoped_role(
-    *allowed: Role, param: str, model: type[Conversa] | type[OrdemServico]
+    *allowed: Role,
+    param: str,
+    model: type[Conversa] | type[OrdemServico] | type[Cliente],
 ) -> Callable[..., Awaitable[User]]:
     """``require_role`` + checagem de escopo no registro da rota.
 
@@ -95,6 +97,10 @@ def require_scoped_role(
     Rotas sem o param (listagem, criacao) so passam pela checagem de role.
     """
     allowed_set = set(allowed)
+    # Coluna que aponta pro cliente: o proprio id quando o registro E o cliente.
+    cliente_col: Any = (
+        Cliente.id if model is Cliente else model.cliente_id  # type: ignore[union-attr]
+    )
 
     async def _dep(
         request: Request,
@@ -114,7 +120,7 @@ def require_scoped_role(
         except ValueError:
             return user  # a propria rota responde 422
         stmt = select(model.id).where(
-            model.id == record_id, cliente_in_scope(model.cliente_id, cidades)
+            model.id == record_id, cliente_in_scope(cliente_col, cidades)
         )
         if (await session.execute(stmt)).scalar_one_or_none() is None:
             # Fora do escopo OU inexistente: a mesma resposta nos dois casos.

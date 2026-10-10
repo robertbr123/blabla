@@ -298,3 +298,28 @@ async def test_lista_de_cidades_agrupa_grafias(ctx: Any) -> None:
     cidades = (await client.get("/api/v1/usuarios/cidades", headers=h)).json()
     assert nome in cidades
     assert nome.upper() not in cidades
+
+
+# ── escopo: clientes ────────────────────────────────────────────────────────
+
+
+async def test_atendente_so_ve_clientes_das_suas_cidades(ctx: Any) -> None:
+    client, db = ctx
+    at = await _user(db, Role.ATENDENTE, ["Eirunepé"])
+    dentro = await _cliente(db, "EIRUNEPÉ")
+    fora = await _cliente(db, "IPIXUNA")
+    h = await _token(client, at)
+
+    r = await client.get("/api/v1/clientes?limit=200", headers=h)
+    assert r.status_code == 200, r.text
+    ids = {i["id"] for i in r.json()["items"]}
+    assert str(dentro.id) in ids
+    assert str(fora.id) not in ids
+    assert (await client.get(f"/api/v1/clientes/{dentro.id}", headers=h)).status_code == 200
+    assert (await client.get(f"/api/v1/clientes/{fora.id}", headers=h)).status_code == 404
+    r = await client.get(f"/api/v1/clientes/{fora.id}/equipamentos", headers=h)
+    assert r.status_code == 404
+
+    # admin continua vendo os dois
+    ha = await _token(client, await _user(db, Role.ADMIN))
+    assert (await client.get(f"/api/v1/clientes/{fora.id}", headers=ha)).status_code == 200

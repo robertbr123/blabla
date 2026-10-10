@@ -156,11 +156,21 @@ async def _technician_cities(
 ) -> list[str] | None:
     """Lista de cidades das áreas do técnico logado.
 
-    - Retorna `None` (= sem filtro, vê tudo) pra ADMIN/ATENDENTE
+    - Retorna `None` (= sem filtro, vê tudo) pra ADMIN e pra ATENDENTE sem cidades
+    - ATENDENTE com cidades marcadas: retorna essas cidades
     - Retorna `None` (= sem filtro) pra TECNICO sem registro `Tecnico` linkado
       ou sem áreas — fallback seguro pra não esconder dados acidentalmente
     - Retorna lista de cidades quando o técnico TEM áreas configuradas
     """
+    if user.role == Role.ATENDENTE:
+        # Escopo de cidades do atendente (auth/scope.py). O repo compara em
+        # minusculas, entao mandamos a grafia original e a sem acento.
+        from ondeline_api.auth.scope import normalize_cidade
+
+        proprias = [c.strip() for c in (user.cidades or []) if c and c.strip()]
+        if not proprias:
+            return None
+        return sorted({*proprias, *(normalize_cidade(c) for c in proprias)})
     if user.role != Role.TECNICO:
         return None
     from sqlalchemy import select as _select
