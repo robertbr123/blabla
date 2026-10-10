@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ondeline_api.db.crypto import encrypt_pii
 from ondeline_api.db.models.business import Mensagem, MensagemRole
+from ondeline_api.db.models.identity import User
 from ondeline_api.repositories.conversa import ConversaRepo
 from ondeline_api.services.conversa_events import publish as publish_event
 
@@ -22,6 +23,15 @@ class _OutboundEnqueuer(Protocol):
     def enqueue_send_outbound(
         self, jid: str, text: str, conversa_id: UUID, *, persist: bool = True
     ) -> None: ...
+
+
+def _assinatura(nome: str | None) -> str:
+    """Nome que assina a mensagem no WhatsApp. Sem nome cadastrado: SUPORTE.
+
+    Tira `*` e `_` (marcadores de formatacao do WhatsApp) pra nao quebrar o negrito.
+    """
+    limpo = " ".join((nome or "").replace("*", "").replace("_", " ").split())
+    return limpo or "SUPORTE"
 
 
 async def responder(
@@ -49,15 +59,18 @@ async def responder(
     )
     session.add(msg)
     await session.flush()
-    # Prefixa mensagem enviada com '*SUPORTE:*\n\n<texto>' pra o cliente saber
-    # que eh humano (e nao mais o bot). 2 quebras de linha separam o cabecalho
-    # do conteudo, ficando visualmente claro no WhatsApp.
+    # Prefixa a mensagem enviada com '*<Nome do atendente>:*\n\n<texto>' pra o
+    # cliente saber que eh humano (e nao mais o bot) e QUEM esta atendendo.
+    # 2 quebras de linha separam o cabecalho do conteudo no WhatsApp.
     # No dashboard exibe sem o prefixo — eh adicionado so no envio outbound.
-    # Idempotente: se atendente ja digitou prefixo, nao duplica.
-    if text.lstrip().startswith("*SUPORTE:*") or text.lstrip().startswith("*Suporte:*"):
+    atendente = await session.get(User, atendente_id)
+    assinatura = _assinatura(atendente.name if atendente else None)
+    # Idempotente: se o atendente ja digitou um cabecalho, nao duplica.
+    limpo = text.lstrip()
+    if limpo.lower().startswith("*suporte:*") or limpo.startswith(f"*{assinatura}:*"):
         text_outbound = text
     else:
-        text_outbound = f"*SUPORTE:*\n\n{text}"
+        text_outbound = f"*{assinatura}:*\n\n{text}"
     # persist=False: a mensagem ja foi gravada acima como ATENDENTE. Sem isso o
     # worker gravava de novo como BOT ("*SUPORTE:* ...") e o chat mostrava 2x.
     enqueuer.enqueue_send_outbound(c.whatsapp, text_outbound, c.id, persist=False)

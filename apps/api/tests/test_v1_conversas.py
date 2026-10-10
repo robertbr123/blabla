@@ -212,9 +212,9 @@ async def test_responder_enqueues_outbound(
     assert r.status_code == 204
     assert len(captured) == 1
     assert captured[0][0] == c.whatsapp
-    # F11: atendente humano envia com prefixo *SUPORTE:* + 2 quebras de linha
-    # pra cliente identificar que eh humano, nao bot.
-    assert captured[0][1] == "*SUPORTE:*\n\nOlá, posso ajudar?"
+    # Atendente humano envia com '*<nome dele>:*' + 2 quebras de linha pra o
+    # cliente identificar que eh humano (nao bot) e quem esta atendendo.
+    assert captured[0][1] == "*Test Admin:*\n\nOlá, posso ajudar?"
     # Ja gravada como ATENDENTE pelo responder — o worker nao deve regravar como BOT.
     assert captured[0][3] is False
 
