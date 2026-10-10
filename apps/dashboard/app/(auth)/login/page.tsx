@@ -15,6 +15,7 @@ import { login } from '@/lib/auth'
 const schema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(1, 'Informe a senha'),
+  remember: z.boolean(),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -29,12 +30,15 @@ function LoginForm() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) })
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: '', password: '', remember: true },
+  })
 
   async function onSubmit(values: FormValues) {
     setError(null)
     try {
-      await login(values.email, values.password)
+      await login(values.email, values.password, values.remember)
       router.push(next)
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro ao fazer login'
@@ -90,6 +94,20 @@ function LoginForm() {
           </p>
         )}
       </div>
+
+      <label className="flex cursor-pointer items-start gap-2.5 text-sm">
+        <input
+          type="checkbox"
+          className="mt-0.5 h-4 w-4 shrink-0 rounded border-input accent-[hsl(var(--primary))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          {...register('remember')}
+        />
+        <span>
+          Manter conectado por 30 dias
+          <span className="block text-xs text-muted-foreground">
+            Desmarque em computador compartilhado.
+          </span>
+        </span>
+      </label>
 
       {error && (
         <div

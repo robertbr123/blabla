@@ -46,6 +46,10 @@ def _get_dummy_hash() -> str:
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+    # "Manter conectado": sessao de `remember_me_ttl_days` (30d) e cookies
+    # persistentes — sobrevive a fechar o navegador. Sem marcar, o cookie de
+    # sessao some ao fechar o navegador e o usuario loga de novo.
+    remember: bool = False
 
 
 class LoginResponse(BaseModel):
@@ -85,7 +89,7 @@ def _client_ip(request: Request) -> str | None:
     return request.client.host if request.client else None
 
 
-def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
+def _set_refresh_cookie(response: Response, refresh_token: str, ttl_days: int) -> None:
     settings = get_settings()
     secure = settings.cookie_secure if settings.env != "development" else False
     response.set_cookie(
@@ -94,13 +98,18 @@ def _set_refresh_cookie(response: Response, refresh_token: str) -> None:
         httponly=True,
         secure=secure,
         samesite=settings.cookie_samesite,  # type: ignore[arg-type]
-        max_age=settings.refresh_token_ttl_days * 24 * 3600,
+        max_age=ttl_days * 24 * 3600,
         path="/",
         domain=settings.cookie_domain or None,
     )
 
 
-def _set_csrf_cookie(response: Response, value: str) -> None:
+def _set_csrf_cookie(response: Response, value: str, max_age: int | None = None) -> None:
+    """``max_age=None`` = cookie de sessao (some ao fechar o navegador).
+
+    O dashboard usa a presenca deste cookie pra decidir se manda pro /login,
+    entao no "Manter conectado" ele precisa durar tanto quanto o refresh.
+    """
     settings = get_settings()
     secure = settings.cookie_secure if settings.env != "development" else False
     response.set_cookie(
@@ -109,6 +118,7 @@ def _set_csrf_cookie(response: Response, value: str) -> None:
         httponly=False,  # client le e devolve no header
         secure=secure,
         samesite=settings.cookie_samesite,  # type: ignore[arg-type]
+        max_age=max_age,
         path="/",
         domain=settings.cookie_domain or None,
     )
@@ -166,10 +176,13 @@ async def login(
     await lockout.clear(redis, payload.email)  # type: ignore[arg-type]
 
     access_token = jwt_mod.encode_access_token(user.id, role=user.role.value)
-    refresh_token, jti = jwt_mod.encode_refresh_token(user.id)
-
     settings = get_settings()
-    expires_at = datetime.now(UTC) + timedelta(days=settings.refresh_token_ttl_days)
+    ttl_days = (
+        settings.remember_me_ttl_days if payload.remember else settings.refresh_token_ttl_days
+    )
+    refresh_token, jti = jwt_mod.encode_refresh_token(user.id, ttl_days=ttl_days)
+
+    expires_at = datetime.now(UTC) + timedelta(days=ttl_days)
     db_session = DBSession(
         user_id=user.id,
         token_hash=jwt_mod.hash_refresh_token(refresh_token),
@@ -190,8 +203,11 @@ async def login(
     )
     await session.flush()
 
-    _set_refresh_cookie(response, refresh_token)
-    _set_csrf_cookie(response, jti)  # double-submit token
+    _set_refresh_cookie(response, refresh_token, ttl_days)
+    # double-submit token; persistente so no "Manter conectado"
+    _set_csrf_cookie(
+        response, jti, max_age=ttl_days * 24 * 3600 if payload.remember else None
+    )
 
     return LoginResponse(
         access_token=access_token,

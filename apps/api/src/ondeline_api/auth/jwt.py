@@ -73,11 +73,15 @@ def encode_access_token(user_id: UUID, role: str) -> str:
     return pyjwt.encode(payload, _secret(), algorithm=ALGO)
 
 
-def encode_refresh_token(user_id: UUID) -> tuple[str, str]:
-    """Returns (token, jti) so caller can persist jti or token_hash."""
+def encode_refresh_token(user_id: UUID, ttl_days: int | None = None) -> tuple[str, str]:
+    """Returns (token, jti) so caller can persist jti or token_hash.
+
+    ``ttl_days`` sobrescreve o padrao (``refresh_token_ttl_days``) — usado pelo
+    login com "Manter conectado".
+    """
     settings = get_settings()
     iat = _now()
-    exp = iat + timedelta(days=settings.refresh_token_ttl_days)
+    exp = iat + timedelta(days=ttl_days or settings.refresh_token_ttl_days)
     jti = str(uuid4())
     payload = {
         "sub": str(user_id),

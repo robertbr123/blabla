@@ -18,10 +18,14 @@ export interface LoginOut {
   role: string
 }
 
-export async function login(email: string, password: string): Promise<LoginOut> {
+export async function login(
+  email: string,
+  password: string,
+  remember = false,
+): Promise<LoginOut> {
   const out = await apiFetch<LoginOut>('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, remember }),
   })
   setAccessToken(out.access_token)
   return out

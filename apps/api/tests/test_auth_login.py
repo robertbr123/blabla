@@ -118,3 +118,29 @@ async def test_login_locks_after_5_failures(
         json={"email": created_user["email"], "password": created_user["password"]},
     )
     assert resp.status_code == 423
+
+
+@pytest.mark.asyncio
+async def test_login_manter_conectado_dura_30_dias(
+    client: AsyncClient, created_user: dict[str, object]
+) -> None:
+    """Com `remember`, refresh e csrf viram cookies persistentes de 30 dias e o
+    refresh token carrega esse prazo; sem ele, csrf continua cookie de sessao."""
+    from ondeline_api.auth import jwt as jwt_mod
+
+    cred = {"email": created_user["email"], "password": created_user["password"]}
+    trinta_dias = 30 * 24 * 3600
+
+    resp = await client.post("/auth/login", json={**cred, "remember": True})
+    assert resp.status_code == 200, resp.text
+    cookies = {c.split("=", 1)[0]: c for c in resp.headers.get_list("set-cookie")}
+    assert f"Max-Age={trinta_dias}" in cookies["refresh_token"]
+    assert f"Max-Age={trinta_dias}" in cookies["csrf_token"]
+    payload = jwt_mod.decode_refresh_token(resp.cookies["refresh_token"])
+    assert payload["exp"] - payload["iat"] == trinta_dias
+
+    resp = await client.post("/auth/login", json=cred)
+    assert resp.status_code == 200, resp.text
+    cookies = {c.split("=", 1)[0]: c for c in resp.headers.get_list("set-cookie")}
+    assert f"Max-Age={7 * 24 * 3600}" in cookies["refresh_token"]
+    assert "Max-Age" not in cookies["csrf_token"]

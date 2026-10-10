@@ -149,6 +149,8 @@ class Settings(BaseSettings):
     # Token TTLs
     access_token_ttl_minutes: int = 15
     refresh_token_ttl_days: int = 7
+    # Login com "Manter conectado" marcado: sessao (refresh) dura isto.
+    remember_me_ttl_days: int = 30
 
     # CORS
     cors_origins: str = ""  # CSV de origens permitidas, ex: https://blabla.robertbr.dev
