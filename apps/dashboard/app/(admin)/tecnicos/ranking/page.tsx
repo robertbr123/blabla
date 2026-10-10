@@ -83,7 +83,7 @@ export default function RankingTecnicosPage() {
                   {data.map((tec, i) => (
                     <tr
                       key={tec.tecnico_id}
-                      className={`border-t ${i === 0 ? 'bg-yellow-50' : ''}`}
+                      className={`border-t ${i === 0 ? 'bg-warning/[0.10]' : ''}`}
                     >
                       <td className="px-4 py-3 font-medium">{medalha(i)}</td>
                       <td className="px-4 py-3 font-medium">{tec.nome}</td>
@@ -91,10 +91,10 @@ export default function RankingTecnicosPage() {
                         <span
                           className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                             tec.os_concluidas >= 30
-                              ? 'bg-green-100 text-green-800'
+                              ? 'bg-success/[0.14] text-success'
                               : tec.os_concluidas >= 10
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-600'
+                              ? 'bg-warning/[0.14] text-warning'
+                              : 'bg-muted text-muted-foreground'
                           }`}
                         >
                           {tec.os_concluidas}

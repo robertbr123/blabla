@@ -98,17 +98,17 @@ export function FormOsCreate() {
               Cliente — busca no SGP <span className="text-muted-foreground font-normal">(opcional)</span>
             </Label>
             {sgpCliente ? (
-              <div className="mt-1 rounded-md border border-green-500 bg-green-50 px-4 py-3 text-sm dark:bg-green-950">
+              <div className="mt-1 rounded-md border border-success bg-success/[0.10] px-4 py-3 text-sm ">
                 <div className="flex items-start justify-between gap-2">
                   <div className="space-y-0.5">
-                    <p className="font-semibold text-green-800 dark:text-green-200">{sgpCliente.nome}</p>
+                    <p className="font-semibold text-success ">{sgpCliente.nome}</p>
                     {sgpCliente.plano && (
-                      <p className="text-green-700 dark:text-green-300">
+                      <p className="text-success ">
                         Plano: {sgpCliente.plano}
                       </p>
                     )}
                     {sgpCliente.status_contrato && (
-                      <p className="text-green-700 dark:text-green-300">
+                      <p className="text-success ">
                         Contrato: {sgpCliente.status_contrato}
                       </p>
                     )}

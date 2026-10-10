@@ -20,10 +20,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </a>
       <TokenInitializer token={accessToken} />
       <NavSidebar role={me.role} />
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <Topbar email={me.email} name={me.name} role={me.role} />
-        <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto">
-          <div className="mx-auto max-w-7xl px-6 py-6">{children}</div>
+        <main id="main-content" tabIndex={-1} className="noc-canvas flex-1 focus:outline-none">
+          <div className="mx-auto max-w-[1600px] px-5 py-5">{children}</div>
         </main>
       </div>
     </div>

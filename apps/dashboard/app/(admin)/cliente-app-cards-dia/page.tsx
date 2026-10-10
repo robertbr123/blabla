@@ -98,7 +98,7 @@ export default function CardsDiaPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-amber-50 text-amber-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-warning/[0.10] text-warning">
             <Sparkles className="size-5" />
           </div>
           <div>
@@ -284,8 +284,8 @@ function CardForm({
                     title={label}
                     className={`flex h-10 w-10 items-center justify-center rounded-md border-2 transition ${
                       form.icon === value
-                        ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
-                        : 'border-zinc-200 text-zinc-600 hover:border-zinc-400'
+                        ? 'border-info bg-info/[0.10] text-info'
+                        : 'border-border text-muted-foreground hover:border-border'
                     }`}
                   >
                     <Icon className="size-5" />
@@ -307,7 +307,7 @@ function CardForm({
                         setForm((f) => ({ ...f, gradient_from: g.from, gradient_to: g.to }))
                       }
                       className={`flex h-14 items-center justify-center rounded-md border-2 text-xs font-bold text-white transition ${
-                        selected ? 'border-zinc-900 scale-105' : 'border-transparent'
+                        selected ? 'border-muted-foreground scale-105' : 'border-transparent'
                       }`}
                       style={{
                         background: `linear-gradient(135deg, #${g.from}, #${g.to})`,
@@ -357,7 +357,7 @@ function CardForm({
           {/* Preview */}
           <div>
             <Label className="mb-2 block">Preview (como aparece no app)</Label>
-            <div className="rounded-lg border bg-zinc-50 p-4">
+            <div className="rounded-lg border bg-muted/50 p-4">
               <CardPreview card={form} clickable={isClickable} />
               <p className="mt-3 text-center text-xs text-muted-foreground">
                 Posição: Home, abaixo do card &ldquo;Fidelidade / Fale conosco&rdquo;.
@@ -468,7 +468,7 @@ function CardRow({ card }: { card: AdminCardDia }) {
               <p className="font-semibold">{card.titulo}</p>
               <Badge variant="outline" className="text-xs">{card.slug}</Badge>
               {!card.ativo && (
-                <Badge variant="outline" className="border-zinc-300 bg-zinc-100 text-xs text-zinc-600">
+                <Badge variant="outline" className="border-border bg-muted text-xs text-muted-foreground">
                   <EyeOff className="mr-1 size-3" /> inativo
                 </Badge>
               )}

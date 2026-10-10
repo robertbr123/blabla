@@ -7,7 +7,7 @@ export default async function ConversaDetailPage({
 }) {
   const { id } = await params
   return (
-    <div className="h-[calc(100vh-7rem)]">
+    <div className="h-[calc(100vh-5.5rem)]">
       <ConversaChat conversaId={id} />
     </div>
   )

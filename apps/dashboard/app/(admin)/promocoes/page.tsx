@@ -87,7 +87,7 @@ export default function PromocoesPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-zinc-200 -mb-2">
+      <div className="flex border-b border-border -mb-2">
         {(['promos', 'leads'] as const).map((t) => (
           <button
             key={t}
@@ -95,8 +95,8 @@ export default function PromocoesPage() {
             className={cn(
               'px-4 py-2 text-sm font-semibold border-b-2 transition',
               tab === t
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-zinc-500 hover:text-zinc-700',
+                ? 'border-info text-info'
+                : 'border-transparent text-muted-foreground hover:text-foreground/90',
             )}
           >
             {t === 'promos' ? 'Promoções' : 'Leads'}
@@ -120,7 +120,7 @@ export default function PromocoesPage() {
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Ativas</p>
-            <p className="text-2xl font-bold text-emerald-600">{ativas}</p>
+            <p className="text-2xl font-bold text-success">{ativas}</p>
           </CardContent>
         </Card>
         <Card>
@@ -221,7 +221,7 @@ export default function PromocoesPage() {
                       {p.tipo === 'indicacao' && (
                         <Badge
                           variant="outline"
-                          className="border-pink-200 bg-pink-50 text-pink-700 text-[10px]"
+                          className="border-destructive/30 bg-destructive/[0.10] text-destructive text-[10px]"
                         >
                           <Gift className="mr-0.5 h-2.5 w-2.5" /> indicação
                         </Badge>

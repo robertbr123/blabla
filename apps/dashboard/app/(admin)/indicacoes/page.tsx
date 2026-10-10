@@ -75,7 +75,7 @@ export default function IndicacoesPage() {
       <Card>
         <CardContent className="flex flex-col items-start gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <div className="rounded-md bg-pink-100 p-2 text-pink-700">
+            <div className="rounded-md bg-destructive/[0.14] p-2 text-destructive">
               <Megaphone className="h-5 w-5" />
             </div>
             <div>
@@ -119,7 +119,7 @@ export default function IndicacoesPage() {
               <p className="flex items-center gap-1 text-xs text-muted-foreground">
                 <CheckCircle2 className="h-3 w-3" /> Convertidos
               </p>
-              <p className="text-2xl font-bold text-emerald-600">{stats.convertidos}</p>
+              <p className="text-2xl font-bold text-success">{stats.convertidos}</p>
             </CardContent>
           </Card>
         </div>

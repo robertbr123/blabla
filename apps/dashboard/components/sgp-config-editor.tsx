@@ -105,7 +105,7 @@ function SgpInstanceCard({ configKey, title, envHint }: { configKey: string; tit
                 placeholder="mikrotik"
               />
             </div>
-            {status && <p className="text-xs text-emerald-600">{status}</p>}
+            {status && <p className="text-xs text-success">{status}</p>}
             {error && <p className="text-xs text-destructive">{error}</p>}
             <div className="flex justify-end">
               <Button onClick={handleSave} disabled={setConfig.isPending}>

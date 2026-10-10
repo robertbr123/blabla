@@ -1,4 +1,6 @@
+'use client'
 import { CheckCircle2, Clock, PlayCircle, XCircle, HelpCircle } from 'lucide-react'
+import { TONE_SOFT, type Tone } from '@/components/noc/primitives'
 import { cn } from '@/lib/utils'
 
 type OsStatus = 'pendente' | 'em_andamento' | 'concluida' | 'cancelada' | (string & {})
@@ -6,7 +8,7 @@ type OsStatus = 'pendente' | 'em_andamento' | 'concluida' | 'cancelada' | (strin
 interface Spec {
   label: string
   icon: React.ComponentType<{ className?: string }>
-  tone: 'info' | 'warning' | 'success' | 'destructive' | 'muted'
+  tone: Extract<Tone, 'info' | 'warning' | 'success' | 'destructive' | 'muted'>
 }
 
 const SPECS: Record<string, Spec> = {
@@ -16,14 +18,7 @@ const SPECS: Record<string, Spec> = {
   cancelada: { label: 'Cancelada', icon: XCircle, tone: 'destructive' },
 }
 
-const TONE_CLASSES: Record<Spec['tone'], string> = {
-  info: 'bg-info/[0.12] text-info ring-info/30',
-  warning: 'bg-warning/[0.15] text-warning ring-warning/30',
-  success: 'bg-success/[0.12] text-success ring-success/30',
-  destructive: 'bg-destructive/[0.12] text-destructive ring-destructive/30',
-  muted: 'bg-muted text-muted-foreground ring-border',
-}
-
+/** Status da OS: sempre icone + texto (a cor so reforca). */
 export function OsStatusPill({
   status,
   size = 'md',
@@ -36,18 +31,18 @@ export function OsStatusPill({
   const spec = SPECS[status] ?? { label: status, icon: HelpCircle, tone: 'muted' as const }
   const Icon = spec.icon
   const sizing =
-    size === 'sm' ? 'px-2 py-0.5 text-xs gap-1' : 'px-2.5 py-1 text-sm gap-1.5'
+    size === 'sm' ? 'h-[22px] gap-1 px-2 text-xs' : 'h-7 gap-1.5 px-2.5 text-[13px]'
   const iconSize = size === 'sm' ? 'h-3 w-3' : 'h-3.5 w-3.5'
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full font-medium ring-1 ring-inset',
-        TONE_CLASSES[spec.tone],
+        'inline-flex shrink-0 items-center whitespace-nowrap rounded-md font-medium ring-1 ring-inset',
+        TONE_SOFT[spec.tone],
         sizing,
         className,
       )}
     >
-      <Icon className={iconSize} />
+      <Icon aria-hidden className={cn('shrink-0', iconSize)} />
       {spec.label}
     </span>
   )

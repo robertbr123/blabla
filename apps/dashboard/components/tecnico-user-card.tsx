@@ -98,7 +98,7 @@ function NewUserForm({ tecnicoId }: { tecnicoId: string }) {
         />
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
-      {ok && <p className="text-xs text-emerald-600">{ok}</p>}
+      {ok && <p className="text-xs text-success">{ok}</p>}
       <Button className="w-full" onClick={submit} disabled={create.isPending}>
         {create.isPending ? 'Criando…' : 'Criar acesso'}
       </Button>
@@ -148,7 +148,7 @@ function ExistingUser({ tecnicoId, user }: { tecnicoId: string; user: TecnicoUse
         </div>
         <div>
           <span className="text-muted-foreground">Login: </span>
-          <span className={user.is_active ? 'text-emerald-600' : 'text-amber-600'}>
+          <span className={user.is_active ? 'text-success' : 'text-warning'}>
             {user.is_active ? 'ativo' : 'desativado'}
           </span>
         </div>
@@ -212,7 +212,7 @@ function ExistingUser({ tecnicoId, user }: { tecnicoId: string; user: TecnicoUse
       )}
 
       {error && <p className="text-xs text-destructive">{error}</p>}
-      {ok && <p className="text-xs text-emerald-600">{ok}</p>}
+      {ok && <p className="text-xs text-success">{ok}</p>}
     </>
   )
 }

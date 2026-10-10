@@ -2,81 +2,86 @@
 
 > Source of Truth global. Páginas específicas podem sobrescrever em `design-system/blabla-dashboard/pages/[page].md`.
 
-Promovido em 2026-05-20 a partir do preview em `/design-preview`.
+Promovido em 2026-05-20; tema NOC em 2026-10.
 
-## Pattern: Data-Dense Dashboard
+## Tema NOC (2026-10) — leia isto primeiro
 
-- Padding mínimo, grid eficiente, KPI cards + tabelas + charts
-- Filtros sempre visíveis, drill-down via row click
-- Mobile: agrupar / esconder colunas secundárias
-- Best for: BI, admin, operações, analytics
+O dashboard e um console de operacao. **Escuro e o padrao**; o claro continua no
+botao da topbar. Tokens em `app/globals.css`, primitivas em
+`components/noc/primitives.tsx`, vitrine sem login em `/design-preview`.
+
+### Superficies (do fundo pra frente)
+
+`background` < `sidebar` < `card` < `elevated` (hover de linha, popover). No escuro
+nao se usa sombra pra dar profundidade — so a diferenca de superficie + borda.
+
+### Cores com papel fixo
+
+| Papel | Token | Uso |
+|---|---|---|
+| Marca / acao | `primary` (emerald) | CTA, item ativo, foco |
+| Estado bom | `success` | conectado, concluido, fila zerada |
+| Atencao | `warning` | aguardando, em andamento, sem tecnico |
+| Critico | `destructive` | SLA estourado, falha, cancelado |
+| Neutro informativo | `info` | pendente, em atendimento humano |
+| Series de grafico | `--chart-1..3` | **so** em marcas de grafico |
+
+Status e reservado pra **estado**: nunca vira "cor da serie 4". Serie de grafico
+nunca vira cor de texto. Status sempre com icone/ponto + texto.
+
+### Tipografia
+
+Inter no texto. **JetBrains Mono em todo numero operacional** (classe `.num`):
+codigos de OS, telefones, tempos, contagens, datas. Rotulo de secao e cabecalho de
+tabela usam `.eyebrow` (caixa alta, 10.5px, espacado). Titulo de pagina: 20px/600.
+
+### Primitivas (use antes de escrever markup novo)
+
+| Componente | Quando |
+|---|---|
+| `PageHeader` | topo de toda pagina (titulo, descricao, acoes) |
+| `Panel` + `PanelHeader` + `PanelBody` | qualquer bloco de conteudo |
+| `StatTile` | KPI. `alert` so quando exige acao |
+| `StatusDot` / `StatusChip` | estado ao vivo. `pulse` so pra ao vivo ou alerta ativo |
+| `FilterTabs` | filtro por status (substitui `<select>` de status) |
+| `Avatar`, `Age`, `Skeleton`, `SkeletonRows` | listas |
+| `.data-table` | toda tabela (cabecalho, densidade e hover prontos) |
+| `Sparkline` | tendencia dentro de um tile |
+
+### Graficos
+
+Um eixo por grafico — medidas de escala diferente viram *small multiples*, nunca
+eixo duplo. Linha 2px, area a ~10%, grade hairline solida, crosshair + tooltip no
+hover, barra <= 20px com valor fora da ponta. Paleta validada pra daltonismo.
+
+### Movimento
+
+Duas animacoes so: `animate-status-ping` (ponto ao vivo) e `animate-breach`
+(linha com SLA estourado). Todo o resto e transicao de cor de 150ms.
 
 ## Brand
 
 Logo: `apps/tecnico-mobile/assets/branding/logo_horizontal_{light,dark}.png` (compartilhado entre mobile e dashboard).
 
-## Colors (HSL — compatível com shadcn)
-
-### Light
-
-| Token | HSL | Hex aprox | Uso |
-|---|---|---|---|
-| `--primary` | `160 84% 39%` | `#10B981` emerald-500 | Marca · CTA · item ativo |
-| `--primary-foreground` | `0 0% 100%` | `#FFFFFF` | Texto sobre primary |
-| `--accent` | `160 84% 96%` | emerald-50 | Hover sutil, item ativo light |
-| `--accent-foreground` | `160 84% 25%` | emerald-800 | Texto sobre accent |
-| `--success` | `160 84% 39%` | mesmo do primary | Status positivo |
-| `--warning` | `38 92% 50%` | `#F59E0B` amber-500 | Atenção, em andamento |
-| `--info` | `217 91% 60%` | `#3B82F6` blue-500 | Informativo, aberto |
-| `--destructive` | `0 84.2% 60.2%` | `#EF4444` red-500 | Erro, cancelado |
-| `--ring` | `160 84% 39%` | emerald | Focus visible |
-
-Base neutra (`--background`, `--foreground`, `--muted`, `--border`) mantida slate — funciona melhor com data-dense.
-
-### Dark
-
-Card sutilmente mais claro que background (`222.2 47% 7%` vs `222.2 84% 4.9%`) pra dar profundidade sem precisar de shadow. Primary fica mais saturado (`160 84% 45%`) pra manter presença.
-
-## Typography — Inter (Minimal Swiss)
-
-Validado pelo plugin: "Minimal Swiss" pairing (Inter only) é o padrão pra dashboards/admin/design systems.
-
-| Token | Size / line / weight | Uso |
-|---|---|---|
-| display | 30/36 · 700 | Título de página |
-| h1 | 24/32 · 600 | Seção principal |
-| h2 | 18/28 · 600 | Card title, subsecção |
-| h3 | 14/20 · 600 | Label, header de tabela |
-| body | 14/20 · 400 | Texto default |
-| small | 12/16 · 400 | Caption, helper, badge |
-
-**Tabular nums** aplicado globalmente em `table` e em qualquer elemento com class `.tabular` ou `[data-numeric]` via `globals.css`. KPIs e valores monetários sempre tabular.
-
-## Effects
-
-- Hover row em tabelas: bg `--accent`
-- Hover card: `shadow-md` (subtle elevation)
-- Transitions: 150-200ms (`ease-out` entering, default para hover)
-- Focus ring: 2px emerald com offset-2
-
 ## Status pills (a11y · WCAG)
 
 Sempre **ícone + texto**. Cor sozinha NÃO comunica.
 
-| Status OS | Ícone (lucide) | Tone | Token |
-|---|---|---|---|
-| Aberto | `Clock` | info | blue |
-| Em andamento | `PlayCircle` | warning | amber |
-| Concluída | `CheckCircle2` | success | emerald |
-| Cancelada | `XCircle` | destructive | red |
+| Status OS | Ícone (lucide) | Tone |
+|---|---|---|
+| Pendente | `Clock` | info |
+| Em andamento | `PlayCircle` | warning |
+| Concluída | `CheckCircle2` | success |
+| Cancelada | `XCircle` | destructive |
 
-Visual: bg `tone / 0.12`, text `tone`, ring-inset `tone / 0.3`.
+Visual: bg `tone / 0.12`, text `tone`, ring-inset `tone / 0.25` (`TONE_SOFT`).
 
 ## Spacing & Layout
 
 - Sistema 4/8pt (Tailwind default)
-- Container: `max-w-7xl mx-auto` no main (com escape `data-fullbleed` para tabelas largas)
-- Sidebar: `w-60` mantido na Fase 2 + agrupamento em seções
+- Container: `max-w-[1600px] mx-auto px-5 py-5` no main, sobre o fundo quadriculado `.noc-canvas`
+- Sidebar: `w-60`, superficie `sidebar`, secoes agrupadas, status do sistema no rodape
+- Topbar: 48px, breadcrumb + sinais ao vivo (fila, WhatsApp) + relogio
 
 ## Avoid
 
@@ -98,9 +103,3 @@ Visual: bg `tone / 0.12`, text `tone`, ring-inset `tone / 0.3`.
 - [ ] Cursor pointer em elementos clicáveis não-button
 - [ ] Status sempre com ícone + texto
 - [ ] Valores numéricos com tabular nums
-
-## Próximas fases
-
-- Fase 2 — Shell (sidebar agrupada + logo + topbar com breadcrumb/Cmd+K)
-- Fase 3 — Componentes (OS, métricas, conversas, empty states)
-- Fase 4 — a11y pass + dark mode review

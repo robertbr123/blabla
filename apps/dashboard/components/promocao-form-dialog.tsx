@@ -260,7 +260,7 @@ export function PromocaoFormDialog(props: Props) {
                   ))}
                 </select>
                 {draft.tipo === 'indicacao' && (
-                  <p className="mt-1 text-[10px] text-pink-700">
+                  <p className="mt-1 text-[10px] text-destructive">
                     Tipo Indicação fixa CTA pra <code>tela:/indicacao</code>. Ao salvar, o backend força esse valor.
                   </p>
                 )}
@@ -296,7 +296,7 @@ export function PromocaoFormDialog(props: Props) {
             </div>
 
             {draft.tipo === 'indicacao' ? (
-              <div className="rounded-md border border-pink-200 bg-pink-50 p-3 text-xs text-pink-700">
+              <div className="rounded-md border border-destructive/30 bg-destructive/[0.10] p-3 text-xs text-destructive">
                 <p className="font-medium">CTA fixo: abrir tela in-app</p>
                 <p className="mt-1">
                   Ao clicar, o app navega pra <code>/indicacao</code> onde o cliente vê o próprio código e compartilha via WhatsApp.

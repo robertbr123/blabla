@@ -90,7 +90,7 @@ export function DialogTransferir({ onClose }: Props) {
             ))}
           </Select>
           {itensDisponiveis.length === 0 && (
-            <p className="mt-1 text-xs text-amber-700">
+            <p className="mt-1 text-xs text-warning">
               Depósito vazio. Registre uma entrada primeiro.
             </p>
           )}

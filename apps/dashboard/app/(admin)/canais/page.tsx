@@ -79,7 +79,7 @@ export default function CanaisPage() {
                   <td className="px-4 py-3 font-mono text-xs">{c.slug}</td>
                   <td className="px-4 py-3">
                     {c.provider === 'cloud' ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:text-blue-300">
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-info/10 px-2 py-0.5 text-[11px] font-medium text-info ">
                         <Cloud className="h-3 w-3" />
                         Cloud API
                       </span>

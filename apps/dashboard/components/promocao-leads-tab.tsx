@@ -18,10 +18,10 @@ const STATUS_LABEL: Record<PromocaoLeadStatus, string> = {
 }
 
 const STATUS_STYLE: Record<PromocaoLeadStatus, string> = {
-  novo: 'bg-blue-50 text-blue-700 border border-blue-200',
-  contatado: 'bg-amber-50 text-amber-700 border border-amber-200',
-  convertido: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  descartado: 'bg-zinc-100 text-zinc-600 border border-zinc-200',
+  novo: 'bg-info/[0.10] text-info border border-info/30',
+  contatado: 'bg-warning/[0.10] text-warning border border-warning/30',
+  convertido: 'bg-success/[0.10] text-success border border-success/30',
+  descartado: 'bg-muted text-muted-foreground border border-border',
 }
 
 const ALL_STATUSES: PromocaoLeadStatus[] = [

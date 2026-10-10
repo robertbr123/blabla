@@ -250,7 +250,7 @@ export function CanalFormDialog({ open, canal, onClose }: Props) {
                   maxLength={40}
                 />
               </div>
-              <div className="rounded-md bg-amber-500/10 border border-amber-500/30 p-3 text-[11px] text-amber-700 dark:text-amber-300">
+              <div className="rounded-md bg-warning/10 border border-warning/30 p-3 text-[11px] text-warning ">
                 <p className="font-semibold mb-1">Setup necessário:</p>
                 <ol className="list-decimal pl-4 space-y-0.5">
                   <li>

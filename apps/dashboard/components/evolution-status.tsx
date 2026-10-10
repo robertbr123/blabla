@@ -39,7 +39,7 @@ export function EvolutionStatus() {
         ) : (
           <>
             <span
-              className={`h-3 w-3 rounded-full ${isOk ? 'bg-green-500' : 'bg-red-500'}`}
+              className={`h-3 w-3 rounded-full ${isOk ? 'bg-success' : 'bg-destructive'}`}
             />
             <Badge variant={isOk ? 'default' : 'destructive'}>
               {isOk ? 'Conectado' : evoStatus}

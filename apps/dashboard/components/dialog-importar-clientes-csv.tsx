@@ -126,27 +126,27 @@ export function DialogImportarClientesCsv({ onClose }: Props) {
                 <ResultStat
                   label="Inseridos"
                   value={resultado.inserted}
-                  color="text-emerald-700"
+                  color="text-success"
                 />
                 <ResultStat
                   label="Atualizados"
                   value={resultado.updated}
-                  color="text-blue-700"
+                  color="text-info"
                 />
                 <ResultStat
                   label="Pulados"
                   value={resultado.skipped}
-                  color="text-amber-700"
+                  color="text-warning"
                 />
               </div>
             </div>
 
             {resultado.errors.length > 0 && (
-              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 max-h-40 overflow-y-auto">
-                <p className="text-xs font-semibold mb-1 text-amber-900">
+              <div className="rounded-md border border-warning/30 bg-warning/[0.10] p-3 max-h-40 overflow-y-auto">
+                <p className="text-xs font-semibold mb-1 text-warning">
                   {resultado.errors.length} erro(s) — mostrando primeiros 10:
                 </p>
-                <ul className="space-y-0.5 text-[11px] text-amber-900 font-mono">
+                <ul className="space-y-0.5 text-[11px] text-warning font-mono">
                   {resultado.errors.slice(0, 10).map((e, i) => (
                     <li key={i}>· {e}</li>
                   ))}

@@ -35,7 +35,7 @@ export function OsMapa(props: { inicio: Coord | null; fim: Coord | null }) {
 
   return (
     <div className="space-y-2">
-      <div className="aspect-video w-full overflow-hidden rounded-md border border-zinc-200">
+      <div className="aspect-video w-full overflow-hidden rounded-md border border-border">
         <iframe
           src={osmEmbed}
           className="h-full w-full"
@@ -46,7 +46,7 @@ export function OsMapa(props: { inicio: Coord | null; fim: Coord | null }) {
       </div>
       <div className="space-y-1 text-xs">
         {props.inicio && (
-          <div className="flex items-center gap-1.5 text-zinc-600">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
             <MapPin className="h-3 w-3 text-emerald-600" />
             <span className="font-medium">Início:</span>
             <code className="font-mono text-[11px]">
@@ -55,7 +55,7 @@ export function OsMapa(props: { inicio: Coord | null; fim: Coord | null }) {
           </div>
         )}
         {props.fim && (
-          <div className="flex items-center gap-1.5 text-zinc-600">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
             <Flag className="h-3 w-3 text-rose-600" />
             <span className="font-medium">Fim:</span>
             <code className="font-mono text-[11px]">
@@ -69,7 +69,7 @@ export function OsMapa(props: { inicio: Coord | null; fim: Coord | null }) {
           href={gmaps}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold hover:bg-zinc-50"
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-muted/50"
         >
           <ExternalLink className="h-3 w-3" />
           Google Maps
@@ -78,7 +78,7 @@ export function OsMapa(props: { inicio: Coord | null; fim: Coord | null }) {
           href={waze}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold hover:bg-zinc-50"
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-semibold hover:bg-muted/50"
         >
           <ExternalLink className="h-3 w-3" />
           Waze

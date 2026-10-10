@@ -14,9 +14,9 @@ import type { RedeDiagnostico } from '@/lib/api/types'
 /** Cor do RX power (GPON, dBm): verde -8..-25, amarelo -25..-27, vermelho fora. */
 export function corRx(rx: number | null | undefined): string {
   if (rx == null) return 'text-muted-foreground'
-  if (rx > -8 || rx < -27) return 'text-red-500'
-  if (rx < -25) return 'text-amber-500'
-  return 'text-green-500'
+  if (rx > -8 || rx < -27) return 'text-destructive'
+  if (rx < -25) return 'text-warning'
+  return 'text-success'
 }
 
 export function fmtUptime(s: number | null | undefined): string {
@@ -159,7 +159,7 @@ export function RedeBadge({ conversaId, temCliente }: { conversaId: string; temC
   const st = useRedeStatusConversa(conversaId, temCliente)
   if (!temCliente || !st.data?.encontrada) return null
   return st.data.online ? (
-    <span className="inline-flex items-center gap-1 text-xs text-green-600">
+    <span className="inline-flex items-center gap-1 text-xs text-success">
       <Wifi className="h-3 w-3" /> online
     </span>
   ) : (

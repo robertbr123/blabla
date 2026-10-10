@@ -38,11 +38,11 @@ export function ConversaSlaTimer({
   return (
     <div
       className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${tone}`}
-      title={exceeded ? `SLA de ${slaMinutes}min excedido` : `SLA ${slaMinutes}min`}
+      title={exceeded ? `SLA de ${slaMinutes} min excedido` : `SLA de ${slaMinutes} min`}
       role={exceeded ? 'alert' : undefined}
     >
       <Icon className="h-3.5 w-3.5 shrink-0" />
-      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{display}</span>
+      <span className="num">{display}</span>
     </div>
   )
 }

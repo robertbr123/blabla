@@ -79,7 +79,7 @@ function LoginForm() {
             onClick={() => setShowPwd((v) => !v)}
             aria-label={showPwd ? 'Ocultar senha' : 'Mostrar senha'}
             tabIndex={-1}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
@@ -116,19 +116,19 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <main className="relative flex min-h-dvh items-center justify-center p-6 overflow-hidden bg-background">
-      {/* Glow emerald sutil de fundo */}
+    <main className="noc-canvas relative flex min-h-dvh items-center justify-center overflow-hidden bg-background p-6">
+      {/* Luz da marca vindo de cima — o unico enfeite da tela. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-60 dark:opacity-40"
+        className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(60% 50% at 50% 0%, hsl(var(--primary) / 0.15), transparent 70%)',
+            'radial-gradient(55% 45% at 50% 0%, hsl(var(--primary) / 0.14), transparent 70%)',
         }}
       />
 
       <div className="relative w-full max-w-sm space-y-6">
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-3">
           <Image
             src="/branding/logo_horizontal_light.png"
             alt="BlaBla"
@@ -145,14 +145,15 @@ export default function LoginPage() {
             priority
             className="hidden h-10 w-auto dark:block"
           />
+          <span className="eyebrow">Centro de operações</span>
         </div>
 
-        <Card className="shadow-lg">
+        <Card className="shadow-xl shadow-black/5 ">
           <CardContent className="space-y-5 p-6">
-            <div className="space-y-1 text-center">
-              <h1 className="text-lg font-semibold">Acesse seu painel</h1>
+            <div className="space-y-1">
+              <h1 className="text-lg font-semibold tracking-tight">Acesse o painel</h1>
               <p className="text-xs text-muted-foreground">
-                Entre com seu email e senha pra continuar.
+                Entre com seu email e senha para continuar.
               </p>
             </div>
             <Suspense fallback={null}>

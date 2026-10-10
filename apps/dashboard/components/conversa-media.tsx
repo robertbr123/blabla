@@ -66,7 +66,7 @@ export function ConversaMedia({
     )
   }
   if (!url) {
-    return <div className="h-24 w-40 animate-pulse rounded bg-black/10" />
+    return <div className="h-24 w-40 animate-pulse rounded bg-foreground/10" />
   }
 
   if (kind === 'image') {

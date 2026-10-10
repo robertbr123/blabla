@@ -142,7 +142,7 @@ export function DialogDevolver({
             ))}
           </Select>
           {tecnicoId && itensDoTecnico.length === 0 && (
-            <p className="mt-1 text-xs text-amber-700">
+            <p className="mt-1 text-xs text-warning">
               Esse técnico não tem nada em mãos.
             </p>
           )}

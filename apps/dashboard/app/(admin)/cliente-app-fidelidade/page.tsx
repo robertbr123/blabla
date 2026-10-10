@@ -23,10 +23,10 @@ const STATUS_LABEL: Record<FidelidadeResgateStatus, string> = {
 }
 
 const STATUS_STYLE: Record<FidelidadeResgateStatus, string> = {
-  pendente: 'bg-amber-50 text-amber-700 border border-amber-200',
-  aprovado: 'bg-blue-50 text-blue-700 border border-blue-200',
-  aplicado: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  rejeitado: 'bg-zinc-100 text-zinc-600 border border-zinc-200',
+  pendente: 'bg-warning/[0.10] text-warning border border-warning/30',
+  aprovado: 'bg-info/[0.10] text-info border border-info/30',
+  aplicado: 'bg-success/[0.10] text-success border border-success/30',
+  rejeitado: 'bg-muted text-muted-foreground border border-border',
 }
 
 const STATUS_ICON: Record<FidelidadeResgateStatus, React.ComponentType<{ className?: string }>> = {
@@ -55,7 +55,7 @@ export default function FidelidadePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-amber-50 text-amber-600">
+        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-warning/[0.10] text-warning">
           <Award className="size-5" />
         </div>
         <div>
@@ -154,7 +154,7 @@ function ResgateRow({ resgate }: { resgate: AdminFidelidadeResgate }) {
             )}
           </div>
           {resgate.obs_admin && !open && (
-            <div className="mt-2 rounded border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-700">
+            <div className="mt-2 rounded border border-border bg-muted/50 px-3 py-1.5 text-xs text-foreground/90">
               <strong>Obs:</strong> {resgate.obs_admin}
             </div>
           )}
@@ -198,7 +198,7 @@ function ResgateRow({ resgate }: { resgate: AdminFidelidadeResgate }) {
                 variant="default"
                 onClick={() => setStatus('aplicado')}
                 disabled={patch.isPending}
-                className="bg-emerald-600 hover:bg-emerald-700"
+                className="bg-success hover:bg-success"
               >
                 <Sparkles className="mr-1 size-4" /> Marcar como aplicado
               </Button>

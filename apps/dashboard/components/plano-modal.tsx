@@ -61,7 +61,7 @@ export function PlanoModal({ plano, onClose }: PlanoModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-xl">
         <h2 className="mb-4 text-lg font-semibold">
           {isEditing ? 'Editar Plano' : 'Novo Plano'}
         </h2>
@@ -126,13 +126,13 @@ export function PlanoModal({ plano, onClose }: PlanoModalProps) {
                 {form.extras.map((ex, i) => (
                   <span
                     key={`${i}-${ex}`}
-                    className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800"
+                    className="inline-flex items-center gap-1 rounded-full bg-info/[0.14] px-2 py-0.5 text-xs text-info"
                   >
                     {ex}
                     <button
                       type="button"
                       onClick={() => removeExtra(i)}
-                      className="ml-0.5 text-blue-600 hover:text-blue-900"
+                      className="ml-0.5 text-info hover:text-info"
                     >
                       ×
                     </button>
@@ -160,7 +160,7 @@ export function PlanoModal({ plano, onClose }: PlanoModalProps) {
             </label>
           </div>
           {error && (
-            <p className="text-sm text-red-600">{(error as Error).message ?? 'Erro ao salvar plano'}</p>
+            <p className="text-sm text-destructive">{(error as Error).message ?? 'Erro ao salvar plano'}</p>
           )}
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>

@@ -1,17 +1,17 @@
 import { MetricasDashboard } from '@/components/metricas-dashboard'
+import { PageHeader } from '@/components/noc/primitives'
 import { OtpMetricasCard } from '@/components/otp-metricas-card'
 import { WhatsAppMetricasCard } from '@/components/whatsapp-metricas-card'
 
 export default function MetricasPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Métricas</h1>
-        <p className="text-sm text-muted-foreground">Painel operacional</p>
-      </div>
+    <div className="space-y-4">
+      <PageHeader title="Métricas" description="Painel operacional" />
       <MetricasDashboard />
-      <WhatsAppMetricasCard />
-      <OtpMetricasCard />
+      <div className="grid items-start gap-4 2xl:grid-cols-2">
+        <WhatsAppMetricasCard />
+        <OtpMetricasCard />
+      </div>
     </div>
   )
 }

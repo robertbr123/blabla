@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
+import { ImageOff, X } from 'lucide-react'
 import type { OsFoto } from '@/lib/api/types'
 import { getAccessToken } from '@/lib/api/token'
 
@@ -22,9 +22,11 @@ export function FotosGaleria({
         {fotos.map((f, i) => (
           <button
             key={i}
+            type="button"
             onClick={() => setOpenIdx(i)}
-            className="group relative aspect-square overflow-hidden rounded-md border border-zinc-200 bg-zinc-100 transition hover:opacity-90"
+            className="group relative aspect-square overflow-hidden rounded-md border bg-muted transition hover:border-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             title={new Date(f.ts).toLocaleString('pt-BR')}
+            aria-label={`Ampliar foto ${i + 1}`}
           >
             <ProtectedImage
               src={`/api/v1/os/${osId}/foto/${i}`}
@@ -77,13 +79,14 @@ function ProtectedImage({ src, alt }: { src: string; alt: string }) {
 
   if (error) {
     return (
-      <div className="flex h-full w-full items-center justify-center text-[10px] text-red-500">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-[10px] text-destructive">
+        <ImageOff aria-hidden className="h-3.5 w-3.5" />
         Erro
       </div>
     )
   }
   if (!url) {
-    return <div className="h-full w-full animate-pulse bg-zinc-200" />
+    return <div aria-hidden className="h-full w-full animate-pulse bg-muted" />
   }
   // eslint-disable-next-line @next/next/no-img-element
   return <img src={url} alt={alt} className="h-full w-full object-cover" />
@@ -94,15 +97,29 @@ function Lightbox(props: {
   info: string
   onClose: () => void
 }) {
+  const { onClose } = props
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   return (
     <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Foto ampliada"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-background/90 p-4 backdrop-blur-sm"
       onClick={props.onClose}
     >
       <button
+        type="button"
         onClick={props.onClose}
-        className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+        className="absolute right-4 top-4 rounded-md border bg-card p-2 text-foreground transition-colors hover:bg-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         aria-label="Fechar"
+        title="Fechar"
       >
         <X className="h-5 w-5" />
       </button>
@@ -110,8 +127,10 @@ function Lightbox(props: {
         className="max-h-[90vh] max-w-[90vw]"
         onClick={(e) => e.stopPropagation()}
       >
-        <ProtectedImage src={props.src} alt="Foto ampliada" />
-        <p className="mt-2 text-center text-xs text-white/70">{props.info}</p>
+        <div className="overflow-hidden rounded-lg border bg-card">
+          <ProtectedImage src={props.src} alt="Foto ampliada" />
+        </div>
+        <p className="num mt-2 text-center text-xs text-muted-foreground">{props.info}</p>
       </div>
     </div>
   )

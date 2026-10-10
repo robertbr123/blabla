@@ -59,7 +59,7 @@ export default function ContatosPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-cyan-50 text-cyan-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-info/[0.10] text-info">
             <PhoneCall className="size-5" />
           </div>
           <div>
@@ -248,7 +248,7 @@ function ContatoRow({ contato }: { contato: AdminContatoOperadora }) {
     <Card>
       <CardContent className="pt-4">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-zinc-100 text-zinc-600">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
             <Icon className="size-5" />
           </div>
           <div className="flex-1">
@@ -290,7 +290,7 @@ function ContatoRow({ contato }: { contato: AdminContatoOperadora }) {
                     ordem {contato.ordem}
                   </Badge>
                   {!contato.ativo && (
-                    <Badge variant="outline" className="border-zinc-300 bg-zinc-100 text-xs text-zinc-600">
+                    <Badge variant="outline" className="border-border bg-muted text-xs text-muted-foreground">
                       <EyeOff className="mr-1 size-3" /> inativo
                     </Badge>
                   )}

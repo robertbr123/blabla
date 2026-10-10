@@ -65,7 +65,7 @@ export function BotToggle() {
                 disabled={setConfig.isPending}
               />
             </div>
-            {status && <p className="text-xs text-emerald-600">{status}</p>}
+            {status && <p className="text-xs text-success">{status}</p>}
             {error && <p className="text-xs text-destructive">{error}</p>}
           </>
         )}

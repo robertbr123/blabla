@@ -101,7 +101,7 @@ export function QuickRepliesMenu({ text, onSelect, position = 'above' }: Props) 
   return (
     <div
       ref={listRef}
-      className={`absolute left-0 right-0 z-10 max-h-60 overflow-y-auto rounded-md border bg-card shadow-lg ${
+      className={`absolute left-0 right-0 z-10 max-h-60 overflow-y-auto rounded-lg border bg-popover text-popover-foreground shadow-lg ${
         position === 'above' ? 'bottom-full mb-2' : 'top-full mt-2'
       }`}
       role="listbox"
@@ -113,7 +113,7 @@ export function QuickRepliesMenu({ text, onSelect, position = 'above' }: Props) 
           onClick={() => onSelect(q.body)}
           onMouseEnter={() => setHighlight(idx)}
           className={`flex w-full flex-col items-start gap-0.5 border-b px-3 py-2 text-left text-sm last:border-b-0 ${
-            idx === highlight ? 'bg-muted' : 'hover:bg-muted/50'
+            idx === highlight ? 'bg-elevated' : 'hover:bg-elevated'
           }`}
         >
           <div className="flex w-full items-center gap-2">

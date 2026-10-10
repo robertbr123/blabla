@@ -109,8 +109,8 @@ export default function ProdutividadePage() {
                     </div>
                   </td>
                   <td className="px-3 py-3 text-right">{t.os_concluidas}</td>
-                  <td className="px-3 py-3 text-right text-green-700">{t.os_csat_5}</td>
-                  <td className="px-3 py-3 text-right text-blue-700">{t.os_csat_4}</td>
+                  <td className="px-3 py-3 text-right text-success">{t.os_csat_5}</td>
+                  <td className="px-3 py-3 text-right text-info">{t.os_csat_4}</td>
                   <td className="px-3 py-3 text-right text-muted-foreground">
                     {t.os_sem_csat}
                   </td>

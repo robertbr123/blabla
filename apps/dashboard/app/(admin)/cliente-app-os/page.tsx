@@ -46,10 +46,10 @@ const STATUS_LABEL: Record<ClienteAppOsAdminItem['status'], string> = {
 }
 
 const STATUS_STYLE: Record<ClienteAppOsAdminItem['status'], string> = {
-  aberto: 'bg-blue-50 text-blue-700 border border-blue-200',
-  em_atendimento: 'bg-amber-50 text-amber-700 border border-amber-200',
-  concluido: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  cancelado: 'bg-zinc-100 text-zinc-600 border border-zinc-200',
+  aberto: 'bg-info/[0.10] text-info border border-info/30',
+  em_atendimento: 'bg-warning/[0.10] text-warning border border-warning/30',
+  concluido: 'bg-success/[0.10] text-success border border-success/30',
+  cancelado: 'bg-muted text-muted-foreground border border-border',
 }
 
 const TIPO_LABEL: Record<ClienteAppOsAdminItem['tipo'], string> = {
@@ -114,11 +114,11 @@ export default function ClienteAppOsPage() {
     <div className="space-y-6 p-6">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-zinc-900 flex items-center gap-2">
-            <Smartphone className="h-6 w-6 text-indigo-600" />
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Smartphone className="h-6 w-6 text-info" />
             Chamados do app cliente
           </h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Chamados abertos pelos clientes via app mobile (sem internet, mudança de endereço, troca de plano).
           </p>
         </div>
@@ -160,32 +160,32 @@ export default function ClienteAppOsPage() {
       <Card>
         <CardContent className="p-0">
           {isLoading && (
-            <div className="p-6 text-sm text-zinc-500">Carregando…</div>
+            <div className="p-6 text-sm text-muted-foreground">Carregando…</div>
           )}
           {error && (
-            <div className="p-6 text-sm text-red-600">
+            <div className="p-6 text-sm text-destructive">
               Erro ao carregar: {(error as Error).message}
             </div>
           )}
           {!isLoading && !error && items.length === 0 && (
-            <div className="p-12 text-center text-sm text-zinc-500">
+            <div className="p-12 text-center text-sm text-muted-foreground">
               Nenhum chamado nessa categoria.
             </div>
           )}
-          <ul className="divide-y divide-zinc-100">
+          <ul className="divide-y divide-border">
             {grupos.map(({ cliente, chamados }) => (
               <li key={cliente.cliente_app_user_id} className="p-4">
                 {/* Header do cliente */}
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="rounded-full bg-zinc-100 p-2">
-                      <UserIcon className="h-5 w-5 text-zinc-600" />
+                    <div className="rounded-full bg-muted p-2">
+                      <UserIcon className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div className="min-w-0">
-                      <div className="font-semibold text-zinc-900 truncate">
+                      <div className="font-semibold text-foreground truncate">
                         {cliente.cliente_nome || '(sem nome)'}
                       </div>
-                      <div className="mt-0.5 flex items-center gap-3 text-xs text-zinc-500">
+                      <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
                         <span>
                           <Phone className="inline h-3 w-3 mr-0.5" />
                           {cliente.cliente_telefone || '—'}
@@ -194,7 +194,7 @@ export default function ClienteAppOsPage() {
                       </div>
                     </div>
                   </div>
-                  <span className="shrink-0 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700 border border-indigo-200">
+                  <span className="shrink-0 rounded-full bg-info/[0.10] px-2 py-0.5 text-xs font-semibold text-info border border-info/30">
                     {chamados.length}{' '}
                     {chamados.length === 1 ? 'chamado' : 'chamados'}
                   </span>
@@ -207,16 +207,16 @@ export default function ClienteAppOsPage() {
                     return (
                       <li
                         key={o.id}
-                        className="cursor-pointer rounded-lg border border-zinc-100 p-3 hover:border-indigo-200 hover:bg-indigo-50/30 transition"
+                        className="cursor-pointer rounded-lg border border-border p-3 hover:border-info/30 hover:bg-info/30 transition"
                         onClick={() => setOpenDetail(o)}
                       >
                         <div className="flex items-start gap-3">
-                          <div className="rounded-md bg-indigo-50 p-1.5 mt-0.5">
-                            <Icon className="h-4 w-4 text-indigo-600" />
+                          <div className="rounded-md bg-info/[0.10] p-1.5 mt-0.5">
+                            <Icon className="h-4 w-4 text-info" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-medium text-zinc-900 text-sm">
+                              <span className="font-medium text-foreground text-sm">
                                 {TIPO_LABEL[o.tipo]}
                               </span>
                               <span
@@ -227,13 +227,13 @@ export default function ClienteAppOsPage() {
                               >
                                 {STATUS_LABEL[o.status]}
                               </span>
-                              <span className="ml-auto text-xs text-zinc-500">
+                              <span className="ml-auto text-xs text-muted-foreground">
                                 <Clock className="inline h-3 w-3 mr-0.5" />
                                 {fmtDate(o.created_at)}
                               </span>
                             </div>
                             {o.descricao && (
-                              <p className="mt-1 text-sm text-zinc-600 line-clamp-2">
+                              <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
                                 {o.descricao}
                               </p>
                             )}
@@ -267,24 +267,24 @@ function CountCard(props: {
   onClick: () => void
 }) {
   const colors = {
-    blue: 'border-blue-200 bg-blue-50',
-    amber: 'border-amber-200 bg-amber-50',
-    emerald: 'border-emerald-200 bg-emerald-50',
-    zinc: 'border-zinc-200 bg-zinc-50',
+    blue: 'border-info/30 bg-info/[0.10]',
+    amber: 'border-warning/30 bg-warning/[0.10]',
+    emerald: 'border-success/30 bg-success/[0.10]',
+    zinc: 'border-border bg-muted/50',
   }
   return (
     <button
       onClick={props.onClick}
       className={cn(
-        'rounded-xl border bg-white p-4 text-left transition hover:shadow-sm',
+        'rounded-xl border bg-card p-4 text-left transition hover:shadow-sm',
         props.active && colors[props.color],
-        props.active && 'ring-2 ring-offset-1 ring-indigo-300',
+        props.active && 'ring-2 ring-offset-1 ring-info/30',
       )}
     >
-      <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {props.label}
       </div>
-      <div className="mt-1 text-2xl font-bold text-zinc-900">{props.value}</div>
+      <div className="mt-1 text-2xl font-bold text-foreground">{props.value}</div>
     </button>
   )
 }
@@ -337,14 +337,14 @@ function DetailDrawer(props: {
         className="fixed inset-0 z-40 bg-black/30"
         onClick={props.onClose}
       />
-      <aside className="fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto bg-white shadow-xl">
-        <div className="border-b border-zinc-200 p-6">
+      <aside className="fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto bg-card shadow-xl">
+        <div className="border-b border-border p-6">
           <div className="flex items-start justify-between">
             <div>
-              <div className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+              <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {TIPO_LABEL[o.tipo]}
               </div>
-              <h2 className="mt-1 text-xl font-bold text-zinc-900">
+              <h2 className="mt-1 text-xl font-bold text-foreground">
                 {o.cliente_nome || '(sem nome)'}
               </h2>
               <span
@@ -360,7 +360,7 @@ function DetailDrawer(props: {
               Fechar
             </Button>
           </div>
-          <div className="mt-4 flex border-b border-zinc-200 -mb-px">
+          <div className="mt-4 flex border-b border-border -mb-px">
             {(['detalhes', 'chat'] as const).map((t) => (
               <button
                 key={t}
@@ -368,8 +368,8 @@ function DetailDrawer(props: {
                 className={cn(
                   'px-4 py-2 text-sm font-semibold border-b-2 transition',
                   tab === t
-                    ? 'border-indigo-600 text-indigo-600'
-                    : 'border-transparent text-zinc-500 hover:text-zinc-700',
+                    ? 'border-info text-info'
+                    : 'border-transparent text-muted-foreground hover:text-foreground/90',
                 )}
               >
                 {t === 'detalhes' ? 'Detalhes' : 'Chat'}
@@ -385,16 +385,16 @@ function DetailDrawer(props: {
           {/* Acao primaria — despachar pra tecnico */}
           <button
             onClick={() => setDespacharOpen(true)}
-            className="flex w-full items-center gap-3 rounded-lg border-2 border-indigo-200 bg-indigo-50 px-4 py-3 text-left transition hover:border-indigo-300 hover:bg-indigo-100"
+            className="flex w-full items-center gap-3 rounded-lg border-2 border-info/30 bg-info/[0.10] px-4 py-3 text-left transition hover:border-info/30 hover:bg-info/[0.14]"
           >
-            <div className="rounded-md bg-indigo-600 p-2">
-              <Wrench className="h-5 w-5 text-white" />
+            <div className="rounded-md bg-info p-2">
+              <Wrench className="h-5 w-5 text-info-foreground" />
             </div>
             <div className="flex-1">
-              <div className="font-semibold text-indigo-900">
+              <div className="font-semibold text-info">
                 Despachar pra técnico
               </div>
-              <div className="text-xs text-indigo-700">
+              <div className="text-xs text-info">
                 Cria OS em /os com técnico atribuído e notifica via WhatsApp.
               </div>
             </div>
@@ -415,7 +415,7 @@ function DetailDrawer(props: {
           </Section>
 
           <Section title="Descrição">
-            <div className="whitespace-pre-wrap text-sm text-zinc-800">
+            <div className="whitespace-pre-wrap text-sm text-foreground">
               {o.descricao || '—'}
             </div>
           </Section>
@@ -427,26 +427,26 @@ function DetailDrawer(props: {
             return diag != null ? (
               <Section title="Diagnóstico na abertura">
                 <div className="grid gap-2 sm:grid-cols-3 text-sm">
-                  <div className="rounded-md border bg-white p-3">
-                    <div className="text-xs text-muted-foreground text-zinc-500">ONU</div>
+                  <div className="rounded-md border bg-card p-3">
+                    <div className="text-xs text-muted-foreground">ONU</div>
                     <div className="font-semibold">
                       {diag.online ? 'Online' : 'Offline'}
                     </div>
                   </div>
-                  <div className="rounded-md border bg-white p-3">
-                    <div className="text-xs text-muted-foreground text-zinc-500">Aparelhos conectados</div>
+                  <div className="rounded-md border bg-card p-3">
+                    <div className="text-xs text-muted-foreground">Aparelhos conectados</div>
                     <div className="font-semibold">
                       {diag.total_aparelhos != null ? String(diag.total_aparelhos) : '—'}
                     </div>
                   </div>
-                  <div className="rounded-md border bg-white p-3">
-                    <div className="text-xs text-muted-foreground text-zinc-500">Sinal</div>
+                  <div className="rounded-md border bg-card p-3">
+                    <div className="text-xs text-muted-foreground">Sinal</div>
                     <div className="font-semibold capitalize">
                       {diag.saude ?? '—'}
                     </div>
                   </div>
                 </div>
-                <p className="mt-1 text-xs text-zinc-500">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Capturado no momento da abertura
                   {diag.timestamp
                     ? ` — ${new Date(diag.timestamp).toLocaleString('pt-BR')}`
@@ -463,7 +463,7 @@ function DetailDrawer(props: {
             )
             return Object.keys(rest).length > 0 ? (
               <Section title="Dados adicionais">
-                <pre className="overflow-x-auto rounded-md bg-zinc-50 p-3 text-xs text-zinc-700">
+                <pre className="overflow-x-auto rounded-md bg-muted/50 p-3 text-xs text-foreground/90">
                   {JSON.stringify(rest, null, 2)}
                 </pre>
               </Section>
@@ -497,7 +497,7 @@ function DetailDrawer(props: {
                 value={sgpId}
                 onChange={(e) => setSgpId(e.target.value)}
                 placeholder="ID do protocolo no SGP"
-                className="flex-1 rounded-md border border-zinc-200 px-3 py-1.5 text-sm"
+                className="flex-1 rounded-md border border-border px-3 py-1.5 text-sm"
               />
               <Button
                 variant="outline"
@@ -551,8 +551,8 @@ function DetailDrawer(props: {
               className={cn(
                 'flex w-full items-center justify-between rounded-lg border-2 px-4 py-3 text-left transition',
                 o.teve_visita_tecnica
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-900 hover:border-emerald-300'
-                  : 'border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300',
+                  ? 'border-success/30 bg-success/[0.10] text-success hover:border-success/30'
+                  : 'border-border bg-card text-foreground/90 hover:border-border',
               )}
             >
               <div>
@@ -566,12 +566,12 @@ function DetailDrawer(props: {
               <div
                 className={cn(
                   'h-6 w-11 shrink-0 rounded-full transition',
-                  o.teve_visita_tecnica ? 'bg-emerald-500' : 'bg-zinc-300',
+                  o.teve_visita_tecnica ? 'bg-success' : 'bg-muted-foreground/30',
                 )}
               >
                 <div
                   className={cn(
-                    'mt-0.5 h-5 w-5 rounded-full bg-white shadow transition',
+                    'mt-0.5 h-5 w-5 rounded-full bg-card shadow transition',
                     o.teve_visita_tecnica ? 'ml-[22px]' : 'ml-0.5',
                   )}
                 />
@@ -584,14 +584,14 @@ function DetailDrawer(props: {
               <div className="space-y-2">
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-bold">{o.nps_score ?? '—'}</span>
-                  <span className="text-sm text-zinc-500">/ 10</span>
-                  <span className="ml-auto text-xs text-zinc-500">
+                  <span className="text-sm text-muted-foreground">/ 10</span>
+                  <span className="ml-auto text-xs text-muted-foreground">
                     {fmtDate(o.nps_respondido_em)}
                   </span>
                 </div>
                 {o.teve_visita_tecnica && (
-                  <div className="space-y-1 rounded-md border border-zinc-200 bg-zinc-50 p-3">
-                    <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  <div className="space-y-1 rounded-md border border-border bg-muted/50 p-3">
+                    <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Sobre a visita técnica
                     </div>
                     <TecnicoAvaliacaoRow label="Chegou no horário?" valor={o.tecnico_pontual} />
@@ -650,12 +650,12 @@ function ChatPanel(props: { userId: string }) {
   return (
     <div className="flex h-[calc(100vh-180px)] flex-col">
       {/* Status bar */}
-      <div className="border-b border-zinc-200 bg-zinc-50 px-6 py-3">
+      <div className="border-b border-border bg-muted/50 px-6 py-3">
         {isLoading ? (
-          <div className="text-xs text-zinc-500">Carregando conversa…</div>
+          <div className="text-xs text-muted-foreground">Carregando conversa…</div>
         ) : data?.handoff_active ? (
           <div className="flex items-center justify-between text-xs">
-            <span className="font-medium text-emerald-700">
+            <span className="font-medium text-success">
               <Headphones className="inline h-3.5 w-3.5 mr-1" />
               Você está atendendo — bot pausado
             </span>
@@ -670,7 +670,7 @@ function ChatPanel(props: { userId: string }) {
           </div>
         ) : (
           <div className="flex items-center justify-between text-xs">
-            <span className="text-zinc-600">
+            <span className="text-muted-foreground">
               <MessageSquare className="inline h-3.5 w-3.5 mr-1" />
               Bot está respondendo automaticamente
             </span>
@@ -688,27 +688,27 @@ function ChatPanel(props: { userId: string }) {
       {/* Messages */}
       <div
         ref={scrollRef}
-        className="flex-1 space-y-2 overflow-y-auto bg-zinc-50 p-6"
+        className="flex-1 space-y-2 overflow-y-auto bg-muted/50 p-6"
       >
         {(data?.messages ?? []).map((m) => (
           <ChatMessageBubble key={m.id} msg={m} />
         ))}
         {!isLoading && (data?.messages.length ?? 0) === 0 && (
-          <div className="py-8 text-center text-sm text-zinc-500">
+          <div className="py-8 text-center text-sm text-muted-foreground">
             Nenhuma mensagem ainda.
           </div>
         )}
       </div>
 
       {/* Input */}
-      <div className="border-t border-zinc-200 bg-white p-4">
+      <div className="border-t border-border bg-card p-4">
         <div className="flex items-end gap-2">
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Mensagem como atendente…"
             rows={2}
-            className="flex-1 resize-none rounded-md border border-zinc-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="flex-1 resize-none rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-info/30"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
@@ -719,12 +719,12 @@ function ChatPanel(props: { userId: string }) {
           <Button
             onClick={handleSend}
             disabled={send.isPending || !text.trim()}
-            className="bg-indigo-600 hover:bg-indigo-700"
+            className="bg-info hover:bg-info"
           >
             <Send className="h-4 w-4" />
           </Button>
         </div>
-        <p className="mt-1 text-[10px] text-zinc-400">
+        <p className="mt-1 text-[10px] text-muted-foreground">
           Enter envia · Shift+Enter quebra linha · Assumir conversa pausa o bot
         </p>
       </div>
@@ -746,18 +746,18 @@ function ChatMessageBubble(props: { msg: ClienteAppChatMessage }) {
       <div
         className={cn(
           'max-w-[78%] rounded-2xl px-3 py-2 text-sm',
-          isUser && 'rounded-bl-md bg-white text-zinc-900 shadow-sm',
-          isAtendente && 'rounded-br-md bg-indigo-600 text-white',
+          isUser && 'rounded-bl-md bg-card text-foreground shadow-sm',
+          isAtendente && 'rounded-br-md bg-info text-info-foreground',
           !isUser &&
             !isAtendente &&
-            'rounded-br-md bg-zinc-200 text-zinc-700',
+            'rounded-br-md bg-secondary text-foreground/90',
         )}
       >
         {!isUser && (
           <div
             className={cn(
               'mb-0.5 text-[10px] font-semibold uppercase tracking-wide',
-              isAtendente ? 'text-indigo-200' : 'text-zinc-500',
+              isAtendente ? 'text-info' : 'text-muted-foreground',
             )}
           >
             {isAtendente ? 'Você' : 'Bot'}
@@ -767,7 +767,7 @@ function ChatMessageBubble(props: { msg: ClienteAppChatMessage }) {
         <div
           className={cn(
             'mt-1 text-[10px]',
-            isAtendente ? 'text-indigo-200' : 'text-zinc-400',
+            isAtendente ? 'text-info' : 'text-muted-foreground',
           )}
         >
           {new Date(m.created_at).toLocaleTimeString('pt-BR', {
@@ -783,10 +783,10 @@ function ChatMessageBubble(props: { msg: ClienteAppChatMessage }) {
 function Section(props: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         {props.title}
       </h3>
-      <div className="space-y-2 rounded-lg bg-zinc-50 p-3">{props.children}</div>
+      <div className="space-y-2 rounded-lg bg-muted/50 p-3">{props.children}</div>
     </div>
   )
 }
@@ -799,9 +799,9 @@ function Field(props: {
   const Icon = props.icon
   return (
     <div className="flex items-center gap-2 text-sm">
-      <Icon className="h-4 w-4 text-zinc-400" />
-      <span className="text-zinc-500">{props.label}:</span>
-      <span className="font-medium text-zinc-900">{props.value}</span>
+      <Icon className="h-4 w-4 text-muted-foreground" />
+      <span className="text-muted-foreground">{props.label}:</span>
+      <span className="font-medium text-foreground">{props.value}</span>
     </div>
   )
 }
@@ -814,17 +814,17 @@ function TecnicoAvaliacaoRow({
   valor: boolean | null
 }) {
   let txt = '—'
-  let cls = 'text-zinc-400'
+  let cls = 'text-muted-foreground'
   if (valor === true) {
     txt = 'Sim'
-    cls = 'text-emerald-700'
+    cls = 'text-success'
   } else if (valor === false) {
     txt = 'Não'
-    cls = 'text-rose-700'
+    cls = 'text-destructive'
   }
   return (
     <div className="flex items-center justify-between text-sm">
-      <span className="text-zinc-700">{label}</span>
+      <span className="text-foreground/90">{label}</span>
       <span className={cn('font-bold', cls)}>{txt}</span>
     </div>
   )
@@ -845,8 +845,8 @@ function StatusButton(props: {
       className={cn(
         'flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition',
         props.active
-          ? 'border-indigo-300 bg-indigo-50 text-indigo-700 cursor-default'
-          : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50',
+          ? 'border-info/30 bg-info/[0.10] text-info cursor-default'
+          : 'border-border bg-card text-foreground/90 hover:bg-muted/50',
         props.disabled && !props.active && 'opacity-50 cursor-not-allowed',
       )}
     >

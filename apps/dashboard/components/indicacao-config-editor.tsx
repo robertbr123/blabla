@@ -114,7 +114,7 @@ export function IndicacaoConfigEditor() {
         )}
 
         {error && <p className="text-sm text-destructive">{error}</p>}
-        {savedMsg && <p className="text-sm text-green-700">{savedMsg}</p>}
+        {savedMsg && <p className="text-sm text-success">{savedMsg}</p>}
 
         <Button
           onClick={handleSave}

@@ -104,17 +104,17 @@ export function DialogDespacharTecnico(props: Props) {
       onClick={close}
     >
       <div
-        className="w-full max-w-lg rounded-xl bg-white shadow-xl"
+        className="w-full max-w-lg rounded-xl bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-zinc-200 p-5">
+        <div className="flex items-center justify-between border-b border-border p-5">
           <div className="flex items-center gap-2">
-            <Wrench className="h-5 w-5 text-indigo-600" />
+            <Wrench className="h-5 w-5 text-info" />
             <h2 className="text-lg font-bold">Despachar pra técnico</h2>
           </div>
           <button
             onClick={close}
-            className="rounded-md p-1 text-zinc-500 hover:bg-zinc-100"
+            className="rounded-md p-1 text-muted-foreground hover:bg-muted"
           >
             <X className="h-5 w-5" />
           </button>
@@ -122,15 +122,15 @@ export function DialogDespacharTecnico(props: Props) {
 
         {criada ? (
           <div className="p-6 text-center">
-            <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
+            <CheckCircle2 className="mx-auto h-12 w-12 text-success" />
             <h3 className="mt-3 text-lg font-bold">OS {criada.codigo} criada</h3>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               O técnico foi notificado por WhatsApp.
             </p>
             <div className="mt-5 flex gap-2 justify-center">
               <Link
                 href={`/os/${criada.id}`}
-                className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                className="rounded-md bg-info px-4 py-2 text-sm font-semibold text-info-foreground hover:bg-info"
               >
                 Abrir OS
               </Link>
@@ -142,19 +142,19 @@ export function DialogDespacharTecnico(props: Props) {
         ) : (
           <div className="space-y-4 p-5">
             <Field label="Cliente">
-              <div className="rounded-md bg-zinc-50 px-3 py-2 text-sm">
+              <div className="rounded-md bg-muted/50 px-3 py-2 text-sm">
                 <div className="font-medium">{props.clienteNome || '—'}</div>
-                <div className="text-xs text-zinc-500">
+                <div className="text-xs text-muted-foreground">
                   CPF {fmtCpf(props.clienteCpf)} · {props.clienteTelefone || '—'}
                 </div>
                 {sgp.isLoading && (
-                  <div className="mt-1 flex items-center gap-1 text-xs text-indigo-600">
+                  <div className="mt-1 flex items-center gap-1 text-xs text-info">
                     <RefreshCw className="h-3 w-3 animate-spin" />
                     Buscando dados no SGP…
                   </div>
                 )}
                 {sgp.error && (
-                  <div className="mt-1 text-xs text-amber-700">
+                  <div className="mt-1 text-xs text-warning">
                     Não encontrei dados no SGP — preencha manualmente.
                   </div>
                 )}
@@ -165,7 +165,7 @@ export function DialogDespacharTecnico(props: Props) {
               <select
                 value={tecnicoId}
                 onChange={(e) => setTecnicoId(e.target.value)}
-                className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-border px-3 py-2 text-sm"
               >
                 <option value="">— Selecione —</option>
                 {(tecnicos.data?.items ?? [])
@@ -184,7 +184,7 @@ export function DialogDespacharTecnico(props: Props) {
                 onChange={(e) => setProblema(e.target.value)}
                 rows={4}
                 placeholder="Descreva o que o técnico vai fazer"
-                className="w-full resize-none rounded-md border border-zinc-200 px-3 py-2 text-sm"
+                className="w-full resize-none rounded-md border border-border px-3 py-2 text-sm"
               />
             </Field>
 
@@ -196,7 +196,7 @@ export function DialogDespacharTecnico(props: Props) {
                   setEnderecoUserEditou(true)
                 }}
                 placeholder="Rua, número, bairro, cidade"
-                className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-border px-3 py-2 text-sm"
               />
             </Field>
 
@@ -206,14 +206,14 @@ export function DialogDespacharTecnico(props: Props) {
                   value={plano}
                   onChange={(e) => setPlano(e.target.value)}
                   placeholder="Ex: Fibra 600"
-                  className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
                 />
               </Field>
               <Field label="PPPoE login">
                 <input
                   value={pppoeLogin}
                   onChange={(e) => setPppoeLogin(e.target.value)}
-                  className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm"
+                  className="w-full rounded-md border border-border px-3 py-2 text-sm"
                 />
               </Field>
             </div>
@@ -222,7 +222,7 @@ export function DialogDespacharTecnico(props: Props) {
               <input
                 value={pppoeSenha}
                 onChange={(e) => setPppoeSenha(e.target.value)}
-                className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-border px-3 py-2 text-sm"
               />
             </Field>
 
@@ -231,7 +231,7 @@ export function DialogDespacharTecnico(props: Props) {
                 type="datetime-local"
                 value={agendamento}
                 onChange={(e) => setAgendamento(e.target.value)}
-                className="w-full rounded-md border border-zinc-200 px-3 py-2 text-sm"
+                className="w-full rounded-md border border-border px-3 py-2 text-sm"
               />
             </Field>
 
@@ -242,7 +242,7 @@ export function DialogDespacharTecnico(props: Props) {
               <Button
                 onClick={submit}
                 disabled={createOs.isPending}
-                className="bg-indigo-600 hover:bg-indigo-700"
+                className="bg-info hover:bg-info"
               >
                 {createOs.isPending ? 'Criando…' : 'Criar OS'}
               </Button>
@@ -269,11 +269,11 @@ function Field(props: {
     <div>
       <label
         className={cn(
-          'mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-500',
+          'mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground',
         )}
       >
         {props.label}
-        {props.required && <span className="ml-0.5 text-red-500">*</span>}
+        {props.required && <span className="ml-0.5 text-destructive">*</span>}
       </label>
       {props.children}
     </div>

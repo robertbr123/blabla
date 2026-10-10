@@ -5,7 +5,17 @@ import { usePathname } from 'next/navigation'
 import { ChevronRight, Home } from 'lucide-react'
 
 const LABELS: Record<string, string> = {
+  noc: 'Painel NOC',
   metricas: 'Métricas',
+  comunicados: 'Comunicados',
+  promocoes: 'Promoções',
+  'cliente-app-contatos': 'Fale conosco',
+  'cliente-app-fidelidade': 'Fidelidade',
+  'cliente-app-cards-dia': 'Card do dia',
+  nova: 'Nova',
+  novo: 'Novo',
+  editar: 'Editar',
+  templates: 'Templates',
   conversas: 'Conversas',
   os: 'Ordens de serviço',
   leads: 'Leads',
@@ -37,9 +47,9 @@ export function Breadcrumb() {
   if (segments.length === 0) return null
 
   return (
-    <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-sm text-muted-foreground min-w-0">
+    <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-1.5 text-[13px] text-muted-foreground">
       <Link
-        href="/metricas"
+        href="/noc"
         aria-label="Início"
         className="flex items-center hover:text-foreground transition-colors shrink-0"
       >
